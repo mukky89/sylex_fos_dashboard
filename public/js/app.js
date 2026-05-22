@@ -35,9 +35,10 @@ let currentPage = 'home';
 let products = [];
 let categories = [];
 let currentProductId = null;
+let currentProduct = null; // full product object from API detail call
 let editingProductId = null;
 let quill = null;
-let pendingImages = []; // { file, url, caption }
+let pendingImages = [];
 
 // ---- PARTICLES ----
 (function initParticles() {
@@ -167,6 +168,7 @@ async function openProduct(id) {
   try {
     const r = await fetch(`/api/products/${id}`);
     const p = await r.json();
+    currentProduct = p; // store full detail for editing
     renderProductDetail(p);
   } catch {
     alert('Chyba pri načítaní produktu');
@@ -216,8 +218,7 @@ function renderProductDetail(p) {
 
 // ---- EDIT / DELETE ----
 function editCurrentProduct() {
-  const p = products.find(x => x._id === currentProductId);
-  if (p) openProductModal(p);
+  if (currentProduct) openProductModal(currentProduct);
 }
 
 async function deleteCurrentProduct() {
@@ -260,7 +261,7 @@ function openProductModal(product = null) {
   });
 
   // Init Quill
-  if (quill) { quill = null; }
+  quill = null;
   document.getElementById('quillEditor').innerHTML = '';
   quill = new Quill('#quillEditor', {
     theme: 'snow',
@@ -277,7 +278,9 @@ function openProductModal(product = null) {
       ]
     }
   });
-  if (product?.content) quill.root.innerHTML = product.content;
+  if (product?.content) {
+    quill.clipboard.dangerouslyPasteHTML(product.content);
+  }
 
   // Image overrides for Quill image handler
   const toolbar = quill.getModule('toolbar');

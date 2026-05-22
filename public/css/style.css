@@ -3,23 +3,23 @@
    ============================================= */
 
 :root {
-  --bg-deep:    #04040f;
-  --bg-dark:    #080818;
-  --bg-card:    rgba(0, 212, 255, 0.04);
-  --bg-card-h:  rgba(0, 212, 255, 0.09);
+  --bg-deep:    #0d1025;
+  --bg-dark:    #121530;
+  --bg-card:    rgba(255,255,255,0.05);
+  --bg-card-h:  rgba(255,255,255,0.09);
   --accent:     #00d4ff;
   --accent2:    #0077ff;
   --accent3:    #7b00ff;
-  --text:       #c8d8e8;
-  --text-dim:   #5a7a8a;
-  --text-bright:#e8f4ff;
-  --border:     rgba(0, 212, 255, 0.18);
-  --border-h:   rgba(0, 212, 255, 0.5);
+  --text:       #d8e8f8;
+  --text-dim:   #8090a8;
+  --text-bright:#f0f6ff;
+  --border:     rgba(0, 212, 255, 0.22);
+  --border-h:   rgba(0, 212, 255, 0.55);
   --danger:     #ff3366;
   --success:    #00ff88;
   --warning:    #ffaa00;
   --radius:     8px;
-  --radius-lg:  16px;
+  --radius-lg:  14px;
   --font-main:  'Exo 2', 'Rajdhani', sans-serif;
   --font-title: 'Rajdhani', 'Exo 2', sans-serif;
   --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -41,9 +41,9 @@ body {
 .bg-grid {
   position: fixed; inset: 0; z-index: 0;
   background-image:
-    linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px);
-  background-size: 60px 60px;
+    linear-gradient(rgba(0,212,255,0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.07) 1px, transparent 1px);
+  background-size: 50px 50px;
   pointer-events: none;
 }
 
@@ -76,7 +76,7 @@ body {
 /* ---- HEADER ---- */
 .header {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  background: rgba(4,4,15,0.85);
+  background: rgba(13,16,37,0.9);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
   height: 64px;
@@ -98,11 +98,15 @@ body {
 .logo-icon svg { filter: drop-shadow(0 0 8px rgba(0,212,255,0.5)); }
 
 .logo-img {
-  height: 28px; width: auto;
-  filter: brightness(0) invert(1);
-  transition: filter var(--transition);
+  height: 32px; width: auto;
+  filter: brightness(0) invert(1) contrast(1.2);
+  opacity: 0.95;
+  transition: filter var(--transition), opacity var(--transition);
 }
-.logo:hover .logo-img { filter: brightness(0) invert(1) drop-shadow(0 0 6px rgba(0,212,255,0.6)); }
+.logo:hover .logo-img {
+  filter: brightness(0) invert(1) contrast(1.2) drop-shadow(0 0 8px rgba(0,212,255,0.7));
+  opacity: 1;
+}
 
 .logo-divider {
   width: 1px; height: 22px;
@@ -157,19 +161,19 @@ body {
 /* ---- HERO ---- */
 .hero {
   max-width: 1400px; margin: 0 auto;
-  padding: 80px 24px 60px;
+  padding: 44px 24px 36px;
   display: flex; align-items: center; justify-content: space-between; gap: 40px;
 }
 
 .hero-content { flex: 1; }
 
 .hero-logo-wrap {
-  margin-bottom: 28px;
+  margin-bottom: 18px;
 }
 .hero-logo-img {
-  height: 38px; width: auto;
-  filter: brightness(0) invert(1);
-  opacity: 0.92;
+  height: 44px; width: auto;
+  filter: brightness(0) invert(1) contrast(1.2);
+  opacity: 0.96;
 }
 
 .hero-badge {
@@ -187,7 +191,7 @@ body {
   display: flex; flex-direction: column;
   font-family: var(--font-title);
   font-weight: 700; line-height: 1;
-  font-size: clamp(3rem, 8vw, 6rem);
+  font-size: clamp(2.4rem, 6vw, 4.5rem);
   letter-spacing: 0.05em;
   color: var(--text-bright);
 }
@@ -228,7 +232,7 @@ body {
 /* ---- SECTIONS ---- */
 .section {
   max-width: 1400px; margin: 0 auto;
-  padding: 40px 24px 60px;
+  padding: 20px 24px 40px;
 }
 
 .section-header {
@@ -258,7 +262,7 @@ body {
 
 .tile {
   position: relative; display: flex; flex-direction: column;
-  padding: 32px 28px;
+  padding: 22px 22px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   background: var(--bg-card);
@@ -308,8 +312,8 @@ body {
 .tile-peaklogger:hover { border-color: rgba(123,0,255,0.5); }
 
 .tile-icon {
-  margin-bottom: 20px;
-  filter: drop-shadow(0 0 12px currentColor);
+  margin-bottom: 14px;
+  filter: drop-shadow(0 0 10px currentColor);
 }
 
 .tile-label {
@@ -319,7 +323,7 @@ body {
 }
 
 .tile-title {
-  font-family: var(--font-title); font-size: 2rem;
+  font-family: var(--font-title); font-size: 1.7rem;
   font-weight: 700; color: var(--text-bright);
   letter-spacing: 0.08em; margin-bottom: 12px;
 }
@@ -330,7 +334,7 @@ body {
 }
 
 .tile-arrow {
-  position: absolute; bottom: 24px; right: 28px;
+  position: absolute; bottom: 18px; right: 22px;
   font-size: 1.4rem; font-weight: 300;
   transition: transform var(--transition);
 }
@@ -379,8 +383,8 @@ body {
 
 /* ---- WIKI CTA ---- */
 .wiki-cta {
-  display: flex; align-items: center; gap: 28px;
-  padding: 32px 36px;
+  display: flex; align-items: center; gap: 24px;
+  padding: 22px 28px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--bg-card);
@@ -412,7 +416,7 @@ body {
 /* ---- SIDEBAR ---- */
 .sidebar {
   width: 280px; flex-shrink: 0;
-  background: rgba(4,4,20,0.9);
+  background: rgba(10,13,32,0.95);
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column;
   position: sticky; top: 64px;
