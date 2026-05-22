@@ -41,6 +41,14 @@ const categoriesRouter = require('./routes/categories');
 app.use('/api/products', productsRouter);
 app.use('/api/categories', categoriesRouter);
 
+// Credentials endpoint (internal use only)
+app.get('/api/credentials/peaklogger', (req, res) => {
+  res.json({
+    user: process.env.PEAKLOGGER_USER || '',
+    pass: process.env.PEAKLOGGER_PASS || ''
+  });
+});
+
 // Image upload endpoint
 app.post('/api/upload', upload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });

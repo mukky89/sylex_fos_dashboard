@@ -1,5 +1,33 @@
 /* ===== SYLEX FOS Dashboard — App Logic ===== */
 
+// ---- PEAKLOGGER CREDENTIALS ----
+let plCredsLoaded = false;
+let plCredsData = { user: '', pass: '' };
+let plVisible = false;
+
+async function loadPeakloggerCreds() {
+  if (plCredsLoaded) return;
+  try {
+    const r = await fetch('/api/credentials/peaklogger');
+    plCredsData = await r.json();
+    plCredsLoaded = true;
+  } catch { plCredsData = { user: '—', pass: '—' }; }
+}
+
+function openPeaklogger(e) {
+  window.open('https://mukovnik.xyz/', '_blank');
+}
+
+async function togglePeakloggerCreds(e) {
+  e.stopPropagation();
+  await loadPeakloggerCreds();
+  plVisible = !plVisible;
+  document.getElementById('plUser').textContent = plVisible ? plCredsData.user : '••••••';
+  document.getElementById('plPass').textContent = plVisible ? plCredsData.pass : '••••••••••••';
+  document.getElementById('plToggle').textContent = plVisible ? '🙈 Skryť' : '👁 Zobraziť';
+}
+
+
 const API = '';
 
 // ---- State ----

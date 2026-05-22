@@ -135,7 +135,7 @@
           <div class="tile-url">isys.sylex.sk</div>
         </a>
 
-        <a href="https://mukovnik.xyz/" target="_blank" class="tile tile-peaklogger">
+        <div class="tile tile-peaklogger" onclick="openPeaklogger(event)">
           <div class="tile-glow"></div>
           <div class="tile-corner tl"></div>
           <div class="tile-corner tr"></div>
@@ -154,9 +154,20 @@
             <h3 class="tile-title">PEAKLOGGER</h3>
             <p class="tile-desc">Softvér na stiahnutie — záznam a analýza dát zo senzorov</p>
           </div>
+          <div class="tile-credentials" id="peakloggerCreds" onclick="event.stopPropagation()">
+            <div class="cred-row">
+              <span class="cred-label">Login</span>
+              <span class="cred-value" id="plUser">••••••</span>
+            </div>
+            <div class="cred-row">
+              <span class="cred-label">Heslo</span>
+              <span class="cred-value" id="plPass">••••••••••••</span>
+            </div>
+            <button class="cred-toggle" id="plToggle" onclick="togglePeakloggerCreds(event)">👁 Zobraziť</button>
+          </div>
           <div class="tile-arrow">↓</div>
           <div class="tile-url">mukovnik.xyz</div>
-        </a>
+        </div>
 
       </div>
     </section>

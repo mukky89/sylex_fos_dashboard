@@ -328,6 +328,38 @@ body {
 }
 .tile:hover .tile-url { opacity: 1; }
 
+/* ---- TILE CREDENTIALS ---- */
+.tile-credentials {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(123,0,255,0.2);
+  border-radius: var(--radius);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.cred-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.cred-label {
+  font-size: 0.68rem; letter-spacing: 0.12em;
+  color: var(--text-dim); text-transform: uppercase;
+  font-weight: 600; width: 40px; flex-shrink: 0;
+}
+.cred-value {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem; color: var(--text);
+  letter-spacing: 0.05em; flex: 1;
+}
+.cred-toggle {
+  align-self: flex-start;
+  padding: 4px 10px; font-size: 0.72rem;
+  background: rgba(123,0,255,0.12); color: #a44dff;
+  border: 1px solid rgba(123,0,255,0.3); border-radius: var(--radius);
+  cursor: pointer; font-family: var(--font-main);
+  transition: all var(--transition);
+}
+.cred-toggle:hover { background: rgba(123,0,255,0.22); }
+
 /* ---- WIKI CTA ---- */
 .wiki-cta {
   display: flex; align-items: center; gap: 28px;
