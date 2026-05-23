@@ -115,6 +115,32 @@ app.get('/api/credentials/peaklogger', (req, res) => {
   });
 });
 
+// Temperature proxy for FOS lab thermometer at 10.88.1.50
+app.get('/api/sensor/thermo', (req, res) => {
+  const http = require('http');
+  const r = http.get({ host: '10.88.1.50', port: 80, path: '/', timeout: 3000 }, (resp) => {
+    let raw = '';
+    resp.on('data', chunk => raw += chunk);
+    resp.on('end', () => {
+      let temp = null;
+      const patterns = [
+        /temperature["'\s:=>]+(-?\d+\.?\d*)/i,
+        /temp["'\s:=>]+(-?\d+\.?\d*)/i,
+        /value["'\s:=>]+(-?\d+\.?\d*)/i,
+        />(-?\d+\.?\d*)\s*(?:&deg;)?C</i,
+        /(-?\d+\.\d+)/
+      ];
+      for (const p of patterns) {
+        const m = raw.match(p);
+        if (m) { const v = parseFloat(m[1]); if (v > -50 && v < 200) { temp = v; break; } }
+      }
+      res.json({ online: true, temperature: temp });
+    });
+  });
+  r.on('error', () => res.json({ online: false, temperature: null }));
+  r.on('timeout', () => { r.destroy(); res.json({ online: false, temperature: null }); });
+});
+
 // Image upload endpoint
 app.post('/api/upload', upload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
