@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 36" fill="none">
+  <!-- S mark -->
+  <path d="M6 10 C6 10 6 7 10 7 L18 7 C22 7 22 11 22 11 C22 15 18 16.5 14 18 C10 19.5 6 21 6 25 C6 25 6 29 10 29 L18 29 C22 29 22 26 22 26"
+        stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- YLEX text using font-neutral paths approximation — fallback to tspan -->
+  <text x="30" y="27" font-family="Rajdhani,Exo 2,Arial,sans-serif" font-weight="700" font-size="26" fill="white" letter-spacing="3">YLEX</text>
+</svg>
