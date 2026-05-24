@@ -87,16 +87,53 @@ let currentCategoryId = null;
   }
 })();
 
-// ---- PAGE ROUTING ----
-function showPage(name) {
+// ---- URL HASH ROUTING ----
+function setHash(hash) {
+  history.pushState(null, '', '#' + hash);
+}
+
+window.addEventListener('popstate', () => { handleHash(location.hash.slice(1)); });
+
+async function handleHash(hash) {
+  if (!hash || hash === 'home') {
+    _activatePage('home');
+    return;
+  }
+  if (hash === 'wiki') {
+    _activatePage('wiki');
+    await loadWiki();
+    return;
+  }
+  if (hash.startsWith('wiki/cat/')) {
+    const catId = hash.slice('wiki/cat/'.length);
+    _activatePage('wiki');
+    await loadWiki();
+    showCategoryView(catId);
+    return;
+  }
+  if (hash.startsWith('wiki/')) {
+    const productId = hash.slice('wiki/'.length);
+    _activatePage('wiki');
+    await loadWiki();
+    await openProduct(productId);
+    return;
+  }
+}
+
+function _activatePage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-link').forEach(l => {
-    l.classList.toggle('active', l.dataset.page === name);
-  });
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.toggle('active', l.dataset.page === name));
   const page = document.getElementById('page-' + name);
   if (page) page.classList.add('active');
   currentPage = name;
+}
+
+// ---- PAGE ROUTING ----
+function showPage(name) {
+  _activatePage(name);
+  setHash(name);
   if (name === 'wiki') loadWiki();
+  if (name === 'home') loadHomeKB();
 }
 
 // ---- WIKI LOAD ----
@@ -130,6 +167,7 @@ function showWikiHome() {
   document.querySelectorAll('.product-item').forEach(i => i.classList.remove('active'));
   const homeBtn = document.getElementById('swnHome');
   if (homeBtn) homeBtn.classList.add('active');
+  setHash('wiki');
   renderWikiHome();
 }
 
@@ -222,6 +260,7 @@ function renderWikiRecent() {
 
 // ---- CATEGORY VIEW ----
 function showCategoryView(catId) {
+  setHash(catId ? 'wiki/cat/' + catId : 'wiki/cat/uncategorized');
   currentCategoryId = catId;
   document.getElementById('wikiWelcome').classList.add('hidden');
   document.getElementById('productDetail').classList.add('hidden');
@@ -409,6 +448,7 @@ function restoreWikiSections() {
 // ---- PRODUCT DETAIL ----
 async function openProduct(id) {
   currentProductId = id;
+  setHash('wiki/' + id);
   document.querySelectorAll('.product-item').forEach(i => {
     i.classList.toggle('active', i.dataset.id === id);
   });
@@ -729,6 +769,76 @@ async function saveCategory() {
   } catch { alert('Chyba pri ukladaní kategórie'); }
 }
 
+// ---- SHARE ----
+function shareCurrentProduct() {
+  if (!currentProductId) return;
+  const url = location.origin + location.pathname + '#wiki/' + currentProductId;
+  navigator.clipboard.writeText(url)
+    .then(() => showToast('🔗 Odkaz skopírovaný do schránky'))
+    .catch(() => {
+      const inp = prompt('Skopírujte odkaz:', url);
+    });
+}
+
+// ---- TOAST ----
+function showToast(msg) {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => toast.classList.add('toast-visible'));
+  });
+  setTimeout(() => {
+    toast.classList.remove('toast-visible');
+    setTimeout(() => toast.remove(), 320);
+  }, 2600);
+}
+
+// ---- HOME PAGE KB PREVIEW (Command Center) ----
+async function loadHomeKB() {
+  try {
+    const [catsRes, prodsRes] = await Promise.all([
+      fetch('/api/categories'),
+      fetch('/api/products')
+    ]);
+    const cats = await catsRes.json();
+    const prods = await prodsRes.json();
+
+    // Update KB tile stats
+    const el = (id) => document.getElementById(id);
+    if (el('ccKbProd')) el('ccKbProd').textContent = prods.length;
+    if (el('ccKbCat'))  el('ccKbCat').textContent  = cats.length;
+
+    // Fill recent strip
+    const strip = el('ccRecentItems');
+    if (!strip) return;
+    strip.innerHTML = '';
+
+    const sorted = [...prods].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 8);
+    if (sorted.length === 0) {
+      strip.innerHTML = '<span class="cc-recent-item cc-recent-placeholder">Žiadne záznamy</span>';
+      return;
+    }
+    sorted.forEach(p => {
+      const cat = cats.find(c => c._id === (p.category?._id || p.category));
+      const icon = cat?.icon || '📄';
+      const chip = document.createElement('span');
+      chip.className = 'cc-recent-item';
+      chip.innerHTML = `<span class="cc-recent-item-icon">${icon}</span>${escHtml(p.name)}`;
+      chip.onclick = () => {
+        showPage('wiki');
+        setTimeout(() => openProduct(p._id), 120);
+      };
+      strip.appendChild(chip);
+    });
+  } catch {
+    const strip = document.getElementById('ccRecentItems');
+    if (strip) strip.innerHTML = '<span class="cc-recent-item cc-recent-placeholder">Nedostupné</span>';
+  }
+}
+
 // ---- HELPERS ----
 function escHtml(str) {
   return String(str || '')
@@ -751,3 +861,15 @@ function pluralSk(n) {
 function statusLabel(status) {
   return { active: 'Aktívny', development: 'Vývoj', discontinued: 'Ukončený' }[status] || '';
 }
+
+// ---- INIT ----
+(async function init() {
+  const hash = location.hash.slice(1);
+  if (hash && hash !== 'home') {
+    await handleHash(hash);
+  } else {
+    // Default: show home and load KB preview
+    _activatePage('home');
+    loadHomeKB();
+  }
+})();

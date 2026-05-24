@@ -18,8 +18,11 @@
   <header class="header">
     <div class="header-inner">
       <div class="logo" onclick="showPage('home')">
-        <img src="https://www.sylex.sk/wp-content/uploads/2023/08/sylexlogo.png"
-             alt="Sylex" class="logo-img">
+        <svg class="logo-svg" viewBox="0 0 38 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M5 9C5 9 5 6 9 6H17C21 6 21 10 21 10C21 14 17 15.5 13 17C9 18.5 5 20.5 5 24.5C5 24.5 5 27 9 27H17C21 27 21 24 21 24" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M27 6L33 16L27 27M33 6L27 27" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="logo-name">YLEX</span>
         <div class="logo-divider"></div>
         <span class="logo-sub-text">FOS Division</span>
       </div>
@@ -34,52 +37,71 @@
       <div class="header-right">
         <div class="status-dot"></div>
         <span class="status-text">ONLINE</span>
+        <span class="header-version">FOS</span>
       </div>
     </div>
   </header>
 
   <!-- ===== HOME PAGE ===== -->
   <main id="page-home" class="page active">
-    <div class="hero">
-      <div class="hero-content">
-        <div class="hero-logo-wrap">
-          <img src="https://www.sylex.sk/wp-content/uploads/2023/08/sylexlogo.png"
-               alt="Sylex" class="hero-logo-img">
-        </div>
-        <div class="hero-badge">FIBER OPTICS SENSORS</div>
-        <h1 class="hero-title">
-          <span class="title-line">FOS</span>
-          <span class="title-line accent">Dashboard</span>
-        </h1>
-        <p class="hero-desc">Centralized hub for systems, tools and documentation of the FOS division</p>
-        <div class="hero-line"></div>
-      </div>
-      <div class="hero-visual">
-        <div class="pulse-ring"></div>
-        <div class="pulse-ring delay1"></div>
-        <div class="pulse-ring delay2"></div>
-        <div class="fiber-icon">
-          <svg viewBox="0 0 120 120" width="120" height="120">
-            <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
-            <path d="M20 60 Q35 30 60 60 Q85 90 100 60" fill="none" stroke="#00d4ff" stroke-width="2.5" stroke-linecap="round"/>
-            <path d="M20 50 Q35 20 60 50 Q85 80 100 50" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M20 70 Q35 40 60 70 Q85 100 100 70" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1.5" stroke-linecap="round"/>
-            <circle cx="60" cy="60" r="6" fill="#00d4ff"/>
-            <circle cx="20" cy="60" r="4" fill="rgba(0,212,255,0.6)"/>
-            <circle cx="100" cy="60" r="4" fill="rgba(0,212,255,0.6)"/>
+
+    <!-- Command Center Banner -->
+    <div class="cc-banner">
+      <div class="cc-inner">
+        <div class="cc-title-wrap">
+          <svg class="cc-fiber-mark" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="20" cy="20" r="16" fill="none" stroke="rgba(0,212,255,0.25)" stroke-width="1"/>
+            <path d="M6 20 Q13 10 20 20 Q27 30 34 20" fill="none" stroke="#00d4ff" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="20" cy="20" r="3.5" fill="#00d4ff"/>
+            <circle cx="6" cy="20" r="2" fill="rgba(0,212,255,0.5)"/>
+            <circle cx="34" cy="20" r="2" fill="rgba(0,212,255,0.5)"/>
           </svg>
+          <div>
+            <div class="cc-main-title">FOS Dashboard</div>
+            <div class="cc-subtitle">FIBER OPTICS SENSORS · SYLEX</div>
+          </div>
         </div>
+        <nav class="cc-quicknav">
+          <a href="https://dbfos.sylex.sk" target="_blank" class="ccn">DBFOS</a>
+          <a href="https://isys.sylex.sk/" target="_blank" class="ccn">ISYS</a>
+          <a href="https://syxapp03.sylex.sk/ads/index.php" target="_blank" class="ccn">DOCHÁDZKA</a>
+          <span class="ccn ccn-kb" onclick="showPage('wiki')">◈ KB</span>
+        </nav>
       </div>
     </div>
 
-    <!-- ERP System Tiles -->
-    <section class="section">
-      <div class="section-header">
-        <span class="section-tag">SYSTEMS</span>
-        <h2>ERP &amp; Tools Access</h2>
-        <div class="section-line"></div>
-      </div>
-      <div class="tiles-grid">
+    <!-- Unified tiles grid -->
+    <section class="cc-section">
+      <div class="cc-grid">
+
+        <!-- KB tile — first / top-left -->
+        <div class="tile tile-kb" onclick="showPage('wiki')">
+          <div class="tile-glow"></div>
+          <div class="tile-corner tl"></div>
+          <div class="tile-corner tr"></div>
+          <div class="tile-corner bl"></div>
+          <div class="tile-corner br"></div>
+          <div class="tile-icon" style="color:var(--accent)">
+            <svg viewBox="0 0 60 60" width="60" height="60">
+              <rect x="8" y="8" width="44" height="44" rx="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="16" y1="20" x2="44" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="16" y1="28" x2="44" y2="28" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="16" y1="36" x2="32" y2="36" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="44" cy="44" r="10" fill="rgba(0,212,255,0.15)" stroke="currentColor" stroke-width="1.5"/>
+              <text x="44" y="48.5" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">◈</text>
+            </svg>
+          </div>
+          <div class="tile-content">
+            <span class="tile-label">KNOWLEDGE BASE</span>
+            <h3 class="tile-title">FOS Docs</h3>
+            <p class="tile-desc">Dokumentácia, konfiguračné návody a technické záznamy FOS divízie</p>
+          </div>
+          <div class="kb-tile-stats">
+            <span class="kb-tile-stat"><span id="ccKbProd">—</span> záznamov</span>
+            <span class="kb-tile-stat"><span id="ccKbCat">—</span> kategórií</span>
+          </div>
+          <div class="tile-arrow" style="color:var(--accent)">→</div>
+        </div>
 
         <a href="https://dbfos.sylex.sk" target="_blank" class="tile tile-dbfos">
           <div class="tile-glow"></div>
@@ -130,6 +152,31 @@
           </div>
           <div class="tile-arrow">→</div>
           <div class="tile-url">isys.sylex.sk</div>
+        </a>
+
+        <a href="https://syxapp03.sylex.sk/ads/index.php" target="_blank" class="tile tile-dochadzka">
+          <div class="tile-glow"></div>
+          <div class="tile-corner tl"></div>
+          <div class="tile-corner tr"></div>
+          <div class="tile-corner bl"></div>
+          <div class="tile-corner br"></div>
+          <div class="tile-icon">
+            <svg viewBox="0 0 60 60" width="60" height="60">
+              <rect x="10" y="12" width="40" height="38" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="10" y1="22" x2="50" y2="22" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="20" y1="6" x2="20" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="40" y1="6" x2="40" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="30" cy="38" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M30 34v4l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="tile-content">
+            <span class="tile-label">HR SYSTÉM</span>
+            <h3 class="tile-title">DOCHÁDZKA</h3>
+            <p class="tile-desc">Evidencia dochádzky a pracovného času zamestnancov Sylex</p>
+          </div>
+          <div class="tile-arrow">→</div>
+          <div class="tile-url">syxapp03.sylex.sk</div>
         </a>
 
         <div class="tile tile-peaklogger" onclick="openPeaklogger(event)">
@@ -200,17 +247,17 @@
       </div>
     </section>
 
-    <!-- Quick access to wiki -->
-    <section class="section section-wiki-cta">
-      <div class="wiki-cta" onclick="showPage('wiki')">
-        <div class="wiki-cta-icon">◈</div>
-        <div class="wiki-cta-text">
-          <h3>Knowledge Base</h3>
-          <p>Konfiguračné návody, technické dokumenty a nastavenia zariadení FOS divízie</p>
+    <!-- Recent KB Strip -->
+    <div class="cc-recent-section">
+      <div class="cc-recent-bar">
+        <span class="cc-recent-label">◈ Nedávno v Knowledge Base</span>
+        <div class="cc-recent-items" id="ccRecentItems">
+          <span class="cc-recent-item cc-recent-placeholder">Načítavanie...</span>
         </div>
-        <div class="wiki-cta-arrow">→</div>
+        <button class="cc-recent-more" onclick="showPage('wiki')">Všetky záznamy →</button>
       </div>
-    </section>
+    </div>
+
   </main>
 
   <!-- ===== WIKI PAGE ===== -->
@@ -316,6 +363,10 @@
                 <div class="product-actions">
                   <button class="btn-edit" onclick="editCurrentProduct()">✎ Upraviť</button>
                   <button class="btn-delete" onclick="deleteCurrentProduct()">✕ Odstrániť</button>
+                  <button class="btn-share" onclick="shareCurrentProduct()">
+                    <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="13" cy="3" r="2"/><circle cx="3" cy="8" r="2"/><circle cx="13" cy="13" r="2"/><path d="M5 7l6-3M5 9l6 3" stroke-linecap="round"/></svg>
+                    Zdieľať
+                  </button>
                 </div>
               </div>
 
