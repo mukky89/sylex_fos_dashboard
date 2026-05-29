@@ -99,24 +99,22 @@ document.addEventListener('click', () => {
 // THERMOMETER WIDGET
 // ==============================
 async function loadThermoData() {
-  const tempEl   = document.getElementById('thermoValue');
-  const humEl    = document.getElementById('humValue');
-  const statusEl = document.getElementById('thermoStatus');
-  if (!tempEl) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const cls = (id, c) => { const el = document.getElementById(id); if (el) el.className = c; };
   try {
-    const r    = await fetch('/api/sensor/thermo');
-    const data = await r.json();
+    const data = await fetch('/api/sensor/thermo').then(r => r.json());
     if (data.online) {
-      tempEl.textContent = data.temperature !== null ? data.temperature.toFixed(1) : '--.-';
-      if (humEl) humEl.textContent = data.humidity !== null ? data.humidity.toFixed(1) : '--.-';
-      if (statusEl) { statusEl.textContent = 'ONLINE'; statusEl.className = 'thermo-status thermo-online'; }
+      const t = data.temperature !== null ? data.temperature.toFixed(1) : '--.-';
+      const h = data.humidity    !== null ? data.humidity.toFixed(1)    : '--.-';
+      set('thermoValue',   t); set('sensorTempVal', t);
+      set('humValue',      h); set('sensorHumVal',  h);
+      ['thermoStatus','sensorStatus'].forEach(id => { set(id,'ONLINE'); cls(id,'thermo-status thermo-online'); });
     } else {
-      tempEl.textContent = '--.-';
-      if (humEl) humEl.textContent = '--.-';
-      if (statusEl) { statusEl.textContent = 'OFFLINE'; statusEl.className = 'thermo-status thermo-offline'; }
+      ['thermoValue','humValue','sensorTempVal','sensorHumVal'].forEach(id => set(id,'--.-'));
+      ['thermoStatus','sensorStatus'].forEach(id => { set(id,'OFFLINE'); cls(id,'thermo-status thermo-offline'); });
     }
   } catch {
-    if (statusEl) { statusEl.textContent = 'OFFLINE'; statusEl.className = 'thermo-status thermo-offline'; }
+    ['thermoStatus','sensorStatus'].forEach(id => { set(id,'OFFLINE'); cls(id,'thermo-status thermo-offline'); });
   }
 }
 loadThermoData();
@@ -256,9 +254,9 @@ function resetChartZoom() {
   if (sensorChart) sensorChart.resetZoom();
 }
 
-// Auto-refresh every 60 s (matches server polling interval), only when home is active
+// Auto-refresh chart every 60 s, only when sensors page is active
 setInterval(() => {
-  if (document.getElementById('page-home')?.classList.contains('active')) loadSensorChart();
+  if (document.getElementById('page-sensors')?.classList.contains('active')) loadSensorChart();
 }, 60000);
 
 // ==============================
@@ -270,6 +268,7 @@ window.addEventListener('popstate', () => handleHash(location.hash.slice(1)));
 
 async function handleHash(hash) {
   if (!hash || hash === 'home') { _activatePage('home'); loadHomeKB(); return; }
+  if (hash === 'sensors') { _activatePage('sensors'); loadThermoData(); loadSensorChart(); return; }
   if (hash === 'wiki') { _activatePage('wiki'); await loadWiki(); return; }
   if (hash.startsWith('wiki/cat/')) {
     const catId = hash.slice('wiki/cat/'.length);
@@ -292,8 +291,9 @@ function _activatePage(name) {
 function showPage(name) {
   _activatePage(name);
   setHash(name);
-  if (name === 'wiki') loadWiki();
-  if (name === 'home') { loadHomeKB(); loadSensorChart(); }
+  if (name === 'wiki')    loadWiki();
+  if (name === 'home')    loadHomeKB();
+  if (name === 'sensors') { loadThermoData(); loadSensorChart(); }
 }
 
 // ==============================
@@ -931,5 +931,5 @@ function statusLabel(s) {
 (function init() {
   const hash = location.hash.slice(1);
   if (hash) { handleHash(hash); }
-  else { _activatePage('home'); loadHomeKB(); loadSensorChart(); }
+  else { _activatePage('home'); loadHomeKB(); }
 })();

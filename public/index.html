@@ -49,6 +49,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
           Knowledge Base
         </a>
+        <a class="nav-link" onclick="showPage('sensors')" data-page="sensors">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Senzory
+        </a>
       </nav>
 
       <div class="header-right">
@@ -97,97 +101,51 @@
         </div>
       </div>
 
-      <!-- ── WIDGET GRID ── -->
-      <div class="home-widgets">
-
-        <!-- Thermometer -->
-        <a class="hw-card hw-thermo" href="http://10.88.5.184/" target="_blank">
-          <div class="hw-card-label">LAB — TEPLOTA &amp; VLHKOSŤ</div>
-          <div class="hw-thermo-body">
-            <div class="hw-reading hw-reading--temp">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/></svg>
-              <span class="hw-reading-num" id="thermoValue">--.-</span>
-              <span class="hw-reading-unit">°C</span>
-            </div>
-            <div class="hw-reading hw-reading--hum">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg>
-              <span class="hw-reading-num" id="humValue">--.-</span>
-              <span class="hw-reading-unit">%RH</span>
-            </div>
-          </div>
-          <div class="hw-card-footer">
-            <span id="thermoStatus" class="thermo-status thermo-offline">OFFLINE</span>
-            <span class="hw-card-link">10.88.5.184 ↗</span>
-          </div>
-        </a>
-
-        <!-- KB stats -->
-        <div class="hw-card hw-kb" onclick="showPage('wiki')">
-          <div class="hw-card-label">KNOWLEDGE BASE</div>
-          <div class="hw-kb-body">
-            <div class="hw-kb-stat">
-              <span id="kbProdCount" class="hw-kb-num">—</span>
-              <span class="hw-kb-dim">záznamy</span>
-            </div>
-            <div class="hw-kb-stat">
-              <span id="kbCatCount" class="hw-kb-num">—</span>
-              <span class="hw-kb-dim">kategórie</span>
-            </div>
-          </div>
-          <div class="hw-card-footer">
-            <span class="hw-card-link">Otvoriť →</span>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- ── SENSOR CHART ── -->
-      <div class="home-sensor-chart">
-        <div class="hsc-header">
-          <div class="hsc-title">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            TEPLOTA &amp; VLHKOSŤ — LAB FOS
-          </div>
-          <div class="hsc-controls">
-            <div class="hsc-range-btns">
-              <button class="hsc-range-btn" data-hours="1"   onclick="loadSensorChart(1)">1H</button>
-              <button class="hsc-range-btn active" data-hours="6"   onclick="loadSensorChart(6)">6H</button>
-              <button class="hsc-range-btn" data-hours="24"  onclick="loadSensorChart(24)">24H</button>
-              <button class="hsc-range-btn" data-hours="168" onclick="loadSensorChart(168)">7D</button>
-            </div>
-            <button class="hsc-zoom-reset" onclick="resetChartZoom()" title="Reset zoom">↺</button>
-          </div>
-        </div>
-        <div class="hsc-canvas-wrap" id="hscWrap">
-          <canvas id="sensorChart"></canvas>
-        </div>
-        <div class="hsc-footer">
-          <div class="hsc-legend">
-            <span class="hsc-legend-item"><span class="hsc-dot hsc-dot-temp"></span> Teplota °C</span>
-            <span class="hsc-legend-item"><span class="hsc-dot hsc-dot-hum"></span> Vlhkosť %RH</span>
-          </div>
-          <span id="hscLastUpdate" class="hsc-last-update">—</span>
-          <span class="hsc-hint">🖱 Scroll = zoom · Ťahaj = posun</span>
-        </div>
-      </div>
-
-      <!-- ── KB SEARCH ── -->
+      <!-- ── KNOWLEDGE BASE ── -->
       <div class="home-kb-section">
-        <div class="home-kb-search-wrap">
-          <div class="home-search-box">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="homeSearchInput" placeholder="Hľadať v Knowledge Base..." oninput="homeSearch(this.value)" autocomplete="off">
+        <div class="home-kb-hdr">
+          <div class="home-kb-hdr-left">
+            <span class="home-kb-hdr-title">Knowledge Base</span>
+            <span class="home-kb-hdr-stats">
+              <span id="kbProdCount">—</span> záznamy &nbsp;·&nbsp; <span id="kbCatCount">—</span> kategórie
+            </span>
           </div>
           <button class="btn-primary" onclick="showPage('wiki')">
             Otvoriť KB
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </button>
         </div>
+        <div class="home-kb-search-wrap">
+          <div class="home-search-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="homeSearchInput" placeholder="Hľadať v Knowledge Base..." oninput="homeSearch(this.value)" autocomplete="off">
+          </div>
+        </div>
         <div id="homeKBPreview" class="home-kb-preview"></div>
       </div>
 
     </div>
   </main>
+
+  <!-- Floating thermometer corner widget -->
+  <div class="thermo-corner">
+    <a href="http://10.88.5.184/" target="_blank" class="thermo-corner-link">
+      <div class="thermo-corner-row">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#67e8f9" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/></svg>
+        <span id="thermoValue">--.-</span><span class="tc-unit">°C</span>
+      </div>
+      <div class="thermo-corner-row">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg>
+        <span id="humValue">--.-</span><span class="tc-unit">%</span>
+      </div>
+    </a>
+    <div class="thermo-corner-foot">
+      <span id="thermoStatus" class="thermo-status thermo-offline">—</span>
+      <button class="tc-chart-btn" onclick="showPage('sensors')" title="Otvoriť Senzory">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </button>
+    </div>
+  </div>
 
   <!-- ===== WIKI PAGE ===== -->
   <main id="page-wiki" class="page wiki-page">
@@ -295,6 +253,70 @@
         </div>
 
       </div>
+    </div>
+  </main>
+
+  <!-- ===== SENSORS PAGE ===== -->
+  <main id="page-sensors" class="page sensors-page">
+    <div class="sensors-inner">
+
+      <div class="sensors-hdr">
+        <div>
+          <h1 class="sensors-title">Senzory — Lab FOS</h1>
+          <p class="sensors-sub">Web Sensor T3511 · 10.88.5.184</p>
+        </div>
+        <a href="http://10.88.5.184/" target="_blank" class="btn-secondary">Otvoriť zariadenie ↗</a>
+      </div>
+
+      <div class="sensors-live">
+        <div class="slv-card">
+          <div class="slv-label">TEPLOTA</div>
+          <div class="slv-reading">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#67e8f9" stroke-width="1.8"><path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/></svg>
+            <span class="slv-val" id="sensorTempVal">--.-</span>
+            <span class="slv-unit">°C</span>
+          </div>
+          <span id="sensorStatus" class="thermo-status thermo-offline" style="margin-top:12px;display:inline-block">OFFLINE</span>
+        </div>
+        <div class="slv-card">
+          <div class="slv-label">VLHKOSŤ</div>
+          <div class="slv-reading">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.8"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg>
+            <span class="slv-val" id="sensorHumVal">--.-</span>
+            <span class="slv-unit">%RH</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-sensor-chart">
+        <div class="hsc-header">
+          <div class="hsc-title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            HISTÓRIA — TEPLOTA &amp; VLHKOSŤ
+          </div>
+          <div class="hsc-controls">
+            <div class="hsc-range-btns">
+              <button class="hsc-range-btn" data-hours="1"   onclick="loadSensorChart(1)">1H</button>
+              <button class="hsc-range-btn active" data-hours="6"   onclick="loadSensorChart(6)">6H</button>
+              <button class="hsc-range-btn" data-hours="24"  onclick="loadSensorChart(24)">24H</button>
+              <button class="hsc-range-btn" data-hours="168" onclick="loadSensorChart(168)">7D</button>
+            </div>
+            <button class="hsc-zoom-reset" onclick="resetChartZoom()" title="Reset zoom">↺</button>
+          </div>
+        </div>
+        <div class="hsc-canvas-wrap" id="hscWrap">
+          <canvas id="sensorChart"></canvas>
+        </div>
+        <div class="hsc-footer">
+          <div class="hsc-legend">
+            <span class="hsc-legend-item"><span class="hsc-dot hsc-dot-temp"></span> Teplota °C</span>
+            <span class="hsc-legend-item"><span class="hsc-dot hsc-dot-hum"></span> Vlhkosť %RH</span>
+          </div>
+          <span id="hscLastUpdate" class="hsc-last-update">—</span>
+          <span class="hsc-hint">🖱 Scroll = zoom · Ťahaj = posun</span>
+        </div>
+      </div>
+
     </div>
   </main>
 
