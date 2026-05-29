@@ -99,18 +99,21 @@ document.addEventListener('click', () => {
 // THERMOMETER WIDGET
 // ==============================
 async function loadThermoData() {
-  const valEl    = document.getElementById('thermoValue');
+  const tempEl   = document.getElementById('thermoValue');
+  const humEl    = document.getElementById('humValue');
   const statusEl = document.getElementById('thermoStatus');
-  if (!valEl) return;
+  if (!tempEl) return;
   try {
-    const r = await fetch('/api/sensor/thermo');
+    const r    = await fetch('/api/sensor/thermo');
     const data = await r.json();
-    if (data.online && data.temperature !== null) {
-      valEl.textContent = data.temperature.toFixed(1);
+    if (data.online) {
+      tempEl.textContent = data.temperature !== null ? data.temperature.toFixed(1) : '--.-';
+      if (humEl) humEl.textContent = data.humidity !== null ? data.humidity.toFixed(1) : '--.-';
       if (statusEl) { statusEl.textContent = 'ONLINE'; statusEl.className = 'thermo-status thermo-online'; }
     } else {
-      valEl.textContent = '--.-';
-      if (statusEl) { statusEl.textContent = data.online ? 'ONLINE' : 'OFFLINE'; statusEl.className = 'thermo-status thermo-' + (data.online ? 'online' : 'offline'); }
+      tempEl.textContent = '--.-';
+      if (humEl) humEl.textContent = '--.-';
+      if (statusEl) { statusEl.textContent = 'OFFLINE'; statusEl.className = 'thermo-status thermo-offline'; }
     }
   } catch {
     if (statusEl) { statusEl.textContent = 'OFFLINE'; statusEl.className = 'thermo-status thermo-offline'; }
@@ -118,6 +121,145 @@ async function loadThermoData() {
 }
 loadThermoData();
 setInterval(loadThermoData, 30000);
+
+// ==============================
+// SENSOR CHART
+// ==============================
+let sensorChart = null;
+let chartHours  = 6;
+
+async function loadSensorChart(hours) {
+  if (hours !== undefined) chartHours = hours;
+
+  // Sync range buttons
+  document.querySelectorAll('.hsc-range-btn').forEach(btn =>
+    btn.classList.toggle('active', parseInt(btn.dataset.hours) === chartHours)
+  );
+
+  try {
+    const res  = await fetch(`/api/sensor/history?hours=${chartHours}`);
+    const data = await res.json();
+    if (!Array.isArray(data)) return;
+
+    const tempPts = data.filter(r => r.temperature !== null)
+                        .map(r => ({ x: new Date(r.timestamp), y: r.temperature }));
+    const humPts  = data.filter(r => r.humidity !== null)
+                        .map(r => ({ x: new Date(r.timestamp), y: r.humidity }));
+
+    // No-data overlay
+    const wrap   = document.getElementById('hscWrap');
+    let noData   = wrap?.querySelector('.hsc-no-data');
+    if (data.length === 0) {
+      if (!noData && wrap) {
+        noData = document.createElement('div');
+        noData.className = 'hsc-no-data';
+        noData.textContent = 'Žiadne dáta — prvý záznam príde o chvíľu';
+        wrap.appendChild(noData);
+      }
+    } else if (noData) { noData.remove(); }
+
+    if (!sensorChart) {
+      initSensorChart(tempPts, humPts);
+    } else {
+      sensorChart.data.datasets[0].data = tempPts;
+      sensorChart.data.datasets[1].data = humPts;
+      sensorChart.update('none'); // preserve zoom/pan state
+    }
+
+    if (data.length > 0) {
+      const last = new Date(data[data.length - 1].timestamp);
+      const el   = document.getElementById('hscLastUpdate');
+      if (el) el.textContent = 'Posl.: ' + last.toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+  } catch (e) { console.error('Chart load:', e); }
+}
+
+function initSensorChart(tempPts, humPts) {
+  const canvas = document.getElementById('sensorChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  sensorChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      datasets: [
+        {
+          label: 'Teplota °C',
+          data: tempPts,
+          yAxisID: 'yT',
+          borderColor: '#22d3ee',
+          backgroundColor: 'rgba(34,211,238,0.07)',
+          borderWidth: 2, pointRadius: 0, pointHoverRadius: 5,
+          tension: 0.3, fill: true
+        },
+        {
+          label: 'Vlhkosť %RH',
+          data: humPts,
+          yAxisID: 'yH',
+          borderColor: '#818cf8',
+          backgroundColor: 'rgba(129,140,248,0.07)',
+          borderWidth: 2, pointRadius: 0, pointHoverRadius: 5,
+          tension: 0.3, fill: true
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 300 },
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: {
+          type: 'time',
+          time: {
+            tooltipFormat: 'dd.MM.yyyy HH:mm',
+            displayFormats: { minute: 'HH:mm', hour: 'HH:mm', day: 'dd.MM', week: 'dd.MM' }
+          },
+          grid:  { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.35)', maxTicksLimit: 8, font: { size: 11 } }
+        },
+        yT: {
+          position: 'left',
+          grid:  { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: '#22d3ee', font: { size: 11 }, callback: v => v.toFixed(1) + '°' },
+          title: { display: true, text: '°C', color: '#22d3ee', font: { size: 11 } }
+        },
+        yH: {
+          position: 'right',
+          grid:  { drawOnChartArea: false },
+          ticks: { color: '#818cf8', font: { size: 11 }, callback: v => v.toFixed(0) + '%' },
+          title: { display: true, text: '%RH', color: '#818cf8', font: { size: 11 } }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15,23,42,0.92)',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#94a3b8',
+          bodyColor: '#e2e8f0',
+          padding: 10,
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) : 'N/A'}`
+          }
+        },
+        zoom: {
+          pan:  { enabled: true, mode: 'x' },
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+        }
+      }
+    }
+  });
+}
+
+function resetChartZoom() {
+  if (sensorChart) sensorChart.resetZoom();
+}
+
+// Auto-refresh every 60 s (matches server polling interval), only when home is active
+setInterval(() => {
+  if (document.getElementById('page-home')?.classList.contains('active')) loadSensorChart();
+}, 60000);
 
 // ==============================
 // ROUTING / PAGES
@@ -151,7 +293,7 @@ function showPage(name) {
   _activatePage(name);
   setHash(name);
   if (name === 'wiki') loadWiki();
-  if (name === 'home') loadHomeKB();
+  if (name === 'home') { loadHomeKB(); loadSensorChart(); }
 }
 
 // ==============================
@@ -789,5 +931,5 @@ function statusLabel(s) {
 (function init() {
   const hash = location.hash.slice(1);
   if (hash) { handleHash(hash); }
-  else { _activatePage('home'); loadHomeKB(); }
+  else { _activatePage('home'); loadHomeKB(); loadSensorChart(); }
 })();

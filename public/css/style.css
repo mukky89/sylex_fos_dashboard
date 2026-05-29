@@ -321,26 +321,88 @@ body {
 /* Thermometer card */
 .hw-thermo { border-color: rgba(103,232,249,0.2); }
 .hw-thermo:hover { border-color: rgba(103,232,249,0.4); }
-.hw-thermo-body {
-  display: flex; align-items: center; gap: 12px;
+.hw-thermo-body { display: flex; flex-direction: column; gap: 8px; }
+.hw-reading {
+  display: flex; align-items: center; gap: 7px;
 }
-.hw-thermo-icon { color: #67e8f9; flex-shrink: 0; }
-.hw-thermo-val {
-  display: flex; align-items: baseline; gap: 3px;
-}
-.hw-thermo-val span:first-child {
-  font-family: var(--font-title); font-size: 2.4rem;
+.hw-reading svg { flex-shrink: 0; }
+.hw-reading-num {
+  font-family: var(--font-title); font-size: 2.1rem;
   font-weight: 700; color: #f0f9ff; line-height: 1;
 }
-.hw-thermo-unit {
-  font-size: 1rem; color: #67e8f9; font-weight: 500;
-}
+.hw-reading-unit { font-size: 0.82rem; font-weight: 600; margin-bottom: 1px; }
+.hw-reading--temp svg          { color: #67e8f9; }
+.hw-reading--temp .hw-reading-unit { color: #67e8f9; }
+.hw-reading--hum  svg          { color: #818cf8; }
+.hw-reading--hum  .hw-reading-unit { color: #818cf8; }
 .thermo-status {
   font-size: 0.65rem; font-weight: 700; letter-spacing: 0.14em;
   padding: 2px 8px; border-radius: 10px;
 }
 .thermo-online  { background: rgba(16,185,129,0.2); color: #34d399; }
 .thermo-offline { background: rgba(100,116,139,0.2); color: #94a3b8; }
+
+/* ── Sensor Chart ── */
+.home-sensor-chart {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  backdrop-filter: blur(6px);
+}
+.hsc-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px; gap: 10px; flex-wrap: wrap;
+}
+.hsc-title {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.18em; color: rgba(255,255,255,0.35);
+  text-transform: uppercase;
+}
+.hsc-controls { display: flex; align-items: center; gap: 8px; }
+.hsc-range-btns { display: flex; gap: 3px; }
+.hsc-range-btn {
+  padding: 4px 10px; border-radius: 6px;
+  font-size: 0.7rem; font-weight: 600; font-family: var(--font);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.4);
+  cursor: pointer; transition: all var(--transition);
+}
+.hsc-range-btn:hover  { background: rgba(255,255,255,0.11); color: rgba(255,255,255,0.75); }
+.hsc-range-btn.active { background: rgba(8,145,178,0.18); border-color: rgba(8,145,178,0.4); color: #67e8f9; }
+.hsc-zoom-reset {
+  padding: 4px 10px; border-radius: 6px; font-size: 0.9rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.4);
+  cursor: pointer; transition: all var(--transition);
+}
+.hsc-zoom-reset:hover { background: rgba(255,255,255,0.11); color: rgba(255,255,255,0.75); }
+.hsc-canvas-wrap { position: relative; height: 230px; }
+.hsc-canvas-wrap canvas { width: 100% !important; }
+.hsc-no-data {
+  position: absolute; inset: 0; display: flex;
+  align-items: center; justify-content: center;
+  font-size: 0.82rem; color: rgba(255,255,255,0.25);
+  pointer-events: none;
+}
+.hsc-footer {
+  display: flex; align-items: center; gap: 14px;
+  margin-top: 10px; flex-wrap: wrap;
+}
+.hsc-legend { display: flex; gap: 14px; }
+.hsc-legend-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 0.7rem; color: rgba(255,255,255,0.38);
+}
+.hsc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.hsc-dot-temp { background: #22d3ee; box-shadow: 0 0 5px rgba(34,211,238,0.5); }
+.hsc-dot-hum  { background: #818cf8; box-shadow: 0 0 5px rgba(129,140,248,0.5); }
+.hsc-last-update { font-size: 0.68rem; color: rgba(255,255,255,0.25); margin-left: auto; }
+.hsc-hint { font-size: 0.65rem; color: rgba(255,255,255,0.2); }
 
 /* KB stats card */
 .hw-kb { cursor: pointer; }

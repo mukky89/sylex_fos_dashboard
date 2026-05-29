@@ -4,7 +4,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
-const fs = require('fs');
+const fs   = require('fs');
+const http = require('http');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,6 +35,7 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(async () => {
     console.log('MongoDB connected');
     await autoSeed();
+    startSensorPolling();
   })
   .catch(err => console.error('MongoDB error:', err));
 
@@ -100,6 +102,40 @@ async function autoSeed() {
   console.log('Seed complete: Tlačiarne / Brother TD-4420TN');
 }
 
+// Parse a value from Web Sensor T-series XML  (ch1 = humidity %RH, ch2 = temperature °C)
+function parseChannel(xml, ch) {
+  const block = xml.match(new RegExp(`<${ch}>[\\s\\S]*?<\\/${ch}>`));
+  if (!block) return null;
+  const m = block[0].match(/<aval>([^<]+)<\/aval>/);
+  if (!m) return null;
+  const v = parseFloat(m[1]);
+  return isNaN(v) ? null : v;
+}
+
+// Poll Web Sensor every 60 s and persist reading to MongoDB
+function startSensorPolling() {
+  const SensorReading = require('./models/SensorReading');
+  const poll = () => {
+    const r = http.get({ host: '10.88.5.184', port: 80, path: '/values.xml', timeout: 5000 }, (resp) => {
+      let raw = '';
+      resp.on('data', chunk => raw += chunk);
+      resp.on('end', async () => {
+        const humidity    = parseChannel(raw, 'ch1');
+        const temperature = parseChannel(raw, 'ch2');
+        if (temperature !== null || humidity !== null) {
+          try { await SensorReading.create({ temperature, humidity }); }
+          catch (e) { console.error('Sensor save:', e.message); }
+        }
+      });
+    });
+    r.on('error', () => {});
+    r.on('timeout', () => r.destroy());
+  };
+  poll(); // immediate first reading
+  setInterval(poll, 60 * 1000);
+  console.log('Sensor polling started → 10.88.5.184 every 60 s');
+}
+
 // Routes
 const productsRouter = require('./routes/products');
 const categoriesRouter = require('./routes/categories');
@@ -115,31 +151,37 @@ app.get('/api/credentials/peaklogger', (req, res) => {
   });
 });
 
-// Temperature proxy for FOS lab thermometer at 10.88.1.50
+// Live reading from Web Sensor at 10.88.5.184  (ch1=humidity %RH, ch2=temperature °C)
 app.get('/api/sensor/thermo', (req, res) => {
-  const http = require('http');
-  const r = http.get({ host: '10.88.1.50', port: 80, path: '/', timeout: 3000 }, (resp) => {
+  const r = http.get({ host: '10.88.5.184', port: 80, path: '/values.xml', timeout: 3000 }, (resp) => {
     let raw = '';
     resp.on('data', chunk => raw += chunk);
     resp.on('end', () => {
-      let temp = null;
-      const patterns = [
-        /temperature["'\s:=>]+(-?\d+\.?\d*)/i,
-        /temp["'\s:=>]+(-?\d+\.?\d*)/i,
-        /value["'\s:=>]+(-?\d+\.?\d*)/i,
-        />(-?\d+\.?\d*)\s*(?:&deg;)?C</i,
-        /(-?\d+\.\d+)/
-      ];
-      for (const p of patterns) {
-        const m = raw.match(p);
-        if (m) { const v = parseFloat(m[1]); if (v > -50 && v < 200) { temp = v; break; } }
-      }
-      res.json({ online: true, temperature: temp });
+      const humidity    = parseChannel(raw, 'ch1');
+      const temperature = parseChannel(raw, 'ch2');
+      res.json({ online: true, temperature, humidity });
     });
   });
-  const sendOffline = () => { if (!res.headersSent) res.json({ online: false, temperature: null }); };
+  const sendOffline = () => { if (!res.headersSent) res.json({ online: false, temperature: null, humidity: null }); };
   r.on('error', sendOffline);
   r.on('timeout', () => { r.destroy(); sendOffline(); });
+});
+
+// Historical sensor readings (default last 24 h, max 720 h = 30 days)
+app.get('/api/sensor/history', async (req, res) => {
+  try {
+    const SensorReading = require('./models/SensorReading');
+    const hours = Math.min(parseInt(req.query.hours) || 24, 720);
+    const since = new Date(Date.now() - hours * 3600 * 1000);
+    const data  = await SensorReading
+      .find({ timestamp: { $gte: since } })
+      .sort({ timestamp: 1 })
+      .select('temperature humidity timestamp -_id')
+      .lean();
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Image upload endpoint
