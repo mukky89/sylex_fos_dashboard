@@ -435,13 +435,22 @@ async function loadHomeKB() {
     const cats = await cR.json();
     const prods = await pR.json();
 
+    // KB stats
+    const prodCount = document.getElementById('kbProdCount');
+    const catCount  = document.getElementById('kbCatCount');
+    if (prodCount) prodCount.textContent = prods.length;
+    if (catCount)  catCount.textContent  = cats.length;
+
+    // Recent chips
     const el = document.getElementById('homeKBPreview');
     if (!el) return;
     el.innerHTML = '';
 
-    const sorted = [...prods].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 8);
-    if (sorted.length === 0) return;
-
+    const sorted = [...prods].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 10);
+    if (sorted.length === 0) {
+      el.innerHTML = '<span style="font-size:0.78rem;color:rgba(255,255,255,0.3)">Žiadne záznamy — otvorte KB a pridajte prvý.</span>';
+      return;
+    }
     sorted.forEach(p => {
       const cat = cats.find(c => c._id === (p.category?._id || p.category));
       const chip = document.createElement('div');

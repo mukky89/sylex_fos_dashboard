@@ -278,16 +278,92 @@ body {
 .delay2 { animation-delay: 2.4s; }
 @keyframes expandRing { 0%{transform:scale(.5);opacity:.8} 100%{transform:scale(1.9);opacity:0} }
 
+/* ── Widget grid ── */
+.home-widgets {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.hw-card {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  display: flex; flex-direction: column; gap: 10px;
+  text-decoration: none; color: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+  backdrop-filter: blur(6px);
+}
+.hw-card:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.22);
+  transform: translateY(-2px);
+}
+
+.hw-card-label {
+  font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.18em; color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+}
+.hw-card-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: auto;
+}
+.hw-card-link {
+  font-size: 0.72rem; color: rgba(255,255,255,0.4);
+  transition: color var(--transition);
+}
+.hw-card:hover .hw-card-link { color: #67e8f9; }
+
+/* Thermometer card */
+.hw-thermo { border-color: rgba(103,232,249,0.2); }
+.hw-thermo:hover { border-color: rgba(103,232,249,0.4); }
+.hw-thermo-body {
+  display: flex; align-items: center; gap: 12px;
+}
+.hw-thermo-icon { color: #67e8f9; flex-shrink: 0; }
+.hw-thermo-val {
+  display: flex; align-items: baseline; gap: 3px;
+}
+.hw-thermo-val span:first-child {
+  font-family: var(--font-title); font-size: 2.4rem;
+  font-weight: 700; color: #f0f9ff; line-height: 1;
+}
+.hw-thermo-unit {
+  font-size: 1rem; color: #67e8f9; font-weight: 500;
+}
+.thermo-status {
+  font-size: 0.65rem; font-weight: 700; letter-spacing: 0.14em;
+  padding: 2px 8px; border-radius: 10px;
+}
+.thermo-online  { background: rgba(16,185,129,0.2); color: #34d399; }
+.thermo-offline { background: rgba(100,116,139,0.2); color: #94a3b8; }
+
+/* KB stats card */
+.hw-kb { cursor: pointer; }
+.hw-kb-body {
+  display: flex; gap: 28px; align-items: center;
+}
+.hw-kb-stat { display: flex; flex-direction: column; gap: 2px; }
+.hw-kb-num {
+  font-family: var(--font-title); font-size: 2rem;
+  font-weight: 700; color: #f0f9ff; line-height: 1;
+}
+.hw-kb-dim { font-size: 0.72rem; color: rgba(255,255,255,0.4); }
+
 /* Home KB section */
 .home-kb-section {
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: var(--radius-lg);
-  padding: 24px 28px;
+  padding: 20px 24px;
   backdrop-filter: blur(8px);
 }
 .home-kb-search-wrap {
-  display: flex; gap: 12px; margin-bottom: 16px;
+  display: flex; gap: 12px; margin-bottom: 14px;
 }
 .home-search-box {
   flex: 1; display: flex; align-items: center; gap: 10px;
@@ -298,7 +374,7 @@ body {
   transition: border-color var(--transition);
 }
 .home-search-box:focus-within { border-color: rgba(8,145,178,0.6); }
-.home-search-box .search-icon { color: #64748b; flex-shrink: 0; }
+.home-search-box svg { color: #64748b; flex-shrink: 0; }
 .home-search-box input {
   flex: 1; border: none; background: transparent;
   color: #f1f5f9; font-family: var(--font); font-size: 0.88rem;
@@ -306,14 +382,14 @@ body {
 }
 .home-search-box input::placeholder { color: #475569; }
 
-.home-kb-preview { display: flex; flex-wrap: wrap; gap: 10px; }
+.home-kb-preview { display: flex; flex-wrap: wrap; gap: 8px; }
 .home-kb-preview-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 12px; border-radius: var(--radius);
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 11px; border-radius: var(--radius);
   background: rgba(255,255,255,0.07);
   border: 1px solid rgba(255,255,255,0.1);
   cursor: pointer; transition: all var(--transition);
-  font-size: 0.82rem; color: #cbd5e1;
+  font-size: 0.8rem; color: #cbd5e1;
 }
 .home-kb-preview-item:hover { background: rgba(255,255,255,0.14); color: #f1f5f9; }
 

@@ -69,7 +69,8 @@
     <div class="particles" id="particles"></div>
 
     <div class="home-inner">
-      <!-- Hero -->
+
+      <!-- ── HERO ── -->
       <div class="hero">
         <div class="hero-content">
           <img src="https://www.sylex.sk/wp-content/uploads/2023/08/sylexlogo.png" alt="Sylex" class="hero-logo-img">
@@ -94,19 +95,60 @@
         </div>
       </div>
 
-      <!-- KB quick access -->
+      <!-- ── WIDGET GRID ── -->
+      <div class="home-widgets">
+
+        <!-- Thermometer -->
+        <a class="hw-card hw-thermo" href="http://10.88.1.50/" target="_blank">
+          <div class="hw-card-label">LAB TEPLOMER</div>
+          <div class="hw-thermo-body">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="hw-thermo-icon"><path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/></svg>
+            <div class="hw-thermo-val">
+              <span id="thermoValue">--.-</span>
+              <span class="hw-thermo-unit">°C</span>
+            </div>
+          </div>
+          <div class="hw-card-footer">
+            <span id="thermoStatus" class="thermo-status thermo-offline">OFFLINE</span>
+            <span class="hw-card-link">10.88.1.50 ↗</span>
+          </div>
+        </a>
+
+        <!-- KB stats -->
+        <div class="hw-card hw-kb" onclick="showPage('wiki')">
+          <div class="hw-card-label">KNOWLEDGE BASE</div>
+          <div class="hw-kb-body">
+            <div class="hw-kb-stat">
+              <span id="kbProdCount" class="hw-kb-num">—</span>
+              <span class="hw-kb-dim">záznamy</span>
+            </div>
+            <div class="hw-kb-stat">
+              <span id="kbCatCount" class="hw-kb-num">—</span>
+              <span class="hw-kb-dim">kategórie</span>
+            </div>
+          </div>
+          <div class="hw-card-footer">
+            <span class="hw-card-link">Otvoriť →</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── KB SEARCH ── -->
       <div class="home-kb-section">
         <div class="home-kb-search-wrap">
           <div class="home-search-box">
-            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="homeSearchInput" placeholder="Hľadať v Knowledge Base..." oninput="homeSearch(this.value)" onfocus="showPage('wiki')" autocomplete="off">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="homeSearchInput" placeholder="Hľadať v Knowledge Base..." oninput="homeSearch(this.value)" autocomplete="off">
           </div>
           <button class="btn-primary" onclick="showPage('wiki')">
-            Otvoriť KB <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            Otvoriť KB
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </button>
         </div>
         <div id="homeKBPreview" class="home-kb-preview"></div>
       </div>
+
     </div>
   </main>
 
