@@ -81,6 +81,15 @@
 
     <div class="home-inner">
 
+      <!-- ── HODINY / DÁTUM / MENINY ── -->
+      <div class="dt-widget">
+        <div class="dt-clock" id="dtClock">--:--:--</div>
+        <div class="dt-info">
+          <div class="dt-date" id="dtDate">—</div>
+          <div class="dt-meniny">Meniny má: <strong id="dtMeniny">—</strong></div>
+        </div>
+      </div>
+
       <!-- ── HERO ── -->
       <div class="hero">
         <div class="hero-content">
@@ -353,10 +362,16 @@
           <h1 class="cal-title">Kalendár — Kancelária</h1>
           <p class="cal-sub">Zdieľaný kalendár tímu · zápis manuálne</p>
         </div>
-        <button class="btn-primary" onclick="openEventModal()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Pridať udalosť
-        </button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-word" onclick="exportCalendarExcel()" title="Export do Excelu">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Excel
+          </button>
+          <button class="btn-primary" onclick="openEventModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Pridať udalosť
+          </button>
+        </div>
       </div>
 
       <div class="cal-toolbar">
@@ -528,98 +543,95 @@
         </div>
       </div>
 
-      <!-- Náhľad postupu (read-only) -->
-      <div id="procDetail" class="proc-detail hidden"></div>
+      <!-- Plnostránkový editor postupu -->
+      <div id="procEditView" class="proc-edit hidden">
+        <div class="proc-edit-bar">
+          <button class="btn-secondary" onclick="closeProcedureModal()">← Späť na zoznam</button>
+          <h2 id="procModalTitle" class="proc-edit-title">Nový postup</h2>
+          <div class="proc-edit-bar-actions">
+            <button class="btn-sm" onclick="openProcedurePreview()" title="Náhľad">👁 Náhľad</button>
+            <button class="btn-delete" id="prDeleteBtn" onclick="deleteProcedure(document.getElementById('prId').value)" style="display:none">🗑 Odstrániť</button>
+            <button class="btn-primary" onclick="saveProcedure()">💾 Uložiť</button>
+          </div>
+        </div>
+
+        <div class="proc-edit-body">
+          <input type="hidden" id="prId">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Názov *</label>
+              <input type="text" id="prTitle" placeholder="napr. Vystavenie cenovej ponuky">
+            </div>
+            <div class="form-group">
+              <label>Oddelenie / kategória</label>
+              <input type="text" id="prDepartment" placeholder="napr. Obchod">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Autor</label>
+              <input type="text" id="prAuthor" placeholder="Meno autora">
+            </div>
+            <div class="form-group">
+              <label>Dátum</label>
+              <input type="date" id="prDate">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Stav</label>
+            <div class="status-select">
+              <label class="status-opt"><input type="radio" name="prStatus" value="active" checked> Aktívny</label>
+              <label class="status-opt"><input type="radio" name="prStatus" value="draft"> Koncept</label>
+              <label class="status-opt"><input type="radio" name="prStatus" value="archived"> Archivovaný</label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Cieľ / Účel</label>
+            <textarea id="prPurpose" rows="2" placeholder="Stručný popis cieľa postupu"></textarea>
+          </div>
+
+          <!-- Pomôcky / nástroje -->
+          <div class="form-group">
+            <div class="proc-rows-hdr">
+              <label>Potrebné pomôcky / nástroje</label>
+              <button type="button" class="btn-sm" onclick="addToolRow()">+ Pridať</button>
+            </div>
+            <div id="prToolsRows" class="proc-rows"></div>
+          </div>
+
+          <!-- Kroky / operácie -->
+          <div class="form-group">
+            <div class="proc-rows-hdr">
+              <label>Postup — operácie <span class="form-hint">(rich text, obrázok, upozornenia, ochranné pomôcky)</span></label>
+              <button type="button" class="btn-sm" onclick="addStepRow()">+ Pridať operáciu</button>
+            </div>
+            <div id="prStepsRows" class="proc-steps"></div>
+          </div>
+
+          <!-- Riziká -->
+          <div class="form-group">
+            <label>Riziká / Upozornenia <span class="form-hint">(každé na nový riadok)</span></label>
+            <textarea id="prRisks" rows="3" placeholder="Jedno riziko / upozornenie na riadok"></textarea>
+          </div>
+
+          <!-- Prílohy -->
+          <div class="form-group">
+            <div class="proc-rows-hdr">
+              <label>Prílohy / Odkazy</label>
+              <button type="button" class="btn-sm" onclick="addAttachmentRow()">+ Pridať</button>
+            </div>
+            <div id="prAttRows" class="proc-rows"></div>
+          </div>
+        </div>
+
+        <div class="proc-edit-foot">
+          <button class="btn-secondary" onclick="closeProcedureModal()">Zrušiť</button>
+          <button class="btn-primary" onclick="saveProcedure()">💾 Uložiť postup</button>
+        </div>
+      </div>
 
     </div>
   </main>
-
-  <!-- ===== PROCEDURE MODAL ===== -->
-  <div id="procedureModal" class="modal hidden">
-    <div class="modal-backdrop" onclick="closeProcedureModal()"></div>
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2 id="procModalTitle">Nový postup</h2>
-        <button class="modal-close" onclick="closeProcedureModal()">✕</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="prId">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Názov *</label>
-            <input type="text" id="prTitle" placeholder="napr. Vystavenie cenovej ponuky">
-          </div>
-          <div class="form-group">
-            <label>Oddelenie / kategória</label>
-            <input type="text" id="prDepartment" placeholder="napr. Obchod">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Autor</label>
-            <input type="text" id="prAuthor" placeholder="Meno autora">
-          </div>
-          <div class="form-group">
-            <label>Dátum</label>
-            <input type="date" id="prDate">
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Stav</label>
-          <div class="status-select">
-            <label class="status-opt"><input type="radio" name="prStatus" value="active" checked> Aktívny</label>
-            <label class="status-opt"><input type="radio" name="prStatus" value="draft"> Koncept</label>
-            <label class="status-opt"><input type="radio" name="prStatus" value="archived"> Archivovaný</label>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Cieľ / Účel</label>
-          <textarea id="prPurpose" rows="2" placeholder="Stručný popis cieľa postupu"></textarea>
-        </div>
-
-        <!-- Pomôcky / nástroje -->
-        <div class="form-group">
-          <div class="proc-rows-hdr">
-            <label>Potrebné pomôcky / nástroje</label>
-            <button type="button" class="btn-sm" onclick="addToolRow()">+ Pridať</button>
-          </div>
-          <div id="prToolsRows" class="proc-rows"></div>
-        </div>
-
-        <!-- Kroky / operácie -->
-        <div class="form-group">
-          <div class="proc-rows-hdr">
-            <label>Postup — operácie <span class="form-hint">(rich text, obrázok, upozornenia, ochranné pomôcky)</span></label>
-            <div style="display:flex;gap:8px">
-              <button type="button" class="btn-sm" onclick="openProcedurePreview()" title="Náhľad">👁 Náhľad</button>
-              <button type="button" class="btn-sm" onclick="addStepRow()">+ Pridať operáciu</button>
-            </div>
-          </div>
-          <div id="prStepsRows" class="proc-steps"></div>
-        </div>
-
-        <!-- Riziká -->
-        <div class="form-group">
-          <label>Riziká / Upozornenia <span class="form-hint">(každé na nový riadok)</span></label>
-          <textarea id="prRisks" rows="3" placeholder="Jedno riziko / upozornenie na riadok"></textarea>
-        </div>
-
-        <!-- Prílohy -->
-        <div class="form-group">
-          <div class="proc-rows-hdr">
-            <label>Prílohy / Odkazy</label>
-            <button type="button" class="btn-sm" onclick="addAttachmentRow()">+ Pridať</button>
-          </div>
-          <div id="prAttRows" class="proc-rows"></div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-delete" id="prDeleteBtn" onclick="deleteProcedure(document.getElementById('prId').value)" style="display:none">Odstrániť</button>
-        <button class="btn-secondary" onclick="closeProcedureModal()">Zrušiť</button>
-        <button class="btn-primary" onclick="saveProcedure()">Uložiť</button>
-      </div>
-    </div>
-  </div>
 
   <!-- ===== PROCEDURE PREVIEW MODAL ===== -->
   <div id="procPreviewModal" class="modal hidden">
@@ -973,6 +985,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+  <script src="js/meniny.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

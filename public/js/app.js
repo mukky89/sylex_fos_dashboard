@@ -1342,6 +1342,10 @@ function renderCalendar() {
   });
 }
 
+function exportCalendarExcel() {
+  window.location.href = '/api/calendar/export.xlsx';
+}
+
 function calPrevMonth() {
   calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
   loadCalendar();
@@ -1502,7 +1506,7 @@ function renderProcedures() {
     const card = document.createElement('div');
     card.className = 'proc-card';
     card.innerHTML = `
-      <div class="proc-card-main" onclick="showProcedureDetail('${p._id}')">
+      <div class="proc-card-main" onclick="openProcedureById('${p._id}')">
         <div class="proc-card-top">
           <span class="proc-card-title">${escHtml(p.title)}</span>
           <span class="proc-status-badge proc-status-${p.status}">${PROC_STATUS[p.status] || p.status}</span>
@@ -1519,7 +1523,7 @@ function renderProcedures() {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Word
         </button>
-        <button class="admin-icon-btn" onclick="showProcedureDetail('${p._id}')" title="Náhľad / Upraviť">👁</button>
+        <button class="admin-icon-btn" onclick="openProcedureById('${p._id}')" title="Upraviť">✎</button>
         <button class="admin-icon-btn danger" onclick="deleteProcedure('${p._id}')" title="Odstrániť">✕</button>
       </div>`;
     list.appendChild(card);
@@ -1608,6 +1612,8 @@ function editDetailProcedure() { if (currentDetailProcedure) openProcedureModal(
 function backToProcedureList() {
   const det = document.getElementById('procDetail');
   if (det) det.classList.add('hidden');
+  const ev = document.getElementById('procEditView');
+  if (ev) ev.classList.add('hidden');
   const lv = document.getElementById('procListView');
   if (lv) lv.classList.remove('hidden');
 }
@@ -1798,7 +1804,14 @@ function collectProcedureForm() {
   };
 }
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
+// ── Editor (plnostránkový) ────────────────────────────────────────────────────
+async function openProcedureById(id) {
+  let p = proceduresData.find(x => x._id === id) || null;
+  try { const fresh = await fetch('/api/procedures/' + id).then(r => r.json()); if (fresh && !fresh.error) p = fresh; } catch {}
+  if (!p) { alert('Postup sa nepodarilo načítať'); return; }
+  openProcedureModal(p);
+}
+
 async function openProcedureModal(proc = null) {
   await loadProcMeta();
   const isEdit = proc && typeof proc === 'object';
@@ -1827,11 +1840,17 @@ async function openProcedureModal(proc = null) {
   steps.forEach(addStepRow);
   atts.forEach(addAttachmentRow);
 
-  document.getElementById('procedureModal').classList.remove('hidden');
+  // Plnostránkový editor
+  document.getElementById('procListView').classList.add('hidden');
+  const det = document.getElementById('procDetail');
+  if (det) det.classList.add('hidden');
+  document.getElementById('procEditView').classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
 function closeProcedureModal() {
-  document.getElementById('procedureModal').classList.add('hidden');
+  document.getElementById('procEditView').classList.add('hidden');
+  document.getElementById('procListView').classList.remove('hidden');
 }
 
 async function saveProcedure() {
@@ -2095,9 +2114,27 @@ async function loadAppVersion() {
   } catch { el.textContent = ''; }
 }
 
+// ==============================
+// HODINY / DÁTUM / MENINY
+// ==============================
+const DT_DAYS = ['nedeľa', 'pondelok', 'utorok', 'streda', 'štvrtok', 'piatok', 'sobota'];
+const DT_MONTHS = ['januára', 'februára', 'marca', 'apríla', 'mája', 'júna', 'júla', 'augusta', 'septembra', 'októbra', 'novembra', 'decembra'];
+function updateDateTime() {
+  const now = new Date();
+  const p2 = n => String(n).padStart(2, '0');
+  const clock = document.getElementById('dtClock');
+  if (clock) clock.textContent = `${p2(now.getHours())}:${p2(now.getMinutes())}:${p2(now.getSeconds())}`;
+  const dateEl = document.getElementById('dtDate');
+  if (dateEl) dateEl.textContent = `${DT_DAYS[now.getDay()]}, ${now.getDate()}. ${DT_MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+  const menEl = document.getElementById('dtMeniny');
+  if (menEl) menEl.textContent = (window.getMeniny ? window.getMeniny(now) : '') || '—';
+}
+
 (function init() {
   loadHeaderLinks();
   loadAppVersion();
+  updateDateTime();
+  setInterval(updateDateTime, 1000);
   const hash = location.hash.slice(1);
   if (hash) { handleHash(hash); }
   else { _activatePage('home'); loadHomeKB(); }
