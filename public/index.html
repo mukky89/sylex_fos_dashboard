@@ -359,12 +359,15 @@
         <div class="admin-section">
           <div class="admin-section-hdr">
             <h2 class="admin-section-title">Linky v hlavičke</h2>
-            <button class="btn-primary" onclick="openLinkModal()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Pridať link
-            </button>
+            <div class="admin-section-actions">
+              <button class="btn-danger-sm" onclick="resetDefaultLinks()" title="Vymaže všetky a vloží predvolené">↺ Reset predvolené</button>
+              <button class="btn-primary" onclick="openLinkModal()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Pridať link
+              </button>
+            </div>
           </div>
-          <p class="admin-section-desc">Spravujte čipy v hlavičke — poradie, štýl, viditeľnosť.</p>
+          <p class="admin-section-desc">Spravujte čipy v hlavičke — poradie, štýl, viditeľnosť. "Reset predvolené" obnoví factory nastavenia.</p>
           <div id="adminLinksList" class="admin-links-list">
             <div class="admin-loading">Načítavam…</div>
           </div>

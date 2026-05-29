@@ -1101,15 +1101,36 @@ async function saveLink() {
   };
 
   try {
-    if (id) {
-      await fetch('/api/admin/links/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    } else {
-      await fetch('/api/admin/links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const endpoint = id ? '/api/admin/links/' + id : '/api/admin/links';
+    const method   = id ? 'PUT' : 'POST';
+    const resp = await fetch(endpoint, {
+      method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      alert('Chyba ' + resp.status + ': ' + (err.error || 'Neznáma chyba servera'));
+      return;
     }
     closeLinkModal();
     loadAdminLinks();
-    loadHeaderLinks(); // refresh header chips live
-  } catch { alert('Chyba pri ukladaní linku'); }
+    loadHeaderLinks();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+async function resetDefaultLinks() {
+  if (!confirm('Toto VYMAŽE všetky existujúce linky a nahradí ich predvolenými (DBFOS, ISYS, PEAKLOGGER, Dochádzka, Obedy, Obedy Fantozzi, SharePoint linky). Pokračovať?')) return;
+  try {
+    const resp = await fetch('/api/admin/links/reset-defaults', { method: 'POST' });
+    if (!resp.ok) {
+      const e = await resp.json().catch(() => ({}));
+      alert('Chyba: ' + (e.error || resp.status));
+      return;
+    }
+    const d = await resp.json();
+    loadAdminLinks();
+    loadHeaderLinks();
+    alert(`✓ Predvolené linky obnovené (${d.count} linkov).`);
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 
 async function deleteLink(id) {

@@ -10,6 +10,8 @@ const http = require('http');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const { DEFAULT_LINKS } = require('./config/defaults');
+
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'public', 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
@@ -67,14 +69,7 @@ async function autoSeed() {
   // ── Seed HeaderLinks (default chips) ─────────────────────────────────────
   const linkCount = await HeaderLink.countDocuments();
   if (linkCount === 0) {
-    await HeaderLink.insertMany([
-      { label: 'Intranet',            url: 'http://intranet.sylex.sk',                                   color: 'sp',     group: 'sharepoint', order: 0, active: true },
-      { label: 'Telefónny zoznam',    url: 'https://sylex.sharepoint.com/:x:/s/FOS/telefonnyzoznam',     color: 'sp',     group: 'sharepoint', order: 1, active: true },
-      { label: 'Pracovné postupy',    url: 'https://sylex.sharepoint.com/:f:/s/FOS/pracovnepostupy',     color: 'sp',     group: 'sharepoint', order: 2, active: true },
-      { label: 'PeakLogger',          url: 'http://10.88.5.184',                                          color: 'cyan',   group: 'custom',     order: 3, active: true, hasCredential: true, credentialKey: 'peaklogger' },
-      { label: 'ERP',                 url: 'http://erp.sylex.sk',                                         color: 'blue',   group: 'erp',        order: 4, active: true },
-      { label: 'SharePoint',          url: 'https://sylex.sharepoint.com',                                color: 'purple', group: 'sharepoint', order: 5, active: true },
-    ]);
+    await HeaderLink.insertMany(DEFAULT_LINKS);
     console.log('Seed: HeaderLinks inserted');
   }
 

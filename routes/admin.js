@@ -2,6 +2,7 @@ const express     = require('express');
 const HeaderLink  = require('../models/HeaderLink');
 const AppConfig   = require('../models/AppConfig');
 const SensorReading = require('../models/SensorReading');
+const { DEFAULT_LINKS } = require('../config/defaults');
 
 // Factory — receives in-memory sensorCfg so config changes take effect immediately
 module.exports = function(sensorCfg) {
@@ -23,6 +24,7 @@ module.exports = function(sensorCfg) {
     } catch (e) { res.status(400).json({ error: e.message }); }
   });
 
+  // Must come BEFORE /links/:id to avoid 'reorder' being treated as an id
   router.put('/links/reorder', async (req, res) => {
     // body: [{ _id, order }, ...]
     try {
@@ -33,9 +35,19 @@ module.exports = function(sensorCfg) {
     } catch (e) { res.status(400).json({ error: e.message }); }
   });
 
+  // Reset all links to factory defaults — wipes existing, inserts DEFAULT_LINKS
+  router.post('/links/reset-defaults', async (req, res) => {
+    try {
+      await HeaderLink.deleteMany({});
+      await HeaderLink.insertMany(DEFAULT_LINKS);
+      res.json({ ok: true, count: DEFAULT_LINKS.length });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   router.put('/links/:id', async (req, res) => {
     try {
       const link = await HeaderLink.findByIdAndUpdate(req.params.id, req.body, { new: true });
+      if (!link) return res.status(404).json({ error: 'Link nenájdený' });
       res.json(link);
     } catch (e) { res.status(400).json({ error: e.message }); }
   });
