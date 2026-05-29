@@ -40,6 +40,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           Kalendár
         </a>
+        <a class="nav-link" onclick="showPage('procedures')" data-page="procedures">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Postupy
+        </a>
         <a class="nav-link" onclick="showPage('admin')" data-page="admin">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
           Admin
@@ -62,6 +66,11 @@
       <button class="cred-toggle" id="plToggle" onclick="togglePlVisible()">👁 Zobraziť</button>
       <a href="https://mukovnik.xyz/" target="_blank" class="btn-sm">↗ Otvoriť</a>
     </div>
+  </div>
+
+  <!-- Súbory / Serverové priečinky & šablóny popover -->
+  <div id="filesPopover" class="files-popover hidden" onclick="event.stopPropagation()">
+    <div id="filesPopoverBody"></div>
   </div>
 
   <!-- ===== HOME PAGE ===== -->
@@ -423,6 +432,117 @@
     </div>
   </div>
 
+  <!-- ===== PROCEDURES PAGE ===== -->
+  <main id="page-procedures" class="page procedures-page">
+    <div class="proc-inner">
+
+      <div class="proc-hdr">
+        <div>
+          <h1 class="proc-title">Pracovné postupy</h1>
+          <p class="proc-sub">Tvorba a správa postupov · export do Wordu (.docx)</p>
+        </div>
+        <button class="btn-primary" onclick="openProcedureModal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nový postup
+        </button>
+      </div>
+
+      <div class="proc-search-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="procSearch" placeholder="Hľadať postup..." oninput="renderProcedures()" autocomplete="off">
+      </div>
+
+      <div id="procList" class="proc-list">
+        <div class="admin-loading">Načítavam…</div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ===== PROCEDURE MODAL ===== -->
+  <div id="procedureModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeProcedureModal()"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="procModalTitle">Nový postup</h2>
+        <button class="modal-close" onclick="closeProcedureModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="prId">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Názov *</label>
+            <input type="text" id="prTitle" placeholder="napr. Vystavenie cenovej ponuky">
+          </div>
+          <div class="form-group">
+            <label>Oddelenie / kategória</label>
+            <input type="text" id="prDepartment" placeholder="napr. Obchod">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Autor</label>
+            <input type="text" id="prAuthor" placeholder="Meno autora">
+          </div>
+          <div class="form-group">
+            <label>Dátum</label>
+            <input type="date" id="prDate">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Stav</label>
+          <div class="status-select">
+            <label class="status-opt"><input type="radio" name="prStatus" value="active" checked> Aktívny</label>
+            <label class="status-opt"><input type="radio" name="prStatus" value="draft"> Koncept</label>
+            <label class="status-opt"><input type="radio" name="prStatus" value="archived"> Archivovaný</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Cieľ / Účel</label>
+          <textarea id="prPurpose" rows="2" placeholder="Stručný popis cieľa postupu"></textarea>
+        </div>
+
+        <!-- Pomôcky / nástroje -->
+        <div class="form-group">
+          <div class="proc-rows-hdr">
+            <label>Potrebné pomôcky / nástroje</label>
+            <button type="button" class="btn-sm" onclick="addToolRow()">+ Pridať</button>
+          </div>
+          <div id="prToolsRows" class="proc-rows"></div>
+        </div>
+
+        <!-- Kroky -->
+        <div class="form-group">
+          <div class="proc-rows-hdr">
+            <label>Postup — kroky</label>
+            <button type="button" class="btn-sm" onclick="addStepRow()">+ Pridať krok</button>
+          </div>
+          <div id="prStepsRows" class="proc-rows"></div>
+        </div>
+
+        <!-- Riziká -->
+        <div class="form-group">
+          <label>Riziká / Upozornenia <span class="form-hint">(každé na nový riadok)</span></label>
+          <textarea id="prRisks" rows="3" placeholder="Jedno riziko / upozornenie na riadok"></textarea>
+        </div>
+
+        <!-- Prílohy -->
+        <div class="form-group">
+          <div class="proc-rows-hdr">
+            <label>Prílohy / Odkazy</label>
+            <button type="button" class="btn-sm" onclick="addAttachmentRow()">+ Pridať</button>
+          </div>
+          <div id="prAttRows" class="proc-rows"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="prDeleteBtn" onclick="deleteProcedure()" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeProcedureModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveProcedure()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== ADMIN PAGE ===== -->
   <main id="page-admin" class="page admin-page">
     <div class="admin-inner">
@@ -611,6 +731,8 @@
               <option value="sharepoint">SharePoint</option>
               <option value="erp">ERP</option>
               <option value="custom">Vlastná</option>
+              <option value="servery">Serverové priečinky</option>
+              <option value="sablony">Šablóny</option>
             </select>
           </div>
         </div>

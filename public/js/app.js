@@ -270,6 +270,7 @@ async function handleHash(hash) {
   if (!hash || hash === 'home') { _activatePage('home'); loadHomeKB(); return; }
   if (hash === 'sensors') { _activatePage('sensors'); loadThermoData(); loadSensorChart(); return; }
   if (hash === 'calendar') { _activatePage('calendar'); loadCalendar(); return; }
+  if (hash === 'procedures') { _activatePage('procedures'); loadProcedures(); return; }
   if (hash === 'admin')   { _activatePage('admin');   switchAdminTab('links'); return; }
   if (hash === 'wiki') { _activatePage('wiki'); await loadWiki(); return; }
   if (hash.startsWith('wiki/cat/')) {
@@ -297,6 +298,7 @@ function showPage(name) {
   if (name === 'home')    loadHomeKB();
   if (name === 'sensors') { loadThermoData(); loadSensorChart(); }
   if (name === 'calendar') loadCalendar();
+  if (name === 'procedures') loadProcedures();
   if (name === 'admin')   switchAdminTab('links');
 }
 
@@ -966,9 +968,29 @@ async function loadHeaderLinks() {
     container.innerHTML = '';
 
     const active = links.filter(l => l.active);
+    // Serverové priečinky + šablóny → samostatný dropdown "Súbory"
+    const fileLinks = active.filter(l => l.group === 'servery' || l.group === 'sablony');
+    const rest      = active.filter(l => l.group !== 'servery' && l.group !== 'sablony');
     // Group: first non-sharepoint, then separator, then sharepoint
-    const nonSP = active.filter(l => l.group !== 'sharepoint');
-    const sp    = active.filter(l => l.group === 'sharepoint');
+    const nonSP = rest.filter(l => l.group !== 'sharepoint');
+    const sp    = rest.filter(l => l.group === 'sharepoint');
+
+    const addSep = () => {
+      const sep = document.createElement('div');
+      sep.className = 'ql-sep';
+      container.appendChild(sep);
+    };
+
+    // Dropdown "Súbory" (serverové priečinky + šablóny)
+    if (fileLinks.length > 0) {
+      const drop = document.createElement('div');
+      drop.className = 'ql-chip ql-files';
+      drop.onclick = (e) => toggleFilesPopover(e);
+      drop.innerHTML = `<span class="ql-files-icon">📁</span> Súbory <span class="ql-files-caret">▾</span>`;
+      container.appendChild(drop);
+      buildFilesPopover(fileLinks);
+      if (nonSP.length > 0 || sp.length > 0) addSep();
+    }
 
     const renderChip = (l) => {
       const colorClass = 'ql-' + (l.color || 'sp');
@@ -990,14 +1012,86 @@ async function loadHeaderLinks() {
     };
 
     nonSP.forEach(renderChip);
-    if (nonSP.length > 0 && sp.length > 0) {
-      const sep = document.createElement('div');
-      sep.className = 'ql-sep';
-      container.appendChild(sep);
-    }
+    if (nonSP.length > 0 && sp.length > 0) addSep();
     sp.forEach(renderChip);
   } catch (e) { console.error('loadHeaderLinks:', e); }
 }
+
+// ── "Súbory" dropdown (serverové priečinky + šablóny) ────────────────────────
+// Konvertuj cestu (G:\... alebo \\server\...) na file: URL pre "otvoriť"
+function toFileHref(val) {
+  if (!val) return '#';
+  if (/^[a-zA-Z]:[\\/]/.test(val)) return 'file:///' + val.replace(/\\/g, '/');
+  if (/^\\\\/.test(val))           return 'file:' + val.replace(/\\/g, '/');
+  return val; // http(s) alebo iné — necháme tak
+}
+function isFilePath(val) {
+  return /^[a-zA-Z]:[\\/]/.test(val) || /^\\\\/.test(val);
+}
+
+function buildFilesPopover(fileLinks) {
+  const body = document.getElementById('filesPopoverBody');
+  if (!body) return;
+  const folders   = fileLinks.filter(l => l.group === 'servery');
+  const templates = fileLinks.filter(l => l.group === 'sablony');
+
+  const section = (title, items) => {
+    if (!items.length) return '';
+    const rows = items.map(l => {
+      const href = toFileHref(l.url);
+      const copyBtn = isFilePath(l.url)
+        ? `<button class="files-row-btn" onclick="copyToClipboard(this, ${JSON.stringify(l.url).replace(/"/g,'&quot;')})" title="Kopírovať cestu">⧉</button>`
+        : '';
+      return `<div class="files-row">
+        <a class="files-row-link" href="${escHtml(href)}" target="_blank" title="${escHtml(l.url)}">
+          <span class="files-row-label">${escHtml(l.label)}</span>
+          <span class="files-row-path">${escHtml(l.url)}</span>
+        </a>
+        ${copyBtn}
+      </div>`;
+    }).join('');
+    return `<div class="files-section"><div class="files-section-title">${title}</div>${rows}</div>`;
+  };
+
+  body.innerHTML =
+    section('📁 Serverové priečinky', folders) +
+    section('📄 Šablóny', templates) ||
+    '<div class="files-empty">Žiadne odkazy.</div>';
+}
+
+function toggleFilesPopover(e) {
+  e.stopPropagation();
+  const pop = document.getElementById('filesPopover');
+  if (!pop) return;
+  const chip = e.target.closest('.ql-chip');
+  if (chip) {
+    const rect = chip.getBoundingClientRect();
+    pop.style.left = rect.left + 'px';
+    pop.style.right = 'auto';
+  }
+  pop.classList.toggle('hidden');
+}
+
+async function copyToClipboard(btn, text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    const old = btn.textContent;
+    btn.textContent = '✓';
+    setTimeout(() => { btn.textContent = old; }, 1200);
+  } catch {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch {}
+    document.body.removeChild(ta);
+  }
+}
+
+// Zatvor files popover pri kliku mimo
+document.addEventListener('click', () => {
+  const p = document.getElementById('filesPopover');
+  if (p) p.classList.add('hidden');
+});
 
 // ==============================
 // HOME KB — RECENT NEWS
@@ -1191,6 +1285,211 @@ async function deleteEvent() {
     await fetch('/api/calendar/' + id, { method: 'DELETE' });
     closeEventModal();
     loadCalendar();
+  } catch { alert('Chyba pri odstraňovaní'); }
+}
+
+// ==============================
+// PROCEDURES (pracovné postupy → Word)
+// ==============================
+let proceduresData = [];
+const PROC_STATUS = { active: 'Aktívny', draft: 'Koncept', archived: 'Archivovaný' };
+
+async function loadProcedures() {
+  const list = document.getElementById('procList');
+  if (list) list.innerHTML = '<div class="admin-loading">Načítavam…</div>';
+  try {
+    const r = await fetch('/api/procedures');
+    proceduresData = await r.json();
+    if (!Array.isArray(proceduresData)) proceduresData = [];
+  } catch { proceduresData = []; }
+  renderProcedures();
+}
+
+function renderProcedures() {
+  const list = document.getElementById('procList');
+  if (!list) return;
+  const q = (document.getElementById('procSearch')?.value || '').toLowerCase();
+  const items = proceduresData.filter(p =>
+    !q || (p.title || '').toLowerCase().includes(q) ||
+    (p.department || '').toLowerCase().includes(q) ||
+    (p.author || '').toLowerCase().includes(q)
+  );
+
+  if (items.length === 0) {
+    list.innerHTML = proceduresData.length === 0
+      ? '<div class="proc-empty">Zatiaľ žiadne postupy.<div class="proc-empty-actions"><button class="btn-primary" onclick="openProcedureModal()">+ Vytvoriť prvý postup</button></div></div>'
+      : '<div class="proc-empty">Žiadne výsledky pre zadané hľadanie.</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  items.forEach(p => {
+    const stepCount = (p.steps || []).filter(s => (s.text || '').trim()).length;
+    const card = document.createElement('div');
+    card.className = 'proc-card';
+    card.innerHTML = `
+      <div class="proc-card-main" onclick="openProcedureModal(proceduresData.find(x => x._id === '${p._id}'))">
+        <div class="proc-card-top">
+          <span class="proc-card-title">${escHtml(p.title)}</span>
+          <span class="proc-status-badge proc-status-${p.status}">${PROC_STATUS[p.status] || p.status}</span>
+        </div>
+        <div class="proc-card-meta">
+          ${p.department ? `<span>🏢 ${escHtml(p.department)}</span>` : ''}
+          ${p.author ? `<span>👤 ${escHtml(p.author)}</span>` : ''}
+          <span>🪜 ${stepCount} ${stepCount === 1 ? 'krok' : (stepCount >= 2 && stepCount <= 4 ? 'kroky' : 'krokov')}</span>
+          <span>🕒 ${fmtDate(p.updatedAt)}</span>
+        </div>
+      </div>
+      <div class="proc-card-actions">
+        <button class="btn-word" onclick="generateProcedureWord('${p._id}')" title="Stiahnuť ako Word">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Word
+        </button>
+        <button class="admin-icon-btn" onclick="openProcedureModal(proceduresData.find(x => x._id === '${p._id}'))" title="Upraviť">✎</button>
+        <button class="admin-icon-btn danger" onclick="deleteProcedure('${p._id}')" title="Odstrániť">✕</button>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+function generateProcedureWord(id) {
+  window.location.href = `/api/procedures/${id}/docx`;
+}
+
+// ── Dynamic rows ──────────────────────────────────────────────────────────────
+function procRemoveRow(btn) { btn.closest('.proc-row')?.remove(); }
+function procMoveRow(btn, dir) {
+  const row = btn.closest('.proc-row');
+  if (!row) return;
+  if (dir < 0 && row.previousElementSibling) row.parentNode.insertBefore(row, row.previousElementSibling);
+  if (dir > 0 && row.nextElementSibling)     row.parentNode.insertBefore(row.nextElementSibling, row);
+}
+
+function addToolRow(tool = {}) {
+  const c = document.getElementById('prToolsRows');
+  const row = document.createElement('div');
+  row.className = 'proc-row';
+  row.innerHTML = `
+    <input type="text" class="proc-tool-name" placeholder="Pomôcka / nástroj" value="${escHtml(tool.name || '')}">
+    <input type="text" class="proc-tool-note" placeholder="Poznámka" value="${escHtml(tool.note || '')}">
+    <button type="button" class="proc-row-del" onclick="procRemoveRow(this)" title="Odstrániť">✕</button>`;
+  c.appendChild(row);
+}
+
+function addStepRow(step = {}) {
+  const c = document.getElementById('prStepsRows');
+  const row = document.createElement('div');
+  row.className = 'proc-row proc-row-step';
+  row.innerHTML = `
+    <div class="proc-step-handle">
+      <button type="button" class="proc-row-move" onclick="procMoveRow(this,-1)" title="Hore">↑</button>
+      <button type="button" class="proc-row-move" onclick="procMoveRow(this,1)" title="Dole">↓</button>
+    </div>
+    <div class="proc-step-fields">
+      <input type="text" class="proc-step-text" placeholder="Popis kroku" value="${escHtml(step.text || '')}">
+      <input type="text" class="proc-step-note" placeholder="Poznámka (voliteľné)" value="${escHtml(step.note || '')}">
+    </div>
+    <button type="button" class="proc-row-del" onclick="procRemoveRow(this)" title="Odstrániť">✕</button>`;
+  c.appendChild(row);
+}
+
+function addAttachmentRow(att = {}) {
+  const c = document.getElementById('prAttRows');
+  const row = document.createElement('div');
+  row.className = 'proc-row';
+  row.innerHTML = `
+    <input type="text" class="proc-att-label" placeholder="Popis" value="${escHtml(att.label || '')}">
+    <input type="text" class="proc-att-url" placeholder="Odkaz / cesta (napr. G:\\Projekty\\...)" value="${escHtml(att.url || '')}">
+    <button type="button" class="proc-row-del" onclick="procRemoveRow(this)" title="Odstrániť">✕</button>`;
+  c.appendChild(row);
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openProcedureModal(proc = null) {
+  const isEdit = proc && typeof proc === 'object';
+  document.getElementById('procModalTitle').textContent = isEdit ? 'Upraviť postup' : 'Nový postup';
+  document.getElementById('prId').value         = isEdit ? proc._id : '';
+  document.getElementById('prTitle').value      = isEdit ? (proc.title || '') : '';
+  document.getElementById('prDepartment').value = isEdit ? (proc.department || '') : '';
+  document.getElementById('prAuthor').value     = isEdit ? (proc.author || '') : '';
+  document.getElementById('prDate').value       = isEdit && proc.date ? String(proc.date).slice(0, 10) : calYmd(new Date());
+  document.getElementById('prPurpose').value    = isEdit ? (proc.purpose || '') : '';
+  document.getElementById('prRisks').value      = isEdit ? (proc.risks || []).join('\n') : '';
+  const statusVal = isEdit ? (proc.status || 'active') : 'active';
+  const statusRadio = document.querySelector(`input[name="prStatus"][value="${statusVal}"]`);
+  if (statusRadio) statusRadio.checked = true;
+  document.getElementById('prDeleteBtn').style.display = isEdit ? '' : 'none';
+
+  // Dynamic rows
+  document.getElementById('prToolsRows').innerHTML = '';
+  document.getElementById('prStepsRows').innerHTML = '';
+  document.getElementById('prAttRows').innerHTML   = '';
+  const tools = (isEdit && proc.tools && proc.tools.length) ? proc.tools : [{}];
+  const steps = (isEdit && proc.steps && proc.steps.length) ? proc.steps : [{}, {}];
+  const atts  = (isEdit && proc.attachments && proc.attachments.length) ? proc.attachments : [];
+  tools.forEach(addToolRow);
+  steps.forEach(addStepRow);
+  atts.forEach(addAttachmentRow);
+
+  document.getElementById('procedureModal').classList.remove('hidden');
+}
+
+function closeProcedureModal() {
+  document.getElementById('procedureModal').classList.add('hidden');
+}
+
+async function saveProcedure() {
+  const title = document.getElementById('prTitle').value.trim();
+  if (!title) { alert('Zadajte názov postupu'); return; }
+
+  const tools = [...document.querySelectorAll('#prToolsRows .proc-row')].map(r => ({
+    name: r.querySelector('.proc-tool-name').value.trim(),
+    note: r.querySelector('.proc-tool-note').value.trim()
+  })).filter(t => t.name);
+
+  const steps = [...document.querySelectorAll('#prStepsRows .proc-row')].map(r => ({
+    text: r.querySelector('.proc-step-text').value.trim(),
+    note: r.querySelector('.proc-step-note').value.trim()
+  })).filter(s => s.text);
+
+  const attachments = [...document.querySelectorAll('#prAttRows .proc-row')].map(r => ({
+    label: r.querySelector('.proc-att-label').value.trim(),
+    url:   r.querySelector('.proc-att-url').value.trim()
+  })).filter(a => a.label || a.url);
+
+  const risks = document.getElementById('prRisks').value.split('\n').map(s => s.trim()).filter(Boolean);
+
+  const body = {
+    title,
+    department: document.getElementById('prDepartment').value.trim(),
+    author:     document.getElementById('prAuthor').value.trim(),
+    date:       document.getElementById('prDate').value || undefined,
+    purpose:    document.getElementById('prPurpose').value.trim(),
+    status:     document.querySelector('input[name="prStatus"]:checked')?.value || 'active',
+    tools, steps, risks, attachments
+  };
+
+  const id = document.getElementById('prId').value;
+  try {
+    const endpoint = id ? '/api/procedures/' + id : '/api/procedures';
+    const method   = id ? 'PUT' : 'POST';
+    const resp = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      alert('Chyba ' + resp.status + ': ' + (err.error || 'Neznáma chyba'));
+      return;
+    }
+    closeProcedureModal();
+    loadProcedures();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+async function deleteProcedure(id) {
+  if (!id) return;
+  if (!confirm('Naozaj odstrániť tento postup?')) return;
+  try {
+    await fetch('/api/procedures/' + id, { method: 'DELETE' });
+    loadProcedures();
   } catch { alert('Chyba pri odstraňovaní'); }
 }
 

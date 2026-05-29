@@ -71,6 +71,16 @@ async function autoSeed() {
   if (linkCount === 0) {
     await HeaderLink.insertMany(DEFAULT_LINKS);
     console.log('Seed: HeaderLinks inserted');
+  } else {
+    // DB already has links — ensure new "servery" (server folder) defaults exist
+    const serveryCount = await HeaderLink.countDocuments({ group: 'servery' });
+    if (serveryCount === 0) {
+      const serveryDefaults = DEFAULT_LINKS.filter(l => l.group === 'servery');
+      if (serveryDefaults.length) {
+        await HeaderLink.insertMany(serveryDefaults);
+        console.log('Seed: server folder links inserted');
+      }
+    }
   }
 
   // ── Seed AppConfig (sensor settings) ─────────────────────────────────────
@@ -192,6 +202,7 @@ const categoriesRouter = require('./routes/categories');
 app.use('/api/products', productsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/calendar', require('./routes/calendar'));
+app.use('/api/procedures', require('./routes/procedures'));
 app.use('/api/admin', require('./routes/admin')(sensorCfg));
 
 // Credentials endpoint (internal use only)
