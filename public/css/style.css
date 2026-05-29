@@ -1758,11 +1758,13 @@ body {
    NOVINKY (oznámenia na úvode)
    ============================================= */
 .home-news-section {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: linear-gradient(135deg, rgba(250,204,21,0.16), rgba(245,158,11,0.10));
+  border: 1px solid rgba(250,204,21,0.45);
+  border-left: 4px solid #facc15;
   border-radius: var(--radius-lg);
   padding: 20px 24px;
   margin-bottom: 18px;
+  box-shadow: 0 0 24px rgba(250,204,21,0.12);
   backdrop-filter: blur(8px);
 }
 .home-news-hdr {
@@ -1771,10 +1773,11 @@ body {
 }
 .home-news-hdr-left { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .home-news-title {
-  font-family: var(--font-title); font-size: 1.05rem; font-weight: 700;
-  color: #f1f5f9; letter-spacing: 0.02em;
+  font-family: var(--font-title); font-size: 1.2rem; font-weight: 700;
+  color: #fde68a; letter-spacing: 0.02em;
+  text-shadow: 0 0 12px rgba(250,204,21,0.3);
 }
-.home-news-sub { font-size: 0.78rem; color: rgba(255,255,255,0.35); }
+.home-news-sub { font-size: 0.78rem; color: rgba(253,230,138,0.6); }
 
 .home-news-list { display: flex; flex-direction: column; gap: 8px; }
 .news-empty {
@@ -1934,4 +1937,64 @@ body {
 @media (max-width: 560px) {
   .pdv-card { padding: 20px 16px; }
   .pdv-title { font-size: 1.3rem; }
+}
+
+/* =============================================
+   HODINY / DÁTUM / MENINY (úvod)
+   ============================================= */
+.dt-widget {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-lg);
+  padding: 14px 22px; margin-bottom: 18px;
+  backdrop-filter: blur(8px);
+}
+.dt-clock {
+  font-family: var(--font-title); font-size: 2.1rem; font-weight: 700;
+  color: #fff; letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 18px rgba(0,212,255,0.35);
+}
+.dt-info { display: flex; flex-direction: column; gap: 3px; }
+.dt-date { font-size: 0.95rem; color: #e2e8f0; font-weight: 600; text-transform: capitalize; }
+.dt-meniny { font-size: 0.82rem; color: rgba(255,255,255,0.5); }
+.dt-meniny strong { color: #67e8f9; font-weight: 600; }
+
+@media (max-width: 560px) {
+  .dt-widget { gap: 12px; padding: 12px 16px; }
+  .dt-clock { font-size: 1.6rem; }
+}
+
+/* =============================================
+   PROCEDURES — plnostránkový editor
+   ============================================= */
+.proc-edit { max-width: 900px; margin: 0 auto; }
+.proc-edit-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  position: sticky; top: var(--header-h); z-index: 20;
+  background: rgba(13,18,37,0.92); backdrop-filter: blur(8px);
+  padding: 12px 0; margin-bottom: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.proc-edit-title {
+  flex: 1; text-align: center;
+  font-family: var(--font-title); font-size: 1.15rem; font-weight: 700;
+  color: #f1f5f9; letter-spacing: 0.02em; min-width: 140px;
+}
+.proc-edit-bar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.proc-edit-body {
+  background: #fff; border-radius: var(--radius-lg);
+  padding: 24px 26px; box-shadow: var(--shadow-lg);
+  display: flex; flex-direction: column; gap: 16px;
+}
+.proc-edit-foot {
+  display: flex; justify-content: flex-end; gap: 10px;
+  margin-top: 16px; padding-bottom: 8px;
+}
+@media (max-width: 560px) {
+  .proc-edit-bar { top: 0; }
+  .proc-edit-title { order: -1; flex-basis: 100%; }
+  .proc-edit-body { padding: 16px 14px; }
 }
