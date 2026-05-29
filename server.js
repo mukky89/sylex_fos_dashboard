@@ -205,6 +205,7 @@ app.use('/api/products', productsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/calendar', require('./routes/calendar'));
 app.use('/api/procedures', require('./routes/procedures'));
+app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/admin', require('./routes/admin')(sensorCfg));
 
 // Version / health endpoint — na overenie, akú verziu Railway práve beží
