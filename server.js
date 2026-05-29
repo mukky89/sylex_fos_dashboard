@@ -137,8 +137,9 @@ app.get('/api/sensor/thermo', (req, res) => {
       res.json({ online: true, temperature: temp });
     });
   });
-  r.on('error', () => res.json({ online: false, temperature: null }));
-  r.on('timeout', () => { r.destroy(); res.json({ online: false, temperature: null }); });
+  const sendOffline = () => { if (!res.headersSent) res.json({ online: false, temperature: null }); };
+  r.on('error', sendOffline);
+  r.on('timeout', () => { r.destroy(); sendOffline(); });
 });
 
 // Image upload endpoint
