@@ -1714,8 +1714,20 @@ async function clearSensorHistory() {
 // ==============================
 // INIT
 // ==============================
+async function loadAppVersion() {
+  const el = document.getElementById('appVersion');
+  if (!el) return;
+  try {
+    const v = await fetch('/api/version').then(r => r.json());
+    el.textContent = 'v' + v.version;
+    const commit = v.commit && v.commit !== 'unknown' ? v.commit.slice(0, 7) : 'local';
+    el.title = `Verzia ${v.version} · commit ${commit} · env ${v.env} · DB ${v.dbState}`;
+  } catch { el.textContent = ''; }
+}
+
 (function init() {
   loadHeaderLinks();
+  loadAppVersion();
   const hash = location.hash.slice(1);
   if (hash) { handleHash(hash); }
   else { _activatePage('home'); loadHomeKB(); }

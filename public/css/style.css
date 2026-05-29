@@ -1710,3 +1710,13 @@ body {
   .proc-card { flex-direction: column; align-items: stretch; }
   .proc-card-actions { justify-content: flex-end; }
 }
+
+/* App version indicator (header) */
+.app-version {
+  font-size: 0.66rem; font-weight: 600; letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.35);
+  padding: 2px 7px; border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  cursor: default; white-space: nowrap;
+}
