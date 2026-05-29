@@ -69,9 +69,9 @@
     </div>
   </div>
 
-  <!-- Súbory / Serverové priečinky & šablóny popover -->
-  <div id="filesPopover" class="files-popover hidden" onclick="event.stopPropagation()">
-    <div id="filesPopoverBody"></div>
+  <!-- Rozbalovacie menu hlavičky (kategorizované odkazy) -->
+  <div id="menuDropdown" class="files-popover hidden" onclick="event.stopPropagation()">
+    <div id="menuDropdownBody"></div>
   </div>
 
   <!-- ===== HOME PAGE ===== -->
@@ -100,6 +100,21 @@
             <circle cx="60" cy="60" r="6" fill="#00d4ff"/>
           </svg>
         </div>
+      </div>
+
+      <!-- ── NOVINKY (oznámenia) ── -->
+      <div class="home-news-section">
+        <div class="home-news-hdr">
+          <div class="home-news-hdr-left">
+            <span class="home-news-title">📢 Novinky</span>
+            <span class="home-news-sub">Oznámenia pre tím</span>
+          </div>
+          <button class="btn-primary" onclick="openAnnouncementModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Pridať novinku
+          </button>
+        </div>
+        <div id="homeNewsList" class="home-news-list"></div>
       </div>
 
       <!-- ── KNOWLEDGE BASE ── -->
@@ -429,6 +444,59 @@
         <button class="btn-delete" id="evDeleteBtn" onclick="deleteEvent()" style="display:none">Odstrániť</button>
         <button class="btn-secondary" onclick="closeEventModal()">Zrušiť</button>
         <button class="btn-primary" onclick="saveEvent()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ANNOUNCEMENT MODAL ===== -->
+  <div id="announcementModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeAnnouncementModal()"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header">
+        <h2 id="annModalTitle">Nová novinka</h2>
+        <button class="modal-close" onclick="closeAnnouncementModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="anId">
+        <div class="form-group">
+          <label>Nadpis *</label>
+          <input type="text" id="anTitle" placeholder="napr. Odstávka servera v piatok">
+        </div>
+        <div class="form-group">
+          <label>Text</label>
+          <textarea id="anBody" rows="3" placeholder="Podrobnosti oznámenia (voliteľné)"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Typ</label>
+            <select id="anType">
+              <option value="info">ℹ️ Informácia</option>
+              <option value="important">📢 Dôležité</option>
+              <option value="success">✅ Hotové / Úspech</option>
+              <option value="warning">⚠️ Upozornenie</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Dátum</label>
+            <input type="date" id="anDate">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Autor</label>
+            <input type="text" id="anAuthor" placeholder="Meno (voliteľné)">
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label" style="margin-top:24px">
+              <input type="checkbox" id="anPinned"> 📌 Pripnúť navrch
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="anDeleteBtn" onclick="deleteAnnouncement()" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeAnnouncementModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveAnnouncement()">Uložiť</button>
       </div>
     </div>
   </div>

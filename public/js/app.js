@@ -578,6 +578,7 @@ function restoreWikiSections() {
 // HOME PAGE KB PREVIEW
 // ==============================
 async function loadHomeKB() {
+  loadAnnouncements();
   try {
     const [cR, pR] = await Promise.all([fetch('/api/categories'), fetch('/api/products')]);
     const cats = await cR.json();
@@ -957,67 +958,52 @@ function statusLabel(s) {
 // (handled via fUrl input in modal, saved in body.url)
 
 // ==============================
-// HEADER LINKS (dynamic chips)
+// HEADER MENU (kategorizované rozbalovacie menu)
 // ==============================
+// Definícia skupín → rozbalovacie menu v hlavičke (v poradí zľava)
+const HEADER_GROUP_DEFS = [
+  { key: 'files',      label: 'Súbory',     icon: '📁' },  // servery + sablony
+  { key: 'custom',     label: 'Nástroje',   icon: '⚙️' },
+  { key: 'erp',        label: 'ERP',        icon: '📊' },
+  { key: 'sharepoint', label: 'SharePoint', icon: '🔗' },
+  { key: 'other',      label: 'Odkazy',     icon: '🔖' },
+];
+function groupKeyFor(g) {
+  if (g === 'servery' || g === 'sablony') return 'files';
+  if (g === 'custom')     return 'custom';
+  if (g === 'erp')        return 'erp';
+  if (g === 'sharepoint') return 'sharepoint';
+  return 'other';
+}
+let _headerGroups = {};
+
 async function loadHeaderLinks() {
   const container = document.getElementById('headerQuicklinks');
   if (!container) return;
   try {
     const r = await fetch('/api/admin/links');
     const links = await r.json();
-    container.innerHTML = '';
-
     const active = links.filter(l => l.active);
-    // Serverové priečinky + šablóny → samostatný dropdown "Súbory"
-    const fileLinks = active.filter(l => l.group === 'servery' || l.group === 'sablony');
-    const rest      = active.filter(l => l.group !== 'servery' && l.group !== 'sablony');
-    // Group: first non-sharepoint, then separator, then sharepoint
-    const nonSP = rest.filter(l => l.group !== 'sharepoint');
-    const sp    = rest.filter(l => l.group === 'sharepoint');
 
-    const addSep = () => {
-      const sep = document.createElement('div');
-      sep.className = 'ql-sep';
-      container.appendChild(sep);
-    };
+    _headerGroups = {};
+    active.forEach(l => {
+      const k = groupKeyFor(l.group);
+      (_headerGroups[k] = _headerGroups[k] || []).push(l);
+    });
 
-    // Dropdown "Súbory" (serverové priečinky + šablóny)
-    if (fileLinks.length > 0) {
-      const drop = document.createElement('div');
-      drop.className = 'ql-chip ql-files';
-      drop.onclick = (e) => toggleFilesPopover(e);
-      drop.innerHTML = `<span class="ql-files-icon">📁</span> Súbory <span class="ql-files-caret">▾</span>`;
-      container.appendChild(drop);
-      buildFilesPopover(fileLinks);
-      if (nonSP.length > 0 || sp.length > 0) addSep();
-    }
-
-    const renderChip = (l) => {
-      const colorClass = 'ql-' + (l.color || 'sp');
-      if (l.hasCredential && l.credentialKey) {
-        const div = document.createElement('div');
-        div.className = `ql-chip ${colorClass}`;
-        div.style.cursor = 'pointer';
-        div.onclick = (e) => { if (!e.target.classList.contains('ql-cred-btn')) window.open(l.url, '_blank'); };
-        div.innerHTML = `${l.hasDot ? '<span class="ql-dot"></span>' : ''} ${escHtml(l.label)}
-          <button class="ql-cred-btn" onclick="togglePeakloggerCreds(event)" title="Zobraziť prístupy">🔑</button>`;
-        container.appendChild(div);
-      } else {
-        const a = document.createElement('a');
-        a.className = `ql-chip ${colorClass}`;
-        a.href = l.url; a.target = '_blank';
-        a.innerHTML = `${l.hasDot ? '<span class="ql-dot"></span>' : ''} ${escHtml(l.label)}`;
-        container.appendChild(a);
-      }
-    };
-
-    nonSP.forEach(renderChip);
-    if (nonSP.length > 0 && sp.length > 0) addSep();
-    sp.forEach(renderChip);
+    container.innerHTML = '';
+    HEADER_GROUP_DEFS.forEach(def => {
+      const items = _headerGroups[def.key];
+      if (!items || !items.length) return;
+      const chip = document.createElement('div');
+      chip.className = 'ql-chip ql-menu ql-menu-' + def.key;
+      chip.onclick = (e) => toggleHeaderMenu(e, def.key);
+      chip.innerHTML = `<span class="ql-files-icon">${def.icon}</span> ${escHtml(def.label)} <span class="ql-files-caret">▾</span>`;
+      container.appendChild(chip);
+    });
   } catch (e) { console.error('loadHeaderLinks:', e); }
 }
 
-// ── "Súbory" dropdown (serverové priečinky + šablóny) ────────────────────────
 // Konvertuj cestu (G:\... alebo \\server\...) na file: URL pre "otvoriť"
 function toFileHref(val) {
   if (!val) return '#';
@@ -1029,47 +1015,100 @@ function isFilePath(val) {
   return /^[a-zA-Z]:[\\/]/.test(val) || /^\\\\/.test(val);
 }
 
-function buildFilesPopover(fileLinks) {
-  const body = document.getElementById('filesPopoverBody');
-  if (!body) return;
-  const folders   = fileLinks.filter(l => l.group === 'servery');
-  const templates = fileLinks.filter(l => l.group === 'sablony');
-
-  const section = (title, items) => {
-    if (!items.length) return '';
-    const rows = items.map(l => {
-      const href = toFileHref(l.url);
-      const copyBtn = isFilePath(l.url)
-        ? `<button class="files-row-btn" onclick="copyToClipboard(this, ${JSON.stringify(l.url).replace(/"/g,'&quot;')})" title="Kopírovať cestu">⧉</button>`
-        : '';
-      return `<div class="files-row">
-        <a class="files-row-link" href="${escHtml(href)}" target="_blank" title="${escHtml(l.url)}">
-          <span class="files-row-label">${escHtml(l.label)}</span>
-          <span class="files-row-path">${escHtml(l.url)}</span>
-        </a>
-        ${copyBtn}
-      </div>`;
-    }).join('');
-    return `<div class="files-section"><div class="files-section-title">${title}</div>${rows}</div>`;
-  };
-
-  body.innerHTML =
-    section('📁 Serverové priečinky', folders) +
-    section('📄 Šablóny', templates) ||
-    '<div class="files-empty">Žiadne odkazy.</div>';
+// Riadok odkazu s cestou (serverové priečinky / šablóny) — otvoriť + kopírovať
+function fileRowHtml(l) {
+  const href = toFileHref(l.url);
+  const copyBtn = isFilePath(l.url)
+    ? `<button class="files-row-btn" onclick="copyToClipboard(this, ${JSON.stringify(l.url).replace(/"/g, '&quot;')})" title="Kopírovať cestu">⧉</button>`
+    : '';
+  return `<div class="files-row">
+    <a class="files-row-link" href="${escHtml(href)}" target="_blank" title="${escHtml(l.url)}">
+      <span class="files-row-label">${escHtml(l.label)}</span>
+      <span class="files-row-path">${escHtml(l.url)}</span>
+    </a>
+    ${copyBtn}
+  </div>`;
 }
 
-function toggleFilesPopover(e) {
+// Generický riadok odkazu (ERP, SharePoint, Nástroje…) — vrátane prístupov (🔑)
+function menuRowHtml(l) {
+  if (isFilePath(l.url)) return fileRowHtml(l);
+  if (l.hasCredential && l.credentialKey) {
+    return `<div class="files-row">
+        <a class="files-row-link" href="${escHtml(l.url)}" target="_blank" title="${escHtml(l.url)}">
+          <span class="files-row-label">${escHtml(l.label)}</span>
+        </a>
+        <button class="files-row-btn" onclick="toggleMenuCred(event, this, '${escHtml(l.credentialKey)}')" title="Zobraziť prístupy">🔑</button>
+      </div>
+      <div class="menu-cred hidden"></div>`;
+  }
+  return `<div class="files-row">
+      <a class="files-row-link" href="${escHtml(l.url)}" target="_blank" title="${escHtml(l.url)}">
+        <span class="files-row-label">${escHtml(l.label)}</span>
+      </a>
+    </div>`;
+}
+
+function buildMenuBody(groupKey) {
+  const items = _headerGroups[groupKey] || [];
+  if (groupKey === 'files') {
+    const folders   = items.filter(l => l.group === 'servery');
+    const templates = items.filter(l => l.group === 'sablony');
+    const section = (title, list) => list.length
+      ? `<div class="files-section"><div class="files-section-title">${title}</div>${list.map(fileRowHtml).join('')}</div>` : '';
+    return (section('📁 Serverové priečinky', folders) + section('📄 Šablóny', templates))
+      || '<div class="files-empty">Žiadne odkazy.</div>';
+  }
+  return items.map(menuRowHtml).join('') || '<div class="files-empty">Žiadne odkazy.</div>';
+}
+
+function toggleHeaderMenu(e, groupKey) {
   e.stopPropagation();
-  const pop = document.getElementById('filesPopover');
+  const pop = document.getElementById('menuDropdown');
   if (!pop) return;
   const chip = e.target.closest('.ql-chip');
+
+  // Klik na rovnaký chip → zavrieť
+  if (pop.dataset.group === groupKey && !pop.classList.contains('hidden')) {
+    pop.classList.add('hidden'); pop.dataset.group = '';
+    return;
+  }
+
+  document.getElementById('menuDropdownBody').innerHTML = buildMenuBody(groupKey);
+  pop.dataset.group = groupKey;
   if (chip) {
     const rect = chip.getBoundingClientRect();
-    pop.style.left = rect.left + 'px';
+    pop.style.left = Math.max(8, rect.left) + 'px';
     pop.style.right = 'auto';
   }
-  pop.classList.toggle('hidden');
+  pop.classList.remove('hidden');
+}
+
+// Inline zobrazenie prístupov (credential) v rozbalovacom menu
+async function toggleMenuCred(e, btn, key) {
+  e.stopPropagation();
+  const row = btn.closest('.files-row');
+  const credEl = row?.nextElementSibling;
+  if (!credEl || !credEl.classList.contains('menu-cred')) return;
+  if (!credEl.classList.contains('hidden')) { credEl.classList.add('hidden'); return; }
+
+  credEl.innerHTML = '<div class="menu-cred-row">Načítavam…</div>';
+  credEl.classList.remove('hidden');
+  try {
+    const c = await fetch('/api/credentials/' + key).then(r => r.json());
+    const enc = (s) => JSON.stringify(s || '').replace(/"/g, '&quot;');
+    credEl.innerHTML = `
+      <div class="menu-cred-row">
+        <span class="menu-cred-label">Login</span>
+        <span class="menu-cred-val">${escHtml(c.user || '—')}</span>
+        <button class="files-row-btn" onclick="copyToClipboard(this, ${enc(c.user)})" title="Kopírovať">⧉</button>
+      </div>
+      <div class="menu-cred-row">
+        <span class="menu-cred-label">Heslo</span>
+        <span class="menu-cred-val">${escHtml(c.pass || '—')}</span>
+        <button class="files-row-btn" onclick="copyToClipboard(this, ${enc(c.pass)})" title="Kopírovať">⧉</button>
+      </div>`;
+  } catch { credEl.innerHTML = '<div class="menu-cred-row">Chyba pri načítaní</div>'; }
 }
 
 async function copyToClipboard(btn, text) {
@@ -1079,7 +1118,6 @@ async function copyToClipboard(btn, text) {
     btn.textContent = '✓';
     setTimeout(() => { btn.textContent = old; }, 1200);
   } catch {
-    // Fallback
     const ta = document.createElement('textarea');
     ta.value = text; document.body.appendChild(ta); ta.select();
     try { document.execCommand('copy'); } catch {}
@@ -1087,16 +1125,122 @@ async function copyToClipboard(btn, text) {
   }
 }
 
-// Zatvor files popover pri kliku mimo
+// Zatvor rozbalovacie menu pri kliku mimo
 document.addEventListener('click', () => {
-  const p = document.getElementById('filesPopover');
-  if (p) p.classList.add('hidden');
+  const p = document.getElementById('menuDropdown');
+  if (p) { p.classList.add('hidden'); p.dataset.group = ''; }
 });
 
 // ==============================
 // HOME KB — RECENT NEWS
 // ==============================
 // (integrated into loadHomeKB below)
+
+// ==============================
+// NOVINKY (oznámenia)
+// ==============================
+let announcementsData = [];
+const ANN_TYPES = {
+  info:      { icon: 'ℹ️', label: 'Informácia' },
+  important: { icon: '📢', label: 'Dôležité' },
+  success:   { icon: '✅', label: 'Úspech' },
+  warning:   { icon: '⚠️', label: 'Upozornenie' },
+};
+
+async function loadAnnouncements() {
+  try {
+    const r = await fetch('/api/announcements');
+    announcementsData = await r.json();
+    if (!Array.isArray(announcementsData)) announcementsData = [];
+  } catch { announcementsData = []; }
+  renderAnnouncements();
+}
+
+function renderAnnouncements() {
+  const el = document.getElementById('homeNewsList');
+  if (!el) return;
+  el.innerHTML = '';
+  if (announcementsData.length === 0) {
+    el.innerHTML = '<div class="news-empty">Žiadne novinky. Pridajte prvé oznámenie tlačidlom vyššie.</div>';
+    return;
+  }
+  announcementsData.forEach(a => {
+    const t = ANN_TYPES[a.type] || ANN_TYPES.info;
+    const card = document.createElement('div');
+    card.className = 'news-card news-' + a.type + (a.pinned ? ' news-pinned' : '');
+    card.innerHTML = `
+      <div class="news-card-icon">${t.icon}</div>
+      <div class="news-card-body">
+        <div class="news-card-title">
+          ${a.pinned ? '<span class="news-pin">📌</span>' : ''}${escHtml(a.title)}
+        </div>
+        ${a.body ? `<div class="news-card-text">${escHtml(a.body)}</div>` : ''}
+        <div class="news-card-meta">
+          <span>${fmtDate(a.date)}</span>
+          ${a.author ? `<span>· ${escHtml(a.author)}</span>` : ''}
+          <span class="news-type-badge">${t.label}</span>
+        </div>
+      </div>
+      <div class="news-card-actions">
+        <button class="admin-icon-btn" onclick="openAnnouncementModal(announcementsData.find(x => x._id === '${a._id}'))" title="Upraviť">✎</button>
+        <button class="admin-icon-btn danger" onclick="deleteAnnouncement('${a._id}')" title="Odstrániť">✕</button>
+      </div>`;
+    el.appendChild(card);
+  });
+}
+
+function openAnnouncementModal(ann = null) {
+  const isEdit = ann && typeof ann === 'object';
+  document.getElementById('annModalTitle').textContent = isEdit ? 'Upraviť novinku' : 'Nová novinka';
+  document.getElementById('anId').value     = isEdit ? ann._id : '';
+  document.getElementById('anTitle').value  = isEdit ? (ann.title || '') : '';
+  document.getElementById('anBody').value   = isEdit ? (ann.body || '') : '';
+  document.getElementById('anType').value   = isEdit ? (ann.type || 'info') : 'info';
+  document.getElementById('anDate').value   = isEdit && ann.date ? String(ann.date).slice(0, 10) : calYmd(new Date());
+  document.getElementById('anAuthor').value = isEdit ? (ann.author || '') : '';
+  document.getElementById('anPinned').checked = isEdit ? !!ann.pinned : false;
+  document.getElementById('anDeleteBtn').style.display = isEdit ? '' : 'none';
+  document.getElementById('announcementModal').classList.remove('hidden');
+}
+
+function closeAnnouncementModal() {
+  document.getElementById('announcementModal').classList.add('hidden');
+}
+
+async function saveAnnouncement() {
+  const title = document.getElementById('anTitle').value.trim();
+  if (!title) { alert('Zadajte nadpis novinky'); return; }
+  const body = {
+    title,
+    body:   document.getElementById('anBody').value.trim(),
+    type:   document.getElementById('anType').value,
+    date:   document.getElementById('anDate').value || undefined,
+    author: document.getElementById('anAuthor').value.trim(),
+    pinned: document.getElementById('anPinned').checked
+  };
+  const id = document.getElementById('anId').value;
+  try {
+    const endpoint = id ? '/api/announcements/' + id : '/api/announcements';
+    const method   = id ? 'PUT' : 'POST';
+    const resp = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      alert('Chyba ' + resp.status + ': ' + (err.error || 'Neznáma chyba'));
+      return;
+    }
+    closeAnnouncementModal();
+    loadAnnouncements();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+async function deleteAnnouncement(id) {
+  if (!id) return;
+  if (!confirm('Naozaj odstrániť túto novinku?')) return;
+  try {
+    await fetch('/api/announcements/' + id, { method: 'DELETE' });
+    loadAnnouncements();
+  } catch { alert('Chyba pri odstraňovaní'); }
+}
 
 // ==============================
 // CALENDAR (kancelária)
