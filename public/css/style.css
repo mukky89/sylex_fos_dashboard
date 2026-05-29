@@ -133,18 +133,9 @@ body {
 }
 .ql-cred-btn:hover { opacity: 1; }
 
-/* SharePoint chips — subtle, no dot */
-.ql-chip.ql-sp {
-  color: rgba(255,255,255,0.42);
-  border-color: rgba(255,255,255,0.09);
-  background: transparent;
-  font-size: 0.69rem; padding: 3px 9px;
-}
-.ql-chip.ql-sp:hover {
-  background: rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.75);
-  border-color: rgba(255,255,255,0.18);
-}
+/* SharePoint chips — same weight as ERP chips, green accent */
+.ql-chip.ql-sp { color: #86efac; border-color: rgba(134,239,172,0.3); background: rgba(134,239,172,0.08); }
+.ql-chip.ql-sp:hover { background: rgba(134,239,172,0.18); border-color: rgba(134,239,172,0.5); }
 /* Separator between chip groups */
 .ql-sep {
   width: 1px; height: 16px;
