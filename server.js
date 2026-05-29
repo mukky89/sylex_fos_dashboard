@@ -11,6 +11,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const { DEFAULT_LINKS } = require('./config/defaults');
+const { version: APP_VERSION } = require('./package.json');
+const STARTED_AT = new Date();
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'public', 'uploads');
@@ -204,6 +206,20 @@ app.use('/api/categories', categoriesRouter);
 app.use('/api/calendar', require('./routes/calendar'));
 app.use('/api/procedures', require('./routes/procedures'));
 app.use('/api/admin', require('./routes/admin')(sensorCfg));
+
+// Version / health endpoint — na overenie, akú verziu Railway práve beží
+app.get('/api/version', (req, res) => {
+  res.json({
+    version:   APP_VERSION,
+    commit:    process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_COMMIT || 'unknown',
+    commitMsg: process.env.RAILWAY_GIT_COMMIT_MESSAGE || undefined,
+    branch:    process.env.RAILWAY_GIT_BRANCH || undefined,
+    env:       process.env.RAILWAY_ENVIRONMENT_NAME || process.env.NODE_ENV || 'local',
+    startedAt: STARTED_AT.toISOString(),
+    uptimeSec: Math.round(process.uptime()),
+    dbState:   ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState] || 'unknown'
+  });
+});
 
 // Credentials endpoint (internal use only)
 app.get('/api/credentials/peaklogger', (req, res) => {
