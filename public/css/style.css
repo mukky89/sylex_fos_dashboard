@@ -393,6 +393,69 @@ body {
 }
 .home-kb-preview-item:hover { background: rgba(255,255,255,0.14); color: #f1f5f9; }
 
+/* SharePoint section */
+.home-section-label {
+  font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.18em; color: rgba(255,255,255,0.35);
+  text-transform: uppercase;
+  margin: 20px 0 10px;
+}
+.home-sp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.sp-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-lg);
+  text-decoration: none; color: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+  backdrop-filter: blur(6px);
+}
+.sp-card:hover {
+  background: rgba(255,255,255,0.11);
+  border-color: rgba(255,255,255,0.2);
+  transform: translateY(-2px);
+}
+.sp-card-icon {
+  flex-shrink: 0;
+  width: 42px; height: 42px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius);
+}
+.sp-intranet .sp-card-icon { background: rgba(8,145,178,0.15); color: #67e8f9; }
+.sp-phone   .sp-card-icon { background: rgba(29,78,216,0.15); color: #93c5fd; }
+.sp-fos     .sp-card-icon { background: rgba(124,58,237,0.15); color: #c4b5fd; }
+.sp-intranet:hover { border-color: rgba(103,232,249,0.3); }
+.sp-phone:hover    { border-color: rgba(147,197,253,0.3); }
+.sp-fos:hover      { border-color: rgba(196,181,253,0.3); }
+
+.sp-card-body { flex: 1; min-width: 0; }
+.sp-card-title {
+  font-size: 0.85rem; font-weight: 600;
+  color: #e2e8f0; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.sp-card-desc {
+  font-size: 0.72rem; color: rgba(255,255,255,0.38);
+  margin-top: 2px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.sp-card-arrow {
+  font-size: 1rem; color: rgba(255,255,255,0.3);
+  flex-shrink: 0; transition: color var(--transition);
+}
+.sp-card:hover .sp-card-arrow { color: rgba(255,255,255,0.7); }
+
+@media (max-width: 640px) {
+  .home-sp-grid { grid-template-columns: 1fr; }
+}
+
 /* ==============================
    WIKI LAYOUT
    ============================== */
