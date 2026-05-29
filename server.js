@@ -30,21 +30,70 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
+// In-memory sensor config — updated live by admin routes
+const sensorCfg = { ip: '10.88.5.184', path: '/values.xml', interval: 60 };
+
+async function loadSensorConfig() {
+  try {
+    const AppConfig = require('./models/AppConfig');
+    const entries = await AppConfig.find({ key: { $in: ['sensor.ip', 'sensor.path', 'sensor.interval'] } }).lean();
+    entries.forEach(({ key, value }) => {
+      if (key === 'sensor.ip')       sensorCfg.ip       = String(value);
+      if (key === 'sensor.path')     sensorCfg.path     = String(value);
+      if (key === 'sensor.interval') sensorCfg.interval = Number(value);
+    });
+    console.log(`Sensor config: ${sensorCfg.ip}${sensorCfg.path} every ${sensorCfg.interval}s`);
+  } catch (e) {
+    console.error('loadSensorConfig error:', e.message);
+  }
+}
+
 // MongoDB connection + auto-seed on first run
 mongoose.connect(process.env.MONGODB_URI)
   .then(async () => {
     console.log('MongoDB connected');
     await autoSeed();
+    await loadSensorConfig();
     startSensorPolling();
   })
   .catch(err => console.error('MongoDB error:', err));
 
 async function autoSeed() {
-  const Category = require('./models/Category');
-  const Product  = require('./models/Product');
+  const Category   = require('./models/Category');
+  const Product    = require('./models/Product');
+  const HeaderLink = require('./models/HeaderLink');
+  const AppConfig  = require('./models/AppConfig');
 
+  // ── Seed HeaderLinks (default chips) ─────────────────────────────────────
+  const linkCount = await HeaderLink.countDocuments();
+  if (linkCount === 0) {
+    await HeaderLink.insertMany([
+      { label: 'Intranet',            url: 'http://intranet.sylex.sk',                                   color: 'sp',     group: 'sharepoint', order: 0, active: true },
+      { label: 'Telefónny zoznam',    url: 'https://sylex.sharepoint.com/:x:/s/FOS/telefonnyzoznam',     color: 'sp',     group: 'sharepoint', order: 1, active: true },
+      { label: 'Pracovné postupy',    url: 'https://sylex.sharepoint.com/:f:/s/FOS/pracovnepostupy',     color: 'sp',     group: 'sharepoint', order: 2, active: true },
+      { label: 'PeakLogger',          url: 'http://10.88.5.184',                                          color: 'cyan',   group: 'custom',     order: 3, active: true, hasCredential: true, credentialKey: 'peaklogger' },
+      { label: 'ERP',                 url: 'http://erp.sylex.sk',                                         color: 'blue',   group: 'erp',        order: 4, active: true },
+      { label: 'SharePoint',          url: 'https://sylex.sharepoint.com',                                color: 'purple', group: 'sharepoint', order: 5, active: true },
+    ]);
+    console.log('Seed: HeaderLinks inserted');
+  }
+
+  // ── Seed AppConfig (sensor settings) ─────────────────────────────────────
+  const cfgCount = await AppConfig.countDocuments();
+  if (cfgCount === 0) {
+    await AppConfig.insertMany([
+      { key: 'sensor.ip',       value: '10.88.5.184',  label: 'IP adresa senzora',  group: 'sensor', type: 'string' },
+      { key: 'sensor.path',     value: '/values.xml',  label: 'Cesta (path)',        group: 'sensor', type: 'string' },
+      { key: 'sensor.interval', value: 60,             label: 'Interval (s)',        group: 'sensor', type: 'number' },
+      { key: 'sensor.ch1',      value: 'humidity',     label: 'Kanál 1 (ch1)',       group: 'sensor', type: 'string' },
+      { key: 'sensor.ch2',      value: 'temperature',  label: 'Kanál 2 (ch2)',       group: 'sensor', type: 'string' },
+    ]);
+    console.log('Seed: AppConfig inserted');
+  }
+
+  // ── Seed KB sample data ───────────────────────────────────────────────────
   const count = await Product.countDocuments();
-  if (count > 0) return; // DB already has data, skip
+  if (count > 0) return; // DB already has KB data, skip
 
   console.log('Empty DB detected — seeding initial data...');
 
@@ -112,11 +161,13 @@ function parseChannel(xml, ch) {
   return isNaN(v) ? null : v;
 }
 
-// Poll Web Sensor every 60 s and persist reading to MongoDB
+// Poll Web Sensor and persist reading to MongoDB
 function startSensorPolling() {
   const SensorReading = require('./models/SensorReading');
+  let timer = null;
+
   const poll = () => {
-    const r = http.get({ host: '10.88.5.184', port: 80, path: '/values.xml', timeout: 5000 }, (resp) => {
+    const r = http.get({ host: sensorCfg.ip, port: 80, path: sensorCfg.path, timeout: 5000 }, (resp) => {
       let raw = '';
       resp.on('data', chunk => raw += chunk);
       resp.on('end', async () => {
@@ -130,10 +181,13 @@ function startSensorPolling() {
     });
     r.on('error', () => {});
     r.on('timeout', () => r.destroy());
+
+    // Reschedule with current interval (allows live config changes to take effect)
+    timer = setTimeout(poll, sensorCfg.interval * 1000);
   };
+
   poll(); // immediate first reading
-  setInterval(poll, 60 * 1000);
-  console.log('Sensor polling started → 10.88.5.184 every 60 s');
+  console.log(`Sensor polling started → ${sensorCfg.ip}${sensorCfg.path} every ${sensorCfg.interval}s`);
 }
 
 // Routes
@@ -142,6 +196,7 @@ const categoriesRouter = require('./routes/categories');
 
 app.use('/api/products', productsRouter);
 app.use('/api/categories', categoriesRouter);
+app.use('/api/admin', require('./routes/admin')(sensorCfg));
 
 // Credentials endpoint (internal use only)
 app.get('/api/credentials/peaklogger', (req, res) => {
@@ -151,9 +206,9 @@ app.get('/api/credentials/peaklogger', (req, res) => {
   });
 });
 
-// Live reading from Web Sensor at 10.88.5.184  (ch1=humidity %RH, ch2=temperature °C)
+// Live reading from Web Sensor (ch1=humidity %RH, ch2=temperature °C)
 app.get('/api/sensor/thermo', (req, res) => {
-  const r = http.get({ host: '10.88.5.184', port: 80, path: '/values.xml', timeout: 3000 }, (resp) => {
+  const r = http.get({ host: sensorCfg.ip, port: 80, path: sensorCfg.path, timeout: 3000 }, (resp) => {
     let raw = '';
     resp.on('data', chunk => raw += chunk);
     resp.on('end', () => {

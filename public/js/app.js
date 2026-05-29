@@ -269,6 +269,7 @@ window.addEventListener('popstate', () => handleHash(location.hash.slice(1)));
 async function handleHash(hash) {
   if (!hash || hash === 'home') { _activatePage('home'); loadHomeKB(); return; }
   if (hash === 'sensors') { _activatePage('sensors'); loadThermoData(); loadSensorChart(); return; }
+  if (hash === 'admin')   { _activatePage('admin');   switchAdminTab('links'); return; }
   if (hash === 'wiki') { _activatePage('wiki'); await loadWiki(); return; }
   if (hash.startsWith('wiki/cat/')) {
     const catId = hash.slice('wiki/cat/'.length);
@@ -294,6 +295,7 @@ function showPage(name) {
   if (name === 'wiki')    loadWiki();
   if (name === 'home')    loadHomeKB();
   if (name === 'sensors') { loadThermoData(); loadSensorChart(); }
+  if (name === 'admin')   switchAdminTab('links');
 }
 
 // ==============================
@@ -601,6 +603,31 @@ async function loadHomeKB() {
       chip.onclick = () => { showPage('wiki'); setTimeout(() => openProduct(p._id), 150); };
       el.appendChild(chip);
     });
+
+    // Recent KB articles (dark cards)
+    const recentEl = document.getElementById('homeKBRecent');
+    if (recentEl) {
+      recentEl.innerHTML = '';
+      const recent = [...prods].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 5);
+      if (recent.length === 0) {
+        recentEl.innerHTML = '<div style="font-size:0.78rem;color:rgba(255,255,255,0.25);padding:8px 0">Žiadne záznamy.</div>';
+      } else {
+        recent.forEach(p => {
+          const cat = cats.find(c => c._id === (p.category?._id || p.category));
+          const card = document.createElement('div');
+          card.className = 'hkb-card';
+          card.innerHTML = `
+            <div class="hkb-card-icon">${cat?.icon || '📄'}</div>
+            <div class="hkb-card-body">
+              <div class="hkb-card-title">${escHtml(p.name)}</div>
+              <div class="hkb-card-meta">${cat?.name ? escHtml(cat.name) + ' · ' : ''}${fmtDate(p.updatedAt)}</div>
+            </div>
+            <div class="hkb-card-arrow">›</div>`;
+          card.onclick = () => { showPage('wiki'); setTimeout(() => openProduct(p._id), 150); };
+          recentEl.appendChild(card);
+        });
+      }
+    }
   } catch {}
 }
 
@@ -926,9 +953,257 @@ function statusLabel(s) {
 // (handled via fUrl input in modal, saved in body.url)
 
 // ==============================
+// HEADER LINKS (dynamic chips)
+// ==============================
+async function loadHeaderLinks() {
+  const container = document.getElementById('headerQuicklinks');
+  if (!container) return;
+  try {
+    const r = await fetch('/api/admin/links');
+    const links = await r.json();
+    container.innerHTML = '';
+
+    const active = links.filter(l => l.active);
+    // Group: first non-sharepoint, then separator, then sharepoint
+    const nonSP = active.filter(l => l.group !== 'sharepoint');
+    const sp    = active.filter(l => l.group === 'sharepoint');
+
+    const renderChip = (l) => {
+      const colorClass = 'ql-' + (l.color || 'sp');
+      if (l.hasCredential && l.credentialKey) {
+        const div = document.createElement('div');
+        div.className = `ql-chip ${colorClass}`;
+        div.style.cursor = 'pointer';
+        div.onclick = (e) => { if (!e.target.classList.contains('ql-cred-btn')) window.open(l.url, '_blank'); };
+        div.innerHTML = `${l.hasDot ? '<span class="ql-dot"></span>' : ''} ${escHtml(l.label)}
+          <button class="ql-cred-btn" onclick="togglePeakloggerCreds(event)" title="Zobraziť prístupy">🔑</button>`;
+        container.appendChild(div);
+      } else {
+        const a = document.createElement('a');
+        a.className = `ql-chip ${colorClass}`;
+        a.href = l.url; a.target = '_blank';
+        a.innerHTML = `${l.hasDot ? '<span class="ql-dot"></span>' : ''} ${escHtml(l.label)}`;
+        container.appendChild(a);
+      }
+    };
+
+    nonSP.forEach(renderChip);
+    if (nonSP.length > 0 && sp.length > 0) {
+      const sep = document.createElement('div');
+      sep.className = 'ql-sep';
+      container.appendChild(sep);
+    }
+    sp.forEach(renderChip);
+  } catch (e) { console.error('loadHeaderLinks:', e); }
+}
+
+// ==============================
+// HOME KB — RECENT NEWS
+// ==============================
+// (integrated into loadHomeKB below)
+
+// ==============================
+// ADMIN
+// ==============================
+let adminCurrentTab = 'links';
+
+function switchAdminTab(tab) {
+  adminCurrentTab = tab;
+  document.querySelectorAll('.admin-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.tab === tab)
+  );
+  document.querySelectorAll('.admin-panel').forEach(p =>
+    p.classList.toggle('active', p.id === 'adminTab-' + tab)
+  );
+  if (tab === 'links')  loadAdminLinks();
+  if (tab === 'sensor') { loadSensorConfigAdmin(); loadSensorStats(); }
+}
+
+// ── Header links management ──────────────────────────────────────────────
+async function loadAdminLinks() {
+  const container = document.getElementById('adminLinksList');
+  if (!container) return;
+  container.innerHTML = '<div class="admin-loading">Načítavam…</div>';
+  try {
+    const r = await fetch('/api/admin/links');
+    const links = await r.json();
+    container.innerHTML = '';
+    if (links.length === 0) {
+      container.innerHTML = '<div class="admin-loading">Žiadne linky. Pridajte prvý pomocou tlačidla vyššie.</div>';
+      return;
+    }
+    links.forEach((l, idx) => {
+      const item = document.createElement('div');
+      item.className = 'admin-link-item' + (l.active ? '' : ' admin-link-inactive');
+      item.dataset.id = l._id;
+      const colorClass = 'ql-chip ql-' + (l.color || 'sp');
+      item.innerHTML = `
+        <div class="admin-link-handle" title="Poradie">
+          <span>⠿</span>
+        </div>
+        <span class="${colorClass} admin-link-chip">${escHtml(l.label)}</span>
+        <div class="admin-link-info">
+          <div class="admin-link-label">${escHtml(l.label)}</div>
+          <div class="admin-link-url">${escHtml(l.url)}</div>
+        </div>
+        <div class="admin-link-actions">
+          <button class="admin-icon-btn" onclick="moveLinkUp('${l._id}')" title="Nahor">↑</button>
+          <button class="admin-icon-btn" onclick="moveLinkDown('${l._id}')" title="Nadol">↓</button>
+          <button class="admin-icon-btn" onclick="openLinkModal(${JSON.stringify(l).replace(/"/g,'&quot;')})" title="Upraviť">✎</button>
+          <button class="admin-icon-btn danger" onclick="deleteLink('${l._id}')" title="Odstrániť">✕</button>
+        </div>`;
+      container.appendChild(item);
+    });
+  } catch (e) {
+    container.innerHTML = '<div class="admin-loading">Chyba pri načítaní.</div>';
+  }
+}
+
+function openLinkModal(link) {
+  const isEdit = link && typeof link === 'object';
+  document.getElementById('linkModalTitle').textContent = isEdit ? 'Upraviť link' : 'Nový link';
+  document.getElementById('lmId').value       = isEdit ? link._id        : '';
+  document.getElementById('lmLabel').value    = isEdit ? link.label      : '';
+  document.getElementById('lmUrl').value      = isEdit ? link.url        : '';
+  document.getElementById('lmColor').value    = isEdit ? (link.color || 'sp') : 'sp';
+  document.getElementById('lmGroup').value    = isEdit ? (link.group || 'sharepoint') : 'sharepoint';
+  document.getElementById('lmHasDot').checked = isEdit ? !!link.hasDot   : false;
+  document.getElementById('lmActive').checked = isEdit ? !!link.active   : true;
+  document.getElementById('lmHasCred').checked = isEdit ? !!link.hasCredential : false;
+  document.getElementById('lmCredKey').value  = isEdit ? (link.credentialKey || '') : '';
+  document.getElementById('lmCredKeyWrap').style.display = (isEdit && link.hasCredential) ? '' : 'none';
+  document.getElementById('linkModal').classList.remove('hidden');
+}
+
+function closeLinkModal() {
+  document.getElementById('linkModal').classList.add('hidden');
+}
+
+function toggleCredKey() {
+  const show = document.getElementById('lmHasCred').checked;
+  document.getElementById('lmCredKeyWrap').style.display = show ? '' : 'none';
+}
+
+async function saveLink() {
+  const label = document.getElementById('lmLabel').value.trim();
+  const url   = document.getElementById('lmUrl').value.trim();
+  if (!label || !url) { alert('Zadajte popis a URL'); return; }
+
+  const id = document.getElementById('lmId').value;
+  const body = {
+    label, url,
+    color:         document.getElementById('lmColor').value,
+    group:         document.getElementById('lmGroup').value,
+    hasDot:        document.getElementById('lmHasDot').checked,
+    active:        document.getElementById('lmActive').checked,
+    hasCredential: document.getElementById('lmHasCred').checked,
+    credentialKey: document.getElementById('lmCredKey').value.trim()
+  };
+
+  try {
+    if (id) {
+      await fetch('/api/admin/links/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    } else {
+      await fetch('/api/admin/links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    }
+    closeLinkModal();
+    loadAdminLinks();
+    loadHeaderLinks(); // refresh header chips live
+  } catch { alert('Chyba pri ukladaní linku'); }
+}
+
+async function deleteLink(id) {
+  if (!confirm('Naozaj odstrániť tento link?')) return;
+  try {
+    await fetch('/api/admin/links/' + id, { method: 'DELETE' });
+    loadAdminLinks();
+    loadHeaderLinks();
+  } catch { alert('Chyba pri odstraňovaní'); }
+}
+
+async function moveLinkUp(id) {
+  await _shiftLink(id, -1);
+}
+async function moveLinkDown(id) {
+  await _shiftLink(id, 1);
+}
+
+async function _shiftLink(id, direction) {
+  try {
+    const r = await fetch('/api/admin/links');
+    const links = await r.json();
+    const idx = links.findIndex(l => l._id === id);
+    if (idx < 0) return;
+    const swapIdx = idx + direction;
+    if (swapIdx < 0 || swapIdx >= links.length) return;
+    // Swap orders
+    const updates = [
+      { _id: links[idx]._id,     order: links[swapIdx].order },
+      { _id: links[swapIdx]._id, order: links[idx].order }
+    ];
+    await fetch('/api/admin/links/reorder', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) });
+    loadAdminLinks();
+    loadHeaderLinks();
+  } catch { alert('Chyba pri zmene poradia'); }
+}
+
+// ── Sensor config ─────────────────────────────────────────────────────────
+async function loadSensorConfigAdmin() {
+  try {
+    const r = await fetch('/api/admin/config');
+    const cfg = await r.json();
+    const get = key => cfg.find(c => c.key === key)?.value ?? '';
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    setVal('cfgSensorIp',       get('sensor.ip'));
+    setVal('cfgSensorPath',     get('sensor.path'));
+    setVal('cfgSensorInterval', get('sensor.interval'));
+    setVal('cfgSensorCh1',      get('sensor.ch1'));
+    setVal('cfgSensorCh2',      get('sensor.ch2'));
+  } catch { console.error('loadSensorConfigAdmin error'); }
+}
+
+async function saveSensorConfig() {
+  const entries = [
+    { key: 'sensor.ip',       value: document.getElementById('cfgSensorIp')?.value.trim() },
+    { key: 'sensor.path',     value: document.getElementById('cfgSensorPath')?.value.trim() },
+    { key: 'sensor.interval', value: Number(document.getElementById('cfgSensorInterval')?.value) },
+    { key: 'sensor.ch1',      value: document.getElementById('cfgSensorCh1')?.value.trim() },
+    { key: 'sensor.ch2',      value: document.getElementById('cfgSensorCh2')?.value.trim() },
+  ].filter(e => e.value !== '' && e.value !== undefined);
+
+  try {
+    await fetch('/api/admin/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entries) });
+    alert('Nastavenia senzora uložené.');
+    loadSensorStats();
+  } catch { alert('Chyba pri ukladaní'); }
+}
+
+async function loadSensorStats() {
+  try {
+    const r = await fetch('/api/admin/sensor/stats');
+    const s = await r.json();
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set('statTotal',  s.total ?? '—');
+    set('statOldest', s.oldest ? new Date(s.oldest).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
+    set('statNewest', s.newest ? new Date(s.newest).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
+  } catch { console.error('loadSensorStats error'); }
+}
+
+async function clearSensorHistory() {
+  if (!confirm('Naozaj vymazať celú históriu senzorov? Táto akcia je nevratná.')) return;
+  try {
+    const r = await fetch('/api/admin/sensor/history', { method: 'DELETE' });
+    const d = await r.json();
+    alert(`Vymazaných ${d.deleted} záznamov.`);
+    loadSensorStats();
+  } catch { alert('Chyba pri mazaní histórie'); }
+}
+
+// ==============================
 // INIT
 // ==============================
 (function init() {
+  loadHeaderLinks();
   const hash = location.hash.slice(1);
   if (hash) { handleHash(hash); }
   else { _activatePage('home'); loadHomeKB(); }
