@@ -505,25 +505,31 @@
   <main id="page-procedures" class="page procedures-page">
     <div class="proc-inner">
 
-      <div class="proc-hdr">
-        <div>
-          <h1 class="proc-title">Pracovné postupy</h1>
-          <p class="proc-sub">Tvorba a správa postupov · export do Wordu (.docx)</p>
+      <!-- Zoznam postupov -->
+      <div id="procListView">
+        <div class="proc-hdr">
+          <div>
+            <h1 class="proc-title">Pracovné postupy</h1>
+            <p class="proc-sub">Tvorba a správa postupov · export do Wordu (.docx)</p>
+          </div>
+          <button class="btn-primary" onclick="openProcedureModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nový postup
+          </button>
         </div>
-        <button class="btn-primary" onclick="openProcedureModal()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Nový postup
-        </button>
+
+        <div class="proc-search-wrap">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="procSearch" placeholder="Hľadať postup..." oninput="renderProcedures()" autocomplete="off">
+        </div>
+
+        <div id="procList" class="proc-list">
+          <div class="admin-loading">Načítavam…</div>
+        </div>
       </div>
 
-      <div class="proc-search-wrap">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="procSearch" placeholder="Hľadať postup..." oninput="renderProcedures()" autocomplete="off">
-      </div>
-
-      <div id="procList" class="proc-list">
-        <div class="admin-loading">Načítavam…</div>
-      </div>
+      <!-- Náhľad postupu (read-only) -->
+      <div id="procDetail" class="proc-detail hidden"></div>
 
     </div>
   </main>
@@ -580,13 +586,16 @@
           <div id="prToolsRows" class="proc-rows"></div>
         </div>
 
-        <!-- Kroky -->
+        <!-- Kroky / operácie -->
         <div class="form-group">
           <div class="proc-rows-hdr">
-            <label>Postup — kroky</label>
-            <button type="button" class="btn-sm" onclick="addStepRow()">+ Pridať krok</button>
+            <label>Postup — operácie <span class="form-hint">(rich text, obrázok, upozornenia, ochranné pomôcky)</span></label>
+            <div style="display:flex;gap:8px">
+              <button type="button" class="btn-sm" onclick="openProcedurePreview()" title="Náhľad">👁 Náhľad</button>
+              <button type="button" class="btn-sm" onclick="addStepRow()">+ Pridať operáciu</button>
+            </div>
           </div>
-          <div id="prStepsRows" class="proc-rows"></div>
+          <div id="prStepsRows" class="proc-steps"></div>
         </div>
 
         <!-- Riziká -->
@@ -605,9 +614,26 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn-delete" id="prDeleteBtn" onclick="deleteProcedure()" style="display:none">Odstrániť</button>
+        <button class="btn-delete" id="prDeleteBtn" onclick="deleteProcedure(document.getElementById('prId').value)" style="display:none">Odstrániť</button>
         <button class="btn-secondary" onclick="closeProcedureModal()">Zrušiť</button>
         <button class="btn-primary" onclick="saveProcedure()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PROCEDURE PREVIEW MODAL ===== -->
+  <div id="procPreviewModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeProcedurePreview()"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>👁 Náhľad postupu</h2>
+        <button class="modal-close" onclick="closeProcedurePreview()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="procPreviewBody" class="proc-detail"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeProcedurePreview()">Zavrieť</button>
       </div>
     </div>
   </div>

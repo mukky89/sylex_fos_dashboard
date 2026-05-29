@@ -1438,7 +1438,37 @@ async function deleteEvent() {
 let proceduresData = [];
 const PROC_STATUS = { active: 'Aktívny', draft: 'Koncept', archived: 'Archivovaný' };
 
+// Číselník typov upozornení a ochranných pomôcok (z /api/procedures/meta)
+const PROC_META_FALLBACK = {
+  warnings: [
+    { key: 'manipulacia', label: 'Pozor pri manipulácii', icon: '⚠️' },
+    { key: 'chemikalia',  label: 'Pozor na chemikáliu',   icon: '🧪' },
+    { key: 'general',     label: 'Všeobecné upozornenie', icon: '❗' },
+  ],
+  ppe: [
+    { key: 'okuliare', label: 'Ochranné okuliare', icon: '🥽' },
+    { key: 'rukavice', label: 'Ochranné rukavice', icon: '🧤' },
+  ]
+};
+let PROC_META = { warnings: [], ppe: [] };
+let stepQuills = {};
+let stepSeq = 0;
+let currentDetailProcedure = null;
+
+async function loadProcMeta() {
+  if (PROC_META.warnings && PROC_META.warnings.length) return;
+  try {
+    const m = await fetch('/api/procedures/meta').then(r => r.json());
+    PROC_META = (m && m.warnings) ? m : PROC_META_FALLBACK;
+  } catch { PROC_META = PROC_META_FALLBACK; }
+}
+function procWarnMap() { const m = {}; (PROC_META.warnings || []).forEach(w => m[w.key] = w); return m; }
+function procPpeMap()  { const m = {}; (PROC_META.ppe || []).forEach(w => m[w.key] = w); return m; }
+function stripHtmlText(html) { const d = document.createElement('div'); d.innerHTML = html || ''; return (d.textContent || '').trim(); }
+
 async function loadProcedures() {
+  await loadProcMeta();
+  backToProcedureList();
   const list = document.getElementById('procList');
   if (list) list.innerHTML = '<div class="admin-loading">Načítavam…</div>';
   try {
@@ -1468,11 +1498,11 @@ function renderProcedures() {
 
   list.innerHTML = '';
   items.forEach(p => {
-    const stepCount = (p.steps || []).filter(s => (s.text || '').trim()).length;
+    const stepCount = (p.steps || []).filter(s => stripHtmlText(s.text) || s.image).length;
     const card = document.createElement('div');
     card.className = 'proc-card';
     card.innerHTML = `
-      <div class="proc-card-main" onclick="openProcedureModal(proceduresData.find(x => x._id === '${p._id}'))">
+      <div class="proc-card-main" onclick="showProcedureDetail('${p._id}')">
         <div class="proc-card-top">
           <span class="proc-card-title">${escHtml(p.title)}</span>
           <span class="proc-status-badge proc-status-${p.status}">${PROC_STATUS[p.status] || p.status}</span>
@@ -1480,7 +1510,7 @@ function renderProcedures() {
         <div class="proc-card-meta">
           ${p.department ? `<span>🏢 ${escHtml(p.department)}</span>` : ''}
           ${p.author ? `<span>👤 ${escHtml(p.author)}</span>` : ''}
-          <span>🪜 ${stepCount} ${stepCount === 1 ? 'krok' : (stepCount >= 2 && stepCount <= 4 ? 'kroky' : 'krokov')}</span>
+          <span>🪜 ${stepCount} ${stepCount === 1 ? 'operácia' : (stepCount >= 2 && stepCount <= 4 ? 'operácie' : 'operácií')}</span>
           <span>🕒 ${fmtDate(p.updatedAt)}</span>
         </div>
       </div>
@@ -1489,7 +1519,7 @@ function renderProcedures() {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Word
         </button>
-        <button class="admin-icon-btn" onclick="openProcedureModal(proceduresData.find(x => x._id === '${p._id}'))" title="Upraviť">✎</button>
+        <button class="admin-icon-btn" onclick="showProcedureDetail('${p._id}')" title="Náhľad / Upraviť">👁</button>
         <button class="admin-icon-btn danger" onclick="deleteProcedure('${p._id}')" title="Odstrániť">✕</button>
       </div>`;
     list.appendChild(card);
@@ -1500,14 +1530,98 @@ function generateProcedureWord(id) {
   window.location.href = `/api/procedures/${id}/docx`;
 }
 
-// ── Dynamic rows ──────────────────────────────────────────────────────────────
-function procRemoveRow(btn) { btn.closest('.proc-row')?.remove(); }
-function procMoveRow(btn, dir) {
-  const row = btn.closest('.proc-row');
-  if (!row) return;
-  if (dir < 0 && row.previousElementSibling) row.parentNode.insertBefore(row, row.previousElementSibling);
-  if (dir > 0 && row.nextElementSibling)     row.parentNode.insertBefore(row.nextElementSibling, row);
+// ── Detail / náhľad (read-only) ───────────────────────────────────────────────
+function renderProcedureDetailHtml(p) {
+  const wm = procWarnMap(), pm = procPpeMap();
+  const steps = (p.steps || []).filter(s => stripHtmlText(s.text) || s.image || (s.note || '').trim() || (s.warnings && s.warnings.length) || (s.ppe && s.ppe.length));
+  const meta = [];
+  if (p.department) meta.push(`<span>🏢 ${escHtml(p.department)}</span>`);
+  if (p.author)     meta.push(`<span>👤 ${escHtml(p.author)}</span>`);
+  if (p.date)       meta.push(`<span>📅 ${fmtDate(p.date)}</span>`);
+  meta.push(`<span class="proc-status-badge proc-status-${p.status || 'active'}">${PROC_STATUS[p.status] || p.status || ''}</span>`);
+
+  let html = `
+    <div class="pdv-head">
+      <div class="pdv-eyebrow">PRACOVNÝ POSTUP</div>
+      <h1 class="pdv-title">${escHtml(p.title || '(bez názvu)')}</h1>
+      <div class="pdv-meta">${meta.join('')}</div>
+    </div>`;
+
+  if ((p.purpose || '').trim())
+    html += `<div class="pdv-section"><h3>Cieľ / Účel</h3><p class="pdv-purpose">${escHtml(p.purpose).replace(/\n/g, '<br>')}</p></div>`;
+
+  const tools = (p.tools || []).filter(t => (t.name || '').trim());
+  if (tools.length)
+    html += `<div class="pdv-section"><h3>Potrebné pomôcky / nástroje</h3><ul class="pdv-tools">${tools.map(t => `<li><strong>${escHtml(t.name)}</strong>${t.note ? ` — ${escHtml(t.note)}` : ''}</li>`).join('')}</ul></div>`;
+
+  if (steps.length) {
+    html += `<div class="pdv-section"><h3>Postup</h3><div class="pdv-steps">`;
+    steps.forEach((s, i) => {
+      const warns = (s.warnings || []).map(k => wm[k] ? `<span class="pdv-badge pdv-warn">${wm[k].icon} ${escHtml(wm[k].label)}</span>` : '').join('');
+      const ppes  = (s.ppe || []).map(k => pm[k] ? `<span class="pdv-badge pdv-ppe">${pm[k].icon} ${escHtml(pm[k].label)}</span>` : '').join('');
+      html += `<div class="pdv-step">
+        <div class="pdv-step-num">${i + 1}</div>
+        <div class="pdv-step-body">
+          <div class="pdv-step-text ql-editor">${s.text || ''}</div>
+          ${(s.note || '').trim() ? `<div class="pdv-step-note">📝 ${escHtml(s.note)}</div>` : ''}
+          ${s.image ? `<div class="pdv-step-img"><img src="${escHtml(s.image)}" alt=""></div>` : ''}
+          ${warns ? `<div class="pdv-badges pdv-badges-warn">${warns}</div>` : ''}
+          ${ppes ? `<div class="pdv-badges pdv-badges-ppe">${ppes}</div>` : ''}
+        </div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  const risks = (p.risks || []).filter(r => (r || '').trim());
+  if (risks.length)
+    html += `<div class="pdv-section"><h3>Riziká / Upozornenia</h3><ul class="pdv-risks">${risks.map(r => `<li>${escHtml(r)}</li>`).join('')}</ul></div>`;
+
+  const atts = (p.attachments || []).filter(a => (a.label || a.url || '').trim());
+  if (atts.length)
+    html += `<div class="pdv-section"><h3>Prílohy / Odkazy</h3><ul class="pdv-atts">${atts.map(a => `<li>${escHtml(a.label || a.url)}${a.label && a.url ? ` <span class="pdv-att-url">${escHtml(a.url)}</span>` : ''}</li>`).join('')}</ul></div>`;
+
+  return html;
 }
+
+async function showProcedureDetail(id) {
+  await loadProcMeta();
+  let p = proceduresData.find(x => x._id === id) || null;
+  try { p = await fetch('/api/procedures/' + id).then(r => r.json()); } catch {}
+  if (!p || p.error) { alert('Postup sa nepodarilo načítať'); return; }
+  currentDetailProcedure = p;
+  const det = document.getElementById('procDetail');
+  det.innerHTML = `
+    <div class="pdv-toolbar">
+      <button class="btn-secondary" onclick="backToProcedureList()">← Späť na zoznam</button>
+      <div class="pdv-toolbar-actions">
+        <button class="btn-word" onclick="generateProcedureWord('${p._id}')">⬇ Word</button>
+        <button class="btn-edit" onclick="editDetailProcedure()">✎ Upraviť</button>
+        <button class="btn-delete" onclick="deleteProcedure('${p._id}')">🗑 Odstrániť</button>
+      </div>
+    </div>
+    <div class="pdv-card">${renderProcedureDetailHtml(p)}</div>`;
+  document.getElementById('procListView').classList.add('hidden');
+  det.classList.remove('hidden');
+}
+function editDetailProcedure() { if (currentDetailProcedure) openProcedureModal(currentDetailProcedure); }
+function backToProcedureList() {
+  const det = document.getElementById('procDetail');
+  if (det) det.classList.add('hidden');
+  const lv = document.getElementById('procListView');
+  if (lv) lv.classList.remove('hidden');
+}
+
+// ── Náhľad počas editácie (z modalu) ──────────────────────────────────────────
+function openProcedurePreview() {
+  const p = collectProcedureForm();
+  document.getElementById('procPreviewBody').innerHTML = renderProcedureDetailHtml(p);
+  document.getElementById('procPreviewModal').classList.remove('hidden');
+}
+function closeProcedurePreview() { document.getElementById('procPreviewModal').classList.add('hidden'); }
+
+// ── Dynamické riadky (pomôcky, prílohy) ───────────────────────────────────────
+function procRemoveRow(btn) { btn.closest('.proc-row')?.remove(); }
 
 function addToolRow(tool = {}) {
   const c = document.getElementById('prToolsRows');
@@ -1516,23 +1630,6 @@ function addToolRow(tool = {}) {
   row.innerHTML = `
     <input type="text" class="proc-tool-name" placeholder="Pomôcka / nástroj" value="${escHtml(tool.name || '')}">
     <input type="text" class="proc-tool-note" placeholder="Poznámka" value="${escHtml(tool.note || '')}">
-    <button type="button" class="proc-row-del" onclick="procRemoveRow(this)" title="Odstrániť">✕</button>`;
-  c.appendChild(row);
-}
-
-function addStepRow(step = {}) {
-  const c = document.getElementById('prStepsRows');
-  const row = document.createElement('div');
-  row.className = 'proc-row proc-row-step';
-  row.innerHTML = `
-    <div class="proc-step-handle">
-      <button type="button" class="proc-row-move" onclick="procMoveRow(this,-1)" title="Hore">↑</button>
-      <button type="button" class="proc-row-move" onclick="procMoveRow(this,1)" title="Dole">↓</button>
-    </div>
-    <div class="proc-step-fields">
-      <input type="text" class="proc-step-text" placeholder="Popis kroku" value="${escHtml(step.text || '')}">
-      <input type="text" class="proc-step-note" placeholder="Poznámka (voliteľné)" value="${escHtml(step.note || '')}">
-    </div>
     <button type="button" class="proc-row-del" onclick="procRemoveRow(this)" title="Odstrániť">✕</button>`;
   c.appendChild(row);
 }
@@ -1548,8 +1645,162 @@ function addAttachmentRow(att = {}) {
   c.appendChild(row);
 }
 
+// ── Operácie (rich karty) ─────────────────────────────────────────────────────
+function procMoveStep(btn, dir) {
+  const card = btn.closest('.proc-step-card');
+  if (!card) return;
+  if (dir < 0 && card.previousElementSibling) card.parentNode.insertBefore(card, card.previousElementSibling);
+  if (dir > 0 && card.nextElementSibling)     card.parentNode.insertBefore(card.nextElementSibling, card);
+}
+function procRemoveStep(btn) {
+  const card = btn.closest('.proc-step-card');
+  if (!card) return;
+  delete stepQuills[card.dataset.sid];
+  card.remove();
+}
+
+function renderIconPicker(el, defs, selected) {
+  if (!el) return;
+  el.innerHTML = '';
+  (defs || []).forEach(d => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'proc-icon-btn' + (selected.includes(d.key) ? ' active' : '');
+    b.title = d.label;
+    b.innerHTML = `<span class="pi-emoji">${d.icon}</span><span class="pi-label">${escHtml(d.label)}</span>`;
+    b.onclick = () => {
+      const i = selected.indexOf(d.key);
+      if (i >= 0) selected.splice(i, 1); else selected.push(d.key);
+      b.classList.toggle('active');
+    };
+    el.appendChild(b);
+  });
+}
+
+function renderStepThumb(card) {
+  const el = card.querySelector('.proc-step-img');
+  if (!el) return;
+  el.innerHTML = card._image
+    ? `<div class="proc-thumb"><img src="${escHtml(card._image)}" alt=""><button type="button" class="proc-thumb-del" onclick="removeStepImage(this)" title="Odstrániť obrázok">✕</button></div>`
+    : '<span class="proc-thumb-empty">Žiadny obrázok</span>';
+}
+function removeStepImage(btn) { const card = btn.closest('.proc-step-card'); if (card) { card._image = ''; renderStepThumb(card); } }
+
+async function importStepImage(btn) {
+  const card = btn.closest('.proc-step-card');
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  input.onchange = async () => {
+    const f = input.files[0]; if (!f) return;
+    const url = await uploadImage(f);
+    if (url) { card._image = url; renderStepThumb(card); }
+  };
+  input.click();
+}
+
+function quillInsertImage(q) {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  input.onchange = async () => {
+    const f = input.files[0]; if (!f) return;
+    const url = await uploadImage(f);
+    if (url) { const r = q.getSelection(true); q.insertEmbed(r.index, 'image', url); }
+  };
+  input.click();
+}
+
+function addStepRow(step = {}) {
+  const c = document.getElementById('prStepsRows');
+  const sid = 'pstep_' + (++stepSeq);
+  const card = document.createElement('div');
+  card.className = 'proc-step-card';
+  card.dataset.sid = sid;
+  card._image    = step.image || '';
+  card._warnings = [...(step.warnings || [])];
+  card._ppe      = [...(step.ppe || [])];
+  card.innerHTML = `
+    <div class="proc-step-card-hdr">
+      <span class="proc-step-badge">Operácia</span>
+      <div class="proc-step-card-tools">
+        <button type="button" class="proc-row-move" onclick="procMoveStep(this,-1)" title="Hore">↑</button>
+        <button type="button" class="proc-row-move" onclick="procMoveStep(this,1)" title="Dole">↓</button>
+        <button type="button" class="proc-row-del" onclick="procRemoveStep(this)" title="Odstrániť">✕</button>
+      </div>
+    </div>
+    <div class="proc-step-editor" id="${sid}_ed"></div>
+    <input type="text" class="proc-step-note" placeholder="Krátka poznámka (voliteľné)" value="${escHtml(step.note || '')}">
+    <div class="proc-step-section">
+      <div class="proc-mini-label">Obrázok operácie</div>
+      <div class="proc-step-img"></div>
+      <button type="button" class="btn-sm" onclick="importStepImage(this)">🖼 Importovať obrázok</button>
+    </div>
+    <div class="proc-step-section">
+      <div class="proc-mini-label">⚠️ Upozornenia</div>
+      <div class="proc-icon-pick" id="${sid}_warn"></div>
+    </div>
+    <div class="proc-step-section">
+      <div class="proc-mini-label">🦺 Ochranné pracovné pomôcky</div>
+      <div class="proc-icon-pick" id="${sid}_ppe"></div>
+    </div>`;
+  c.appendChild(card);
+
+  const q = new Quill('#' + sid + '_ed', {
+    theme: 'snow',
+    placeholder: 'Podrobný popis operácie…',
+    modules: { toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['blockquote', 'code-block'],
+      ['link', 'image'], ['clean']
+    ] }
+  });
+  if (step.text) q.clipboard.dangerouslyPasteHTML(step.text);
+  q.getModule('toolbar').addHandler('image', () => quillInsertImage(q));
+  stepQuills[sid] = q;
+
+  renderStepThumb(card);
+  renderIconPicker(document.getElementById(sid + '_warn'), PROC_META.warnings, card._warnings);
+  renderIconPicker(document.getElementById(sid + '_ppe'),  PROC_META.ppe,      card._ppe);
+}
+
+function collectSteps() {
+  return [...document.querySelectorAll('#prStepsRows .proc-step-card')].map(card => {
+    const q = stepQuills[card.dataset.sid];
+    return {
+      text:     q ? q.root.innerHTML : '',
+      note:     card.querySelector('.proc-step-note').value.trim(),
+      image:    card._image || '',
+      warnings: card._warnings || [],
+      ppe:      card._ppe || []
+    };
+  }).filter(s => stripHtmlText(s.text) || s.image || s.note || (s.warnings && s.warnings.length) || (s.ppe && s.ppe.length));
+}
+
+function collectProcedureForm() {
+  const tools = [...document.querySelectorAll('#prToolsRows .proc-row')].map(r => ({
+    name: r.querySelector('.proc-tool-name').value.trim(),
+    note: r.querySelector('.proc-tool-note').value.trim()
+  })).filter(t => t.name);
+  const attachments = [...document.querySelectorAll('#prAttRows .proc-row')].map(r => ({
+    label: r.querySelector('.proc-att-label').value.trim(),
+    url:   r.querySelector('.proc-att-url').value.trim()
+  })).filter(a => a.label || a.url);
+  const risks = document.getElementById('prRisks').value.split('\n').map(s => s.trim()).filter(Boolean);
+  return {
+    title:      document.getElementById('prTitle').value.trim(),
+    department: document.getElementById('prDepartment').value.trim(),
+    author:     document.getElementById('prAuthor').value.trim(),
+    date:       document.getElementById('prDate').value || undefined,
+    purpose:    document.getElementById('prPurpose').value.trim(),
+    status:     document.querySelector('input[name="prStatus"]:checked')?.value || 'active',
+    tools, steps: collectSteps(), risks, attachments
+  };
+}
+
 // ── Modal ─────────────────────────────────────────────────────────────────────
-function openProcedureModal(proc = null) {
+async function openProcedureModal(proc = null) {
+  await loadProcMeta();
   const isEdit = proc && typeof proc === 'object';
   document.getElementById('procModalTitle').textContent = isEdit ? 'Upraviť postup' : 'Nový postup';
   document.getElementById('prId').value         = isEdit ? proc._id : '';
@@ -1564,12 +1815,13 @@ function openProcedureModal(proc = null) {
   if (statusRadio) statusRadio.checked = true;
   document.getElementById('prDeleteBtn').style.display = isEdit ? '' : 'none';
 
-  // Dynamic rows
+  // Reset dynamických častí
+  stepQuills = {};
   document.getElementById('prToolsRows').innerHTML = '';
   document.getElementById('prStepsRows').innerHTML = '';
   document.getElementById('prAttRows').innerHTML   = '';
   const tools = (isEdit && proc.tools && proc.tools.length) ? proc.tools : [{}];
-  const steps = (isEdit && proc.steps && proc.steps.length) ? proc.steps : [{}, {}];
+  const steps = (isEdit && proc.steps && proc.steps.length) ? proc.steps : [{}];
   const atts  = (isEdit && proc.attachments && proc.attachments.length) ? proc.attachments : [];
   tools.forEach(addToolRow);
   steps.forEach(addStepRow);
@@ -1583,35 +1835,8 @@ function closeProcedureModal() {
 }
 
 async function saveProcedure() {
-  const title = document.getElementById('prTitle').value.trim();
-  if (!title) { alert('Zadajte názov postupu'); return; }
-
-  const tools = [...document.querySelectorAll('#prToolsRows .proc-row')].map(r => ({
-    name: r.querySelector('.proc-tool-name').value.trim(),
-    note: r.querySelector('.proc-tool-note').value.trim()
-  })).filter(t => t.name);
-
-  const steps = [...document.querySelectorAll('#prStepsRows .proc-row')].map(r => ({
-    text: r.querySelector('.proc-step-text').value.trim(),
-    note: r.querySelector('.proc-step-note').value.trim()
-  })).filter(s => s.text);
-
-  const attachments = [...document.querySelectorAll('#prAttRows .proc-row')].map(r => ({
-    label: r.querySelector('.proc-att-label').value.trim(),
-    url:   r.querySelector('.proc-att-url').value.trim()
-  })).filter(a => a.label || a.url);
-
-  const risks = document.getElementById('prRisks').value.split('\n').map(s => s.trim()).filter(Boolean);
-
-  const body = {
-    title,
-    department: document.getElementById('prDepartment').value.trim(),
-    author:     document.getElementById('prAuthor').value.trim(),
-    date:       document.getElementById('prDate').value || undefined,
-    purpose:    document.getElementById('prPurpose').value.trim(),
-    status:     document.querySelector('input[name="prStatus"]:checked')?.value || 'active',
-    tools, steps, risks, attachments
-  };
+  const body = collectProcedureForm();
+  if (!body.title) { alert('Zadajte názov postupu'); return; }
 
   const id = document.getElementById('prId').value;
   try {
@@ -1633,6 +1858,7 @@ async function deleteProcedure(id) {
   if (!confirm('Naozaj odstrániť tento postup?')) return;
   try {
     await fetch('/api/procedures/' + id, { method: 'DELETE' });
+    closeProcedureModal();
     loadProcedures();
   } catch { alert('Chyba pri odstraňovaní'); }
 }
