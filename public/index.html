@@ -6,384 +6,215 @@
   <title>SYLEX FOS Dashboard</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.quilljs.com/1.3.7/quill.snow.css">
 </head>
 <body>
-  <!-- Animated background -->
-  <div class="bg-grid"></div>
-  <div class="particles" id="particles"></div>
 
-  <!-- Header -->
+  <!-- ===== HEADER ===== -->
   <header class="header">
     <div class="header-inner">
       <div class="logo" onclick="showPage('home')">
-        <svg class="logo-svg" viewBox="0 0 38 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M5 9C5 9 5 6 9 6H17C21 6 21 10 21 10C21 14 17 15.5 13 17C9 18.5 5 20.5 5 24.5C5 24.5 5 27 9 27H17C21 27 21 24 21 24" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M27 6L33 16L27 27M33 6L27 27" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span class="logo-name">YLEX</span>
+        <img src="https://www.sylex.sk/wp-content/uploads/2023/08/sylexlogo.png" alt="Sylex" class="logo-img">
         <div class="logo-divider"></div>
         <span class="logo-sub-text">FOS Division</span>
       </div>
+
+      <!-- Quick link tiles in header -->
+      <div class="header-quicklinks">
+        <a href="https://dbfos.sylex.sk" target="_blank" class="ql-chip ql-cyan">
+          <span class="ql-dot"></span> DBFOS
+        </a>
+        <a href="https://isys.sylex.sk/" target="_blank" class="ql-chip ql-blue">
+          <span class="ql-dot"></span> ISYS
+        </a>
+        <div class="ql-chip ql-purple" onclick="openPeaklogger(event)" style="cursor:pointer">
+          <span class="ql-dot"></span> PEAKLOGGER
+          <button class="ql-cred-btn" onclick="togglePeakloggerCreds(event)" title="Zobraziť prístupy">🔑</button>
+        </div>
+      </div>
+
       <nav class="nav">
         <a class="nav-link active" onclick="showPage('home')" data-page="home">
-          <span class="nav-icon">⌂</span> Home
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Home
         </a>
         <a class="nav-link" onclick="showPage('wiki')" data-page="wiki">
-          <span class="nav-icon">◈</span> Knowledge Base
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+          Knowledge Base
         </a>
       </nav>
+
       <div class="header-right">
         <div class="status-dot"></div>
         <span class="status-text">ONLINE</span>
-        <span class="header-version">FOS</span>
       </div>
     </div>
   </header>
 
+  <!-- PEAKLOGGER credentials popover -->
+  <div id="plPopover" class="pl-popover hidden" onclick="event.stopPropagation()">
+    <div class="pl-popover-title">PEAKLOGGER — Prístupy</div>
+    <div class="cred-row"><span class="cred-label">Login</span><span class="cred-value" id="plUser">••••••</span></div>
+    <div class="cred-row"><span class="cred-label">Heslo</span><span class="cred-value" id="plPass">••••••••••••</span></div>
+    <div class="pl-popover-actions">
+      <button class="cred-toggle" id="plToggle" onclick="togglePlVisible()">👁 Zobraziť</button>
+      <a href="https://mukovnik.xyz/" target="_blank" class="btn-sm">↗ Otvoriť</a>
+    </div>
+  </div>
+
   <!-- ===== HOME PAGE ===== -->
   <main id="page-home" class="page active">
+    <div class="bg-grid"></div>
+    <div class="particles" id="particles"></div>
 
-    <!-- Command Center Banner -->
-    <div class="cc-banner">
-      <div class="cc-inner">
-        <div class="cc-title-wrap">
-          <svg class="cc-fiber-mark" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="20" cy="20" r="16" fill="none" stroke="rgba(0,212,255,0.25)" stroke-width="1"/>
-            <path d="M6 20 Q13 10 20 20 Q27 30 34 20" fill="none" stroke="#00d4ff" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="20" cy="20" r="3.5" fill="#00d4ff"/>
-            <circle cx="6" cy="20" r="2" fill="rgba(0,212,255,0.5)"/>
-            <circle cx="34" cy="20" r="2" fill="rgba(0,212,255,0.5)"/>
+    <div class="home-inner">
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-content">
+          <img src="https://www.sylex.sk/wp-content/uploads/2023/08/sylexlogo.png" alt="Sylex" class="hero-logo-img">
+          <div class="hero-badge">FIBER OPTICS SENSORS</div>
+          <h1 class="hero-title">
+            <span>FOS</span>
+            <span class="accent">Dashboard</span>
+          </h1>
+          <p class="hero-desc">Centralizovaný hub pre systémy, nástroje a dokumentáciu FOS divízie</p>
+        </div>
+        <div class="hero-visual">
+          <div class="pulse-ring"></div>
+          <div class="pulse-ring delay1"></div>
+          <div class="pulse-ring delay2"></div>
+          <svg viewBox="0 0 120 120" width="110" height="110" style="position:relative;z-index:1;filter:drop-shadow(0 0 20px rgba(0,212,255,0.4))">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
+            <path d="M20 60 Q35 30 60 60 Q85 90 100 60" fill="none" stroke="#00d4ff" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M20 50 Q35 20 60 50 Q85 80 100 50" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M20 70 Q35 40 60 70 Q85 100 100 70" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="60" cy="60" r="6" fill="#00d4ff"/>
           </svg>
-          <div>
-            <div class="cc-main-title">FOS Dashboard</div>
-            <div class="cc-subtitle">FIBER OPTICS SENSORS · SYLEX</div>
-          </div>
         </div>
-        <nav class="cc-quicknav">
-          <a href="https://dbfos.sylex.sk" target="_blank" class="ccn">DBFOS</a>
-          <a href="https://isys.sylex.sk/" target="_blank" class="ccn">ISYS</a>
-          <a href="https://syxapp03.sylex.sk/ads/index.php" target="_blank" class="ccn">DOCHÁDZKA</a>
-          <span class="ccn ccn-kb" onclick="showPage('wiki')">◈ KB</span>
-        </nav>
+      </div>
+
+      <!-- KB quick access -->
+      <div class="home-kb-section">
+        <div class="home-kb-search-wrap">
+          <div class="home-search-box">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="homeSearchInput" placeholder="Hľadať v Knowledge Base..." oninput="homeSearch(this.value)" onfocus="showPage('wiki')" autocomplete="off">
+          </div>
+          <button class="btn-primary" onclick="showPage('wiki')">
+            Otvoriť KB <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+        <div id="homeKBPreview" class="home-kb-preview"></div>
       </div>
     </div>
-
-    <!-- Unified tiles grid -->
-    <section class="cc-section">
-      <div class="cc-grid">
-
-        <!-- KB tile — first / top-left -->
-        <div class="tile tile-kb" onclick="showPage('wiki')">
-          <div class="tile-glow"></div>
-          <div class="tile-corner tl"></div>
-          <div class="tile-corner tr"></div>
-          <div class="tile-corner bl"></div>
-          <div class="tile-corner br"></div>
-          <div class="tile-icon" style="color:var(--accent)">
-            <svg viewBox="0 0 60 60" width="60" height="60">
-              <rect x="8" y="8" width="44" height="44" rx="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="16" y1="20" x2="44" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <line x1="16" y1="28" x2="44" y2="28" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <line x1="16" y1="36" x2="32" y2="36" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <circle cx="44" cy="44" r="10" fill="rgba(0,212,255,0.15)" stroke="currentColor" stroke-width="1.5"/>
-              <text x="44" y="48.5" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">◈</text>
-            </svg>
-          </div>
-          <div class="tile-content">
-            <span class="tile-label">KNOWLEDGE BASE</span>
-            <h3 class="tile-title">FOS Docs</h3>
-            <p class="tile-desc">Dokumentácia, konfiguračné návody a technické záznamy FOS divízie</p>
-          </div>
-          <div class="kb-tile-stats">
-            <span class="kb-tile-stat"><span id="ccKbProd">—</span> záznamov</span>
-            <span class="kb-tile-stat"><span id="ccKbCat">—</span> kategórií</span>
-          </div>
-          <div class="tile-arrow" style="color:var(--accent)">→</div>
-        </div>
-
-        <a href="https://dbfos.sylex.sk" target="_blank" class="tile tile-dbfos">
-          <div class="tile-glow"></div>
-          <div class="tile-corner tl"></div>
-          <div class="tile-corner tr"></div>
-          <div class="tile-corner bl"></div>
-          <div class="tile-corner br"></div>
-          <div class="tile-icon">
-            <svg viewBox="0 0 60 60" width="60" height="60">
-              <rect x="10" y="8" width="40" height="44" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="18" y1="18" x2="42" y2="18" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="18" y1="26" x2="42" y2="26" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="18" y1="34" x2="34" y2="34" stroke="currentColor" stroke-width="1.5"/>
-              <circle cx="44" cy="44" r="8" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.5"/>
-              <path d="M41 44h6M44 41v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div class="tile-content">
-            <span class="tile-label">ERP SYSTEM</span>
-            <h3 class="tile-title">DBFOS</h3>
-            <p class="tile-desc">Databáza produktov a výrobná evidencia FOS divízie</p>
-          </div>
-          <div class="tile-arrow">→</div>
-          <div class="tile-url">dbfos.sylex.sk</div>
-        </a>
-
-        <a href="https://isys.sylex.sk/" target="_blank" class="tile tile-isys">
-          <div class="tile-glow"></div>
-          <div class="tile-corner tl"></div>
-          <div class="tile-corner tr"></div>
-          <div class="tile-corner bl"></div>
-          <div class="tile-corner br"></div>
-          <div class="tile-icon">
-            <svg viewBox="0 0 60 60" width="60" height="60">
-              <circle cx="30" cy="30" r="20" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <path d="M20 30 Q25 20 30 30 Q35 40 40 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              <circle cx="30" cy="30" r="4" fill="currentColor"/>
-              <line x1="30" y1="10" x2="30" y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <line x1="30" y1="44" x2="30" y2="50" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <line x1="10" y1="30" x2="16" y2="30" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <line x1="44" y1="30" x2="50" y2="30" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div class="tile-content">
-            <span class="tile-label">ERP SYSTEM</span>
-            <h3 class="tile-title">ISYS</h3>
-            <p class="tile-desc">Interný informačný systém Sylex pre správu firmy</p>
-          </div>
-          <div class="tile-arrow">→</div>
-          <div class="tile-url">isys.sylex.sk</div>
-        </a>
-
-        <a href="https://syxapp03.sylex.sk/ads/index.php" target="_blank" class="tile tile-dochadzka">
-          <div class="tile-glow"></div>
-          <div class="tile-corner tl"></div>
-          <div class="tile-corner tr"></div>
-          <div class="tile-corner bl"></div>
-          <div class="tile-corner br"></div>
-          <div class="tile-icon">
-            <svg viewBox="0 0 60 60" width="60" height="60">
-              <rect x="10" y="12" width="40" height="38" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="10" y1="22" x2="50" y2="22" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="20" y1="6" x2="20" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <line x1="40" y1="6" x2="40" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <circle cx="30" cy="38" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <path d="M30 34v4l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <div class="tile-content">
-            <span class="tile-label">HR SYSTÉM</span>
-            <h3 class="tile-title">DOCHÁDZKA</h3>
-            <p class="tile-desc">Evidencia dochádzky a pracovného času zamestnancov Sylex</p>
-          </div>
-          <div class="tile-arrow">→</div>
-          <div class="tile-url">syxapp03.sylex.sk</div>
-        </a>
-
-        <div class="tile tile-peaklogger" onclick="openPeaklogger(event)">
-          <div class="tile-glow"></div>
-          <div class="tile-corner tl"></div>
-          <div class="tile-corner tr"></div>
-          <div class="tile-corner bl"></div>
-          <div class="tile-corner br"></div>
-          <div class="tile-icon">
-            <svg viewBox="0 0 60 60" width="60" height="60">
-              <rect x="8" y="20" width="44" height="28" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <path d="M16 38 L22 30 L28 34 L34 24 L40 28 L46 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M24 48 L24 56 M36 48 L36 56 M20 56 L40 56" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <circle cx="34" cy="24" r="3" fill="currentColor"/>
-            </svg>
-          </div>
-          <div class="tile-content">
-            <span class="tile-label">SOFTWARE</span>
-            <h3 class="tile-title">PEAKLOGGER</h3>
-            <p class="tile-desc">Softvér na stiahnutie — záznam a analýza dát zo senzorov</p>
-          </div>
-          <div class="tile-credentials" id="peakloggerCreds" onclick="event.stopPropagation()">
-            <div class="cred-row">
-              <span class="cred-label">Login</span>
-              <span class="cred-value" id="plUser">••••••</span>
-            </div>
-            <div class="cred-row">
-              <span class="cred-label">Heslo</span>
-              <span class="cred-value" id="plPass">••••••••••••</span>
-            </div>
-            <button class="cred-toggle" id="plToggle" onclick="togglePeakloggerCreds(event)">👁 Zobraziť</button>
-          </div>
-          <div class="tile-arrow">↓</div>
-          <div class="tile-url">mukovnik.xyz</div>
-        </div>
-
-        <div class="tile tile-thermo" id="thermoTile" onclick="openThermo()">
-          <div class="tile-glow"></div>
-          <div class="tile-corner tl"></div>
-          <div class="tile-corner tr"></div>
-          <div class="tile-corner bl"></div>
-          <div class="tile-corner br"></div>
-          <div class="tile-icon">
-            <svg viewBox="0 0 60 60" width="60" height="60">
-              <rect x="24" y="5" width="12" height="32" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <rect x="27.5" y="20" width="5" height="19" rx="2.5" fill="currentColor" opacity="0.65"/>
-              <circle cx="30" cy="44" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <circle cx="30" cy="44" r="6.5" fill="currentColor" opacity="0.55"/>
-              <line x1="36" y1="13" x2="44" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <line x1="36" y1="20" x2="41" y2="20" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-              <line x1="36" y1="27" x2="44" y2="27" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div class="tile-content">
-            <span class="tile-label">SENSOR</span>
-            <h3 class="tile-title">TEPLOMER</h3>
-            <p class="tile-desc">Teplotný senzor FOS laboratória — vzdialený monitoring</p>
-          </div>
-          <div class="thermo-display">
-            <span class="thermo-value" id="thermoValue">--.--</span>
-            <span class="thermo-unit">°C</span>
-            <span class="thermo-status" id="thermoStatus">načítavam...</span>
-          </div>
-          <div class="tile-arrow">→</div>
-          <div class="tile-url">10.88.1.50</div>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- Recent KB Strip -->
-    <div class="cc-recent-section">
-      <div class="cc-recent-bar">
-        <span class="cc-recent-label">◈ Nedávno v Knowledge Base</span>
-        <div class="cc-recent-items" id="ccRecentItems">
-          <span class="cc-recent-item cc-recent-placeholder">Načítavanie...</span>
-        </div>
-        <button class="cc-recent-more" onclick="showPage('wiki')">Všetky záznamy →</button>
-      </div>
-    </div>
-
   </main>
 
   <!-- ===== WIKI PAGE ===== -->
-  <main id="page-wiki" class="page">
+  <main id="page-wiki" class="page wiki-page">
     <div class="wiki-layout">
 
       <!-- Sidebar -->
       <aside class="sidebar">
-        <div class="sidebar-header">
-          <h3>Knowledge Base</h3>
-          <button class="btn-new" onclick="openProductModal()">+ Nový</button>
+        <div class="sidebar-top">
+          <div class="sidebar-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="searchInput" placeholder="Hľadať..." oninput="filterProducts()" autocomplete="off">
+          </div>
+          <button class="sidebar-new-btn" onclick="openProductModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nový záznam
+          </button>
         </div>
-        <div class="sidebar-search">
-          <input type="text" id="searchInput" placeholder="Hľadať..." oninput="filterProducts()">
-        </div>
-        <div class="sidebar-wiki-nav">
-          <div class="swn-home active" id="swnHome" onclick="showWikiHome()">
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
-            <span>Domov</span>
+
+        <div class="sidebar-nav">
+          <div class="sidebar-nav-item active" id="swnHome" onclick="showWikiHome()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+            Prehľad
           </div>
         </div>
+
+        <div class="sidebar-section-label">KATEGÓRIE</div>
         <div class="sidebar-categories" id="sidebarCategories"></div>
+
+        <div class="sidebar-section-label" style="margin-top:8px">VŠETKY ZÁZNAMY</div>
         <div class="sidebar-products" id="sidebarProducts"></div>
       </aside>
 
       <!-- Main content -->
       <div class="wiki-main">
-        <!-- Wiki Home -->
+
+        <!-- KB Home / Welcome -->
         <div id="wikiWelcome" class="wiki-home">
-          <div class="wh-hero">
-            <div class="wh-hero-icon">◈</div>
-            <h1>FOS Knowledge Base</h1>
-            <p>Dokumentácia, konfiguračné návody a technické záznamy FOS divízie</p>
+          <div class="wh-toolbar">
             <div class="wh-search-wrap">
-              <svg class="wh-search-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18"><circle cx="8.5" cy="8.5" r="5.5"/><line x1="13" y1="13" x2="17" y2="17" stroke-linecap="round"/></svg>
-              <input type="text" id="wikiMainSearch" class="wh-search-input"
-                     placeholder="Hľadať v knowledge base..." oninput="liveSearch(this.value)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="wikiSearchMain" placeholder="Hľadať v Knowledge Base..." oninput="liveSearch(this.value)" autocomplete="off">
             </div>
+            <button class="btn-primary" onclick="openProductModal()">+ Nový záznam</button>
           </div>
 
           <div class="wh-section">
             <div class="wh-section-head">
-              <h2 class="wh-section-title">Kategórie</h2>
-              <button class="btn-sm" onclick="openCategoryModal()">+ Nová kategória</button>
+              <h2>Kategórie</h2>
+              <button class="btn-link" onclick="openCategoryModal()">+ Nová kategória</button>
             </div>
-            <div class="wh-cats" id="whCats">
-              <div class="wh-loading">Načítavanie...</div>
-            </div>
+            <div class="wh-cats-grid" id="whCats"></div>
           </div>
 
           <div class="wh-section">
             <div class="wh-section-head">
-              <h2 class="wh-section-title">Nedávno upravené</h2>
-              <button class="btn-primary" onclick="openProductModal()">+ Nový záznam</button>
+              <h2>Nedávno upravené</h2>
             </div>
-            <div class="wh-recent" id="whRecent">
-              <div class="wh-loading">Načítavanie...</div>
-            </div>
+            <div class="wh-articles-list" id="whRecent"></div>
           </div>
         </div>
 
-        <!-- Category View -->
+        <!-- Category view -->
         <div id="categoryView" class="category-view hidden">
-          <nav class="breadcrumb">
-            <span class="bc-link" onclick="showWikiHome()">Knowledge Base</span>
-            <span class="bc-sep">›</span>
-            <span class="bc-current" id="cvName"></span>
-          </nav>
+          <div class="cv-breadcrumb">
+            <span class="cv-bc-link" onclick="showWikiHome()">← Prehľad</span>
+          </div>
           <div class="cv-header">
-            <div class="cv-cat-icon" id="cvIcon"></div>
+            <span class="cv-icon" id="cvIcon">📁</span>
             <div>
               <h1 class="cv-title" id="cvTitle"></h1>
-              <div class="cv-count" id="cvCount"></div>
+              <span class="cv-count" id="cvCount"></span>
             </div>
-            <button class="btn-primary" style="margin-left:auto" onclick="openProductModal()">+ Nový záznam</button>
+            <button class="btn-primary" onclick="openProductModal()" style="margin-left:auto">+ Nový záznam</button>
           </div>
-          <div class="cv-articles" id="cvArticles"></div>
+          <div class="wh-articles-list" id="cvArticles"></div>
         </div>
 
         <!-- Product detail -->
         <div id="productDetail" class="product-detail hidden">
-          <nav class="breadcrumb" id="detailBreadcrumb">
-            <span class="bc-link" onclick="showWikiHome()">Knowledge Base</span>
-            <span class="bc-sep bc-cat-part" id="bcCatSepEl" style="display:none">›</span>
-            <span class="bc-cat bc-link" id="bcCategory" onclick="bcGoCategory()"></span>
-            <span class="bc-sep">›</span>
-            <span class="bc-current" id="bcCurrent"></span>
-          </nav>
-
-          <div class="detail-with-toc">
-            <div class="detail-body">
-              <div class="product-detail-header">
-                <div class="product-detail-meta">
-                  <span id="detailCategory" class="product-category-badge"></span>
-                  <span id="detailStatus" class="product-status-badge"></span>
-                </div>
-                <h1 id="detailName" class="product-detail-title"></h1>
-                <div class="product-detail-info">
-                  <span id="detailModel"></span>
-                  <span id="detailVersion"></span>
-                  <span id="detailUpdated"></span>
-                </div>
-                <div class="product-actions">
-                  <button class="btn-edit" onclick="editCurrentProduct()">✎ Upraviť</button>
-                  <button class="btn-delete" onclick="deleteCurrentProduct()">✕ Odstrániť</button>
-                  <button class="btn-share" onclick="shareCurrentProduct()">
-                    <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="13" cy="3" r="2"/><circle cx="3" cy="8" r="2"/><circle cx="13" cy="13" r="2"/><path d="M5 7l6-3M5 9l6 3" stroke-linecap="round"/></svg>
-                    Zdieľať
-                  </button>
-                </div>
-              </div>
-
-              <div id="detailDesc" class="product-detail-desc"></div>
-              <div id="detailContent" class="product-detail-content ql-editor"></div>
-              <div id="detailImages" class="product-images"></div>
-            </div>
-
-            <!-- Table of Contents -->
-            <aside class="wiki-toc-sidebar" id="wikiTocSidebar" style="display:none">
-              <div class="wiki-toc">
-                <div class="toc-header">Na tejto stránke</div>
-                <nav id="tocNav" class="toc-nav"></nav>
-              </div>
-            </aside>
+          <div class="pd-breadcrumb">
+            <span class="pd-bc-link" onclick="showWikiHome()">← Prehľad</span>
+            <span id="pdBcCat" class="pd-bc-cat" onclick="goBackToCategory()"></span>
           </div>
+          <div class="pd-header">
+            <div class="pd-header-left">
+              <div class="pd-badges" id="detailMeta"></div>
+              <h1 class="pd-title" id="detailName"></h1>
+              <p class="pd-desc" id="detailDesc"></p>
+            </div>
+            <div class="pd-actions">
+              <button class="btn-edit" onclick="editCurrentProduct()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Upraviť
+              </button>
+              <button class="btn-delete" onclick="deleteCurrentProduct()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                Odstrániť
+              </button>
+            </div>
+          </div>
+
+          <div class="pd-info-row" id="detailInfoRow"></div>
+          <div class="pd-content ql-editor" id="detailContent"></div>
+          <div class="pd-images" id="detailImages"></div>
         </div>
+
       </div>
     </div>
   </main>
@@ -393,27 +224,25 @@
     <div class="modal-backdrop" onclick="closeProductModal()"></div>
     <div class="modal-box">
       <div class="modal-header">
-        <h2 id="modalTitle">Nový produkt</h2>
+        <h2 id="modalTitle">Nový záznam</h2>
         <button class="modal-close" onclick="closeProductModal()">✕</button>
       </div>
       <div class="modal-body">
         <div class="form-row">
           <div class="form-group">
-            <label>Názov produktu *</label>
-            <input type="text" id="fName" placeholder="napr. FBGS Sensor Array">
+            <label>Názov *</label>
+            <input type="text" id="fName" placeholder="napr. Brother TD-4420TN">
           </div>
           <div class="form-group">
             <label>Model / SKU</label>
-            <input type="text" id="fModel" placeholder="napr. FOS-2400-A">
+            <input type="text" id="fModel" placeholder="napr. TD-4420TN">
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Kategória</label>
-            <div class="category-select-row">
-              <select id="fCategory">
-                <option value="">-- bez kategórie --</option>
-              </select>
+            <div class="input-with-btn">
+              <select id="fCategory"><option value="">— bez kategórie —</option></select>
               <button class="btn-sm" onclick="openCategoryModal()">+ Nová</button>
             </div>
           </div>
@@ -424,7 +253,11 @@
         </div>
         <div class="form-group">
           <label>Krátky popis</label>
-          <input type="text" id="fDesc" placeholder="Jednoriadkový popis produktu">
+          <input type="text" id="fDesc" placeholder="Jednoriadkový popis">
+        </div>
+        <div class="form-group">
+          <label>URL odkaz (voliteľné)</label>
+          <input type="text" id="fUrl" placeholder="https://support.brother.com/...">
         </div>
         <div class="form-group">
           <label>Stav</label>
@@ -440,48 +273,51 @@
         </div>
         <div class="form-group">
           <label>Obrázky</label>
-          <div class="image-upload-area" id="imageUploadArea">
-            <input type="file" id="imageFileInput" multiple accept="image/*" style="display:none" onchange="handleImageUpload(this)">
-            <button class="btn-upload" onclick="document.getElementById('imageFileInput').click()">
-              + Pridať obrázky
-            </button>
-            <div id="imagePreviewList" class="image-preview-list"></div>
+          <input type="file" id="imageFileInput" multiple accept="image/*" style="display:none" onchange="handleImageUpload(this)">
+          <div class="image-upload-zone" onclick="document.getElementById('imageFileInput').click()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            Kliknúť pre pridanie obrázkov
           </div>
+          <div id="imagePreviewList" class="image-preview-list"></div>
         </div>
         <div class="form-group">
-          <label>Tagy (oddelené čiarkou)</label>
-          <input type="text" id="fTags" placeholder="napr. FBGS, interrogator, konfigurácia">
+          <label>Tagy (čiarkou oddelené)</label>
+          <input type="text" id="fTags" placeholder="napr. tlačiareň, ethernet, konfigurácia">
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeProductModal()">Zrušiť</button>
-        <button class="btn-primary" onclick="saveProduct()">Uložiť produkt</button>
+        <button class="btn-primary" onclick="saveProduct()">Uložiť záznam</button>
       </div>
     </div>
   </div>
 
-  <!-- Category modal -->
+  <!-- ===== CATEGORY MODAL ===== -->
   <div id="categoryModal" class="modal hidden">
     <div class="modal-backdrop" onclick="closeCategoryModal()"></div>
-    <div class="modal-box modal-box-sm">
+    <div class="modal-box modal-sm">
       <div class="modal-header">
         <h2>Nová kategória</h2>
         <button class="modal-close" onclick="closeCategoryModal()">✕</button>
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label>Názov kategórie *</label>
-          <input type="text" id="cName" placeholder="napr. Interrogátory">
+          <label>Názov *</label>
+          <input type="text" id="cName" placeholder="napr. Tlačiarne">
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Ikona (emoji)</label>
-            <input type="text" id="cIcon" placeholder="📡" maxlength="2">
+            <input type="text" id="cIcon" placeholder="🖨️" maxlength="2" style="font-size:1.4rem;text-align:center">
           </div>
           <div class="form-group">
             <label>Farba</label>
-            <input type="color" id="cColor" value="#00d4ff">
+            <input type="color" id="cColor" value="#0891b2">
           </div>
+        </div>
+        <div class="form-group">
+          <label>Popis</label>
+          <input type="text" id="cDesc" placeholder="Voliteľný popis kategórie">
         </div>
       </div>
       <div class="modal-footer">

@@ -5,7 +5,8 @@ const productSchema = new mongoose.Schema({
   model: { type: String, trim: true },
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
   description: { type: String, default: '' },
-  content: { type: String, default: '' }, // rich HTML content
+  content: { type: String, default: '' },
+  url: { type: String, default: '' },
   images: [{ url: String, caption: String }],
   tags: [String],
   version: { type: String, default: '' },
