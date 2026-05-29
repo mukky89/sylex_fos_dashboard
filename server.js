@@ -142,14 +142,27 @@ app.get('/api/sensor/thermo', (req, res) => {
 });
 
 // Image upload endpoint
-app.post('/api/upload', upload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  res.json({ url: `/uploads/${req.file.filename}` });
+app.post('/api/upload', (req, res) => {
+  upload.single('image')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    return res.json({ url: `/uploads/${req.file.filename}` });
+  });
 });
 
-// Catch-all: serve SPA
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Catch-all: serve SPA (only for non-API routes)
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  res.sendFile(path.join(__dirname, 'public', 'index.html'), (err) => {
+    if (err && !res.headersSent) res.status(404).send('Not found');
+  });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  if (res.headersSent) return;
+  console.error('Server error:', err.message);
+  res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
 app.listen(PORT, () => {
