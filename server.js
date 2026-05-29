@@ -191,6 +191,7 @@ const categoriesRouter = require('./routes/categories');
 
 app.use('/api/products', productsRouter);
 app.use('/api/categories', categoriesRouter);
+app.use('/api/calendar', require('./routes/calendar'));
 app.use('/api/admin', require('./routes/admin')(sensorCfg));
 
 // Credentials endpoint (internal use only)

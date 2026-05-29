@@ -269,6 +269,7 @@ window.addEventListener('popstate', () => handleHash(location.hash.slice(1)));
 async function handleHash(hash) {
   if (!hash || hash === 'home') { _activatePage('home'); loadHomeKB(); return; }
   if (hash === 'sensors') { _activatePage('sensors'); loadThermoData(); loadSensorChart(); return; }
+  if (hash === 'calendar') { _activatePage('calendar'); loadCalendar(); return; }
   if (hash === 'admin')   { _activatePage('admin');   switchAdminTab('links'); return; }
   if (hash === 'wiki') { _activatePage('wiki'); await loadWiki(); return; }
   if (hash.startsWith('wiki/cat/')) {
@@ -295,6 +296,7 @@ function showPage(name) {
   if (name === 'wiki')    loadWiki();
   if (name === 'home')    loadHomeKB();
   if (name === 'sensors') { loadThermoData(); loadSensorChart(); }
+  if (name === 'calendar') loadCalendar();
   if (name === 'admin')   switchAdminTab('links');
 }
 
@@ -1001,6 +1003,196 @@ async function loadHeaderLinks() {
 // HOME KB — RECENT NEWS
 // ==============================
 // (integrated into loadHomeKB below)
+
+// ==============================
+// CALENDAR (kancelária)
+// ==============================
+const CAL_MONTHS = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'];
+const CAL_TYPE_LABELS = {
+  event: 'Udalosť', meeting: 'Porada', dovolenka: 'Dovolenka',
+  sluzobka: 'Služobná cesta', homeoffice: 'Home office', pn: 'PN / Lekár'
+};
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-11
+let calEvents = [];
+
+// Date -> 'YYYY-MM-DD' (local components)
+function calYmd(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+async function loadCalendar() {
+  // Range covers the visible grid (incl. spillover days from adjacent months)
+  const first = new Date(calYear, calMonth, 1);
+  const from  = new Date(calYear, calMonth - 1, 1);
+  const to    = new Date(calYear, calMonth + 2, 0);
+  try {
+    const r = await fetch(`/api/calendar?from=${calYmd(from)}&to=${calYmd(to)}`);
+    calEvents = await r.json();
+    if (!Array.isArray(calEvents)) calEvents = [];
+  } catch { calEvents = []; }
+  renderCalendar();
+}
+
+// Build map: 'YYYY-MM-DD' -> [events] (multi-day events appear on each day)
+function calBuildDayMap() {
+  const map = {};
+  const add = (key, ev) => { (map[key] = map[key] || []).push(ev); };
+  calEvents.forEach(ev => {
+    const startKey = String(ev.date).slice(0, 10);
+    const endKey   = ev.endDate ? String(ev.endDate).slice(0, 10) : startKey;
+    let cur = new Date(startKey + 'T12:00:00');
+    const end = new Date(endKey + 'T12:00:00');
+    // Guard against malformed ranges
+    if (isNaN(cur) || isNaN(end) || end < cur) { add(startKey, ev); return; }
+    let guard = 0;
+    while (cur <= end && guard < 400) { add(calYmd(cur), ev); cur.setDate(cur.getDate() + 1); guard++; }
+  });
+  return map;
+}
+
+function renderCalendar() {
+  const grid = document.getElementById('calGrid');
+  const label = document.getElementById('calMonthLabel');
+  if (!grid) return;
+  if (label) label.textContent = `${CAL_MONTHS[calMonth]} ${calYear}`;
+
+  const dayMap = calBuildDayMap();
+  const todayKey = calYmd(new Date());
+
+  const firstOfMonth = new Date(calYear, calMonth, 1);
+  const offset = (firstOfMonth.getDay() + 6) % 7; // Monday-first
+  const gridStart = new Date(calYear, calMonth, 1 - offset);
+
+  grid.innerHTML = '';
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
+    const key = calYmd(d);
+    const inMonth = d.getMonth() === calMonth;
+    const isWeekend = (d.getDay() === 0 || d.getDay() === 6);
+
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell'
+      + (inMonth ? '' : ' cal-cell-out')
+      + (key === todayKey ? ' cal-cell-today' : '')
+      + (isWeekend ? ' cal-cell-weekend' : '');
+    cell.onclick = (e) => { if (e.target === cell || e.target.classList.contains('cal-cell-events')) openEventModal(null, key); };
+
+    const events = (dayMap[key] || []);
+    const evHtml = events.map(ev => {
+      const t = ev.allDay ? '' : (ev.time ? `<span class="cal-ev-time">${escHtml(ev.time)}</span> ` : '');
+      const who = ev.person ? ` · ${escHtml(ev.person)}` : '';
+      return `<div class="cal-ev" style="--ev-color:${escHtml(ev.color || '#00d4ff')}" data-id="${ev._id}" title="${escHtml(ev.title)}${who}">${t}${escHtml(ev.title)}${who}</div>`;
+    }).join('');
+
+    cell.innerHTML = `
+      <div class="cal-cell-num">${d.getDate()}</div>
+      <div class="cal-cell-events">${evHtml}</div>`;
+    grid.appendChild(cell);
+  }
+
+  // Attach click handlers to events (edit)
+  grid.querySelectorAll('.cal-ev').forEach(el => {
+    el.onclick = (e) => {
+      e.stopPropagation();
+      const ev = calEvents.find(x => x._id === el.dataset.id);
+      if (ev) openEventModal(ev);
+    };
+  });
+}
+
+function calPrevMonth() {
+  calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
+  loadCalendar();
+}
+function calNextMonth() {
+  calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
+  loadCalendar();
+}
+function calGoToday() {
+  const now = new Date();
+  calYear = now.getFullYear(); calMonth = now.getMonth();
+  loadCalendar();
+}
+
+// ── Event modal ─────────────────────────────────────────────────────────────
+function openEventModal(event = null, prefillDate = null) {
+  const isEdit = event && typeof event === 'object';
+  document.getElementById('eventModalTitle').textContent = isEdit ? 'Upraviť udalosť' : 'Nová udalosť';
+  document.getElementById('evId').value      = isEdit ? event._id : '';
+  document.getElementById('evTitle').value   = isEdit ? (event.title || '') : '';
+  document.getElementById('evPerson').value  = isEdit ? (event.person || '') : '';
+  document.getElementById('evDate').value    = isEdit ? String(event.date).slice(0, 10) : (prefillDate || calYmd(new Date()));
+  document.getElementById('evEndDate').value = isEdit && event.endDate ? String(event.endDate).slice(0, 10) : '';
+  document.getElementById('evAllDay').checked = isEdit ? (event.allDay !== false) : true;
+  document.getElementById('evTime').value    = isEdit ? (event.time || '') : '';
+  document.getElementById('evType').value    = isEdit ? (event.type || 'event') : 'event';
+  document.getElementById('evColor').value   = isEdit ? (event.color || '#00d4ff') : '#00d4ff';
+  document.getElementById('evNote').value    = isEdit ? (event.note || '') : '';
+  document.getElementById('evDeleteBtn').style.display = isEdit ? '' : 'none';
+  toggleEventTime();
+  document.getElementById('eventModal').classList.remove('hidden');
+}
+
+function closeEventModal() {
+  document.getElementById('eventModal').classList.add('hidden');
+}
+
+function toggleEventTime() {
+  const allDay = document.getElementById('evAllDay').checked;
+  document.getElementById('evTimeWrap').style.display = allDay ? 'none' : '';
+}
+
+async function saveEvent() {
+  const title = document.getElementById('evTitle').value.trim();
+  const date  = document.getElementById('evDate').value;
+  if (!title) { alert('Zadajte názov udalosti'); return; }
+  if (!date)  { alert('Zadajte dátum'); return; }
+
+  const endDate = document.getElementById('evEndDate').value || null;
+  if (endDate && endDate < date) { alert('Dátum "do" nemôže byť pred dátumom "od"'); return; }
+
+  const allDay = document.getElementById('evAllDay').checked;
+  const body = {
+    title,
+    person:  document.getElementById('evPerson').value.trim(),
+    date,
+    endDate,
+    allDay,
+    time:    allDay ? '' : document.getElementById('evTime').value,
+    type:    document.getElementById('evType').value,
+    color:   document.getElementById('evColor').value,
+    note:    document.getElementById('evNote').value.trim()
+  };
+
+  const id = document.getElementById('evId').value;
+  try {
+    const endpoint = id ? '/api/calendar/' + id : '/api/calendar';
+    const method   = id ? 'PUT' : 'POST';
+    const resp = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      alert('Chyba ' + resp.status + ': ' + (err.error || 'Neznáma chyba'));
+      return;
+    }
+    closeEventModal();
+    loadCalendar();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+async function deleteEvent() {
+  const id = document.getElementById('evId').value;
+  if (!id) return;
+  if (!confirm('Naozaj odstrániť túto udalosť?')) return;
+  try {
+    await fetch('/api/calendar/' + id, { method: 'DELETE' });
+    closeEventModal();
+    loadCalendar();
+  } catch { alert('Chyba pri odstraňovaní'); }
+}
 
 // ==============================
 // ADMIN
