@@ -87,17 +87,15 @@ body {
   cursor: pointer; flex-shrink: 0; margin-right: 20px;
   text-decoration: none;
 }
-.logo-img {
-  height: 26px; width: auto;
-  filter: brightness(0) invert(1) contrast(1.1);
-  opacity: 0.92;
-  transition: opacity var(--transition);
+.logo-wordmark {
+  font-family: var(--font-title); font-weight: 700;
+  font-size: 1.05rem; letter-spacing: 0.06em;
+  color: #f1f5f9; white-space: nowrap;
 }
-.logo:hover .logo-img { opacity: 1; }
 .logo-divider { width: 1px; height: 18px; background: rgba(255,255,255,0.2); }
 .logo-sub-text {
-  font-size: 0.65rem; letter-spacing: 0.2em;
-  color: var(--accent); font-weight: 600; text-transform: uppercase;
+  font-size: 0.63rem; letter-spacing: 0.22em;
+  color: var(--accent); font-weight: 700; text-transform: uppercase;
   white-space: nowrap;
 }
 
@@ -134,6 +132,25 @@ body {
   opacity: 0.7; transition: opacity var(--transition);
 }
 .ql-cred-btn:hover { opacity: 1; }
+
+/* SharePoint chips — subtle, no dot */
+.ql-chip.ql-sp {
+  color: rgba(255,255,255,0.42);
+  border-color: rgba(255,255,255,0.09);
+  background: transparent;
+  font-size: 0.69rem; padding: 3px 9px;
+}
+.ql-chip.ql-sp:hover {
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.75);
+  border-color: rgba(255,255,255,0.18);
+}
+/* Separator between chip groups */
+.ql-sep {
+  width: 1px; height: 16px;
+  background: rgba(255,255,255,0.12);
+  flex-shrink: 0; margin: 0 3px;
+}
 
 /* PEAKLOGGER popover */
 .pl-popover {
@@ -234,19 +251,15 @@ body {
 .home-inner {
   position: relative; z-index: 1;
   max-width: 1100px; margin: 0 auto;
-  padding: 48px 28px 60px;
+  padding: 36px 28px 52px;
 }
 
 /* Hero */
 .hero {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 40px; margin-bottom: 48px;
+  gap: 40px; margin-bottom: 36px;
 }
 .hero-content { flex: 1; }
-.hero-logo-img {
-  height: 36px; width: auto; display: block; margin-bottom: 20px;
-  filter: brightness(0) invert(1) contrast(1.1); opacity: 0.9;
-}
 .hero-badge {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 3px 12px; border-radius: 20px; margin-bottom: 16px;
@@ -256,11 +269,10 @@ body {
   color: #67e8f9; font-weight: 600;
 }
 .hero-title {
-  display: flex; flex-direction: column;
   font-family: var(--font-title); font-weight: 700;
-  font-size: clamp(2.4rem, 5.5vw, 4rem);
-  line-height: 1; letter-spacing: 0.04em; color: #f8fafc;
-  margin-bottom: 14px;
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  line-height: 1.1; letter-spacing: 0.04em; color: #f8fafc;
+  margin-bottom: 14px; white-space: nowrap;
 }
 .hero-title .accent { color: #22d3ee; }
 .hero-desc { font-size: 0.92rem; color: #94a3b8; max-width: 400px; line-height: 1.65; }
