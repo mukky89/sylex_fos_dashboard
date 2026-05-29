@@ -1532,3 +1532,181 @@ body {
   .cal-ev { font-size: 0.62rem; padding: 1px 4px; }
   .cal-weekdays > div { font-size: 0.62rem; padding: 7px 2px; }
 }
+
+/* =============================================
+   FORM INPUTS — rozšírenie (date/time/number/textarea)
+   ============================================= */
+.form-group input[type="date"],
+.form-group input[type="time"],
+.form-group input[type="number"],
+.form-group textarea {
+  padding: 8px 11px; border-radius: var(--radius);
+  background: var(--card-bg); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--font); font-size: 0.87rem;
+  outline: none; transition: border-color var(--transition), box-shadow var(--transition);
+}
+.form-group textarea { resize: vertical; min-height: 44px; line-height: 1.45; }
+.form-group textarea:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(8,145,178,0.1);
+}
+.form-hint { font-weight: 400; color: var(--text-xdim); font-size: 0.7rem; }
+
+/* =============================================
+   HEADER — "Súbory" dropdown (serverové priečinky + šablóny)
+   ============================================= */
+.ql-chip.ql-files {
+  color: #fcd34d; border-color: rgba(252,211,77,0.3); background: rgba(252,211,77,0.08);
+}
+.ql-chip.ql-files:hover { background: rgba(252,211,77,0.18); border-color: rgba(252,211,77,0.5); }
+.ql-files-icon { font-size: 0.8rem; }
+.ql-files-caret { font-size: 0.6rem; opacity: 0.7; }
+
+.files-popover {
+  position: fixed; top: calc(var(--header-h) + 8px); z-index: 300;
+  background: #1e293b; border: 1px solid rgba(252,211,77,0.25);
+  border-radius: var(--radius-lg);
+  padding: 12px; min-width: 300px; max-width: 420px;
+  max-height: 70vh; overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+.files-section { margin-bottom: 12px; }
+.files-section:last-child { margin-bottom: 0; }
+.files-section-title {
+  font-size: 0.68rem; letter-spacing: 0.08em;
+  color: #cbd5e1; font-weight: 600;
+  text-transform: uppercase; margin-bottom: 6px;
+  padding-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.files-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.files-row-link {
+  flex: 1; min-width: 0; display: flex; flex-direction: column;
+  padding: 6px 8px; border-radius: 6px; text-decoration: none;
+  transition: background var(--transition);
+}
+.files-row-link:hover { background: rgba(255,255,255,0.06); }
+.files-row-label { font-size: 0.82rem; color: #e2e8f0; font-weight: 500; }
+.files-row-path {
+  font-size: 0.7rem; color: #94a3b8;
+  font-family: 'Courier New', monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.files-row-btn {
+  flex-shrink: 0; width: 28px; height: 28px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px; color: #cbd5e1; cursor: pointer;
+  font-size: 0.85rem; transition: all var(--transition);
+}
+.files-row-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+.files-empty { font-size: 0.8rem; color: #94a3b8; padding: 8px; }
+
+/* =============================================
+   PROCEDURES (pracovné postupy)
+   ============================================= */
+.procedures-page { background: var(--hdr-bg); }
+.proc-inner {
+  max-width: 1000px; margin: 0 auto;
+  padding: 36px 28px 52px;
+}
+.proc-hdr {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 20px; margin-bottom: 18px; flex-wrap: wrap;
+}
+.proc-title {
+  font-family: var(--font-title); font-size: 1.6rem;
+  font-weight: 700; color: #f8fafc;
+  letter-spacing: 0.04em; margin-bottom: 4px;
+}
+.proc-sub { font-size: 0.8rem; color: rgba(255,255,255,0.32); }
+
+.proc-search-wrap {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius);
+  padding: 8px 12px; margin-bottom: 18px;
+}
+.proc-search-wrap svg { color: rgba(255,255,255,0.4); flex-shrink: 0; }
+.proc-search-wrap input {
+  flex: 1; background: none; border: none; outline: none;
+  color: #e2e8f0; font-family: var(--font); font-size: 0.85rem;
+}
+.proc-search-wrap input::placeholder { color: rgba(255,255,255,0.35); }
+
+.proc-list { display: flex; flex-direction: column; gap: 10px; }
+.proc-card {
+  display: flex; align-items: center; gap: 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  transition: all var(--transition);
+}
+.proc-card:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.16); }
+.proc-card-main { flex: 1; min-width: 0; cursor: pointer; }
+.proc-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; flex-wrap: wrap; }
+.proc-card-title { font-size: 0.98rem; font-weight: 600; color: #f1f5f9; }
+.proc-card-meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.74rem; color: rgba(255,255,255,0.5); }
+
+.proc-status-badge {
+  font-size: 0.64rem; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; padding: 2px 8px; border-radius: 10px;
+}
+.proc-status-active   { color: #6ee7b7; background: rgba(110,231,183,0.12); }
+.proc-status-draft    { color: #fcd34d; background: rgba(252,211,77,0.12); }
+.proc-status-archived { color: #94a3b8; background: rgba(148,163,184,0.12); }
+
+.proc-card-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.btn-word {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: var(--radius);
+  font-size: 0.76rem; font-weight: 600; font-family: var(--font);
+  color: #93c5fd; background: rgba(37,99,235,0.15);
+  border: 1px solid rgba(147,197,253,0.3); cursor: pointer;
+  transition: all var(--transition);
+}
+.btn-word:hover { background: rgba(37,99,235,0.28); color: #dbeafe; }
+
+.proc-empty {
+  text-align: center; padding: 40px 20px;
+  font-size: 0.9rem; color: rgba(255,255,255,0.45);
+  background: rgba(255,255,255,0.03);
+  border: 1px dashed rgba(255,255,255,0.12);
+  border-radius: var(--radius-lg);
+}
+.proc-empty-actions { margin-top: 14px; }
+
+/* Procedure modal — dynamic rows */
+.proc-rows-hdr { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.proc-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+.proc-row { display: flex; align-items: flex-start; gap: 6px; }
+.proc-row input[type="text"] {
+  flex: 1; min-width: 0;
+  padding: 7px 10px; border-radius: var(--radius);
+  background: var(--card-bg); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--font); font-size: 0.84rem; outline: none;
+}
+.proc-row input[type="text"]:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(8,145,178,0.1); }
+.proc-row-step { align-items: stretch; }
+.proc-step-handle { display: flex; flex-direction: column; gap: 2px; padding-top: 2px; }
+.proc-step-fields { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.proc-row-move {
+  width: 22px; height: 18px; line-height: 1;
+  background: var(--page-bg); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text-dim); cursor: pointer; font-size: 0.7rem;
+}
+.proc-row-move:hover { background: var(--accent-light); color: var(--accent); }
+.proc-row-del {
+  width: 30px; height: 32px; flex-shrink: 0;
+  background: #fef2f2; border: 1px solid #fecaca;
+  border-radius: var(--radius); color: #ef4444; cursor: pointer; font-size: 0.85rem;
+  transition: all var(--transition);
+}
+.proc-row-del:hover { background: #fee2e2; }
+
+@media (max-width: 560px) {
+  .proc-inner { padding: 22px 14px 40px; }
+  .proc-card { flex-direction: column; align-items: stretch; }
+  .proc-card-actions { justify-content: flex-end; }
+}

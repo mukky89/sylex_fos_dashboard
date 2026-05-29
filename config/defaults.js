@@ -39,6 +39,15 @@ const DEFAULT_LINKS = [
   { label: 'Pracovné postupy',
     url:   'https://sylexba.sharepoint.com/sites/SYLEX-Intranet/RD/RD/Forms/AllItems.aspx?id=%2Fsites%2FSYLEX%2DIntranet%2FRD%2FRD%2FPracovn%C3%A9%20Postupy%2FFOS&viewid=ed2522f9%2D6175%2D4038%2Db626%2D80eba011ca34',
     color: 'sp', group: 'sharepoint', order: 8, active: true },
+
+  // ── Serverové priečinky (group: servery) — zobrazené v dropdowne "Súbory" ──
+  { label: 'Projekty / Obchod',
+    url:   'G:\\Projekty\\Obchod',
+    color: 'cyan', group: 'servery', order: 9, active: true },
+
+  { label: 'Projekty / FOS',
+    url:   'G:\\Projekty\\FOS',
+    color: 'cyan', group: 'servery', order: 10, active: true },
 ];
 
 module.exports = { DEFAULT_LINKS };
