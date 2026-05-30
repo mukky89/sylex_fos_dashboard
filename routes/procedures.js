@@ -7,8 +7,35 @@ const { WARNING_TYPES, PPE_TYPES } = require('../config/procedureMeta');
 const {
   Document, Packer, Paragraph, TextRun, HeadingLevel,
   Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle,
-  ImageRun, ExternalHyperlink, Bookmark, InternalHyperlink
+  ImageRun, ExternalHyperlink, Bookmark, InternalHyperlink,
+  HorizontalPositionAlign, HorizontalPositionRelativeFrom,
+  VerticalPositionRelativeFrom, TextWrappingType, TextWrappingSide
 } = require('docx');
+
+// Konverzia CSS farby na docx hex (RRGGBB)
+function cssColorToHex(c) {
+  if (!c) return null;
+  c = c.trim();
+  let m = c.match(/^#([0-9a-fA-F]{6})$/); if (m) return m[1].toUpperCase();
+  m = c.match(/^#([0-9a-fA-F]{3})$/); if (m) return m[1].split('').map(x => x + x).join('').toUpperCase();
+  m = c.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if (m) return [m[1], m[2], m[3]].map(n => Math.max(0, Math.min(255, +n)).toString(16).padStart(2, '0')).join('').toUpperCase();
+  return null;
+}
+function cleanFontName(f) {
+  if (!f) return null;
+  return f.split(',')[0].replace(/['"]/g, '').trim() || null;
+}
+function parseInlineStyle(el, fmt) {
+  const style = (el.getAttribute && el.getAttribute('style')) || '';
+  if (!style) return fmt;
+  const nf = { ...fmt };
+  const cm = style.match(/(?:^|;)\s*color:\s*([^;]+)/i);
+  if (cm) { const hex = cssColorToHex(cm[1]); if (hex) nf.color = hex; }
+  const fm = style.match(/font-family:\s*([^;]+)/i);
+  if (fm) { const fn = cleanFontName(fm[1]); if (fn) nf.font = fn; }
+  return nf;
+}
 const { parse } = require('node-html-parser');
 const sizeOf = require('image-size');
 
@@ -112,15 +139,37 @@ function imageRunFrom(url, maxW) {
   if (!im) return null;
   return new ImageRun({ data: im.data, transformation: { width: im.w, height: im.h }, type: im.type });
 }
+// Plávajúci (obtekaný) obrázok — text obteká vľavo/vpravo
+function floatingImageRun(im, align) {
+  const right = align === 'right';
+  return new ImageRun({
+    data: im.data, transformation: { width: im.w, height: im.h }, type: im.type,
+    floating: {
+      horizontalPosition: { relative: HorizontalPositionRelativeFrom.MARGIN, align: right ? HorizontalPositionAlign.RIGHT : HorizontalPositionAlign.LEFT },
+      verticalPosition: { relative: VerticalPositionRelativeFrom.PARAGRAPH, offset: 0 },
+      wrap: { type: TextWrappingType.SQUARE, side: right ? TextWrappingSide.LEFT : TextWrappingSide.RIGHT },
+      margins: { left: 91440, right: 91440, top: 0, bottom: 91440 },
+    },
+  });
+}
 const ALIGN = { left: AlignmentType.LEFT, center: AlignmentType.CENTER, right: AlignmentType.RIGHT };
 
 // Vráti pole odsekov: obrázok (s číslom/bookmarkom) + popis. Registruje figúru do ctx.
-function figureParagraphs(url, ctx, { align = 'center', caption = '', maxW = 460 } = {}) {
-  const run = imageRunFrom(url, maxW);
-  if (!run) return [];
+// align left/right → plávajúci obrázok (text obteká); center/below → blok + popis.
+function figureParagraphs(url, ctx, { align = 'center', caption = '', maxW = 460, float = true } = {}) {
+  const isFloat = float && (align === 'left' || align === 'right');
+  const im = readImageData(url, isFloat ? Math.min(maxW, 270) : maxW);
+  if (!im) return [];
   const n = ++ctx.figNo;
   const anchor = 'fig_' + n;
   ctx.figures.push({ n, anchor, caption });
+
+  if (isFloat) {
+    // Plávajúci obrázok — kotví v jednom odseku, okolitý text obteká
+    return [new Paragraph({ spacing: { after: 0 },
+      children: [new Bookmark({ id: anchor, children: [floatingImageRun(im, align)] })] })];
+  }
+  const run = new ImageRun({ data: im.data, transformation: { width: im.w, height: im.h }, type: im.type });
   const al = ALIGN[align] || AlignmentType.CENTER;
   return [
     new Paragraph({ alignment: al, spacing: { before: 80, after: 20 },
@@ -146,11 +195,14 @@ function collectInline(node, fmt, out) {
       const href = child.getAttribute('href') || '';
       const inner = [];
       collectInline(child, { ...fmt, color: LINK_COLOR, underline: {} }, inner);
-      if (href) out.push(new ExternalHyperlink({ link: href, children: inner.length ? inner : [new TextRun({ text: child.text, color: LINK_COLOR, underline: {} })] }));
+      const kids = inner.length ? inner : [new TextRun({ text: child.text, color: LINK_COLOR, underline: {} })];
+      const xref = href.match(/^#fig-(\d+)$/i);
+      if (xref) out.push(new InternalHyperlink({ anchor: 'fig_' + xref[1], children: kids }));
+      else if (href) out.push(new ExternalHyperlink({ link: href, children: kids }));
       else out.push(...inner);
       return;
     }
-    const nf = { ...fmt };
+    let nf = parseInlineStyle(child, fmt);
     if (tag === 'b' || tag === 'strong') nf.bold = true;
     if (tag === 'i' || tag === 'em')     nf.italics = true;
     if (tag === 'u')                     nf.underline = {};

@@ -2101,3 +2101,35 @@ body {
 .pdv-fig-left  { float: left;  width: 42%; margin: 0 16px 10px 0; }
 .pdv-step-body::after { content: ''; display: block; clear: both; }
 .pdv-step-text::after { content: ''; display: block; clear: both; }
+
+/* =============================================
+   Editor postupu — väčšie okno + nové ovládače
+   ============================================= */
+.proc-inner:has(#procEditView:not(.hidden)) { max-width: 1500px; }
+.proc-edit { max-width: 1460px; }
+.tt-area { max-height: 520px; }
+.tt-area .ProseMirror { min-height: 160px; }
+
+/* Duplikovať operáciu */
+.proc-row-dup {
+  width: 22px; height: 18px; line-height: 1;
+  background: var(--page-bg); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--accent); cursor: pointer; font-size: 0.72rem;
+}
+.proc-row-dup:hover { background: var(--accent-light); }
+
+/* TipTap — ovládač farby a fontu */
+.tt-color {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 6px;
+  background: #fff; cursor: pointer; font-weight: 700; font-size: 0.82rem; color: var(--text);
+}
+.tt-color span { pointer-events: none; }
+.tt-color input[type="color"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; border: none; padding: 0;
+}
+.tt-font {
+  height: 28px; border: 1px solid var(--border); border-radius: 6px;
+  background: #fff; font-family: var(--font); font-size: 0.76rem; color: var(--text-dim);
+  cursor: pointer; padding: 0 4px; max-width: 130px;
+}

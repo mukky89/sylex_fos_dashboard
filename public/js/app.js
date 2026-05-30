@@ -1763,6 +1763,7 @@ function addStepRow(step = {}) {
       <div class="proc-step-card-tools">
         <button type="button" class="proc-row-move" onclick="procMoveStep(this,-1)" title="Hore">↑</button>
         <button type="button" class="proc-row-move" onclick="procMoveStep(this,1)" title="Dole">↓</button>
+        <button type="button" class="proc-row-dup" onclick="duplicateStep(this)" title="Duplikovať operáciu">⧉</button>
         <button type="button" class="proc-row-del" onclick="procRemoveStep(this)" title="Odstrániť">✕</button>
       </div>
     </div>
@@ -1802,6 +1803,31 @@ function addStepRow(step = {}) {
   renderStepThumb(card);
   renderIconPicker(document.getElementById(sid + '_warn'), PROC_META.warnings, card._warnings, document.getElementById(sid + '_warnc'));
   renderIconPicker(document.getElementById(sid + '_ppe'),  PROC_META.ppe,      card._ppe,      document.getElementById(sid + '_ppec'));
+  return card;
+}
+
+// Načítaj dáta operácie z karty
+function stepDataFromCard(card) {
+  const ed = stepEditors[card.dataset.sid];
+  return {
+    text:     ed ? ed.getHTML() : '',
+    note:     card.querySelector('.proc-step-note').value.trim(),
+    image:    card._image || '',
+    imagePos: card.querySelector('.proc-img-pos')?.value || 'below',
+    caption:  card.querySelector('.proc-img-caption')?.value.trim() || '',
+    warnings: [...(card._warnings || [])],
+    ppe:      [...(card._ppe || [])]
+  };
+}
+
+// Duplikuj operáciu — vloží kópiu hneď za pôvodnú
+function duplicateStep(btn) {
+  const src = btn.closest('.proc-step-card');
+  if (!src) return;
+  const data = stepDataFromCard(src);
+  const newCard = addStepRow(data);   // appendne na koniec
+  if (newCard && src.nextSibling) src.parentNode.insertBefore(newCard, src.nextSibling);
+  else if (newCard) src.parentNode.appendChild(newCard);
 }
 
 function toggleStepSection(btn) {
