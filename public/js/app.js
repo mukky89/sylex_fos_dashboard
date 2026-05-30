@@ -2261,6 +2261,130 @@ async function seedSampleData() {
 }
 
 // ==============================
+// HLAVIČKA — vyhľadávanie, rýchle pridanie, notifikácie
+// ==============================
+function positionUnder(btn, el) {
+  const rect = btn.getBoundingClientRect();
+  el.style.top = (rect.bottom + 8) + 'px';
+  el.style.right = Math.max(8, window.innerWidth - rect.right) + 'px';
+  el.style.left = 'auto';
+}
+function closeHdrPopovers(except) {
+  ['quickAddMenu', 'notifPanel'].forEach(id => { if (id !== except) document.getElementById(id)?.classList.add('hidden'); });
+}
+
+// ── Globálne vyhľadávanie (Ctrl+K) ────────────────────────────────────────────
+let cmdCache = null;
+async function loadCmdData() {
+  const [prods, procs, anns, links] = await Promise.all([
+    fetch('/api/products').then(r => r.json()).catch(() => []),
+    fetch('/api/procedures').then(r => r.json()).catch(() => []),
+    fetch('/api/announcements').then(r => r.json()).catch(() => []),
+    fetch('/api/admin/links').then(r => r.json()).catch(() => []),
+  ]);
+  cmdCache = { prods, procs, anns, links };
+  return cmdCache;
+}
+async function openCmdPalette() {
+  const pal = document.getElementById('cmdPalette'); if (!pal) return;
+  pal.classList.remove('hidden');
+  const inp = document.getElementById('cmdInput'); inp.value = '';
+  document.getElementById('cmdResults').innerHTML = '<div class="cmd-hint">Začni písať…</div>';
+  await loadCmdData();
+  setTimeout(() => inp.focus(), 30);
+}
+function closeCmdPalette() { document.getElementById('cmdPalette')?.classList.add('hidden'); }
+function cmdMatch(s, q) { return (s || '').toLowerCase().includes(q); }
+function cmdSearch(q) {
+  q = (q || '').trim().toLowerCase();
+  const el = document.getElementById('cmdResults'); if (!el) return;
+  if (!cmdCache) { el.innerHTML = '<div class="cmd-hint">Načítavam…</div>'; return; }
+  if (q.length < 1) { el.innerHTML = '<div class="cmd-hint">Začni písať…</div>'; return; }
+  const res = [];
+  (cmdCache.prods || []).filter(p => cmdMatch(p.name, q) || cmdMatch(p.model, q) || (p.tags || []).some(t => cmdMatch(t, q))).slice(0, 6)
+    .forEach(p => res.push({ icon: '📚', label: p.name, sub: 'WIKI', act: () => { closeCmdPalette(); showPage('wiki'); setTimeout(() => openProduct(p._id), 220); } }));
+  (cmdCache.procs || []).filter(p => cmdMatch(p.title, q) || cmdMatch(p.department, q) || cmdMatch(p.author, q)).slice(0, 6)
+    .forEach(p => res.push({ icon: '📋', label: p.title, sub: 'Postup', act: () => { closeCmdPalette(); showPage('procedures'); setTimeout(() => openProcedureById(p._id), 250); } }));
+  (cmdCache.anns || []).filter(a => cmdMatch(a.title, q) || cmdMatch(a.body, q)).slice(0, 5)
+    .forEach(a => res.push({ icon: '📢', label: a.title, sub: 'Novinka', act: () => { closeCmdPalette(); showPage('home'); } }));
+  (cmdCache.links || []).filter(l => l.active && (cmdMatch(l.label, q) || cmdMatch(l.url, q))).slice(0, 6)
+    .forEach(l => res.push({ icon: '🔗', label: l.label, sub: 'Odkaz', act: () => { closeCmdPalette(); window.open(l.url, '_blank'); } }));
+  if (!res.length) { el.innerHTML = `<div class="cmd-hint">Žiadne výsledky pre „${escHtml(q)}".</div>`; return; }
+  el.innerHTML = '';
+  res.forEach(r => {
+    const d = document.createElement('div');
+    d.className = 'cmd-item';
+    d.innerHTML = `<span class="cmd-item-icon">${r.icon}</span><span class="cmd-item-label">${escHtml(r.label)}</span><span class="cmd-item-sub">${r.sub}</span>`;
+    d.onclick = r.act;
+    el.appendChild(d);
+  });
+}
+
+// ── Rýchle pridanie (+) ───────────────────────────────────────────────────────
+function toggleQuickAdd(e) {
+  e.stopPropagation();
+  const m = document.getElementById('quickAddMenu');
+  closeHdrPopovers('quickAddMenu');
+  positionUnder(e.currentTarget, m);
+  m.classList.toggle('hidden');
+}
+function quickAdd(type) {
+  document.getElementById('quickAddMenu').classList.add('hidden');
+  if (type === 'news') openAnnouncementModal();
+  else if (type === 'procedure') { showPage('procedures'); setTimeout(() => openProcedureModal(), 280); }
+  else if (type === 'event') { showPage('calendar'); setTimeout(() => openEventModal(), 280); }
+  else if (type === 'wiki') { showPage('wiki'); setTimeout(() => openProductModal(), 320); }
+}
+
+// ── Notifikácie (🔔) ──────────────────────────────────────────────────────────
+let notifData = { newAnns: [], todayEvs: [] };
+async function loadNotif() {
+  try {
+    const key = calYmd(new Date());
+    const [anns, evs] = await Promise.all([
+      fetch('/api/announcements').then(r => r.json()).catch(() => []),
+      fetch(`/api/calendar?from=${key}&to=${key}`).then(r => r.json()).catch(() => []),
+    ]);
+    const weekAgo = new Date(Date.now() - 7 * 864e5);
+    const newAnns = (Array.isArray(anns) ? anns : []).filter(a => new Date(a.date || a.createdAt) >= weekAgo);
+    const todayEvs = Array.isArray(evs) ? evs : [];
+    notifData = { newAnns, todayEvs };
+    const count = newAnns.length + todayEvs.length;
+    const b = document.getElementById('notifBadge');
+    if (b) { b.textContent = count > 9 ? '9+' : count; b.classList.toggle('hidden', count === 0); }
+  } catch (e) {}
+}
+function toggleNotif(e) {
+  e.stopPropagation();
+  const m = document.getElementById('notifPanel');
+  closeHdrPopovers('notifPanel');
+  positionUnder(e.currentTarget, m);
+  renderNotif();
+  m.classList.toggle('hidden');
+}
+function renderNotif() {
+  const el = document.getElementById('notifList'); if (!el) return;
+  let h = '';
+  if (notifData.todayEvs.length) {
+    h += '<div class="notif-group">Dnes v kalendári</div>';
+    notifData.todayEvs.forEach(ev => { h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('calendar')"><span>📅</span><span>${escHtml(ev.title)}${ev.time ? ' · ' + escHtml(ev.time) : ''}${ev.person ? ' · ' + escHtml(ev.person) : ''}</span></div>`; });
+  }
+  if (notifData.newAnns.length) {
+    h += '<div class="notif-group">Nové novinky (7 dní)</div>';
+    notifData.newAnns.slice(0, 6).forEach(a => { h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('home')"><span>📢</span><span>${escHtml(a.title)}</span></div>`; });
+  }
+  if (!h) h = '<div class="cmd-hint" style="padding:14px">Žiadne nové notifikácie.</div>';
+  el.innerHTML = h;
+}
+
+// Klávesové skratky + zatváranie hlavičkových popoverov
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openCmdPalette(); }
+  if (e.key === 'Escape') { closeCmdPalette(); closeHdrPopovers(); }
+});
+document.addEventListener('click', () => closeHdrPopovers());
+
+// ==============================
 // INIT
 // ==============================
 async function loadAppVersion() {
@@ -2293,6 +2417,8 @@ function updateDateTime() {
 (function init() {
   loadHeaderLinks();
   loadAppVersion();
+  loadNotif();
+  setInterval(loadNotif, 120000);
   updateDateTime();
   setInterval(updateDateTime, 1000);
   const hash = location.hash.slice(1);
