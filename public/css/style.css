@@ -2055,3 +2055,49 @@ body {
   width: 100%; padding: 10px 12px; border: none; outline: none;
   font-family: var(--font); font-size: 0.9rem; resize: vertical; min-height: 90px;
 }
+
+/* =============================================
+   Procedures — kolaps sekcie, obrázok pozícia, plná šírka
+   ============================================= */
+.proc-collapsible.hidden { display: none; }
+.proc-collapse-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: none; cursor: pointer; padding: 2px 0;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--text-dim); font-family: var(--font);
+}
+.proc-collapse-btn:hover { color: var(--accent); }
+.proc-collapse-caret { display: inline-block; width: 12px; color: var(--accent); }
+.proc-collapse-count { color: var(--accent); font-weight: 700; }
+
+.proc-img-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+.proc-img-pos {
+  padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius);
+  font-family: var(--font); font-size: 0.8rem; background: #fff; cursor: pointer;
+}
+.proc-img-caption {
+  flex: 1; min-width: 160px; padding: 6px 10px; border: 1px solid var(--border);
+  border-radius: var(--radius); font-family: var(--font); font-size: 0.82rem; outline: none;
+}
+
+/* Editor postupu na celú šírku počas editácie */
+.proc-inner:has(#procEditView:not(.hidden)) { max-width: 1200px; }
+.proc-edit { max-width: 1180px; }
+.proc-edit-body { max-width: none; }
+
+/* Inline obrázky v editore a náhľade — zarovnanie */
+.tt-area .ProseMirror img.sx-img-left,
+.pdv-step-text img[data-align="left"]  { float: left;  margin: 4px 14px 8px 0; max-width: 48%; }
+.tt-area .ProseMirror img.sx-img-right,
+.pdv-step-text img[data-align="right"] { float: right; margin: 4px 0 8px 14px; max-width: 48%; }
+.tt-area .ProseMirror img.sx-img-center,
+.pdv-step-text img[data-align="center"]{ display: block; margin: 8px auto; }
+
+/* Náhľad — figúra s pozíciou (text vľavo/vpravo) */
+.pdv-fig { margin: 8px 0; }
+.pdv-fig img { max-width: 100%; border: 1px solid var(--border); border-radius: 8px; display: block; }
+.pdv-fig figcaption { font-size: 0.78rem; color: #64748b; font-style: italic; margin-top: 4px; text-align: center; }
+.pdv-fig-right { float: right; width: 42%; margin: 0 0 10px 16px; }
+.pdv-fig-left  { float: left;  width: 42%; margin: 0 16px 10px 0; }
+.pdv-step-body::after { content: ''; display: block; clear: both; }
+.pdv-step-text::after { content: ''; display: block; clear: both; }

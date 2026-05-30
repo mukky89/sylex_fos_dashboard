@@ -3,6 +3,20 @@
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
+
+// Obrázok s podporou zarovnania (left / center / right) — renderuje data-align + class
+const SylexImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      align: {
+        default: 'center',
+        parseHTML: el => el.getAttribute('data-align') || 'center',
+        renderHTML: attrs => ({ 'data-align': attrs.align || 'center', class: 'sx-img-' + (attrs.align || 'center') }),
+      },
+    };
+  },
+});
 import Placeholder from '@tiptap/extension-placeholder';
 import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
@@ -44,7 +58,7 @@ export function createEditor(mountEl, opts = {}) {
     element: area,
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
-      Image.configure({ inline: false, allowBase64: false }),
+      SylexImage.configure({ inline: false, allowBase64: false }),
       Placeholder.configure({ placeholder }),
       Table.configure({ resizable: true }),
       TableRow, TableHeader, TableCell,
@@ -81,9 +95,12 @@ export function createEditor(mountEl, opts = {}) {
     { ic: ICONS.image, t: 'Obrázok', fn: async () => {
         if (typeof onImageRequest === 'function') {
           const url = await onImageRequest();
-          if (url) chain().setImage({ src: url }).run();
+          if (url) chain().setImage({ src: url, align: 'center' }).run();
         }
       } },
+    { ic: '⬅🖼', t: 'Obrázok vľavo (text vpravo)', fn: () => chain().updateAttributes('image', { align: 'left' }).run() },
+    { ic: '🖼', t: 'Obrázok na stred', fn: () => chain().updateAttributes('image', { align: 'center' }).run() },
+    { ic: '🖼➡', t: 'Obrázok vpravo (text vľavo)', fn: () => chain().updateAttributes('image', { align: 'right' }).run() },
     { ic: ICONS.table, t: 'Tabuľka 3×3', fn: () => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
     { sep: true },
     { ic: ICONS.clear, t: 'Vyčistiť formát', fn: () => chain().unsetAllMarks().clearNodes().run() },
