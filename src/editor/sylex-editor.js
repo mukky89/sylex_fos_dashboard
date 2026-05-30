@@ -3,6 +3,7 @@
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
+import { TextStyle, Color, FontFamily } from '@tiptap/extension-text-style';
 
 // Obrázok s podporou zarovnania (left / center / right) — renderuje data-align + class
 const SylexImage = Image.extend({
@@ -58,6 +59,7 @@ export function createEditor(mountEl, opts = {}) {
     element: area,
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      TextStyle, Color, FontFamily,
       SylexImage.configure({ inline: false, allowBase64: false }),
       Placeholder.configure({ placeholder }),
       Table.configure({ resizable: true }),
@@ -102,6 +104,10 @@ export function createEditor(mountEl, opts = {}) {
     { ic: '🖼', t: 'Obrázok na stred', fn: () => chain().updateAttributes('image', { align: 'center' }).run() },
     { ic: '🖼➡', t: 'Obrázok vpravo (text vľavo)', fn: () => chain().updateAttributes('image', { align: 'right' }).run() },
     { ic: ICONS.table, t: 'Tabuľka 3×3', fn: () => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+    { custom: 'xref' },
+    { sep: true },
+    { custom: 'font' },
+    { custom: 'color' },
     { sep: true },
     { ic: ICONS.clear, t: 'Vyčistiť formát', fn: () => chain().unsetAllMarks().clearNodes().run() },
   ];
@@ -109,6 +115,43 @@ export function createEditor(mountEl, opts = {}) {
   const buttons = [];
   defs.forEach(d => {
     if (d.sep) { const s = document.createElement('span'); s.className = 'tt-sep'; toolbar.appendChild(s); return; }
+    if (d.custom === 'color') {
+      const wrap = document.createElement('label');
+      wrap.className = 'tt-color'; wrap.title = 'Farba textu';
+      wrap.innerHTML = '<span>A</span>';
+      const inp = document.createElement('input');
+      inp.type = 'color'; inp.value = '#0891b2';
+      inp.addEventListener('input', () => editor.chain().focus().setColor(inp.value).run());
+      wrap.appendChild(inp);
+      toolbar.appendChild(wrap);
+      const clr = btn('A̶', 'Zrušiť farbu', () => editor.chain().focus().unsetColor().run());
+      toolbar.appendChild(clr);
+      return;
+    }
+    if (d.custom === 'font') {
+      const sel = document.createElement('select');
+      sel.className = 'tt-font'; sel.title = 'Písmo';
+      const fonts = [['', 'Písmo'], ['Arial', 'Arial'], ['Calibri', 'Calibri'], ['Times New Roman', 'Times New Roman'], ['Georgia', 'Georgia'], ['Courier New', 'Courier New'], ['Verdana', 'Verdana']];
+      fonts.forEach(([v, l]) => { const o = document.createElement('option'); o.value = v; o.textContent = l; sel.appendChild(o); });
+      sel.addEventListener('change', () => {
+        if (sel.value) editor.chain().focus().setFontFamily(sel.value).run();
+        else editor.chain().focus().unsetFontFamily().run();
+      });
+      sel.addEventListener('mousedown', e => e.stopPropagation());
+      toolbar.appendChild(sel);
+      return;
+    }
+    if (d.custom === 'xref') {
+      const b = btn('⛓ Obr.', 'Krížový odkaz na obrázok', () => {
+        const n = window.prompt('Číslo obrázka, na ktorý odkázať (Obrázok N):', '');
+        if (!n) return;
+        const num = parseInt(n, 10);
+        if (!num) return;
+        editor.chain().focus().insertContent(`<a href="#fig-${num}">Obrázok ${num}</a>&nbsp;`).run();
+      });
+      toolbar.appendChild(b);
+      return;
+    }
     const b = btn(d.ic, d.t, d.fn, d.name);
     toolbar.appendChild(b);
     if (d.name) buttons.push(b);
