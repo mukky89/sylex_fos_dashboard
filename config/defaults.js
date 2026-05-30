@@ -5,11 +5,11 @@
 const DEFAULT_LINKS = [
   { label: 'DBFOS',
     url:   'https://dbfos.sylex.sk',
-    color: 'cyan', group: 'erp', order: 0, active: true, hasDot: true },
+    color: 'cyan', group: 'erp', order: 0, active: true, hasDot: true, pinned: true },
 
   { label: 'ISYS',
     url:   'https://isys.sylex.sk/',
-    color: 'blue', group: 'erp', order: 1, active: true, hasDot: true },
+    color: 'blue', group: 'erp', order: 1, active: true, hasDot: true, pinned: true },
 
   { label: 'PEAKLOGGER',
     url:   'https://mukovnik.xyz/',
