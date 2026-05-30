@@ -83,6 +83,12 @@ async function autoSeed() {
         console.log('Seed: server folder links inserted');
       }
     }
+    // Pripni DBFOS/ISYS priamo do hlavičky, ak ešte nie je nič pripnuté
+    const pinnedCount = await HeaderLink.countDocuments({ pinned: true });
+    if (pinnedCount === 0) {
+      const r = await HeaderLink.updateMany({ label: { $in: ['DBFOS', 'ISYS'] } }, { $set: { pinned: true } });
+      if (r.modifiedCount) console.log('Migration: DBFOS/ISYS pinned to header');
+    }
   }
 
   // ── Seed AppConfig (sensor settings) ─────────────────────────────────────

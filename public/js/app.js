@@ -1030,13 +1030,25 @@ async function loadHeaderLinks() {
     const links = await r.json();
     const active = links.filter(l => l.active);
 
+    // Pripnuté odkazy → priamo v hlavičke; zvyšok → kategorizované dropdowny
+    const pinned = active.filter(l => l.pinned);
+    const rest   = active.filter(l => !l.pinned);
+
     _headerGroups = {};
-    active.forEach(l => {
+    rest.forEach(l => {
       const k = groupKeyFor(l.group);
       (_headerGroups[k] = _headerGroups[k] || []).push(l);
     });
 
     container.innerHTML = '';
+
+    // Priame čipy (DBFOS, ISYS, …)
+    pinned.forEach(l => container.appendChild(makeDirectChip(l)));
+    if (pinned.length && rest.length) {
+      const sep = document.createElement('div'); sep.className = 'ql-sep'; container.appendChild(sep);
+    }
+
+    // Dropdowny podľa kategórií
     HEADER_GROUP_DEFS.forEach(def => {
       const items = _headerGroups[def.key];
       if (!items || !items.length) return;
@@ -1047,6 +1059,25 @@ async function loadHeaderLinks() {
       container.appendChild(chip);
     });
   } catch (e) { console.error('loadHeaderLinks:', e); }
+}
+
+// Priamy čip v hlavičke (pripnutý odkaz)
+function makeDirectChip(l) {
+  const colorClass = 'ql-' + (l.color || 'sp');
+  if (l.hasCredential && l.credentialKey) {
+    const div = document.createElement('div');
+    div.className = `ql-chip ${colorClass}`;
+    div.style.cursor = 'pointer';
+    div.onclick = (e) => { if (!e.target.classList.contains('ql-cred-btn')) window.open(l.url, '_blank'); };
+    div.innerHTML = `${l.hasDot ? '<span class="ql-dot"></span>' : ''} ${escHtml(l.label)}
+      <button class="ql-cred-btn" onclick="togglePeakloggerCreds(event)" title="Zobraziť prístupy">🔑</button>`;
+    return div;
+  }
+  const a = document.createElement('a');
+  a.className = `ql-chip ${colorClass}`;
+  a.href = l.url; a.target = '_blank';
+  a.innerHTML = `${l.hasDot ? '<span class="ql-dot"></span>' : ''} ${escHtml(l.label)}`;
+  return a;
 }
 
 // Konvertuj cestu (G:\... alebo \\server\...) na file: URL pre "otvoriť"
@@ -2064,6 +2095,7 @@ function openLinkModal(link) {
   document.getElementById('lmGroup').value    = isEdit ? (link.group || 'sharepoint') : 'sharepoint';
   document.getElementById('lmHasDot').checked = isEdit ? !!link.hasDot   : false;
   document.getElementById('lmActive').checked = isEdit ? !!link.active   : true;
+  document.getElementById('lmPinned').checked = isEdit ? !!link.pinned   : false;
   document.getElementById('lmHasCred').checked = isEdit ? !!link.hasCredential : false;
   document.getElementById('lmCredKey').value  = isEdit ? (link.credentialKey || '') : '';
   document.getElementById('lmCredKeyWrap').style.display = (isEdit && link.hasCredential) ? '' : 'none';
@@ -2091,6 +2123,7 @@ async function saveLink() {
     group:         document.getElementById('lmGroup').value,
     hasDot:        document.getElementById('lmHasDot').checked,
     active:        document.getElementById('lmActive').checked,
+    pinned:        document.getElementById('lmPinned').checked,
     hasCredential: document.getElementById('lmHasCred').checked,
     credentialKey: document.getElementById('lmCredKey').value.trim()
   };
