@@ -1998,3 +1998,60 @@ body {
   .proc-edit-title { order: -1; flex-basis: 100%; }
   .proc-edit-body { padding: 16px 14px; }
 }
+
+/* =============================================
+   TipTap editor (operácie postupov)
+   ============================================= */
+.tt-wrap {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: #fff; overflow: hidden;
+}
+.tt-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
+  padding: 6px 8px; border-bottom: 1px solid var(--border);
+  background: #f8fafc; position: sticky; top: 0; z-index: 2;
+}
+.tt-btn {
+  min-width: 28px; height: 28px; padding: 0 7px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #fff; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 0.78rem; font-weight: 600; color: var(--text-dim);
+  cursor: pointer; font-family: var(--font); transition: all var(--transition);
+}
+.tt-btn:hover { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+.tt-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.tt-sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
+
+.tt-area { max-height: 360px; overflow-y: auto; }
+.tt-area .ProseMirror {
+  min-height: 110px; padding: 12px 14px; outline: none;
+  font-size: 0.92rem; line-height: 1.55; color: var(--text);
+}
+.tt-area .ProseMirror:focus { outline: none; }
+.tt-area .ProseMirror > * + * { margin-top: 0.5em; }
+.tt-area .ProseMirror h1 { font-size: 1.4rem; font-weight: 700; }
+.tt-area .ProseMirror h2 { font-size: 1.2rem; font-weight: 700; }
+.tt-area .ProseMirror h3 { font-size: 1.05rem; font-weight: 700; }
+.tt-area .ProseMirror ul,
+.tt-area .ProseMirror ol { padding-left: 1.4em; }
+.tt-area .ProseMirror blockquote { border-left: 3px solid var(--border); padding-left: 12px; color: var(--text-dim); }
+.tt-area .ProseMirror pre {
+  background: #0f172a; color: #e2e8f0; padding: 10px 12px; border-radius: 6px;
+  font-family: 'Courier New', monospace; font-size: 0.82rem; overflow-x: auto;
+}
+.tt-area .ProseMirror code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 0.85em; }
+.tt-area .ProseMirror img { max-width: 100%; height: auto; border-radius: 6px; }
+.tt-area .ProseMirror a { color: var(--accent); text-decoration: underline; }
+.tt-area .ProseMirror table { border-collapse: collapse; width: 100%; margin: 6px 0; }
+.tt-area .ProseMirror th,
+.tt-area .ProseMirror td { border: 1px solid var(--border); padding: 5px 8px; }
+.tt-area .ProseMirror th { background: #f1f5f9; font-weight: 600; }
+/* placeholder */
+.tt-area .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder); color: var(--text-xdim);
+  float: left; height: 0; pointer-events: none;
+}
+.tt-fallback {
+  width: 100%; padding: 10px 12px; border: none; outline: none;
+  font-family: var(--font); font-size: 0.9rem; resize: vertical; min-height: 90px;
+}

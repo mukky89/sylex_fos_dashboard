@@ -1455,9 +1455,42 @@ const PROC_META_FALLBACK = {
   ]
 };
 let PROC_META = { warnings: [], ppe: [] };
-let stepQuills = {};
+let stepEditors = {};
 let stepSeq = 0;
 let currentDetailProcedure = null;
+
+// Vyber obrázok z disku a nahraj → vráti URL (alebo null)
+function pickImageUpload() {
+  return new Promise(resolve => {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*';
+    input.onchange = async () => { const f = input.files[0]; if (!f) { resolve(null); return; } resolve((await uploadImage(f)) || null); };
+    input.click();
+  });
+}
+
+// Vytvor editor operácie (TipTap, s fallbackom na textarea ak bundle nie je načítaný)
+function mountStepEditor(el, html) {
+  if (window.SylexEditor && typeof window.SylexEditor.createEditor === 'function') {
+    return window.SylexEditor.createEditor(el, {
+      content: html || '',
+      placeholder: 'Podrobný popis operácie…',
+      onImageRequest: pickImageUpload
+    });
+  }
+  // Fallback — jednoduchý textarea
+  el.innerHTML = '<textarea class="tt-fallback" rows="4" placeholder="Popis operácie…"></textarea>';
+  const ta = el.querySelector('textarea');
+  ta.value = stripHtmlText(html || '');
+  return {
+    getHTML: () => ta.value.trim() ? '<p>' + ta.value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>') + '</p>' : '',
+    destroy: () => {}
+  };
+}
+function destroyAllStepEditors() {
+  Object.values(stepEditors).forEach(e => { try { e.destroy(); } catch (_) {} });
+  stepEditors = {};
+}
 
 async function loadProcMeta() {
   if (PROC_META.warnings && PROC_META.warnings.length) return;
@@ -1661,7 +1694,8 @@ function procMoveStep(btn, dir) {
 function procRemoveStep(btn) {
   const card = btn.closest('.proc-step-card');
   if (!card) return;
-  delete stepQuills[card.dataset.sid];
+  const ed = stepEditors[card.dataset.sid];
+  if (ed) { try { ed.destroy(); } catch (_) {} delete stepEditors[card.dataset.sid]; }
   card.remove();
 }
 
@@ -1704,17 +1738,6 @@ async function importStepImage(btn) {
   input.click();
 }
 
-function quillInsertImage(q) {
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = 'image/*';
-  input.onchange = async () => {
-    const f = input.files[0]; if (!f) return;
-    const url = await uploadImage(f);
-    if (url) { const r = q.getSelection(true); q.insertEmbed(r.index, 'image', url); }
-  };
-  input.click();
-}
-
 function addStepRow(step = {}) {
   const c = document.getElementById('prStepsRows');
   const sid = 'pstep_' + (++stepSeq);
@@ -1750,20 +1773,7 @@ function addStepRow(step = {}) {
     </div>`;
   c.appendChild(card);
 
-  const q = new Quill('#' + sid + '_ed', {
-    theme: 'snow',
-    placeholder: 'Podrobný popis operácie…',
-    modules: { toolbar: [
-      [{ header: [1, 2, 3, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ list: 'ordered' }, { list: 'bullet' }],
-      ['blockquote', 'code-block'],
-      ['link', 'image'], ['clean']
-    ] }
-  });
-  if (step.text) q.clipboard.dangerouslyPasteHTML(step.text);
-  q.getModule('toolbar').addHandler('image', () => quillInsertImage(q));
-  stepQuills[sid] = q;
+  stepEditors[sid] = mountStepEditor(card.querySelector('.proc-step-editor'), step.text || '');
 
   renderStepThumb(card);
   renderIconPicker(document.getElementById(sid + '_warn'), PROC_META.warnings, card._warnings);
@@ -1772,9 +1782,9 @@ function addStepRow(step = {}) {
 
 function collectSteps() {
   return [...document.querySelectorAll('#prStepsRows .proc-step-card')].map(card => {
-    const q = stepQuills[card.dataset.sid];
+    const ed = stepEditors[card.dataset.sid];
     return {
-      text:     q ? q.root.innerHTML : '',
+      text:     ed ? ed.getHTML() : '',
       note:     card.querySelector('.proc-step-note').value.trim(),
       image:    card._image || '',
       warnings: card._warnings || [],
@@ -1829,7 +1839,7 @@ async function openProcedureModal(proc = null) {
   document.getElementById('prDeleteBtn').style.display = isEdit ? '' : 'none';
 
   // Reset dynamických častí
-  stepQuills = {};
+  destroyAllStepEditors();
   document.getElementById('prToolsRows').innerHTML = '';
   document.getElementById('prStepsRows').innerHTML = '';
   document.getElementById('prAttRows').innerHTML   = '';
