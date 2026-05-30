@@ -1570,6 +1570,7 @@ function generateProcedureWord(id) {
 // ── Detail / náhľad (read-only) ───────────────────────────────────────────────
 function renderProcedureDetailHtml(p) {
   const wm = procWarnMap(), pm = procPpeMap();
+  const figCounter = { n: 0 };
   const steps = (p.steps || []).filter(s => stripHtmlText(s.text) || s.image || (s.note || '').trim() || (s.warnings && s.warnings.length) || (s.ppe && s.ppe.length));
   const meta = [];
   if (p.department) meta.push(`<span>🏢 ${escHtml(p.department)}</span>`);
@@ -1596,12 +1597,18 @@ function renderProcedureDetailHtml(p) {
     steps.forEach((s, i) => {
       const warns = (s.warnings || []).map(k => wm[k] ? `<span class="pdv-badge pdv-warn">${wm[k].icon} ${escHtml(wm[k].label)}</span>` : '').join('');
       const ppes  = (s.ppe || []).map(k => pm[k] ? `<span class="pdv-badge pdv-ppe">${pm[k].icon} ${escHtml(pm[k].label)}</span>` : '').join('');
+      const pos = s.image ? (s.imagePos || 'below') : 'below';
+      const figN = s.image ? ++figCounter.n : 0;
+      const imgHtml = s.image
+        ? `<figure class="pdv-fig pdv-fig-${pos}"><img src="${escHtml(s.image)}" alt=""><figcaption>Obrázok ${figN}${s.caption ? ': ' + escHtml(s.caption) : ''}</figcaption></figure>`
+        : '';
       html += `<div class="pdv-step">
         <div class="pdv-step-num">${i + 1}</div>
         <div class="pdv-step-body">
+          ${pos === 'right' || pos === 'left' ? imgHtml : ''}
           <div class="pdv-step-text ql-editor">${s.text || ''}</div>
           ${(s.note || '').trim() ? `<div class="pdv-step-note">📝 ${escHtml(s.note)}</div>` : ''}
-          ${s.image ? `<div class="pdv-step-img"><img src="${escHtml(s.image)}" alt=""></div>` : ''}
+          ${pos === 'below' ? imgHtml : ''}
           ${warns ? `<div class="pdv-badges pdv-badges-warn">${warns}</div>` : ''}
           ${ppes ? `<div class="pdv-badges pdv-badges-ppe">${ppes}</div>` : ''}
         </div>
@@ -1699,8 +1706,9 @@ function procRemoveStep(btn) {
   card.remove();
 }
 
-function renderIconPicker(el, defs, selected) {
+function renderIconPicker(el, defs, selected, countEl) {
   if (!el) return;
+  const updCount = () => { if (countEl) countEl.textContent = selected.length ? `(${selected.length})` : ''; };
   el.innerHTML = '';
   (defs || []).forEach(d => {
     const b = document.createElement('button');
@@ -1712,9 +1720,11 @@ function renderIconPicker(el, defs, selected) {
       const i = selected.indexOf(d.key);
       if (i >= 0) selected.splice(i, 1); else selected.push(d.key);
       b.classList.toggle('active');
+      updCount();
     };
     el.appendChild(b);
   });
+  updCount();
 }
 
 function renderStepThumb(card) {
@@ -1761,23 +1771,45 @@ function addStepRow(step = {}) {
     <div class="proc-step-section">
       <div class="proc-mini-label">Obrázok operácie</div>
       <div class="proc-step-img"></div>
-      <button type="button" class="btn-sm" onclick="importStepImage(this)">🖼 Importovať obrázok</button>
+      <div class="proc-img-controls">
+        <button type="button" class="btn-sm" onclick="importStepImage(this)">🖼 Importovať</button>
+        <select class="proc-img-pos" title="Rozloženie obrázka">
+          <option value="below">Pod textom</option>
+          <option value="right">Vpravo (text vľavo)</option>
+          <option value="left">Vľavo (text vpravo)</option>
+        </select>
+        <input type="text" class="proc-img-caption" placeholder="Popis obrázka (Obrázok N: …)">
+      </div>
     </div>
     <div class="proc-step-section">
-      <div class="proc-mini-label">⚠️ Upozornenia</div>
-      <div class="proc-icon-pick" id="${sid}_warn"></div>
+      <button type="button" class="proc-collapse-btn" onclick="toggleStepSection(this)">
+        <span class="proc-collapse-caret">▸</span> ⚠️ Upozornenia <span class="proc-collapse-count" id="${sid}_warnc"></span>
+      </button>
+      <div class="proc-icon-pick proc-collapsible hidden" id="${sid}_warn"></div>
     </div>
     <div class="proc-step-section">
-      <div class="proc-mini-label">🦺 Ochranné pracovné pomôcky</div>
-      <div class="proc-icon-pick" id="${sid}_ppe"></div>
+      <button type="button" class="proc-collapse-btn" onclick="toggleStepSection(this)">
+        <span class="proc-collapse-caret">▸</span> 🦺 Ochranné pracovné pomôcky <span class="proc-collapse-count" id="${sid}_ppec"></span>
+      </button>
+      <div class="proc-icon-pick proc-collapsible hidden" id="${sid}_ppe"></div>
     </div>`;
   c.appendChild(card);
 
   stepEditors[sid] = mountStepEditor(card.querySelector('.proc-step-editor'), step.text || '');
 
+  card.querySelector('.proc-img-pos').value = step.imagePos || 'below';
+  card.querySelector('.proc-img-caption').value = step.caption || '';
   renderStepThumb(card);
-  renderIconPicker(document.getElementById(sid + '_warn'), PROC_META.warnings, card._warnings);
-  renderIconPicker(document.getElementById(sid + '_ppe'),  PROC_META.ppe,      card._ppe);
+  renderIconPicker(document.getElementById(sid + '_warn'), PROC_META.warnings, card._warnings, document.getElementById(sid + '_warnc'));
+  renderIconPicker(document.getElementById(sid + '_ppe'),  PROC_META.ppe,      card._ppe,      document.getElementById(sid + '_ppec'));
+}
+
+function toggleStepSection(btn) {
+  const pick = btn.parentNode.querySelector('.proc-collapsible');
+  if (!pick) return;
+  const hidden = pick.classList.toggle('hidden');
+  const caret = btn.querySelector('.proc-collapse-caret');
+  if (caret) caret.textContent = hidden ? '▸' : '▾';
 }
 
 function collectSteps() {
@@ -1787,6 +1819,8 @@ function collectSteps() {
       text:     ed ? ed.getHTML() : '',
       note:     card.querySelector('.proc-step-note').value.trim(),
       image:    card._image || '',
+      imagePos: card.querySelector('.proc-img-pos')?.value || 'below',
+      caption:  card.querySelector('.proc-img-caption')?.value.trim() || '',
       warnings: card._warnings || [],
       ppe:      card._ppe || []
     };

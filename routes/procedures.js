@@ -7,7 +7,7 @@ const { WARNING_TYPES, PPE_TYPES } = require('../config/procedureMeta');
 const {
   Document, Packer, Paragraph, TextRun, HeadingLevel,
   Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle,
-  ImageRun, ExternalHyperlink
+  ImageRun, ExternalHyperlink, Bookmark, InternalHyperlink
 } = require('docx');
 const { parse } = require('node-html-parser');
 const sizeOf = require('image-size');
@@ -91,31 +91,49 @@ function metaRow(label, value) {
   });
 }
 
-// Načítaj obrázok z /uploads a vráť ImageRun (alebo null)
-function readImageRun(url, maxW = 460) {
+// ── Obrázky ───────────────────────────────────────────────────────────────────
+function readImageData(url, maxW = 460) {
   try {
     if (!url || !url.startsWith('/uploads/')) return null;
     const fp = path.join(PUBLIC_DIR, url);
     if (!fs.existsSync(fp)) return null;
     const data = fs.readFileSync(fp);
-    let dim = {}; try { dim = sizeOf(data); } catch {}
+    let dim = {}; try { dim = sizeOf(data); } catch (e) {}
     let w = dim.width || maxW, h = dim.height || Math.round(maxW * 0.6);
     if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
     let ext = (path.extname(fp).slice(1) || 'png').toLowerCase();
     if (ext === 'jpg') ext = 'jpeg';
     if (!['png', 'jpeg', 'gif', 'bmp'].includes(ext)) ext = 'png';
-    return new ImageRun({ data, transformation: { width: w, height: h }, type: ext });
-  } catch { return null; }
+    return { data, w, h, type: ext };
+  } catch (e) { return null; }
 }
-function imageParagraph(url) {
-  const run = readImageRun(url);
-  return run ? new Paragraph({ spacing: { before: 60, after: 120 }, children: [run] }) : null;
+function imageRunFrom(url, maxW) {
+  const im = readImageData(url, maxW);
+  if (!im) return null;
+  return new ImageRun({ data: im.data, transformation: { width: im.w, height: im.h }, type: im.type });
+}
+const ALIGN = { left: AlignmentType.LEFT, center: AlignmentType.CENTER, right: AlignmentType.RIGHT };
+
+// Vráti pole odsekov: obrázok (s číslom/bookmarkom) + popis. Registruje figúru do ctx.
+function figureParagraphs(url, ctx, { align = 'center', caption = '', maxW = 460 } = {}) {
+  const run = imageRunFrom(url, maxW);
+  if (!run) return [];
+  const n = ++ctx.figNo;
+  const anchor = 'fig_' + n;
+  ctx.figures.push({ n, anchor, caption });
+  const al = ALIGN[align] || AlignmentType.CENTER;
+  return [
+    new Paragraph({ alignment: al, spacing: { before: 80, after: 20 },
+      children: [new Bookmark({ id: anchor, children: [run] })] }),
+    new Paragraph({ alignment: al, spacing: { after: 120 },
+      children: [new TextRun({ text: `Obrázok ${n}${caption ? ': ' + caption : ''}`, italics: true, size: 18, color: '64748B' })] }),
+  ];
 }
 
 // Rekurzívne pozbieraj inline runs (s formátovaním) z HTML uzla
 function collectInline(node, fmt, out) {
   (node.childNodes || []).forEach(child => {
-    if (child.nodeType === 3) { // text
+    if (child.nodeType === 3) {
       const t = child.text;
       if (t && t.replace(/ /g, ' ').length) out.push(new TextRun({ text: t, ...fmt }));
       return;
@@ -123,7 +141,7 @@ function collectInline(node, fmt, out) {
     if (child.nodeType !== 1) return;
     const tag = (child.tagName || '').toLowerCase();
     if (tag === 'br') { out.push(new TextRun({ text: '', break: 1 })); return; }
-    if (tag === 'img') { const r = readImageRun(child.getAttribute('src')); if (r) out.push(r); return; }
+    if (tag === 'img') { const r = imageRunFrom(child.getAttribute('src'), 420); if (r) out.push(r); return; }
     if (tag === 'a') {
       const href = child.getAttribute('href') || '';
       const inner = [];
@@ -143,43 +161,47 @@ function collectInline(node, fmt, out) {
 }
 function inlineRuns(node, fmt = {}) { const out = []; collectInline(node, fmt, out); return out; }
 
-// HTML (Quill output) → pole Paragraph
-function htmlToParagraphs(html) {
+function imgAlignOf(el) {
+  const a = (el.getAttribute('data-align') || '').toLowerCase();
+  if (a === 'left' || a === 'right' || a === 'center') return a;
+  return 'center';
+}
+
+// HTML (TipTap/Quill) → pole Paragraph (ctx pre figúry)
+function htmlToParagraphs(html, ctx) {
   if (!stripHtml(html) && !/<img/i.test(html || '')) return [];
   const root = parse(html, { lowerCaseTagName: true });
   const paras = [];
 
   const pushBlock = (node) => {
     const tag = (node.tagName || '').toLowerCase();
+    if (tag === 'img') { figureParagraphs(node.getAttribute('src'), ctx, { align: imgAlignOf(node), caption: node.getAttribute('alt') || '' }).forEach(p => paras.push(p)); return; }
+    // odsek/blok obsahujúci IBA obrázok → figúra
+    if ((tag === 'p' || tag === 'figure' || tag === 'div')) {
+      const imgs = node.querySelectorAll ? node.querySelectorAll('img') : [];
+      const txt = stripHtml(node.innerHTML || '');
+      if (imgs.length && !txt) { imgs.forEach(im => figureParagraphs(im.getAttribute('src'), ctx, { align: imgAlignOf(im), caption: im.getAttribute('alt') || '' }).forEach(p => paras.push(p))); return; }
+    }
     if (tag === 'ul' || tag === 'ol') {
       const ordered = tag === 'ol';
       node.querySelectorAll('li').forEach((li, idx) => {
         const runs = inlineRuns(li);
-        if (ordered) {
-          paras.push(new Paragraph({ indent: { left: 360 }, spacing: { after: 40 },
-            children: [new TextRun({ text: `${idx + 1}. `, bold: true }), ...runs] }));
-        } else {
-          paras.push(new Paragraph({ bullet: { level: 0 }, spacing: { after: 40 },
-            children: runs.length ? runs : [new TextRun('')] }));
-        }
+        if (ordered) paras.push(new Paragraph({ indent: { left: 360 }, spacing: { after: 40 }, children: [new TextRun({ text: `${idx + 1}. `, bold: true }), ...runs] }));
+        else paras.push(new Paragraph({ bullet: { level: 0 }, spacing: { after: 40 }, children: runs.length ? runs : [new TextRun('')] }));
       });
       return;
     }
     if (['h1', 'h2', 'h3', 'h4'].includes(tag)) {
       const sizeMap = { h1: 30, h2: 27, h3: 24, h4: 22 };
-      paras.push(new Paragraph({ spacing: { before: 120, after: 60 },
-        children: inlineRuns(node, { bold: true, size: sizeMap[tag] }) }));
+      paras.push(new Paragraph({ spacing: { before: 120, after: 60 }, children: inlineRuns(node, { bold: true, size: sizeMap[tag] }) }));
       return;
     }
     if (tag === 'blockquote') {
-      paras.push(new Paragraph({ indent: { left: 360 },
-        border: { left: { style: BorderStyle.SINGLE, size: 14, color: 'CBD5E1', space: 10 } },
-        children: inlineRuns(node, { italics: true, color: '475569' }) }));
+      paras.push(new Paragraph({ indent: { left: 360 }, border: { left: { style: BorderStyle.SINGLE, size: 14, color: 'CBD5E1', space: 10 } }, children: inlineRuns(node, { italics: true, color: '475569' }) }));
       return;
     }
     if (tag === 'pre') {
-      paras.push(new Paragraph({ shading: { fill: 'F1F5F9' },
-        children: [new TextRun({ text: node.text, font: 'Consolas', size: 20 })] }));
+      paras.push(new Paragraph({ shading: { fill: 'F1F5F9' }, children: [new TextRun({ text: node.text, font: 'Consolas', size: 20 })] }));
       return;
     }
     const runs = inlineRuns(node);
@@ -193,21 +215,54 @@ function htmlToParagraphs(html) {
   return paras;
 }
 
+function firstHeadingText(html) {
+  try {
+    const root = parse(html || '', { lowerCaseTagName: true });
+    const h = root.querySelector('h1, h2, h3');
+    if (h && h.text.trim()) return h.text.trim();
+  } catch (e) {}
+  const t = stripHtml(html);
+  return t ? t.slice(0, 60) : '';
+}
+
+// Farebné bloky upozornení / pomôcok
+function warnPpeParagraphs(s) {
+  const out = [];
+  if (s.warnings && s.warnings.length) {
+    const labels = s.warnings.map(k => WARN_MAP[k] ? `${WARN_MAP[k].icon} ${WARN_MAP[k].label}` : k).join('    ');
+    out.push(new Paragraph({ shading: { fill: 'FDECEA' }, spacing: { before: 40, after: 40 }, children: [new TextRun({ text: 'Upozornenia:  ', bold: true, color: 'C0392B' }), new TextRun({ text: labels })] }));
+  }
+  if (s.ppe && s.ppe.length) {
+    const labels = s.ppe.map(k => PPE_MAP[k] ? `${PPE_MAP[k].icon} ${PPE_MAP[k].label}` : k).join('    ');
+    out.push(new Paragraph({ shading: { fill: 'E8F5EC' }, spacing: { before: 40, after: 100 }, children: [new TextRun({ text: 'Ochranné pomôcky:  ', bold: true, color: '1F6F3D' }), new TextRun({ text: labels })] }));
+  }
+  return out;
+}
+
+const NO_BORDERS = {
+  top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+};
+
+function bookmarkedHeading(text, anchor, ctx, level = 1) {
+  ctx.toc.push({ label: text, anchor, level });
+  return new Paragraph({
+    heading: level === 1 ? HeadingLevel.HEADING_1 : HeadingLevel.HEADING_2,
+    spacing: { before: 260, after: 100 },
+    children: [new Bookmark({ id: anchor, children: [new TextRun({ text, bold: true, color: ACCENT })] })]
+  });
+}
+
 function buildDoc(p) {
-  const children = [];
+  const ctx = { figNo: 0, figures: [], toc: [] };
+  const body = [];
 
-  // Title block
-  children.push(new Paragraph({
-    alignment: AlignmentType.CENTER, spacing: { after: 60 },
-    children: [new TextRun({ text: 'PRACOVNÝ POSTUP', bold: true, size: 28, color: ACCENT, characterSpacing: 30 })]
-  }));
-  children.push(new Paragraph({
-    alignment: AlignmentType.CENTER, spacing: { after: 240 },
-    children: [new TextRun({ text: p.title || '', bold: true, size: 36 })]
-  }));
-
-  // Metadata
-  children.push(new Table({
+  // Metadáta
+  body.push(new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
       metaRow('Oddelenie / kategória', p.department),
@@ -217,84 +272,101 @@ function buildDoc(p) {
     ]
   }));
 
-  // Cieľ / účel
   if (p.purpose && p.purpose.trim()) {
-    children.push(sectionHeading('Cieľ / Účel'));
-    p.purpose.split('\n').forEach(line => children.push(new Paragraph({ children: [new TextRun(line)] })));
+    body.push(bookmarkedHeading('Cieľ / Účel', 'sec_purpose', ctx, 1));
+    p.purpose.split('\n').forEach(line => body.push(new Paragraph({ children: [new TextRun(line)] })));
   }
 
-  // Pomôcky / nástroje
   const tools = (p.tools || []).filter(t => (t.name || '').trim());
   if (tools.length) {
-    children.push(sectionHeading('Potrebné pomôcky / nástroje'));
-    const headCell = (text) => new TableCell({ shading: { fill: 'EEF2F6' },
-      margins: { top: 60, bottom: 60, left: 120, right: 120 },
-      children: [new Paragraph({ children: [new TextRun({ text, bold: true })] })] });
+    body.push(bookmarkedHeading('Potrebné pomôcky / nástroje', 'sec_tools', ctx, 1));
+    const headCell = (text) => new TableCell({ shading: { fill: 'EEF2F6' }, margins: { top: 60, bottom: 60, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text, bold: true })] })] });
     const cell = (text) => new TableCell({ margins: { top: 60, bottom: 60, left: 120, right: 120 }, children: [new Paragraph(text || '')] });
-    children.push(new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [
-        new TableRow({ tableHeader: true, children: [headCell('Pomôcka / nástroj'), headCell('Poznámka')] }),
-        ...tools.map(t => new TableRow({ children: [cell(t.name), cell(t.note)] }))
-      ]
-    }));
+    body.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [
+      new TableRow({ tableHeader: true, children: [headCell('Pomôcka / nástroj'), headCell('Poznámka')] }),
+      ...tools.map(t => new TableRow({ children: [cell(t.name), cell(t.note)] }))
+    ] }));
   }
 
-  // Postup — kroky (rich text + obrázok + upozornenia + ochranné pomôcky)
-  const steps = (p.steps || []).filter(s =>
-    stripHtml(s.text) || /<img/i.test(s.text || '') || s.image || (s.note || '').trim() ||
-    (s.warnings && s.warnings.length) || (s.ppe && s.ppe.length));
+  // Postup
+  const steps = (p.steps || []).filter(s => stripHtml(s.text) || /<img/i.test(s.text || '') || s.image || (s.note || '').trim() || (s.warnings && s.warnings.length) || (s.ppe && s.ppe.length));
   if (steps.length) {
-    children.push(sectionHeading('Postup'));
+    body.push(bookmarkedHeading('Postup', 'sec_steps', ctx, 1));
     steps.forEach((s, i) => {
-      children.push(new Paragraph({ spacing: { before: 160, after: 40 },
-        children: [new TextRun({ text: `Krok ${i + 1}`, bold: true, color: ACCENT, size: 24 })] }));
+      const num = i + 1;
+      const label = firstHeadingText(s.text) || 'Operácia ' + num;
+      ctx.toc.push({ label: `Krok ${num} — ${label}`, anchor: 'op_' + num, level: 2 });
+      body.push(new Paragraph({ spacing: { before: 160, after: 40 },
+        children: [new Bookmark({ id: 'op_' + num, children: [new TextRun({ text: `Krok ${num}`, bold: true, color: ACCENT, size: 24 })] })] }));
 
-      const rich = htmlToParagraphs(s.text);
-      if (rich.length) children.push(...rich);
+      const pos = s.image ? (s.imagePos || 'below') : 'below';
 
-      if ((s.note || '').trim()) children.push(new Paragraph({ spacing: { after: 40 },
-        children: [new TextRun({ text: s.note, italics: true, color: '64748B' })] }));
-
-      const imgP = imageParagraph(s.image); if (imgP) children.push(imgP);
-
-      if (s.warnings && s.warnings.length) {
-        const labels = s.warnings.map(k => WARN_MAP[k] ? `${WARN_MAP[k].icon} ${WARN_MAP[k].label}` : k).join('    ');
-        children.push(new Paragraph({ shading: { fill: 'FDECEA' }, spacing: { before: 40, after: 40 },
-          children: [new TextRun({ text: 'Upozornenia:  ', bold: true, color: 'C0392B' }), new TextRun({ text: labels })] }));
-      }
-      if (s.ppe && s.ppe.length) {
-        const labels = s.ppe.map(k => PPE_MAP[k] ? `${PPE_MAP[k].icon} ${PPE_MAP[k].label}` : k).join('    ');
-        children.push(new Paragraph({ shading: { fill: 'E8F5EC' }, spacing: { before: 40, after: 100 },
-          children: [new TextRun({ text: 'Ochranné pomôcky:  ', bold: true, color: '1F6F3D' }), new TextRun({ text: labels })] }));
+      if (s.image && (pos === 'left' || pos === 'right')) {
+        // Blok: text vľavo / obrázok vpravo (alebo naopak) — 2-stĺpcová tabuľka bez okrajov
+        const textCellChildren = [];
+        htmlToParagraphs(s.text, ctx).forEach(x => textCellChildren.push(x));
+        if ((s.note || '').trim()) textCellChildren.push(new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: s.note, italics: true, color: '64748B' })] }));
+        if (!textCellChildren.length) textCellChildren.push(new Paragraph(''));
+        const imgCellChildren = figureParagraphs(s.image, ctx, { align: 'center', caption: s.caption || '', maxW: 250 });
+        if (!imgCellChildren.length) imgCellChildren.push(new Paragraph(''));
+        const textCell = new TableCell({ width: { size: 60, type: WidthType.PERCENTAGE }, margins: { top: 40, bottom: 40, left: 60, right: 120 }, children: textCellChildren });
+        const imgCell  = new TableCell({ width: { size: 40, type: WidthType.PERCENTAGE }, margins: { top: 40, bottom: 40, left: 120, right: 60 }, children: imgCellChildren });
+        const cells = pos === 'right' ? [textCell, imgCell] : [imgCell, textCell];
+        body.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: NO_BORDERS, rows: [new TableRow({ children: cells })] }));
+        warnPpeParagraphs(s).forEach(x => body.push(x));
+      } else {
+        htmlToParagraphs(s.text, ctx).forEach(x => body.push(x));
+        if ((s.note || '').trim()) body.push(new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: s.note, italics: true, color: '64748B' })] }));
+        if (s.image) figureParagraphs(s.image, ctx, { align: 'center', caption: s.caption || '' }).forEach(x => body.push(x));
+        warnPpeParagraphs(s).forEach(x => body.push(x));
       }
     });
   }
 
-  // Riziká
   const risks = (p.risks || []).filter(r => (r || '').trim());
   if (risks.length) {
-    children.push(sectionHeading('Riziká / Upozornenia'));
-    risks.forEach(r => children.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun(r)] })));
+    body.push(bookmarkedHeading('Riziká / Upozornenia', 'sec_risks', ctx, 1));
+    risks.forEach(r => body.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun(r)] })));
   }
 
-  // Prílohy
   const atts = (p.attachments || []).filter(a => (a.label || a.url || '').trim());
   if (atts.length) {
-    children.push(sectionHeading('Prílohy / Odkazy'));
+    body.push(bookmarkedHeading('Prílohy / Odkazy', 'sec_atts', ctx, 1));
     atts.forEach(a => {
       const parts = [new TextRun({ text: a.label || a.url })];
       if (a.label && a.url) parts.push(new TextRun({ text: `  —  ${a.url}`, color: '64748B' }));
-      children.push(new Paragraph({ bullet: { level: 0 }, children: parts }));
+      body.push(new Paragraph({ bullet: { level: 0 }, children: parts }));
     });
   }
 
-  // Footer
-  children.push(new Paragraph({
-    spacing: { before: 360 },
-    border: { top: { style: BorderStyle.SINGLE, size: 4, color: 'D6DCE4' } },
-    children: [new TextRun({ text: `Vygenerované z FOS Dashboard · ${fmtDate(new Date())}`, italics: true, size: 16, color: '94A3B8' })]
-  }));
+  // Zoznam obrázkov (krížové odkazy)
+  if (ctx.figures.length) {
+    body.push(bookmarkedHeading('Zoznam obrázkov', 'sec_figs', ctx, 1));
+    ctx.figures.forEach(f => {
+      body.push(new Paragraph({ children: [new InternalHyperlink({ anchor: f.anchor, children: [new TextRun({ text: `Obrázok ${f.n}${f.caption ? ': ' + f.caption : ''}`, color: LINK_COLOR, underline: {} })] })] }));
+    });
+  }
+
+  // ── Zostavenie dokumentu: titul + OBSAH + telo ──
+  const children = [];
+  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [new TextRun({ text: 'PRACOVNÝ POSTUP', bold: true, size: 28, color: ACCENT, characterSpacing: 30 })] }));
+  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: p.title || '', bold: true, size: 36 })] }));
+
+  // Obsah dokumentu (prelinkované odrážky)
+  if (ctx.toc.length) {
+    children.push(new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { after: 80 }, children: [new TextRun({ text: 'Obsah', bold: true, color: ACCENT })] }));
+    ctx.toc.forEach(t => {
+      children.push(new Paragraph({
+        indent: { left: t.level === 2 ? 480 : 120 }, spacing: { after: 20 },
+        children: [new InternalHyperlink({ anchor: t.anchor, children: [new TextRun({ text: (t.level === 2 ? '– ' : '• ') + t.label, color: LINK_COLOR, underline: {} })] })]
+      }));
+    });
+    children.push(new Paragraph({ spacing: { after: 120 }, border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'D6DCE4' } }, children: [new TextRun('')] }));
+  }
+
+  body.forEach(x => children.push(x));
+
+  children.push(new Paragraph({ spacing: { before: 360 }, border: { top: { style: BorderStyle.SINGLE, size: 4, color: 'D6DCE4' } }, children: [new TextRun({ text: `Vygenerované z FOS Dashboard · ${fmtDate(new Date())}`, italics: true, size: 16, color: '94A3B8' })] }));
 
   return new Document({
     creator: 'FOS Dashboard',
@@ -303,6 +375,7 @@ function buildDoc(p) {
     sections: [{ properties: {}, children }]
   });
 }
+
 
 router.get('/:id/docx', async (req, res) => {
   try {

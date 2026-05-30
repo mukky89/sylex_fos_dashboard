@@ -30,11 +30,7 @@
         </a>
         <a class="nav-link" onclick="showPage('wiki')" data-page="wiki">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
-          Knowledge Base
-        </a>
-        <a class="nav-link" onclick="showPage('sensors')" data-page="sensors">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          Senzory
+          WIKI FOS
         </a>
         <a class="nav-link" onclick="showPage('calendar')" data-page="calendar">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -130,20 +126,20 @@
       <div class="home-kb-section">
         <div class="home-kb-hdr">
           <div class="home-kb-hdr-left">
-            <span class="home-kb-hdr-title">Knowledge Base</span>
+            <span class="home-kb-hdr-title">WIKI FOS</span>
             <span class="home-kb-hdr-stats">
               <span id="kbProdCount">—</span> záznamy &nbsp;·&nbsp; <span id="kbCatCount">—</span> kategórie
             </span>
           </div>
           <button class="btn-primary" onclick="showPage('wiki')">
-            Otvoriť KB
+            Otvoriť WIKI
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </button>
         </div>
         <div class="home-kb-search-wrap">
           <div class="home-search-box">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="homeSearchInput" placeholder="Hľadať v Knowledge Base..." oninput="homeSearch(this.value)" autocomplete="off">
+            <input type="text" id="homeSearchInput" placeholder="Hľadať vo WIKI FOS..." oninput="homeSearch(this.value)" autocomplete="off">
           </div>
         </div>
         <div id="homeKBPreview" class="home-kb-preview"></div>
@@ -219,7 +215,7 @@
           <div class="wh-toolbar">
             <div class="wh-search-wrap">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" id="wikiSearchMain" placeholder="Hľadať v Knowledge Base..." oninput="liveSearch(this.value)" autocomplete="off">
+              <input type="text" id="wikiSearchMain" placeholder="Hľadať vo WIKI FOS..." oninput="liveSearch(this.value)" autocomplete="off">
             </div>
             <button class="btn-primary" onclick="openProductModal()">+ Nový záznam</button>
           </div>
@@ -292,6 +288,10 @@
   <!-- ===== SENSORS PAGE ===== -->
   <main id="page-sensors" class="page sensors-page">
     <div class="sensors-inner">
+
+      <div style="margin-bottom:14px">
+        <button class="btn-secondary" onclick="showPage('admin')">← Späť do Admin</button>
+      </div>
 
       <div class="sensors-hdr">
         <div>
@@ -673,7 +673,7 @@
         </button>
         <button class="admin-tab" data-tab="kb" onclick="switchAdminTab('kb')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
-          Knowledge Base
+          WIKI FOS
         </button>
         <button class="admin-tab" data-tab="appearance" onclick="switchAdminTab('appearance')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
@@ -711,6 +711,13 @@
 
       <!-- ── TAB: SENSOR ── -->
       <div class="admin-panel" id="adminTab-sensor">
+        <div class="admin-section" style="margin-bottom:18px">
+          <div class="admin-section-hdr">
+            <h2 class="admin-section-title">Dashboard senzorov</h2>
+            <button class="btn-primary" onclick="showPage('sensors')">📊 Otvoriť live + graf</button>
+          </div>
+          <p class="admin-section-desc">Aktuálne hodnoty teploty a vlhkosti + história (graf). Otvorí sa celá stránka senzorov.</p>
+        </div>
         <div class="admin-section">
           <div class="admin-section-hdr">
             <h2 class="admin-section-title">Nastavenia senzora</h2>
@@ -769,7 +776,7 @@
       <div class="admin-panel" id="adminTab-kb">
         <div class="admin-coming-soon">
           <div class="acs-icon">📚</div>
-          <div class="acs-title">Knowledge Base — správa</div>
+          <div class="acs-title">WIKI FOS — správa</div>
           <div class="acs-desc">Hromadné operácie, zálohovanie a import/export KB záznamov. Pripravujeme.</div>
         </div>
       </div>

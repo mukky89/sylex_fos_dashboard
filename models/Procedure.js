@@ -12,6 +12,8 @@ const procedureSchema = new mongoose.Schema({
     text:     { type: String, default: '' },                // rich HTML popis operácie
     note:     { type: String, default: '' },                // krátka poznámka
     image:    { type: String, default: '' },                // URL importovaného obrázka
+    imagePos: { type: String, default: 'below' },           // below | left | right (rozloženie obrázka voči textu)
+    caption:  { type: String, default: '' },                // popis obrázka (Obrázok N: ...)
     warnings: [String],                                      // kľúče typov upozornení
     ppe:      [String]                                       // kľúče ochranných pomôcok
   }],
