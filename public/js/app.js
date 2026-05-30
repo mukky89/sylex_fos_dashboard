@@ -577,8 +577,53 @@ function restoreWikiSections() {
 // ==============================
 // HOME PAGE KB PREVIEW
 // ==============================
+// ── Úvod: Pracovné postupy + vyhľadávanie ─────────────────────────────────────
+let homeProcData = [];
+async function loadHomeProcedures() {
+  try {
+    const r = await fetch('/api/procedures');
+    homeProcData = await r.json();
+    if (!Array.isArray(homeProcData)) homeProcData = [];
+  } catch { homeProcData = []; }
+  const cnt = document.getElementById('homeProcCount');
+  if (cnt) cnt.textContent = homeProcData.length;
+  renderHomeProcedures();
+}
+function renderHomeProcedures() {
+  const el = document.getElementById('homeProcList');
+  if (!el) return;
+  const q = (document.getElementById('homeProcSearch')?.value || '').toLowerCase();
+  let items = homeProcData.filter(p =>
+    !q || (p.title || '').toLowerCase().includes(q) ||
+    (p.department || '').toLowerCase().includes(q) ||
+    (p.author || '').toLowerCase().includes(q));
+  items = [...items].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  if (!q) items = items.slice(0, 6);
+
+  el.innerHTML = '';
+  if (items.length === 0) {
+    el.innerHTML = `<div style="font-size:0.78rem;color:rgba(255,255,255,0.3);padding:8px 0">${homeProcData.length === 0 ? 'Žiadne postupy. Vytvor prvý v sekcii Postupy.' : 'Žiadne výsledky.'}</div>`;
+    return;
+  }
+  items.forEach(p => {
+    const stepCount = (p.steps || []).length;
+    const card = document.createElement('div');
+    card.className = 'hkb-card';
+    card.innerHTML = `
+      <div class="hkb-card-icon">📋</div>
+      <div class="hkb-card-body">
+        <div class="hkb-card-title">${escHtml(p.title)}</div>
+        <div class="hkb-card-meta">${p.department ? escHtml(p.department) + ' · ' : ''}${stepCount} operácií · ${fmtDate(p.updatedAt)}</div>
+      </div>
+      <div class="hkb-card-arrow">›</div>`;
+    card.onclick = () => { showPage('procedures'); setTimeout(() => openProcedureById(p._id), 250); };
+    el.appendChild(card);
+  });
+}
+
 async function loadHomeKB() {
   loadAnnouncements();
+  loadHomeProcedures();
   try {
     const [cR, pR] = await Promise.all([fetch('/api/categories'), fetch('/api/products')]);
     const cats = await cR.json();
@@ -1606,7 +1651,7 @@ function renderProcedureDetailHtml(p) {
         <div class="pdv-step-num">${i + 1}</div>
         <div class="pdv-step-body">
           ${pos === 'right' || pos === 'left' ? imgHtml : ''}
-          <div class="pdv-step-text ql-editor">${s.text || ''}</div>
+          <div class="pdv-step-text">${s.text || ''}</div>
           ${(s.note || '').trim() ? `<div class="pdv-step-note">📝 ${escHtml(s.note)}</div>` : ''}
           ${pos === 'below' ? imgHtml : ''}
           ${warns ? `<div class="pdv-badges pdv-badges-warn">${warns}</div>` : ''}
