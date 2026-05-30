@@ -116,5 +116,14 @@ module.exports = function(sensorCfg) {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // ── Ukážkové dáta (Novinky / WIKI / Postupy) ──────────────────────────────────
+  router.post('/seed-samples', async (req, res) => {
+    try {
+      const { seedSamples } = require('../scripts/seedSamples');
+      const result = await seedSamples();
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   return router;
 };

@@ -2170,6 +2170,18 @@ async function clearSensorHistory() {
   } catch { alert('Chyba pri mazaní histórie'); }
 }
 
+async function seedSampleData() {
+  if (!confirm('Vložiť ukážkové dáta (Novinky, WIKI, Postupy)? Existujúce záznamy sa preskočia.')) return;
+  const el = document.getElementById('seedResult');
+  if (el) el.textContent = 'Vkladám…';
+  try {
+    const r = await fetch('/api/admin/seed-samples', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) { if (el) el.textContent = 'Chyba: ' + (d.error || r.status); return; }
+    if (el) el.innerHTML = `✓ Vložené — Novinky: <strong>${d.announcements}</strong>, kategórie: <strong>${d.categories}</strong>, WIKI: <strong>${d.products}</strong>, Postupy: <strong>${d.procedures}</strong>.`;
+  } catch (e) { if (el) el.textContent = 'Sieťová chyba: ' + e.message; }
+}
+
 // ==============================
 // INIT
 // ==============================

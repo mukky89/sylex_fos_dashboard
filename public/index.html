@@ -801,6 +801,14 @@
 
       <!-- ── TAB: SYSTEM ── -->
       <div class="admin-panel" id="adminTab-system">
+        <div class="admin-section">
+          <div class="admin-section-hdr">
+            <h2 class="admin-section-title">Ukážkové dáta</h2>
+            <button class="btn-primary" onclick="seedSampleData()">✨ Naplniť ukážkovými dátami</button>
+          </div>
+          <p class="admin-section-desc">Vloží ukážkové Novinky, WIKI záznamy a Pracovné postupy (po 5–6 ks) na vyskúšanie. Idempotentné — existujúce záznamy preskočí, nič neprepíše.</p>
+          <div id="seedResult" class="admin-section-desc"></div>
+        </div>
         <div class="admin-coming-soon">
           <div class="acs-icon">🖥️</div>
           <div class="acs-title">Systém — informácie &amp; logy</div>
