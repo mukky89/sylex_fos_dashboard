@@ -357,6 +357,7 @@ window.addEventListener('popstate', () => handleHash(location.hash.slice(1)));
 async function handleHash(hash) {
   if (!hash || hash === 'home') { _activatePage('home'); loadHomeKB(); return; }
   if (hash === 'sensors') { _activatePage('sensors'); loadThermoData(); loadSensorChart(); return; }
+  if (hash === 'fbg')     { _activatePage('fbg'); return; }
   if (hash === 'calendar') { _activatePage('calendar'); loadCalendar(); return; }
   if (hash === 'procedures') { _activatePage('procedures'); loadProcedures(); return; }
   if (hash === 'dev')     { _activatePage('dev');     loadDev(); return; }
