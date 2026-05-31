@@ -1,6 +1,6 @@
 {
   "name": "sylex-fos-dashboard",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "description": "Sylex FOS Division Dashboard - Knowledge Base & ERP Links",
   "main": "server.js",
   "scripts": {
@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "seed": "node scripts/seed.js",
     "seed:samples": "node scripts/seedSamples.js",
+    "audit:sylex": "node scripts/auditSylex.js",
     "build:editor": "esbuild src/editor/sylex-editor.js --bundle --minify --format=iife --global-name=SylexEditor --outfile=public/js/editor.bundle.js"
   },
   "dependencies": {

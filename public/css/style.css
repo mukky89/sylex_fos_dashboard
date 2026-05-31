@@ -2321,3 +2321,29 @@ body {
 .task-prio { color: var(--prio, #3b82f6); font-weight: 600; }
 .task-od { color: #f87171; font-weight: 600; }
 .task-desc { color: rgba(255,255,255,0.4); }
+
+/* =============================================
+   Úvod — Novinky + Kalendár vedľa seba; medzery
+   ============================================= */
+.home-row { display: grid; grid-template-columns: 1.7fr 1fr; gap: 18px; margin-bottom: 18px; align-items: start; }
+.home-row .home-news-section { margin-bottom: 0; }
+.home-kb-section { margin-bottom: 18px; }   /* medzera medzi WIKI a Postupmi */
+
+.home-cal-widget {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-lg); padding: 16px 18px; backdrop-filter: blur(8px);
+}
+.home-cal-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.home-cal-title { font-family: var(--font-title); font-size: 1.05rem; font-weight: 700; color: #f1f5f9; }
+.home-cal-list { display: flex; flex-direction: column; gap: 8px; }
+.home-cal-empty { font-size: 0.8rem; color: rgba(255,255,255,0.35); padding: 8px 0; }
+.home-cal-item { display: flex; gap: 10px; align-items: center; padding: 7px; border-radius: var(--radius); cursor: pointer; border-left: 3px solid var(--ev, #00d4ff); background: rgba(255,255,255,0.03); transition: background var(--transition); }
+.home-cal-item:hover { background: rgba(255,255,255,0.08); }
+.home-cal-today { background: rgba(0,212,255,0.1); }
+.home-cal-date { display: flex; flex-direction: column; align-items: center; min-width: 36px; }
+.hc-day { font-size: 1.05rem; font-weight: 700; color: #f1f5f9; line-height: 1; }
+.hc-mon { font-size: 0.6rem; text-transform: uppercase; color: rgba(255,255,255,0.45); letter-spacing: 0.05em; }
+.home-cal-body { flex: 1; min-width: 0; }
+.home-cal-evtitle { font-size: 0.84rem; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-cal-evmeta { font-size: 0.7rem; color: rgba(255,255,255,0.45); }
+@media (max-width: 760px) { .home-row { grid-template-columns: 1fr; } }

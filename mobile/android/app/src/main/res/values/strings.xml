@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Sylex FOS</string>
+    <!-- ⚠️ ZMEŇ na URL svojej nasadenej aplikácie (Railway doména) -->
+    <string name="app_url">https://TVOJA-RAILWAY-DOMENA.up.railway.app</string>
+</resources>
