@@ -743,10 +743,41 @@ async function loadHomeCalendar() {
   });
 }
 
+async function loadHomeTasks() {
+  const el = document.getElementById('homeTaskList'); if (!el) return;
+  let tasks = [];
+  try { tasks = await fetch('/api/tasks').then(r => r.json()); if (!Array.isArray(tasks)) tasks = []; } catch { tasks = []; }
+  const open = tasks.filter(t => !t.done)
+    .sort((a, b) => (a.due ? String(a.due) : '9999').localeCompare(b.due ? String(b.due) : '9999')).slice(0, 6);
+  if (!open.length) { el.innerHTML = '<div class="home-cal-empty">Žiadne aktívne úlohy. 🎉</div>'; return; }
+  const todayKey = calYmd(new Date());
+  el.innerHTML = '';
+  open.forEach(t => {
+    const prio = (typeof TK_PRIO !== 'undefined' ? TK_PRIO[t.priority] : null) || { c: '#3b82f6' };
+    const od = t.due && String(t.due).slice(0, 10) < todayKey;
+    const row = document.createElement('div');
+    row.className = 'home-task-item';
+    row.style.setProperty('--ev', prio.c);
+    row.innerHTML = `
+      <button class="home-task-check" title="Označiť ako hotové">✓</button>
+      <div class="home-task-body">
+        <div class="home-task-title">${escHtml(t.title)}</div>
+        ${t.due ? `<div class="home-task-meta ${od ? 'task-od' : ''}">📅 ${fmtDate(t.due)}${od ? ' — po termíne' : ''}</div>` : ''}
+      </div>`;
+    row.querySelector('.home-task-check').onclick = async (e) => {
+      e.stopPropagation();
+      try { await fetch('/api/tasks/' + t._id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done: true }) }); loadHomeTasks(); loadNotif(); } catch {}
+    };
+    row.querySelector('.home-task-body').onclick = () => showPage('tasks');
+    el.appendChild(row);
+  });
+}
+
 async function loadHomeKB() {
   loadAnnouncements();
   loadHomeProcedures();
   loadHomeCalendar();
+  loadHomeTasks();
   try {
     const [cR, pR] = await Promise.all([fetch('/api/categories'), fetch('/api/products')]);
     const cats = await cR.json();
