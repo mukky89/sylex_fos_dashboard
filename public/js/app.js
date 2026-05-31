@@ -713,9 +713,40 @@ function renderHomeProcedures() {
   });
 }
 
+const HOME_CAL_TYPE_ICON = { event: '📌', meeting: '👥', dovolenka: '🏖️', sluzobka: '🚗', homeoffice: '🏠', pn: '🏥' };
+async function loadHomeCalendar() {
+  const el = document.getElementById('homeCalList'); if (!el) return;
+  const from = calYmd(new Date());
+  const to = calYmd(new Date(Date.now() + 45 * 864e5));
+  let evs = [];
+  try { evs = await fetch(`/api/calendar?from=${from}&to=${to}`).then(r => r.json()); if (!Array.isArray(evs)) evs = []; } catch { evs = []; }
+  evs = evs.filter(e => String(e.endDate || e.date).slice(0, 10) >= from)
+           .sort((a, b) => String(a.date).localeCompare(String(b.date))).slice(0, 6);
+  if (!evs.length) { el.innerHTML = '<div class="home-cal-empty">Žiadne nadchádzajúce udalosti.</div>'; return; }
+  const todayKey = from;
+  el.innerHTML = '';
+  evs.forEach(e => {
+    const key = String(e.date).slice(0, 10);
+    const isToday = key === todayKey;
+    const d = new Date(key + 'T12:00:00');
+    const item = document.createElement('div');
+    item.className = 'home-cal-item' + (isToday ? ' home-cal-today' : '');
+    item.style.setProperty('--ev', e.color || '#00d4ff');
+    item.onclick = () => showPage('calendar');
+    item.innerHTML = `
+      <div class="home-cal-date"><span class="hc-day">${d.getDate()}</span><span class="hc-mon">${DT_MONTHS[d.getMonth()].slice(0, 3)}</span></div>
+      <div class="home-cal-body">
+        <div class="home-cal-evtitle">${HOME_CAL_TYPE_ICON[e.type] || '📌'} ${escHtml(e.title)}</div>
+        <div class="home-cal-evmeta">${isToday ? 'dnes' : fmtDate(e.date)}${e.time ? ' · ' + escHtml(e.time) : ''}${e.person ? ' · ' + escHtml(e.person) : ''}</div>
+      </div>`;
+    el.appendChild(item);
+  });
+}
+
 async function loadHomeKB() {
   loadAnnouncements();
   loadHomeProcedures();
+  loadHomeCalendar();
   try {
     const [cR, pR] = await Promise.all([fetch('/api/categories'), fetch('/api/products')]);
     const cats = await cR.json();

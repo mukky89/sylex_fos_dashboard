@@ -168,19 +168,29 @@
         </div>
       </div>
 
-      <!-- ── NOVINKY (oznámenia) ── -->
-      <div class="home-news-section">
-        <div class="home-news-hdr">
-          <div class="home-news-hdr-left">
-            <span class="home-news-title">📢 Novinky</span>
-            <span class="home-news-sub">Oznámenia pre tím</span>
+      <!-- ── NOVINKY + KALENDÁR ── -->
+      <div class="home-row">
+        <div class="home-news-section">
+          <div class="home-news-hdr">
+            <div class="home-news-hdr-left">
+              <span class="home-news-title">📢 Novinky</span>
+              <span class="home-news-sub">Oznámenia pre tím</span>
+            </div>
+            <button class="btn-primary" onclick="openAnnouncementModal()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Pridať novinku
+            </button>
           </div>
-          <button class="btn-primary" onclick="openAnnouncementModal()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Pridať novinku
-          </button>
+          <div id="homeNewsList" class="home-news-list"></div>
         </div>
-        <div id="homeNewsList" class="home-news-list"></div>
+
+        <div class="home-cal-widget">
+          <div class="home-cal-hdr">
+            <span class="home-cal-title">📅 Kalendár</span>
+            <button class="btn-link" onclick="showPage('calendar')">Otvoriť →</button>
+          </div>
+          <div id="homeCalList" class="home-cal-list"></div>
+        </div>
       </div>
 
       <!-- ── KNOWLEDGE BASE ── -->

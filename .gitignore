@@ -5,3 +5,7 @@ uploads/
 .DS_Store
 Thumbs.db
 .claude/
+
+# Audit výstupy
+sylex-audit.json
+sylex-audit.md
