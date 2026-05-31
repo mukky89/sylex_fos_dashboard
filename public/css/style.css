@@ -2357,3 +2357,53 @@ body {
 .home-task-body { flex: 1; min-width: 0; cursor: pointer; }
 .home-task-title { font-size: 0.84rem; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .home-task-meta { font-size: 0.7rem; color: rgba(255,255,255,0.45); }
+
+/* =============================================
+   Drag & drop — zvýraznenie
+   ============================================= */
+.drag-over { outline: 2px dashed var(--accent) !important; outline-offset: 2px; background: rgba(8,145,178,0.12) !important; }
+.image-upload-zone.drag-over, .proc-step-img.drag-over { border-color: var(--accent); }
+
+/* =============================================
+   CRM
+   ============================================= */
+.crm-page { background: var(--hdr-bg); }
+.crm-layout { display: grid; grid-template-columns: 300px 1fr; min-height: calc(100vh - var(--header-h)); }
+.crm-sidebar { border-right: 1px solid rgba(255,255,255,0.08); padding: 16px; display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.12); }
+.crm-side-top { display: flex; gap: 8px; align-items: center; }
+.crm-side-label { font-size: 0.66rem; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); font-weight: 700; margin-top: 6px; }
+.crm-inbox-item { padding: 9px 12px; border-radius: var(--radius); background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; cursor: pointer; font-size: 0.84rem; }
+.crm-inbox-item:hover, .crm-inbox-item.active { background: rgba(0,212,255,0.12); color: #fff; }
+.crm-inbox-item.drag-over { outline: 2px dashed var(--accent); }
+.crm-contact-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+.crm-contact { padding: 9px 11px; border-radius: var(--radius); cursor: pointer; border: 1px solid transparent; }
+.crm-contact:hover { background: rgba(255,255,255,0.05); }
+.crm-contact.active { background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.3); }
+.crm-contact-name { font-size: 0.88rem; font-weight: 600; color: #f1f5f9; }
+.crm-contact-sub { font-size: 0.72rem; color: rgba(255,255,255,0.5); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.crm-empty-sm { font-size: 0.8rem; color: rgba(255,255,255,0.35); padding: 10px; }
+
+.crm-main { padding: 24px 28px; overflow-y: auto; }
+.crm-empty { color: rgba(255,255,255,0.4); font-size: 0.9rem; padding: 40px; text-align: center; }
+.crm-detail-hdr { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.crm-detail-name { font-family: var(--font-title); font-size: 1.4rem; font-weight: 700; color: #f8fafc; }
+.crm-detail-meta { font-size: 0.84rem; color: rgba(255,255,255,0.55); margin-top: 4px; }
+.crm-detail-note { font-size: 0.82rem; color: rgba(255,255,255,0.45); margin-top: 6px; font-style: italic; }
+
+.crm-dropzone {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 22px; border: 2px dashed rgba(255,255,255,0.2); border-radius: var(--radius-lg);
+  color: rgba(255,255,255,0.55); text-align: center; margin-bottom: 16px; background: rgba(255,255,255,0.03);
+}
+.crm-dropzone svg { color: var(--accent); }
+.crm-dropzone .btn-sm { margin: 0; }
+
+.crm-email-list { display: flex; flex-direction: column; gap: 8px; }
+.crm-email { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius); }
+.crm-email-main { flex: 1; min-width: 0; cursor: pointer; }
+.crm-email-subj { font-size: 0.9rem; font-weight: 600; color: #f1f5f9; }
+.crm-email-meta { font-size: 0.72rem; color: rgba(255,255,255,0.45); margin-top: 2px; }
+.crm-email-snippet { font-size: 0.78rem; color: rgba(255,255,255,0.5); margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crm-email-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+@media (max-width: 760px) { .crm-layout { grid-template-columns: 1fr; } .crm-sidebar { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); } }

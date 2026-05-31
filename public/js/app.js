@@ -361,6 +361,7 @@ async function handleHash(hash) {
   if (hash === 'procedures') { _activatePage('procedures'); loadProcedures(); return; }
   if (hash === 'dev')     { _activatePage('dev');     loadDev(); return; }
   if (hash === 'tasks')   { _activatePage('tasks');   loadTasks(); return; }
+  if (hash === 'crm')     { _activatePage('crm');     loadCrm(); return; }
   if (hash === 'admin')   { _activatePage('admin');   switchAdminTab('links'); return; }
   if (hash === 'wiki') { _activatePage('wiki'); await loadWiki(); return; }
   if (hash.startsWith('wiki/cat/')) {
@@ -391,6 +392,7 @@ function showPage(name) {
   if (name === 'procedures') loadProcedures();
   if (name === 'dev')     loadDev();
   if (name === 'tasks')   loadTasks();
+  if (name === 'crm')     loadCrm();
   if (name === 'admin')   switchAdminTab('links');
 }
 
@@ -1004,6 +1006,8 @@ function openProductModal(product = null) {
   quill.getModule('toolbar').addHandler('image', quillImageHandler);
 
   renderImagePreviews();
+  enableFileDrop(document.querySelector('#productModal .image-upload-zone'), (files) =>
+    dropImagesTo(files, (url) => { pendingImages.push({ url, caption: '' }); renderImagePreviews(); }));
   document.getElementById('productModal').classList.remove('hidden');
 }
 
@@ -2031,6 +2035,8 @@ function addStepRow(step = {}) {
   card.querySelector('.proc-img-pos').value = step.imagePos || 'below';
   card.querySelector('.proc-img-caption').value = step.caption || '';
   renderStepThumb(card);
+  enableFileDrop(card.querySelector('.proc-step-img'), (files) =>
+    dropImagesTo(files, (url) => { card._image = url; renderStepThumb(card); }));
   renderIconPicker(document.getElementById(sid + '_warn'), PROC_META.warnings, card._warnings, document.getElementById(sid + '_warnc'));
   renderIconPicker(document.getElementById(sid + '_ppe'),  PROC_META.ppe,      card._ppe,      document.getElementById(sid + '_ppec'));
   return card;
@@ -2932,6 +2938,8 @@ function openPrototypeModal(p = null) {
   document.getElementById('ptResults').value = e ? (p.results || '') : '';
   ptImagesData = e ? [...(p.images || [])] : [];
   renderPtImages();
+  enableFileDrop(document.getElementById('ptImages'), (files) =>
+    dropImagesTo(files, (url) => { ptImagesData.push({ url, caption: '' }); renderPtImages(); }));
   document.getElementById('ptDeleteBtn').style.display = e ? '' : 'none';
   document.getElementById('prototypeModal').classList.remove('hidden');
 }
@@ -3145,6 +3153,225 @@ async function deleteUser(id) {
     if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
     closeUserModal(); loadUsers();
   } catch { alert('Chyba'); }
+}
+
+// ==============================
+// DRAG & DROP — generický helper
+// ==============================
+function enableFileDrop(el, onFiles, opts = {}) {
+  if (!el || el._dropWired) return;
+  el._dropWired = true;
+  el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drag-over'); });
+  el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+  el.addEventListener('drop', (e) => {
+    e.preventDefault(); el.classList.remove('drag-over');
+    const files = [...(e.dataTransfer.files || [])];
+    if (files.length) onFiles(files, e);
+    else if (opts.onText) {
+      const t = e.dataTransfer.getData('text/html') || e.dataTransfer.getData('text/plain');
+      if (t) opts.onText(t);
+    }
+  });
+}
+async function dropImagesTo(files, cb) {
+  for (const f of files) {
+    if (f.type && !/^image\//.test(f.type)) continue;
+    const url = await uploadImage(f);
+    if (url) cb(url);
+  }
+}
+
+// ==============================
+// CRM (kontakty + emaily, drag-drop)
+// ==============================
+let contactsData = [];
+let crmSelected = null;          // contactId | 'none' | null
+let crmEmailsData = [];
+const CRM_STATUS = { lead: { l: 'Lead', c: 'proc-status-draft' }, active: { l: 'Aktívny', c: 'proc-status-active' }, inactive: { l: 'Neaktívny', c: 'proc-status-archived' } };
+
+async function loadCrm() {
+  try { contactsData = await fetch('/api/crm/contacts').then(r => r.json()); if (!Array.isArray(contactsData)) contactsData = []; } catch { contactsData = []; }
+  renderContacts();
+  if (crmSelected) selectContact(crmSelected); else renderCrmMain();
+}
+function renderContacts() {
+  const el = document.getElementById('crmContactList'); if (!el) return;
+  const q = (document.getElementById('crmSearch')?.value || '').toLowerCase();
+  const items = contactsData.filter(c => !q || (c.name || '').toLowerCase().includes(q) || (c.company || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q));
+  el.innerHTML = '';
+  if (!items.length) { el.innerHTML = '<div class="crm-empty-sm">Žiadne kontakty.</div>'; }
+  items.forEach(c => {
+    const st = CRM_STATUS[c.status] || CRM_STATUS.lead;
+    const d = document.createElement('div');
+    d.className = 'crm-contact' + (crmSelected === c._id ? ' active' : '');
+    d.onclick = () => selectContact(c._id);
+    d.innerHTML = `<div class="crm-contact-name">${escHtml(c.name)}</div>
+      <div class="crm-contact-sub">${escHtml(c.company || c.email || '')} <span class="proc-status-badge ${st.c}">${st.l}</span></div>`;
+    el.appendChild(d);
+  });
+  document.getElementById('crmUnassigned')?.classList.toggle('active', crmSelected === 'none');
+}
+async function selectContact(id) {
+  crmSelected = id;
+  renderContacts();
+  await loadCrmEmails();
+  renderCrmMain();
+}
+async function loadCrmEmails() {
+  if (!crmSelected) { crmEmailsData = []; return; }
+  try { crmEmailsData = await fetch('/api/crm/emails?contact=' + crmSelected).then(r => r.json()); if (!Array.isArray(crmEmailsData)) crmEmailsData = []; } catch { crmEmailsData = []; }
+}
+function renderCrmMain() {
+  const m = document.getElementById('crmMain'); if (!m) return;
+  if (!crmSelected) { m.innerHTML = '<div class="crm-empty">Vyber kontakt vľavo, alebo pretiahni email na „Nezaradené".</div>'; return; }
+  const c = crmSelected === 'none' ? null : contactsData.find(x => x._id === crmSelected);
+  const head = c
+    ? `<div class="crm-detail-hdr">
+         <div><h1 class="crm-detail-name">${escHtml(c.name)}</h1>
+           <div class="crm-detail-meta">${[c.company, c.email, c.phone].filter(Boolean).map(escHtml).join(' · ')}</div>
+           ${c.note ? `<div class="crm-detail-note">${escHtml(c.note)}</div>` : ''}</div>
+         <div class="pdv-toolbar-actions">
+           <button class="btn-edit" onclick="openContactModal(contactsData.find(x=>x._id==='${c._id}'))">✎ Upraviť</button>
+         </div>
+       </div>`
+    : `<div class="crm-detail-hdr"><div><h1 class="crm-detail-name">📥 Nezaradené emaily</h1><div class="crm-detail-meta">Emaily zatiaľ bez priradeného kontaktu</div></div></div>`;
+
+  m.innerHTML = head + `
+    <div class="crm-dropzone" id="crmDrop">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4h16v16H4z" opacity="0"/><path d="M22 12.5V18a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2h11"/><polyline points="3 6 12 13 17 9"/></svg>
+      <div>Pretiahni sem <strong>email</strong> (.eml/.msg) alebo súbor — automaticky sa pridá</div>
+      <button class="btn-sm" onclick="document.getElementById('crmEmailFile').click()">alebo vyber súbor</button>
+      <input type="file" id="crmEmailFile" multiple accept=".eml,.msg,message/rfc822,*/*" style="display:none" onchange="crmHandleFiles([...this.files]); this.value=''">
+      <button class="btn-sm" onclick="openCrmEmailModal()">+ Pridať ručne</button>
+    </div>
+    <div id="crmEmailList" class="crm-email-list"></div>`;
+
+  enableFileDrop(document.getElementById('crmDrop'),
+    (files) => crmHandleFiles(files),
+    { onText: (t) => crmHandleText(t) });
+  renderCrmEmails();
+}
+function renderCrmEmails() {
+  const el = document.getElementById('crmEmailList'); if (!el) return;
+  if (!crmEmailsData.length) { el.innerHTML = '<div class="crm-empty-sm">Žiadne emaily. Pretiahni sem email.</div>'; return; }
+  el.innerHTML = '';
+  crmEmailsData.forEach(e => {
+    const d = document.createElement('div');
+    d.className = 'crm-email';
+    d.innerHTML = `
+      <div class="crm-email-main" onclick="openCrmEmailModal(crmEmailsData.find(x=>x._id==='${e._id}'))">
+        <div class="crm-email-subj">✉️ ${escHtml(e.subject)}</div>
+        <div class="crm-email-meta">${e.from ? escHtml(e.from) + ' · ' : ''}${fmtDate(e.date)}</div>
+        ${e.body ? `<div class="crm-email-snippet">${escHtml(e.body.slice(0, 160))}</div>` : ''}
+      </div>
+      <div class="crm-email-actions">
+        ${e.fileUrl ? `<a class="admin-icon-btn" href="${escHtml(e.fileUrl)}" target="_blank" title="Súbor">📎</a>` : ''}
+        <button class="admin-icon-btn danger" onclick="deleteCrmEmail('${e._id}')" title="Odstrániť">✕</button>
+      </div>`;
+    el.appendChild(d);
+  });
+}
+async function uploadEmailFile(file) {
+  const fd = new FormData(); fd.append('file', file);
+  try { const r = await fetch('/api/crm/emails/upload', { method: 'POST', body: fd }); return await r.json(); }
+  catch { return null; }
+}
+async function crmHandleFiles(files) {
+  const contact = crmSelected === 'none' ? null : crmSelected;
+  for (const f of files) {
+    const meta = await uploadEmailFile(f);
+    if (!meta || meta.error) continue;
+    await fetch('/api/crm/emails', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contact, subject: meta.subject, from: meta.from, to: meta.to, date: meta.date, body: meta.body, fileUrl: meta.fileUrl }) });
+  }
+  await loadCrmEmails(); renderCrmEmails();
+}
+async function crmHandleText(t) {
+  const contact = crmSelected === 'none' ? null : crmSelected;
+  const text = t.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!text) return;
+  const subject = text.slice(0, 60);
+  await fetch('/api/crm/emails', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contact, subject, body: text }) });
+  await loadCrmEmails(); renderCrmEmails();
+}
+
+// Kontakt modal
+function openContactModal(c = null) {
+  const e = c && typeof c === 'object';
+  document.getElementById('coModalTitle').textContent = e ? 'Upraviť kontakt' : 'Nový kontakt';
+  document.getElementById('coId').value = e ? c._id : '';
+  document.getElementById('coName').value = e ? (c.name || '') : '';
+  document.getElementById('coCompany').value = e ? (c.company || '') : '';
+  document.getElementById('coEmail').value = e ? (c.email || '') : '';
+  document.getElementById('coPhone').value = e ? (c.phone || '') : '';
+  document.getElementById('coStatus').value = e ? (c.status || 'lead') : 'lead';
+  document.getElementById('coTags').value = e ? (c.tags || []).join(', ') : '';
+  document.getElementById('coNote').value = e ? (c.note || '') : '';
+  document.getElementById('coDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('contactModal').classList.remove('hidden');
+}
+function closeContactModal() { document.getElementById('contactModal').classList.add('hidden'); }
+async function saveContact() {
+  const name = document.getElementById('coName').value.trim();
+  if (!name) { alert('Zadajte meno'); return; }
+  const body = {
+    name, company: document.getElementById('coCompany').value.trim(), email: document.getElementById('coEmail').value.trim(),
+    phone: document.getElementById('coPhone').value.trim(), status: document.getElementById('coStatus').value,
+    tags: document.getElementById('coTags').value.split(',').map(s => s.trim()).filter(Boolean),
+    note: document.getElementById('coNote').value.trim()
+  };
+  const id = document.getElementById('coId').value;
+  try {
+    const r = await fetch(id ? '/api/crm/contacts/' + id : '/api/crm/contacts', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const saved = await r.json();
+    if (!r.ok) { alert('Chyba: ' + (saved.error || r.status)); return; }
+    closeContactModal();
+    await loadCrm();
+    if (saved._id) selectContact(saved._id);
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteContact(id) {
+  if (!id || !confirm('Naozaj odstrániť kontakt? (emaily ostanú ako nezaradené)')) return;
+  try { await fetch('/api/crm/contacts/' + id, { method: 'DELETE' }); closeContactModal(); crmSelected = null; loadCrm(); } catch { alert('Chyba'); }
+}
+
+// CRM email modal
+function openCrmEmailModal(em = null) {
+  const e = em && typeof em === 'object';
+  document.getElementById('ceModalTitle').textContent = e ? 'Email' : 'Nový email';
+  document.getElementById('ceId').value = e ? em._id : '';
+  document.getElementById('ceSubject').value = e ? (em.subject || '') : '';
+  document.getElementById('ceDate').value = e && em.date ? String(em.date).slice(0, 10) : calYmd(new Date());
+  document.getElementById('ceFrom').value = e ? (em.from || '') : '';
+  document.getElementById('ceTo').value = e ? (em.to || '') : '';
+  document.getElementById('ceBody').value = e ? (em.body || '') : '';
+  const sel = document.getElementById('ceContact');
+  sel.innerHTML = '<option value="">— nezaradené —</option>' + contactsData.map(c => `<option value="${c._id}">${escHtml(c.name)}${c.company ? ' (' + escHtml(c.company) + ')' : ''}</option>`).join('');
+  sel.value = e ? (em.contact || '') : (crmSelected && crmSelected !== 'none' ? crmSelected : '');
+  const fw = document.getElementById('ceFileWrap');
+  if (e && em.fileUrl) { fw.style.display = ''; const a = document.getElementById('ceFile'); a.href = em.fileUrl; a.textContent = '📎 ' + em.fileUrl.split('/').pop(); }
+  else fw.style.display = 'none';
+  document.getElementById('ceDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('crmEmailModal').classList.remove('hidden');
+}
+function closeCrmEmailModal() { document.getElementById('crmEmailModal').classList.add('hidden'); }
+async function saveCrmEmail() {
+  const body = {
+    subject: document.getElementById('ceSubject').value.trim() || '(bez predmetu)',
+    date: document.getElementById('ceDate').value || undefined,
+    from: document.getElementById('ceFrom').value.trim(), to: document.getElementById('ceTo').value.trim(),
+    contact: document.getElementById('ceContact').value || null,
+    body: document.getElementById('ceBody').value.trim()
+  };
+  const id = document.getElementById('ceId').value;
+  try {
+    const r = await fetch(id ? '/api/crm/emails/' + id : '/api/crm/emails', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
+    closeCrmEmailModal(); await loadCrmEmails(); renderCrmEmails();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteCrmEmail(id) {
+  if (!id || !confirm('Odstrániť email?')) return;
+  try { await fetch('/api/crm/emails/' + id, { method: 'DELETE' }); closeCrmEmailModal(); await loadCrmEmails(); renderCrmEmails(); } catch { alert('Chyba'); }
 }
 
 // Štart: over prihlásenie, potom spusti appku

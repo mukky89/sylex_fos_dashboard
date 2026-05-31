@@ -70,6 +70,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           Úlohy
         </a>
+        <a class="nav-link" onclick="showPage('crm')" data-page="crm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg>
+          CRM
+        </a>
         <a class="nav-link" onclick="showPage('admin')" data-page="admin">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
           Admin
@@ -1045,6 +1049,83 @@
         <button class="btn-delete" id="usDeleteBtn" onclick="deleteUser(document.getElementById('usId').value)" style="display:none">Odstrániť</button>
         <button class="btn-secondary" onclick="closeUserModal()">Zrušiť</button>
         <button class="btn-primary" onclick="saveUser()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CRM PAGE ===== -->
+  <main id="page-crm" class="page crm-page">
+    <div class="crm-layout">
+      <aside class="crm-sidebar">
+        <div class="crm-side-top">
+          <div class="proc-search-wrap" style="margin:0;flex:1">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="crmSearch" placeholder="Hľadať kontakt..." oninput="renderContacts()" autocomplete="off">
+          </div>
+          <button class="btn-primary btn-sm" onclick="openContactModal()">+ Kontakt</button>
+        </div>
+        <div class="crm-inbox-item" id="crmUnassigned" onclick="selectContact('none')">📥 Nezaradené emaily</div>
+        <div class="crm-side-label">KONTAKTY</div>
+        <div id="crmContactList" class="crm-contact-list"></div>
+      </aside>
+      <div class="crm-main" id="crmMain">
+        <div class="crm-empty">Vyber kontakt vľavo alebo pretiahni email na „Nezaradené".</div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== CONTACT MODAL ===== -->
+  <div id="contactModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeContactModal()"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header"><h2 id="coModalTitle">Nový kontakt</h2><button class="modal-close" onclick="closeContactModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="coId">
+        <div class="form-row">
+          <div class="form-group"><label>Meno *</label><input type="text" id="coName" placeholder="Ján Novák"></div>
+          <div class="form-group"><label>Firma</label><input type="text" id="coCompany"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Email</label><input type="text" id="coEmail"></div>
+          <div class="form-group"><label>Telefón</label><input type="text" id="coPhone"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Stav</label><select id="coStatus"><option value="lead">Lead</option><option value="active">Aktívny</option><option value="inactive">Neaktívny</option></select></div>
+          <div class="form-group"><label>Tagy (čiarkou)</label><input type="text" id="coTags"></div>
+        </div>
+        <div class="form-group"><label>Poznámka</label><textarea id="coNote" rows="3"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="coDeleteBtn" onclick="deleteContact(document.getElementById('coId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeContactModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveContact()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CRM EMAIL MODAL ===== -->
+  <div id="crmEmailModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeCrmEmailModal()"></div>
+    <div class="modal-box">
+      <div class="modal-header"><h2 id="ceModalTitle">Email</h2><button class="modal-close" onclick="closeCrmEmailModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="ceId">
+        <div class="form-row">
+          <div class="form-group"><label>Predmet</label><input type="text" id="ceSubject"></div>
+          <div class="form-group"><label>Dátum</label><input type="date" id="ceDate"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Od</label><input type="text" id="ceFrom"></div>
+          <div class="form-group"><label>Pre</label><input type="text" id="ceTo"></div>
+        </div>
+        <div class="form-group"><label>Priradiť ku kontaktu</label><select id="ceContact"></select></div>
+        <div class="form-group"><label>Telo</label><textarea id="ceBody" rows="8"></textarea></div>
+        <div class="form-group" id="ceFileWrap" style="display:none"><label>Priložený súbor</label><a id="ceFile" href="#" target="_blank"></a></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="ceDeleteBtn" onclick="deleteCrmEmail(document.getElementById('ceId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeCrmEmailModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveCrmEmail()">Uložiť</button>
       </div>
     </div>
   </div>
