@@ -3,6 +3,95 @@
    ============================================= */
 
 // ==============================
+// AUTH (prihlásenie / token)
+// ==============================
+let AUTH_TOKEN = localStorage.getItem('fos_token') || '';
+let CURRENT_USER = null;
+let _appStarted = false;
+const _origFetch = window.fetch.bind(window);
+
+// Globálny wrapper — pridá token k /api volaniam a rieši 401
+window.fetch = function (url, opts = {}) {
+  const isApi = typeof url === 'string' && url.startsWith('/api') && !url.startsWith('/api/auth');
+  if (isApi && AUTH_TOKEN) {
+    opts = Object.assign({}, opts, { headers: Object.assign({}, opts.headers || {}, { Authorization: 'Bearer ' + AUTH_TOKEN }) });
+  }
+  return _origFetch(url, opts).then(r => {
+    if (r.status === 401 && isApi) handleAuthExpired();
+    return r;
+  });
+};
+
+function handleAuthExpired() {
+  AUTH_TOKEN = ''; CURRENT_USER = null;
+  localStorage.removeItem('fos_token');
+  showLogin();
+}
+function showLogin() { document.getElementById('loginOverlay')?.classList.remove('hidden'); }
+function hideLogin() { document.getElementById('loginOverlay')?.classList.add('hidden'); }
+function showLoginError(msg) {
+  const el = document.getElementById('loginError');
+  if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+}
+
+async function doLogin(e) {
+  if (e) e.preventDefault();
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  try {
+    const r = await _origFetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+    const d = await r.json();
+    if (!r.ok) { showLoginError(d.error || 'Prihlásenie zlyhalo'); return; }
+    AUTH_TOKEN = d.token; CURRENT_USER = d.user;
+    localStorage.setItem('fos_token', AUTH_TOKEN);
+    document.getElementById('loginError')?.classList.add('hidden');
+    document.getElementById('loginPass').value = '';
+    hideLogin();
+    startApp();
+  } catch (err) { showLoginError('Sieťová chyba: ' + err.message); }
+}
+function logout() {
+  AUTH_TOKEN = ''; CURRENT_USER = null;
+  localStorage.removeItem('fos_token');
+  location.reload();
+}
+function renderUserChip() {
+  const el = document.getElementById('hdrUser');
+  if (!el || !CURRENT_USER) return;
+  el.innerHTML = `<span class="hdr-user-name" title="${escHtml(CURRENT_USER.username)}${CURRENT_USER.role === 'admin' ? ' · admin' : ''}">👤 ${escHtml(CURRENT_USER.name || CURRENT_USER.username)}</span>
+    <button class="hdr-icon-btn" onclick="logout()" title="Odhlásiť sa"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>`;
+}
+function tokenQS() { return AUTH_TOKEN ? ('?token=' + encodeURIComponent(AUTH_TOKEN)) : ''; }
+
+// Spustí appku po úspešnom prihlásení
+function startApp() {
+  renderUserChip();
+  if (_appStarted) { loadNotif(); return; }
+  _appStarted = true;
+  loadHeaderLinks();
+  loadAppVersion();
+  loadNotif();
+  setInterval(loadNotif, 120000);
+  updateDateTime();
+  setInterval(updateDateTime, 1000);
+  loadThermoData();
+  setInterval(loadThermoData, 30000);
+  const hash = location.hash.slice(1);
+  if (hash) handleHash(hash);
+  else { _activatePage('home'); loadHomeKB(); }
+}
+
+async function bootstrap() {
+  if (AUTH_TOKEN) {
+    try {
+      const r = await _origFetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + AUTH_TOKEN } });
+      if (r.ok) { CURRENT_USER = (await r.json()).user; hideLogin(); startApp(); return; }
+    } catch (e) {}
+  }
+  showLogin();
+}
+
+// ==============================
 // STATE
 // ==============================
 let products    = [];
@@ -117,8 +206,7 @@ async function loadThermoData() {
     ['thermoStatus','sensorStatus'].forEach(id => { set(id,'OFFLINE'); cls(id,'thermo-status thermo-offline'); });
   }
 }
-loadThermoData();
-setInterval(loadThermoData, 30000);
+// (loadThermoData sa spúšťa v startApp po prihlásení)
 
 // ==============================
 // SENSOR CHART
@@ -272,6 +360,7 @@ async function handleHash(hash) {
   if (hash === 'calendar') { _activatePage('calendar'); loadCalendar(); return; }
   if (hash === 'procedures') { _activatePage('procedures'); loadProcedures(); return; }
   if (hash === 'dev')     { _activatePage('dev');     loadDev(); return; }
+  if (hash === 'tasks')   { _activatePage('tasks');   loadTasks(); return; }
   if (hash === 'admin')   { _activatePage('admin');   switchAdminTab('links'); return; }
   if (hash === 'wiki') { _activatePage('wiki'); await loadWiki(); return; }
   if (hash.startsWith('wiki/cat/')) {
@@ -301,6 +390,7 @@ function showPage(name) {
   if (name === 'calendar') loadCalendar();
   if (name === 'procedures') loadProcedures();
   if (name === 'dev')     loadDev();
+  if (name === 'tasks')   loadTasks();
   if (name === 'admin')   switchAdminTab('links');
 }
 
@@ -2045,6 +2135,7 @@ function switchAdminTab(tab) {
   );
   if (tab === 'links')  loadAdminLinks();
   if (tab === 'sensor') { loadSensorConfigAdmin(); loadSensorStats(); }
+  if (tab === 'users') loadUsers();
 }
 
 // ── Header links management ──────────────────────────────────────────────
@@ -2344,10 +2435,11 @@ let notifData = { newAnns: [], todayEvs: [] };
 async function loadNotif() {
   try {
     const key = calYmd(new Date());
-    const [anns, evs, instr] = await Promise.all([
+    const [anns, evs, instr, tasks] = await Promise.all([
       fetch('/api/announcements').then(r => r.json()).catch(() => []),
       fetch(`/api/calendar?from=${key}&to=${key}`).then(r => r.json()).catch(() => []),
       fetch('/api/instruments').then(r => r.json()).catch(() => []),
+      fetch('/api/tasks').then(r => r.json()).catch(() => []),
     ]);
     const weekAgo = new Date(Date.now() - 7 * 864e5);
     const newAnns = (Array.isArray(anns) ? anns : []).filter(a => new Date(a.date || a.createdAt) >= weekAgo);
@@ -2358,8 +2450,11 @@ async function loadNotif() {
       const days = Math.ceil((new Date(i.nextCalibration) - new Date()) / 864e5);
       return days <= 30;
     });
-    notifData = { newAnns, todayEvs, calDue };
-    const count = newAnns.length + todayEvs.length + calDue.length;
+    // Nedokončené úlohy po termíne / dnes
+    const todayEnd = new Date(new Date().toDateString()); todayEnd.setHours(23, 59, 59);
+    const tasksDue = (Array.isArray(tasks) ? tasks : []).filter(t => !t.done && t.due && new Date(t.due) <= todayEnd);
+    notifData = { newAnns, todayEvs, calDue, tasksDue };
+    const count = newAnns.length + todayEvs.length + calDue.length + tasksDue.length;
     const b = document.getElementById('notifBadge');
     if (b) { b.textContent = count > 9 ? '9+' : count; b.classList.toggle('hidden', count === 0); }
   } catch (e) {}
@@ -2378,6 +2473,13 @@ function renderNotif() {
   if (notifData.todayEvs.length) {
     h += '<div class="notif-group">Dnes v kalendári</div>';
     notifData.todayEvs.forEach(ev => { h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('calendar')"><span>📅</span><span>${escHtml(ev.title)}${ev.time ? ' · ' + escHtml(ev.time) : ''}${ev.person ? ' · ' + escHtml(ev.person) : ''}</span></div>`; });
+  }
+  if ((notifData.tasksDue || []).length) {
+    h += '<div class="notif-group">Úlohy — termín dnes / po termíne</div>';
+    notifData.tasksDue.forEach(t => {
+      const od = new Date(t.due) < new Date(new Date().toDateString());
+      h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('tasks')"><span>✅</span><span>${escHtml(t.title)}${od ? ' — po termíne' : ' — dnes'}</span></div>`;
+    });
   }
   if ((notifData.calDue || []).length) {
     h += '<div class="notif-group">Kalibrácie (≤30 dní / po termíne)</div>';
@@ -2823,14 +2925,165 @@ function updateDateTime() {
   if (menEl) menEl.textContent = (window.getMeniny ? window.getMeniny(now) : '') || '—';
 }
 
-(function init() {
-  loadHeaderLinks();
-  loadAppVersion();
-  loadNotif();
-  setInterval(loadNotif, 120000);
-  updateDateTime();
-  setInterval(updateDateTime, 1000);
-  const hash = location.hash.slice(1);
-  if (hash) { handleHash(hash); }
-  else { _activatePage('home'); loadHomeKB(); }
-})();
+// ==============================
+// ÚLOHY (per-user)
+// ==============================
+let tasksData = [];
+let taskFilter = 'open';
+const TK_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#ef4444' } };
+
+async function loadTasks() {
+  const sub = document.getElementById('tasksSub');
+  if (sub && CURRENT_USER) sub.textContent = 'Osobný zoznam úloh — ' + (CURRENT_USER.name || CURRENT_USER.username);
+  try { tasksData = await fetch('/api/tasks').then(r => r.json()); if (!Array.isArray(tasksData)) tasksData = []; }
+  catch { tasksData = []; }
+  renderTasks();
+}
+function setTaskFilter(f) {
+  taskFilter = f;
+  document.querySelectorAll('.tasks-filter').forEach(b => b.classList.toggle('active', b.dataset.tfilter === f));
+  renderTasks();
+}
+function taskOverdue(t) { return !t.done && t.due && new Date(t.due) < new Date(new Date().toDateString()); }
+function renderTasks() {
+  const el = document.getElementById('tasksList'); if (!el) return;
+  let items = tasksData.slice();
+  if (taskFilter === 'open') items = items.filter(t => !t.done);
+  else if (taskFilter === 'done') items = items.filter(t => t.done);
+  if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne úlohy v tomto filtri.</div>'; return; }
+  el.innerHTML = '';
+  items.forEach(t => {
+    const prio = TK_PRIO[t.priority] || TK_PRIO.normal;
+    const od = taskOverdue(t);
+    const row = document.createElement('div');
+    row.className = 'task-row' + (t.done ? ' task-done' : '') + (od ? ' task-overdue' : '');
+    row.style.setProperty('--prio', prio.c);
+    row.innerHTML = `
+      <button class="task-check" onclick="toggleTask('${t._id}', ${t.done ? 'false' : 'true'})" title="${t.done ? 'Označiť ako nehotové' : 'Označiť ako hotové'}">${t.done ? '✓' : ''}</button>
+      <div class="task-body" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
+        <div class="task-title">${escHtml(t.title)}</div>
+        <div class="task-meta">
+          <span class="task-prio">${prio.l}</span>
+          ${t.due ? `<span class="${od ? 'task-od' : ''}">📅 ${fmtDate(t.due)}${od ? ' — po termíne' : ''}</span>` : ''}
+          ${t.description ? `<span class="task-desc">${escHtml(t.description)}</span>` : ''}
+        </div>
+      </div>
+      <button class="admin-icon-btn danger" onclick="deleteTask('${t._id}')" title="Odstrániť">✕</button>`;
+    el.appendChild(row);
+  });
+}
+async function toggleTask(id, done) {
+  try { await fetch('/api/tasks/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done }) }); loadTasks(); loadNotif(); }
+  catch { alert('Chyba'); }
+}
+function openTaskModal(t = null) {
+  const e = t && typeof t === 'object';
+  document.getElementById('tkModalTitle').textContent = e ? 'Upraviť úlohu' : 'Nová úloha';
+  document.getElementById('tkId').value = e ? t._id : '';
+  document.getElementById('tkTitle').value = e ? (t.title || '') : '';
+  document.getElementById('tkDue').value = e && t.due ? String(t.due).slice(0, 10) : '';
+  document.getElementById('tkPriority').value = e ? (t.priority || 'normal') : 'normal';
+  document.getElementById('tkDesc').value = e ? (t.description || '') : '';
+  document.getElementById('tkDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('taskModal').classList.remove('hidden');
+}
+function closeTaskModal() { document.getElementById('taskModal').classList.add('hidden'); }
+async function saveTask() {
+  const title = document.getElementById('tkTitle').value.trim();
+  if (!title) { alert('Zadajte názov úlohy'); return; }
+  const body = {
+    title, due: document.getElementById('tkDue').value || null,
+    priority: document.getElementById('tkPriority').value,
+    description: document.getElementById('tkDesc').value.trim()
+  };
+  const id = document.getElementById('tkId').value;
+  try {
+    const resp = await fetch(id ? '/api/tasks/' + id : '/api/tasks', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!resp.ok) { const er = await resp.json().catch(() => ({})); alert('Chyba: ' + (er.error || resp.status)); return; }
+    closeTaskModal(); loadTasks(); loadNotif();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteTask(id) {
+  if (!id || !confirm('Naozaj odstrániť úlohu?')) return;
+  try { await fetch('/api/tasks/' + id, { method: 'DELETE' }); closeTaskModal(); loadTasks(); loadNotif(); }
+  catch { alert('Chyba'); }
+}
+
+// ==============================
+// POUŽÍVATELIA (admin)
+// ==============================
+let usersData = [];
+const US_ROLE = { admin: 'Admin', user: 'Používateľ' };
+async function loadUsers() {
+  const el = document.getElementById('usersList'); if (el) el.innerHTML = '<div class="admin-loading">Načítavam…</div>';
+  try {
+    const r = await fetch('/api/users');
+    if (r.status === 403) { if (el) el.innerHTML = '<div class="admin-loading">Len admin má prístup k správe používateľov.</div>'; return; }
+    usersData = await r.json(); if (!Array.isArray(usersData)) usersData = [];
+  } catch { usersData = []; }
+  renderUsers();
+}
+function renderUsers() {
+  const el = document.getElementById('usersList'); if (!el) return;
+  if (!usersData.length) { el.innerHTML = '<div class="admin-loading">Žiadni používatelia.</div>'; return; }
+  el.innerHTML = '';
+  usersData.forEach(u => {
+    const item = document.createElement('div');
+    item.className = 'admin-link-item' + (u.active ? '' : ' admin-link-inactive');
+    item.innerHTML = `
+      <span class="ql-chip ql-${u.role === 'admin' ? 'purple' : 'blue'} admin-link-chip">${u.role === 'admin' ? 'ADMIN' : 'USER'}</span>
+      <div class="admin-link-info">
+        <div class="admin-link-label">${escHtml(u.name || u.username)} <span style="color:var(--text-xdim)">@${escHtml(u.username)}</span></div>
+        <div class="admin-link-url">${US_ROLE[u.role] || u.role}${u.active ? '' : ' · neaktívny'}</div>
+      </div>
+      <div class="admin-link-actions">
+        <button class="admin-icon-btn" onclick="openUserModal(usersData.find(x=>x._id==='${u._id}'))" title="Upraviť">✎</button>
+        <button class="admin-icon-btn danger" onclick="deleteUser('${u._id}')" title="Odstrániť">✕</button>
+      </div>`;
+    el.appendChild(item);
+  });
+}
+function openUserModal(u = null) {
+  const e = u && typeof u === 'object';
+  document.getElementById('usModalTitle').textContent = e ? 'Upraviť používateľa' : 'Nový používateľ';
+  document.getElementById('usId').value = e ? u._id : '';
+  document.getElementById('usUsername').value = e ? u.username : '';
+  document.getElementById('usUsername').disabled = !!e;
+  document.getElementById('usName').value = e ? (u.name || '') : '';
+  document.getElementById('usPassword').value = '';
+  document.getElementById('usPassLabel').textContent = e ? 'Nové heslo (nechaj prázdne = bez zmeny)' : 'Heslo *';
+  document.getElementById('usRole').value = e ? (u.role || 'user') : 'user';
+  document.getElementById('usActive').checked = e ? !!u.active : true;
+  document.getElementById('usDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('userModal').classList.remove('hidden');
+}
+function closeUserModal() { document.getElementById('userModal').classList.add('hidden'); }
+async function saveUser() {
+  const id = document.getElementById('usId').value;
+  const username = document.getElementById('usUsername').value.trim();
+  const password = document.getElementById('usPassword').value;
+  if (!id && (!username || !password)) { alert('Meno a heslo sú povinné'); return; }
+  const body = {
+    name: document.getElementById('usName').value.trim(),
+    role: document.getElementById('usRole').value,
+    active: document.getElementById('usActive').checked
+  };
+  if (password) body.password = password;
+  if (!id) body.username = username;
+  try {
+    const resp = await fetch(id ? '/api/users/' + id : '/api/users', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!resp.ok) { const er = await resp.json().catch(() => ({})); alert('Chyba: ' + (er.error || resp.status)); return; }
+    closeUserModal(); loadUsers();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteUser(id) {
+  if (!id || !confirm('Naozaj odstrániť používateľa?')) return;
+  try {
+    const r = await fetch('/api/users/' + id, { method: 'DELETE' });
+    if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
+    closeUserModal(); loadUsers();
+  } catch { alert('Chyba'); }
+}
+
+// Štart: over prihlásenie, potom spusti appku
+bootstrap();
