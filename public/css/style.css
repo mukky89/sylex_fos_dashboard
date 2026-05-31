@@ -595,6 +595,40 @@ body {
   gap: 14px; margin-bottom: 20px;
 }
 @media (max-width: 480px) { .sensors-live { grid-template-columns: 1fr; } }
+
+/* ===== FBG PEAK PAGE ===== */
+.fbg-page { background: var(--hdr-bg); }
+.fbg-inner {
+  max-width: 1100px; margin: 0 auto;
+  padding: 36px 28px 52px;
+}
+.fbg-page-hdr { margin-bottom: 22px; }
+.fbg-page-title {
+  font-family: var(--font-title); font-size: 1.6rem;
+  font-weight: 700; color: #f8fafc;
+  letter-spacing: 0.04em; margin-bottom: 4px;
+}
+.fbg-page-sub { font-size: 0.8rem; color: rgba(255,255,255,0.32); }
+.fbg-frame-card {
+  border: 1px solid var(--hdr-border);
+  border-radius: var(--radius-lg);
+  background: #0a0f20;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+.fbg-frame {
+  display: block; width: 100%; height: 460px;
+  border: 0; background: transparent;
+}
+.fbg-note {
+  margin-top: 18px; max-width: 760px;
+  font-size: 0.85rem; line-height: 1.6;
+  color: rgba(255,255,255,0.5);
+}
+@media (max-width: 600px) {
+  .fbg-inner { padding: 24px 16px 40px; }
+  .fbg-frame { height: 380px; }
+}
 .slv-card {
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);
