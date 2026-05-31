@@ -2223,3 +2223,37 @@ body {
 .cmd-item-sub { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 8px; }
 
 @media (max-width: 720px) { .hdr-sep-v, .status-text { display: none; } }
+
+/* =============================================
+   VÝVOJ — Projekty (kanban) / Testy / Kalibrácie / Prototypy
+   ============================================= */
+.dev-page { background: var(--hdr-bg); }
+.dev-inner { max-width: 1400px; margin: 0 auto; padding: 36px 28px 52px; }
+.dev-toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.dev-list { display: flex; flex-direction: column; gap: 10px; }
+
+/* Kanban */
+.kanban { display: grid; grid-template-columns: repeat(5, minmax(200px, 1fr)); gap: 10px; align-items: start; overflow-x: auto; }
+.kanban-col { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-lg); min-height: 80px; }
+.kanban-col-hdr { padding: 10px 12px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; }
+.kanban-count { background: rgba(255,255,255,0.1); color: #e2e8f0; border-radius: 10px; padding: 1px 8px; font-size: 0.7rem; }
+.kanban-col-body { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.kanban-card { background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid var(--prio, #3b82f6); border-radius: 8px; padding: 10px; }
+.kanban-card-top { cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.kanban-card-title { font-size: 0.86rem; font-weight: 600; color: #f1f5f9; }
+.kanban-card-code { font-size: 0.68rem; color: #94a3b8; }
+.kanban-card-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.7rem; color: #94a3b8; margin-top: 6px; }
+.kanban-prio { color: var(--prio, #3b82f6); font-weight: 600; }
+.kanban-overdue { color: #f87171; font-weight: 600; }
+.kanban-card-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; gap: 4px; }
+.kanban-card-actions button { width: 26px; height: 24px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #cbd5e1; cursor: pointer; font-size: 0.8rem; }
+.kanban-card-actions button:hover { background: rgba(255,255,255,0.14); color: #fff; }
+
+/* Kalibračný odznak */
+.cal-badge { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 9px; border-radius: 10px; color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+
+/* Merania — checkbox */
+.ms-pass { display: flex; align-items: center; gap: 3px; font-size: 0.8rem; color: var(--text-dim); }
+.proto-thumb { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); flex-shrink: 0; }
+
+@media (max-width: 900px) { .kanban { grid-template-columns: repeat(5, 220px); } }

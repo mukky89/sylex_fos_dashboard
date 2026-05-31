@@ -271,6 +271,7 @@ async function handleHash(hash) {
   if (hash === 'sensors') { _activatePage('sensors'); loadThermoData(); loadSensorChart(); return; }
   if (hash === 'calendar') { _activatePage('calendar'); loadCalendar(); return; }
   if (hash === 'procedures') { _activatePage('procedures'); loadProcedures(); return; }
+  if (hash === 'dev')     { _activatePage('dev');     loadDev(); return; }
   if (hash === 'admin')   { _activatePage('admin');   switchAdminTab('links'); return; }
   if (hash === 'wiki') { _activatePage('wiki'); await loadWiki(); return; }
   if (hash.startsWith('wiki/cat/')) {
@@ -299,6 +300,7 @@ function showPage(name) {
   if (name === 'sensors') { loadThermoData(); loadSensorChart(); }
   if (name === 'calendar') loadCalendar();
   if (name === 'procedures') loadProcedures();
+  if (name === 'dev')     loadDev();
   if (name === 'admin')   switchAdminTab('links');
 }
 
@@ -2256,7 +2258,7 @@ async function seedSampleData() {
     const r = await fetch('/api/admin/seed-samples', { method: 'POST' });
     const d = await r.json();
     if (!r.ok) { if (el) el.textContent = 'Chyba: ' + (d.error || r.status); return; }
-    if (el) el.innerHTML = `✓ Vložené — Novinky: <strong>${d.announcements}</strong>, kategórie: <strong>${d.categories}</strong>, WIKI: <strong>${d.products}</strong>, Postupy: <strong>${d.procedures}</strong>.`;
+    if (el) el.innerHTML = `✓ Vložené — Novinky: <strong>${d.announcements}</strong>, kategórie: <strong>${d.categories}</strong>, WIKI: <strong>${d.products}</strong>, Postupy: <strong>${d.procedures}</strong>, Projekty: <strong>${d.projects ?? 0}</strong>, Kalibrácie: <strong>${d.instruments ?? 0}</strong>, Testy: <strong>${d.tests ?? 0}</strong>, Prototypy: <strong>${d.prototypes ?? 0}</strong>.`;
   } catch (e) { if (el) el.textContent = 'Sieťová chyba: ' + e.message; }
 }
 
@@ -2334,6 +2336,7 @@ function quickAdd(type) {
   else if (type === 'procedure') { showPage('procedures'); setTimeout(() => openProcedureModal(), 280); }
   else if (type === 'event') { showPage('calendar'); setTimeout(() => openEventModal(), 280); }
   else if (type === 'wiki') { showPage('wiki'); setTimeout(() => openProductModal(), 320); }
+  else if (type === 'project') { showPage('dev'); setTimeout(() => { switchDevTab('projects'); openProjectModal(); }, 200); }
 }
 
 // ── Notifikácie (🔔) ──────────────────────────────────────────────────────────
@@ -2341,15 +2344,22 @@ let notifData = { newAnns: [], todayEvs: [] };
 async function loadNotif() {
   try {
     const key = calYmd(new Date());
-    const [anns, evs] = await Promise.all([
+    const [anns, evs, instr] = await Promise.all([
       fetch('/api/announcements').then(r => r.json()).catch(() => []),
       fetch(`/api/calendar?from=${key}&to=${key}`).then(r => r.json()).catch(() => []),
+      fetch('/api/instruments').then(r => r.json()).catch(() => []),
     ]);
     const weekAgo = new Date(Date.now() - 7 * 864e5);
     const newAnns = (Array.isArray(anns) ? anns : []).filter(a => new Date(a.date || a.createdAt) >= weekAgo);
     const todayEvs = Array.isArray(evs) ? evs : [];
-    notifData = { newAnns, todayEvs };
-    const count = newAnns.length + todayEvs.length;
+    // Kalibrácie po termíne alebo do 30 dní
+    const calDue = (Array.isArray(instr) ? instr : []).filter(i => {
+      if (!i.nextCalibration) return false;
+      const days = Math.ceil((new Date(i.nextCalibration) - new Date()) / 864e5);
+      return days <= 30;
+    });
+    notifData = { newAnns, todayEvs, calDue };
+    const count = newAnns.length + todayEvs.length + calDue.length;
     const b = document.getElementById('notifBadge');
     if (b) { b.textContent = count > 9 ? '9+' : count; b.classList.toggle('hidden', count === 0); }
   } catch (e) {}
@@ -2369,6 +2379,14 @@ function renderNotif() {
     h += '<div class="notif-group">Dnes v kalendári</div>';
     notifData.todayEvs.forEach(ev => { h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('calendar')"><span>📅</span><span>${escHtml(ev.title)}${ev.time ? ' · ' + escHtml(ev.time) : ''}${ev.person ? ' · ' + escHtml(ev.person) : ''}</span></div>`; });
   }
+  if ((notifData.calDue || []).length) {
+    h += '<div class="notif-group">Kalibrácie (≤30 dní / po termíne)</div>';
+    notifData.calDue.forEach(i => {
+      const days = Math.ceil((new Date(i.nextCalibration) - new Date()) / 864e5);
+      const lbl = days < 0 ? 'po termíne' : `o ${days} dní`;
+      h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('dev');setTimeout(()=>switchDevTab('instruments'),100)"><span>📐</span><span>${escHtml(i.name)} — ${lbl}</span></div>`;
+    });
+  }
   if (notifData.newAnns.length) {
     h += '<div class="notif-group">Nové novinky (7 dní)</div>';
     notifData.newAnns.slice(0, 6).forEach(a => { h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('home')"><span>📢</span><span>${escHtml(a.title)}</span></div>`; });
@@ -2383,6 +2401,397 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { closeCmdPalette(); closeHdrPopovers(); }
 });
 document.addEventListener('click', () => closeHdrPopovers());
+
+// ==============================
+// VÝVOJ — Projekty / Testy / Kalibrácie / Prototypy
+// ==============================
+let devCurrentTab = 'projects';
+function loadDev() { switchDevTab(devCurrentTab || 'projects'); }
+function switchDevTab(tab) {
+  devCurrentTab = tab;
+  document.querySelectorAll('#page-dev .admin-tab').forEach(t => t.classList.toggle('active', t.dataset.dtab === tab));
+  document.querySelectorAll('#page-dev .admin-panel').forEach(p => p.classList.toggle('active', p.id === 'devTab-' + tab));
+  if (tab === 'projects') loadProjects();
+  if (tab === 'tests') loadTests();
+  if (tab === 'instruments') loadInstruments();
+  if (tab === 'prototypes') loadPrototypes();
+}
+
+const PJ_PHASES = [
+  { key: 'koncept', label: 'Koncept' }, { key: 'prototyp', label: 'Prototyp' },
+  { key: 'testovanie', label: 'Testovanie' }, { key: 'vyroba', label: 'Výroba' }, { key: 'ukoncene', label: 'Ukončené' }
+];
+const PJ_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#ef4444' } };
+let projectsData = [];
+
+async function loadProjects() {
+  try { projectsData = await fetch('/api/projects').then(r => r.json()); if (!Array.isArray(projectsData)) projectsData = []; }
+  catch { projectsData = []; }
+  renderProjects();
+}
+function renderProjects() {
+  const board = document.getElementById('projectsBoard'); if (!board) return;
+  const q = (document.getElementById('projSearch')?.value || '').toLowerCase();
+  const items = projectsData.filter(p => !q || (p.title || '').toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q) || (p.owner || '').toLowerCase().includes(q));
+  board.innerHTML = '';
+  PJ_PHASES.forEach((ph, idx) => {
+    const col = document.createElement('div');
+    col.className = 'kanban-col';
+    const colItems = items.filter(p => (p.phase || 'koncept') === ph.key);
+    col.innerHTML = `<div class="kanban-col-hdr">${ph.label} <span class="kanban-count">${colItems.length}</span></div>`;
+    const body = document.createElement('div'); body.className = 'kanban-col-body';
+    colItems.forEach(p => {
+      const prio = PJ_PRIO[p.priority] || PJ_PRIO.normal;
+      const dl = p.deadline ? new Date(p.deadline) : null;
+      const overdue = dl && dl < new Date() && ph.key !== 'ukoncene';
+      const card = document.createElement('div');
+      card.className = 'kanban-card';
+      card.style.setProperty('--prio', prio.c);
+      card.innerHTML = `
+        <div class="kanban-card-top" onclick="openProjectModal(projectsData.find(x=>x._id==='${p._id}'))">
+          <span class="kanban-card-title">${escHtml(p.title)}</span>
+          ${p.code ? `<span class="kanban-card-code">${escHtml(p.code)}</span>` : ''}
+        </div>
+        <div class="kanban-card-meta">
+          ${p.owner ? `<span>👤 ${escHtml(p.owner)}</span>` : ''}
+          ${dl ? `<span class="${overdue ? 'kanban-overdue' : ''}">📅 ${fmtDate(p.deadline)}</span>` : ''}
+          <span class="kanban-prio" title="Priorita">${prio.l}</span>
+        </div>
+        <div class="kanban-card-actions">
+          ${idx > 0 ? `<button onclick="moveProjectPhase('${p._id}',-1)" title="Späť">←</button>` : '<span></span>'}
+          ${p.folder ? `<button onclick="openFolderLink('${encodeURIComponent(p.folder)}')" title="Priečinok">📁</button>` : ''}
+          ${idx < PJ_PHASES.length - 1 ? `<button onclick="moveProjectPhase('${p._id}',1)" title="Ďalej">→</button>` : '<span></span>'}
+        </div>`;
+      body.appendChild(card);
+    });
+    col.appendChild(body);
+    board.appendChild(col);
+  });
+}
+function openFolderLink(enc) {
+  const v = decodeURIComponent(enc);
+  const href = isFilePath(v) ? toFileHref(v) : v;
+  window.open(href, '_blank');
+}
+async function moveProjectPhase(id, dir) {
+  const p = projectsData.find(x => x._id === id); if (!p) return;
+  const i = PJ_PHASES.findIndex(x => x.key === (p.phase || 'koncept'));
+  const ni = i + dir; if (ni < 0 || ni >= PJ_PHASES.length) return;
+  try {
+    await fetch('/api/projects/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phase: PJ_PHASES[ni].key }) });
+    loadProjects();
+  } catch { alert('Chyba pri presune'); }
+}
+function openProjectModal(p = null) {
+  const e = p && typeof p === 'object';
+  document.getElementById('pjModalTitle').textContent = e ? 'Upraviť projekt' : 'Nový projekt';
+  document.getElementById('pjId').value = e ? p._id : '';
+  document.getElementById('pjTitle').value = e ? (p.title || '') : '';
+  document.getElementById('pjCode').value = e ? (p.code || '') : '';
+  document.getElementById('pjPhase').value = e ? (p.phase || 'koncept') : 'koncept';
+  document.getElementById('pjPriority').value = e ? (p.priority || 'normal') : 'normal';
+  document.getElementById('pjOwner').value = e ? (p.owner || '') : '';
+  document.getElementById('pjDeadline').value = e && p.deadline ? String(p.deadline).slice(0, 10) : '';
+  document.getElementById('pjFolder').value = e ? (p.folder || '') : '';
+  document.getElementById('pjTags').value = e ? (p.tags || []).join(', ') : '';
+  document.getElementById('pjNotes').value = e ? (p.notes || '') : '';
+  document.getElementById('pjDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('projectModal').classList.remove('hidden');
+}
+function closeProjectModal() { document.getElementById('projectModal').classList.add('hidden'); }
+async function saveProject() {
+  const title = document.getElementById('pjTitle').value.trim();
+  if (!title) { alert('Zadajte názov projektu'); return; }
+  const body = {
+    title, code: document.getElementById('pjCode').value.trim(),
+    phase: document.getElementById('pjPhase').value, priority: document.getElementById('pjPriority').value,
+    owner: document.getElementById('pjOwner').value.trim(),
+    deadline: document.getElementById('pjDeadline').value || null,
+    folder: document.getElementById('pjFolder').value.trim(),
+    tags: document.getElementById('pjTags').value.split(',').map(s => s.trim()).filter(Boolean),
+    notes: document.getElementById('pjNotes').value.trim()
+  };
+  const id = document.getElementById('pjId').value;
+  try {
+    const resp = await fetch(id ? '/api/projects/' + id : '/api/projects', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!resp.ok) { const er = await resp.json().catch(() => ({})); alert('Chyba: ' + (er.error || resp.status)); return; }
+    closeProjectModal(); loadProjects();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteProject(id) {
+  if (!id || !confirm('Naozaj odstrániť projekt?')) return;
+  try { await fetch('/api/projects/' + id, { method: 'DELETE' }); closeProjectModal(); loadProjects(); } catch { alert('Chyba'); }
+}
+
+// ── Testy ─────────────────────────────────────────────────────────────────────
+const TS_RESULT = { pass: { l: 'Vyhovel', c: 'proc-status-active' }, fail: { l: 'Nevyhovel', c: 'proc-status-archived' }, na: { l: 'N/A', c: 'proc-status-draft' } };
+let testsData = [];
+async function loadTests() {
+  try { testsData = await fetch('/api/tests').then(r => r.json()); if (!Array.isArray(testsData)) testsData = []; } catch { testsData = []; }
+  renderTests();
+}
+function renderTests() {
+  const el = document.getElementById('testsList'); if (!el) return;
+  const q = (document.getElementById('testSearch')?.value || '').toLowerCase();
+  const items = testsData.filter(t => !q || (t.title || '').toLowerCase().includes(q) || (t.project || '').toLowerCase().includes(q) || (t.product || '').toLowerCase().includes(q));
+  if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne protokoly.</div>'; return; }
+  el.innerHTML = '';
+  items.forEach(t => {
+    const rr = TS_RESULT[t.result] || TS_RESULT.na;
+    const card = document.createElement('div');
+    card.className = 'proc-card';
+    card.innerHTML = `
+      <div class="proc-card-main" onclick="openTestModal(testsData.find(x=>x._id==='${t._id}'))">
+        <div class="proc-card-top"><span class="proc-card-title">${escHtml(t.title)}</span><span class="proc-status-badge ${rr.c}">${rr.l}</span></div>
+        <div class="proc-card-meta">
+          ${t.project ? `<span>🗂️ ${escHtml(t.project)}</span>` : ''}${t.product ? `<span>📦 ${escHtml(t.product)}</span>` : ''}
+          ${t.tester ? `<span>👤 ${escHtml(t.tester)}</span>` : ''}<span>📊 ${(t.measurements || []).length} meraní</span><span>🕒 ${fmtDate(t.date)}</span>
+        </div>
+      </div>
+      <div class="proc-card-actions">
+        <button class="btn-word" onclick="window.location.href='/api/tests/${t._id}/export.xlsx'" title="Excel">⬇ Excel</button>
+        <button class="admin-icon-btn" onclick="openTestModal(testsData.find(x=>x._id==='${t._id}'))" title="Upraviť">✎</button>
+        <button class="admin-icon-btn danger" onclick="deleteTest('${t._id}')" title="Odstrániť">✕</button>
+      </div>`;
+    el.appendChild(card);
+  });
+}
+function addMeasureRow(m = {}) {
+  const c = document.getElementById('tsMeasRows');
+  const row = document.createElement('div'); row.className = 'proc-row';
+  row.innerHTML = `
+    <input type="text" class="ms-name" placeholder="Meranie" value="${escHtml(m.name || '')}" style="flex:2">
+    <input type="text" class="ms-value" placeholder="Hodnota" value="${escHtml(m.value || '')}">
+    <input type="text" class="ms-unit" placeholder="Jedn." value="${escHtml(m.unit || '')}" style="max-width:70px">
+    <input type="text" class="ms-min" placeholder="Min" value="${escHtml(m.min || '')}" style="max-width:70px">
+    <input type="text" class="ms-max" placeholder="Max" value="${escHtml(m.max || '')}" style="max-width:70px">
+    <label class="ms-pass" title="Vyhovel"><input type="checkbox" class="ms-passchk" ${m.pass ? 'checked' : ''}> ✓</label>
+    <button type="button" class="proc-row-del" onclick="procRemoveRow(this)">✕</button>`;
+  c.appendChild(row);
+}
+function openTestModal(t = null) {
+  const e = t && typeof t === 'object';
+  document.getElementById('tsModalTitle').textContent = e ? 'Upraviť protokol' : 'Nový protokol';
+  document.getElementById('tsId').value = e ? t._id : '';
+  document.getElementById('tsTitle').value = e ? (t.title || '') : '';
+  document.getElementById('tsDate').value = e && t.date ? String(t.date).slice(0, 10) : calYmd(new Date());
+  document.getElementById('tsProject').value = e ? (t.project || '') : '';
+  document.getElementById('tsProduct').value = e ? (t.product || '') : '';
+  document.getElementById('tsTester').value = e ? (t.tester || '') : '';
+  document.getElementById('tsType').value = e ? (t.ptype || '') : '';
+  const rv = e ? (t.result || 'na') : 'na';
+  const rb = document.querySelector(`input[name="tsResult"][value="${rv}"]`); if (rb) rb.checked = true;
+  document.getElementById('tsNote').value = e ? (t.note || '') : '';
+  document.getElementById('tsMeasRows').innerHTML = '';
+  const meas = (e && t.measurements && t.measurements.length) ? t.measurements : [{}];
+  meas.forEach(addMeasureRow);
+  document.getElementById('tsDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('testModal').classList.remove('hidden');
+}
+function closeTestModal() { document.getElementById('testModal').classList.add('hidden'); }
+async function saveTest() {
+  const title = document.getElementById('tsTitle').value.trim();
+  if (!title) { alert('Zadajte názov protokolu'); return; }
+  const measurements = [...document.querySelectorAll('#tsMeasRows .proc-row')].map(r => ({
+    name: r.querySelector('.ms-name').value.trim(), value: r.querySelector('.ms-value').value.trim(),
+    unit: r.querySelector('.ms-unit').value.trim(), min: r.querySelector('.ms-min').value.trim(),
+    max: r.querySelector('.ms-max').value.trim(), pass: r.querySelector('.ms-passchk').checked
+  })).filter(m => m.name || m.value);
+  const body = {
+    title, date: document.getElementById('tsDate').value || undefined,
+    project: document.getElementById('tsProject').value.trim(), product: document.getElementById('tsProduct').value.trim(),
+    tester: document.getElementById('tsTester').value.trim(), ptype: document.getElementById('tsType').value.trim(),
+    result: document.querySelector('input[name="tsResult"]:checked')?.value || 'na', measurements,
+    note: document.getElementById('tsNote').value.trim()
+  };
+  const id = document.getElementById('tsId').value;
+  try {
+    const resp = await fetch(id ? '/api/tests/' + id : '/api/tests', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!resp.ok) { const er = await resp.json().catch(() => ({})); alert('Chyba: ' + (er.error || resp.status)); return; }
+    closeTestModal(); loadTests();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteTest(id) {
+  if (!id || !confirm('Naozaj odstrániť protokol?')) return;
+  try { await fetch('/api/tests/' + id, { method: 'DELETE' }); closeTestModal(); loadTests(); } catch { alert('Chyba'); }
+}
+
+// ── Kalibrácie ────────────────────────────────────────────────────────────────
+let instrumentsData = [];
+function calStatus(next) {
+  if (!next) return { l: 'neurčené', c: '#64748b', k: 'none' };
+  const days = Math.ceil((new Date(next) - new Date()) / 864e5);
+  if (days < 0) return { l: 'Po termíne', c: '#ef4444', k: 'overdue' };
+  if (days <= 30) return { l: `O ${days} dní`, c: '#f59e0b', k: 'soon' };
+  return { l: 'OK', c: '#10b981', k: 'ok' };
+}
+function addMonths(dateStr, months) {
+  const d = new Date(dateStr); if (isNaN(d)) return '';
+  d.setMonth(d.getMonth() + (Number(months) || 0));
+  return calYmd(d);
+}
+async function loadInstruments() {
+  try { instrumentsData = await fetch('/api/instruments').then(r => r.json()); if (!Array.isArray(instrumentsData)) instrumentsData = []; } catch { instrumentsData = []; }
+  renderInstruments();
+}
+function renderInstruments() {
+  const el = document.getElementById('instrList'); if (!el) return;
+  const q = (document.getElementById('instrSearch')?.value || '').toLowerCase();
+  const items = instrumentsData.filter(i => !q || (i.name || '').toLowerCase().includes(q) || (i.serial || '').toLowerCase().includes(q) || (i.type || '').toLowerCase().includes(q));
+  if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne prístroje.</div>'; return; }
+  el.innerHTML = '';
+  items.forEach(i => {
+    const st = calStatus(i.nextCalibration);
+    const card = document.createElement('div');
+    card.className = 'proc-card';
+    card.innerHTML = `
+      <div class="proc-card-main" onclick="openInstrumentModal(instrumentsData.find(x=>x._id==='${i._id}'))">
+        <div class="proc-card-top"><span class="proc-card-title">${escHtml(i.name)}</span>
+          <span class="cal-badge" style="--c:${st.c}">${st.l}</span></div>
+        <div class="proc-card-meta">
+          ${i.serial ? `<span>🔢 ${escHtml(i.serial)}</span>` : ''}${i.type ? `<span>🏷️ ${escHtml(i.type)}</span>` : ''}
+          ${i.location ? `<span>📍 ${escHtml(i.location)}</span>` : ''}
+          ${i.lastCalibration ? `<span>posl.: ${fmtDate(i.lastCalibration)}</span>` : ''}
+          ${i.nextCalibration ? `<span>ďalšia: ${fmtDate(i.nextCalibration)}</span>` : ''}
+        </div>
+      </div>
+      <div class="proc-card-actions">
+        <button class="admin-icon-btn" onclick="openInstrumentModal(instrumentsData.find(x=>x._id==='${i._id}'))" title="Upraviť">✎</button>
+        <button class="admin-icon-btn danger" onclick="deleteInstrument('${i._id}')" title="Odstrániť">✕</button>
+      </div>`;
+    el.appendChild(card);
+  });
+}
+function openInstrumentModal(i = null) {
+  const e = i && typeof i === 'object';
+  document.getElementById('inModalTitle').textContent = e ? 'Upraviť prístroj' : 'Nový prístroj';
+  document.getElementById('inId').value = e ? i._id : '';
+  document.getElementById('inName').value = e ? (i.name || '') : '';
+  document.getElementById('inSerial').value = e ? (i.serial || '') : '';
+  document.getElementById('inType').value = e ? (i.type || '') : '';
+  document.getElementById('inLocation').value = e ? (i.location || '') : '';
+  document.getElementById('inLast').value = e && i.lastCalibration ? String(i.lastCalibration).slice(0, 10) : '';
+  document.getElementById('inInterval').value = e ? (i.intervalMonths || 12) : 12;
+  document.getElementById('inNext').value = e && i.nextCalibration ? String(i.nextCalibration).slice(0, 10) : '';
+  document.getElementById('inResponsible').value = e ? (i.responsible || '') : '';
+  document.getElementById('inNote').value = e ? (i.note || '') : '';
+  document.getElementById('inDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('instrumentModal').classList.remove('hidden');
+}
+function closeInstrumentModal() { document.getElementById('instrumentModal').classList.add('hidden'); }
+async function saveInstrument() {
+  const name = document.getElementById('inName').value.trim();
+  if (!name) { alert('Zadajte názov prístroja'); return; }
+  const last = document.getElementById('inLast').value || null;
+  const interval = Number(document.getElementById('inInterval').value) || 12;
+  let next = document.getElementById('inNext').value || null;
+  if (!next && last) next = addMonths(last, interval);
+  const body = {
+    name, serial: document.getElementById('inSerial').value.trim(), type: document.getElementById('inType').value.trim(),
+    location: document.getElementById('inLocation').value.trim(), responsible: document.getElementById('inResponsible').value.trim(),
+    lastCalibration: last, nextCalibration: next, intervalMonths: interval, note: document.getElementById('inNote').value.trim()
+  };
+  const id = document.getElementById('inId').value;
+  try {
+    const resp = await fetch(id ? '/api/instruments/' + id : '/api/instruments', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!resp.ok) { const er = await resp.json().catch(() => ({})); alert('Chyba: ' + (er.error || resp.status)); return; }
+    closeInstrumentModal(); loadInstruments(); loadNotif();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteInstrument(id) {
+  if (!id || !confirm('Naozaj odstrániť prístroj?')) return;
+  try { await fetch('/api/instruments/' + id, { method: 'DELETE' }); closeInstrumentModal(); loadInstruments(); loadNotif(); } catch { alert('Chyba'); }
+}
+
+// ── Prototypy ─────────────────────────────────────────────────────────────────
+let prototypesData = [];
+let ptImagesData = [];
+async function loadPrototypes() {
+  try { prototypesData = await fetch('/api/prototypes').then(r => r.json()); if (!Array.isArray(prototypesData)) prototypesData = []; } catch { prototypesData = []; }
+  renderPrototypes();
+}
+function renderPrototypes() {
+  const el = document.getElementById('protoList'); if (!el) return;
+  const q = (document.getElementById('protoSearch')?.value || '').toLowerCase();
+  const items = prototypesData.filter(p => !q || (p.name || '').toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q) || (p.project || '').toLowerCase().includes(q));
+  if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne prototypy.</div>'; return; }
+  el.innerHTML = '';
+  items.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'proc-card';
+    const thumb = (p.images || [])[0];
+    card.innerHTML = `
+      <div class="proc-card-main" onclick="openPrototypeModal(prototypesData.find(x=>x._id==='${p._id}'))" style="display:flex;gap:12px;align-items:center">
+        ${thumb ? `<img src="${escHtml(thumb.url)}" class="proto-thumb" alt="">` : ''}
+        <div style="flex:1;min-width:0">
+          <div class="proc-card-top"><span class="proc-card-title">${escHtml(p.name)}</span>
+            ${p.version ? `<span class="proc-status-badge proc-status-draft">${escHtml(p.version)}</span>` : ''}
+            <span class="proc-status-badge ${p.status === 'archived' ? 'proc-status-archived' : 'proc-status-active'}">${p.status === 'archived' ? 'Archív' : 'Aktívny'}</span>
+          </div>
+          <div class="proc-card-meta">
+            ${p.code ? `<span>🔢 ${escHtml(p.code)}</span>` : ''}${p.project ? `<span>🗂️ ${escHtml(p.project)}</span>` : ''}<span>🕒 ${fmtDate(p.date)}</span>
+          </div>
+        </div>
+      </div>
+      <div class="proc-card-actions">
+        <button class="admin-icon-btn" onclick="openPrototypeModal(prototypesData.find(x=>x._id==='${p._id}'))" title="Upraviť">✎</button>
+        <button class="admin-icon-btn danger" onclick="deletePrototype('${p._id}')" title="Odstrániť">✕</button>
+      </div>`;
+    el.appendChild(card);
+  });
+}
+function renderPtImages() {
+  const el = document.getElementById('ptImages'); if (!el) return;
+  el.innerHTML = '';
+  ptImagesData.forEach((img, i) => {
+    const d = document.createElement('div'); d.className = 'image-preview-item';
+    d.innerHTML = `<img src="${escHtml(img.url)}" alt=""><button class="image-preview-remove" onclick="removePtImage(${i})">✕</button>`;
+    el.appendChild(d);
+  });
+}
+function removePtImage(i) { ptImagesData.splice(i, 1); renderPtImages(); }
+async function addPrototypeImage() {
+  const url = await pickImageUpload();
+  if (url) { ptImagesData.push({ url, caption: '' }); renderPtImages(); }
+}
+function openPrototypeModal(p = null) {
+  const e = p && typeof p === 'object';
+  document.getElementById('ptModalTitle').textContent = e ? 'Upraviť prototyp' : 'Nový prototyp';
+  document.getElementById('ptId').value = e ? p._id : '';
+  document.getElementById('ptName').value = e ? (p.name || '') : '';
+  document.getElementById('ptCode').value = e ? (p.code || '') : '';
+  document.getElementById('ptVersion').value = e ? (p.version || '') : '';
+  document.getElementById('ptProject').value = e ? (p.project || '') : '';
+  document.getElementById('ptDate').value = e && p.date ? String(p.date).slice(0, 10) : calYmd(new Date());
+  document.getElementById('ptStatus').value = e ? (p.status || 'active') : 'active';
+  document.getElementById('ptDescription').value = e ? (p.description || '') : '';
+  document.getElementById('ptResults').value = e ? (p.results || '') : '';
+  ptImagesData = e ? [...(p.images || [])] : [];
+  renderPtImages();
+  document.getElementById('ptDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('prototypeModal').classList.remove('hidden');
+}
+function closePrototypeModal() { document.getElementById('prototypeModal').classList.add('hidden'); }
+async function savePrototype() {
+  const name = document.getElementById('ptName').value.trim();
+  if (!name) { alert('Zadajte názov prototypu'); return; }
+  const body = {
+    name, code: document.getElementById('ptCode').value.trim(), version: document.getElementById('ptVersion').value.trim(),
+    project: document.getElementById('ptProject').value.trim(), date: document.getElementById('ptDate').value || undefined,
+    status: document.getElementById('ptStatus').value, description: document.getElementById('ptDescription').value.trim(),
+    results: document.getElementById('ptResults').value.trim(), images: ptImagesData
+  };
+  const id = document.getElementById('ptId').value;
+  try {
+    const resp = await fetch(id ? '/api/prototypes/' + id : '/api/prototypes', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!resp.ok) { const er = await resp.json().catch(() => ({})); alert('Chyba: ' + (er.error || resp.status)); return; }
+    closePrototypeModal(); loadPrototypes();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deletePrototype(id) {
+  if (!id || !confirm('Naozaj odstrániť prototyp?')) return;
+  try { await fetch('/api/prototypes/' + id, { method: 'DELETE' }); closePrototypeModal(); loadPrototypes(); } catch { alert('Chyba'); }
+}
 
 // ==============================
 // INIT

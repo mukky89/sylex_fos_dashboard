@@ -212,6 +212,10 @@ app.use('/api/categories', categoriesRouter);
 app.use('/api/calendar', require('./routes/calendar'));
 app.use('/api/procedures', require('./routes/procedures'));
 app.use('/api/announcements', require('./routes/announcements'));
+app.use('/api/projects', require('./routes/projects'));
+app.use('/api/tests', require('./routes/tests'));
+app.use('/api/instruments', require('./routes/instruments'));
+app.use('/api/prototypes', require('./routes/prototypes'));
 app.use('/api/admin', require('./routes/admin')(sensorCfg));
 
 // Version / health endpoint — na overenie, akú verziu Railway práve beží
