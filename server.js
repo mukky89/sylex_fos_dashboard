@@ -68,6 +68,17 @@ async function autoSeed() {
   const HeaderLink = require('./models/HeaderLink');
   const AppConfig  = require('./models/AppConfig');
 
+  // ── Seed predvoleného admina ─────────────────────────────────────────────
+  try {
+    const User = require('./models/User');
+    if (await User.countDocuments() === 0) {
+      const bcrypt = require('bcryptjs');
+      const pass = process.env.ADMIN_PASSWORD || 'sylex123';
+      await User.create({ username: 'admin', name: 'Administrátor', role: 'admin', passwordHash: await bcrypt.hash(pass, 10) });
+      console.log(`Seed: admin user created (username: admin, password: ${process.env.ADMIN_PASSWORD ? '[z ADMIN_PASSWORD]' : 'sylex123'})`);
+    }
+  } catch (e) { console.error('admin seed:', e.message); }
+
   // ── Seed HeaderLinks (default chips) ─────────────────────────────────────
   const linkCount = await HeaderLink.countDocuments();
   if (linkCount === 0) {
@@ -203,22 +214,10 @@ function startSensorPolling() {
   console.log(`Sensor polling started → ${sensorCfg.ip}${sensorCfg.path} every ${sensorCfg.interval}s`);
 }
 
-// Routes
-const productsRouter = require('./routes/products');
-const categoriesRouter = require('./routes/categories');
+// ── Auth (verejné) ────────────────────────────────────────────────────────────
+app.use('/api/auth', require('./routes/auth'));
 
-app.use('/api/products', productsRouter);
-app.use('/api/categories', categoriesRouter);
-app.use('/api/calendar', require('./routes/calendar'));
-app.use('/api/procedures', require('./routes/procedures'));
-app.use('/api/announcements', require('./routes/announcements'));
-app.use('/api/projects', require('./routes/projects'));
-app.use('/api/tests', require('./routes/tests'));
-app.use('/api/instruments', require('./routes/instruments'));
-app.use('/api/prototypes', require('./routes/prototypes'));
-app.use('/api/admin', require('./routes/admin')(sensorCfg));
-
-// Version / health endpoint — na overenie, akú verziu Railway práve beží
+// Version / health endpoint (verejné)
 app.get('/api/version', (req, res) => {
   res.json({
     version:   APP_VERSION,
@@ -231,6 +230,27 @@ app.get('/api/version', (req, res) => {
     dbState:   ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState] || 'unknown'
   });
 });
+
+// ── Guard: všetko ostatné pod /api vyžaduje prihlásenie ───────────────────────
+const { requireAuth } = require('./middleware/auth');
+app.use('/api', (req, res, next) => {
+  if (req.path === '/version' || req.path.startsWith('/auth')) return next();
+  return requireAuth(req, res, next);
+});
+
+// Routes (chránené)
+app.use('/api/products', require('./routes/products'));
+app.use('/api/categories', require('./routes/categories'));
+app.use('/api/calendar', require('./routes/calendar'));
+app.use('/api/procedures', require('./routes/procedures'));
+app.use('/api/announcements', require('./routes/announcements'));
+app.use('/api/projects', require('./routes/projects'));
+app.use('/api/tests', require('./routes/tests'));
+app.use('/api/instruments', require('./routes/instruments'));
+app.use('/api/prototypes', require('./routes/prototypes'));
+app.use('/api/tasks', require('./routes/tasks'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/admin', require('./routes/admin')(sensorCfg));
 
 // Credentials endpoint (internal use only)
 app.get('/api/credentials/peaklogger', (req, res) => {

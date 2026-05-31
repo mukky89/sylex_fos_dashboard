@@ -2257,3 +2257,67 @@ body {
 .proto-thumb { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); flex-shrink: 0; }
 
 @media (max-width: 900px) { .kanban { grid-template-columns: repeat(5, 220px); } }
+
+/* =============================================
+   LOGIN
+   ============================================= */
+.login-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: radial-gradient(1200px 600px at 50% -10%, #16203f, #0b1020);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.login-box {
+  width: min(360px, 92vw); background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
+  padding: 32px 28px; box-shadow: var(--shadow-lg); text-align: center;
+}
+.login-logo { font-family: var(--font-title); font-size: 1.6rem; font-weight: 700; color: #f1f5f9; letter-spacing: 0.04em; }
+.login-logo span { color: #00d4ff; }
+.login-sub { font-size: 0.82rem; color: rgba(255,255,255,0.5); margin: 6px 0 22px; }
+.login-box form { display: flex; flex-direction: column; gap: 10px; }
+.login-box input {
+  padding: 11px 14px; border-radius: 10px;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
+  color: #f1f5f9; font-family: var(--font); font-size: 0.92rem; outline: none;
+}
+.login-box input:focus { border-color: #00d4ff; }
+.login-box input::placeholder { color: rgba(255,255,255,0.4); }
+.login-btn { margin-top: 6px; justify-content: center; padding: 11px; font-size: 0.92rem; }
+.login-error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5; font-size: 0.8rem; padding: 8px 10px; border-radius: 8px; }
+
+/* Používateľ v hlavičke */
+.hdr-user { display: flex; align-items: center; gap: 6px; margin-left: 4px; }
+.hdr-user-name { font-size: 0.74rem; color: #c8d8f0; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 720px) { .hdr-user-name { display: none; } }
+
+/* =============================================
+   ÚLOHY
+   ============================================= */
+.tasks-page { background: var(--hdr-bg); }
+.tasks-inner { max-width: 820px; margin: 0 auto; padding: 36px 28px 52px; }
+.tasks-filters { display: flex; gap: 6px; margin-bottom: 16px; }
+.tasks-filter {
+  padding: 7px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; font-family: var(--font);
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.55); cursor: pointer;
+}
+.tasks-filter.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.tasks-list { display: flex; flex-direction: column; gap: 8px; }
+.task-row {
+  display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  border-left: 3px solid var(--prio, #3b82f6); border-radius: var(--radius);
+}
+.task-row.task-overdue { border-left-color: #ef4444; }
+.task-check {
+  width: 24px; height: 24px; flex-shrink: 0; border-radius: 6px; cursor: pointer;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.25);
+  color: #34d399; font-weight: 700; font-size: 0.85rem;
+}
+.task-done .task-check { background: #10b981; border-color: #10b981; color: #fff; }
+.task-body { flex: 1; min-width: 0; cursor: pointer; }
+.task-title { font-size: 0.92rem; font-weight: 600; color: #f1f5f9; }
+.task-done .task-title { text-decoration: line-through; color: rgba(255,255,255,0.45); }
+.task-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.74rem; color: rgba(255,255,255,0.5); margin-top: 4px; }
+.task-prio { color: var(--prio, #3b82f6); font-weight: 600; }
+.task-od { color: #f87171; font-weight: 600; }
+.task-desc { color: rgba(255,255,255,0.4); }
