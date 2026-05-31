@@ -8,6 +8,43 @@ const Category    = require('../models/Category');
 const Product     = require('../models/Product');
 const Announcement = require('../models/Announcement');
 const Procedure   = require('../models/Procedure');
+const Project     = require('../models/Project');
+const Instrument  = require('../models/Instrument');
+const TestProtocol = require('../models/TestProtocol');
+const Prototype   = require('../models/Prototype');
+
+const now = Date.now();
+const dPlus = (days) => new Date(now + days * 864e5);
+
+const PROJECTS = [
+  { title: 'FOS senzor teploty X1', code: 'P-2026-01', phase: 'prototyp', owner: 'M. Horák', priority: 'high', deadline: dPlus(30), folder: 'G:\\Projekty\\FOS\\X1', tags: ['optika', 'teplota'], notes: 'Nový dizajn puzdra.' },
+  { title: 'Vlhkostný senzor H2', code: 'P-2026-02', phase: 'testovanie', owner: 'P. Kováč', priority: 'normal', deadline: dPlus(60), folder: 'G:\\Projekty\\FOS\\H2', tags: ['vlhkosť'] },
+  { title: 'Optický merač strát', code: 'P-2025-11', phase: 'vyroba', owner: 'J. Novák', priority: 'normal', folder: 'G:\\Projekty\\FOS\\OLM' },
+  { title: 'Kalibračná stanica v2', code: 'P-2026-03', phase: 'koncept', owner: 'Lab', priority: 'low' },
+  { title: 'Senzor vibrácií', code: 'P-2025-08', phase: 'ukoncene', owner: 'M. Horák', priority: 'normal' },
+];
+
+const INSTRUMENTS = [
+  { name: 'Multimeter Fluke 87V', serial: 'FL-001', type: 'multimeter', location: 'Lab FOS', responsible: 'P. Kováč', lastCalibration: dPlus(-300), nextCalibration: dPlus(65), intervalMonths: 12 },
+  { name: 'Optický reflektometer OTDR', serial: 'OTDR-22', type: 'OTDR', location: 'Lab FOS', responsible: 'J. Novák', lastCalibration: dPlus(-350), nextCalibration: dPlus(15), intervalMonths: 12 },
+  { name: 'Teplotná komora', serial: 'TK-05', type: 'klimatická komora', location: 'Lab', responsible: 'Lab', lastCalibration: dPlus(-400), nextCalibration: dPlus(-5), intervalMonths: 12 },
+  { name: 'Posuvné meradlo digitálne', serial: 'PM-12', type: 'meradlo', location: 'Dielňa', responsible: 'M. Horák', lastCalibration: dPlus(-100), nextCalibration: dPlus(265), intervalMonths: 12 },
+];
+
+const TESTS = [
+  { title: 'Test optických strát — X1', project: 'FOS senzor teploty X1', product: 'X1', tester: 'J. Novák', ptype: 'optické straty', result: 'pass',
+    measurements: [{ name: 'Vložná strata', value: '0.25', unit: 'dB', min: '0', max: '0.5', pass: true }, { name: 'Návratová strata', value: '45', unit: 'dB', min: '40', max: '', pass: true }] },
+  { title: 'Teplotný cyklus — H2', project: 'Vlhkostný senzor H2', product: 'H2', tester: 'P. Kováč', ptype: 'teplotný cyklus', result: 'fail',
+    measurements: [{ name: 'Odchýlka pri -20°C', value: '3.2', unit: '%', min: '0', max: '2', pass: false }] },
+  { title: 'Ťahová skúška puzdra', project: 'FOS senzor teploty X1', product: 'X1', tester: 'M. Horák', ptype: 'mechanická', result: 'pass',
+    measurements: [{ name: 'Sila do poškodenia', value: '120', unit: 'N', min: '100', max: '', pass: true }] },
+];
+
+const PROTOTYPES = [
+  { name: 'X1 — vzorka A', code: 'X1-A', version: 'v1.0', project: 'FOS senzor teploty X1', status: 'active', description: 'Prvý prototyp puzdra.', results: 'Funkčné, drobné netesnosti.' },
+  { name: 'X1 — vzorka B', code: 'X1-B', version: 'v1.1', project: 'FOS senzor teploty X1', status: 'active', description: 'Upravené tesnenie.', results: 'OK.' },
+  { name: 'H2 — vzorka A', code: 'H2-A', version: 'v0.9', project: 'Vlhkostný senzor H2', status: 'archived', description: 'Skúšobná vzorka.', results: 'Nahradená v0.9.1.' },
+];
 
 const ANNOUNCEMENTS = [
   { title: 'Odstávka servera G:\\Projekty v piatok 18:00', type: 'important', pinned: true,
@@ -121,7 +158,7 @@ const PROCEDURES = [
 ];
 
 async function seedSamples() {
-  const result = { announcements: 0, categories: 0, products: 0, procedures: 0 };
+  const result = { announcements: 0, categories: 0, products: 0, procedures: 0, projects: 0, instruments: 0, tests: 0, prototypes: 0 };
 
   // Novinky
   for (const a of ANNOUNCEMENTS) {
@@ -147,6 +184,23 @@ async function seedSamples() {
   // Pracovné postupy
   for (const pr of PROCEDURES) {
     if (!(await Procedure.exists({ title: pr.title }))) { await Procedure.create(pr); result.procedures++; }
+  }
+
+  // Vývojové projekty
+  for (const p of PROJECTS) {
+    if (!(await Project.exists({ title: p.title }))) { await Project.create(p); result.projects++; }
+  }
+  // Kalibrácie
+  for (const i of INSTRUMENTS) {
+    if (!(await Instrument.exists({ name: i.name }))) { await Instrument.create(i); result.instruments++; }
+  }
+  // Testovacie protokoly
+  for (const t of TESTS) {
+    if (!(await TestProtocol.exists({ title: t.title }))) { await TestProtocol.create(t); result.tests++; }
+  }
+  // Prototypy
+  for (const pt of PROTOTYPES) {
+    if (!(await Prototype.exists({ name: pt.name }))) { await Prototype.create(pt); result.prototypes++; }
   }
 
   return result;

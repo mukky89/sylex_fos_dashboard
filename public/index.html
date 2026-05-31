@@ -40,6 +40,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           Postupy
         </a>
+        <a class="nav-link" onclick="showPage('dev')" data-page="dev">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z"/></svg>
+          Vývoj
+        </a>
         <a class="nav-link" onclick="showPage('admin')" data-page="admin">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
           Admin
@@ -69,6 +73,7 @@
         <button onclick="quickAdd('procedure')">📋 Nový postup</button>
         <button onclick="quickAdd('event')">📅 Nová udalosť</button>
         <button onclick="quickAdd('wiki')">📚 Nový WIKI záznam</button>
+        <button onclick="quickAdd('project')">🗂️ Nový projekt</button>
       </div>
 
       <!-- Notifikácie -->
@@ -709,6 +714,219 @@
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeProcedurePreview()">Zavrieť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DEV (Vývoj) PAGE ===== -->
+  <main id="page-dev" class="page dev-page">
+    <div class="dev-inner">
+      <div class="admin-hdr">
+        <div>
+          <h1 class="admin-title">Vývoj výrobkov</h1>
+          <p class="admin-sub">Projekty · testovacie protokoly · kalibrácie · prototypy</p>
+        </div>
+      </div>
+
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-dtab="projects" onclick="switchDevTab('projects')">🗂️ Projekty</button>
+        <button class="admin-tab" data-dtab="tests" onclick="switchDevTab('tests')">🧪 Testy</button>
+        <button class="admin-tab" data-dtab="instruments" onclick="switchDevTab('instruments')">📐 Kalibrácie</button>
+        <button class="admin-tab" data-dtab="prototypes" onclick="switchDevTab('prototypes')">🔧 Prototypy</button>
+      </div>
+
+      <!-- Projekty (board) -->
+      <div class="admin-panel active" id="devTab-projects">
+        <div class="dev-toolbar">
+          <div class="proc-search-wrap" style="margin:0;flex:1">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="projSearch" placeholder="Hľadať projekt..." oninput="renderProjects()" autocomplete="off">
+          </div>
+          <button class="btn-primary" onclick="openProjectModal()">+ Nový projekt</button>
+        </div>
+        <div id="projectsBoard" class="kanban"></div>
+      </div>
+
+      <!-- Testy -->
+      <div class="admin-panel" id="devTab-tests">
+        <div class="dev-toolbar">
+          <div class="proc-search-wrap" style="margin:0;flex:1">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="testSearch" placeholder="Hľadať protokol..." oninput="renderTests()" autocomplete="off">
+          </div>
+          <button class="btn-primary" onclick="openTestModal()">+ Nový protokol</button>
+        </div>
+        <div id="testsList" class="dev-list"></div>
+      </div>
+
+      <!-- Kalibrácie -->
+      <div class="admin-panel" id="devTab-instruments">
+        <div class="dev-toolbar">
+          <div class="proc-search-wrap" style="margin:0;flex:1">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="instrSearch" placeholder="Hľadať prístroj..." oninput="renderInstruments()" autocomplete="off">
+          </div>
+          <button class="btn-primary" onclick="openInstrumentModal()">+ Nový prístroj</button>
+        </div>
+        <div id="instrList" class="dev-list"></div>
+      </div>
+
+      <!-- Prototypy -->
+      <div class="admin-panel" id="devTab-prototypes">
+        <div class="dev-toolbar">
+          <div class="proc-search-wrap" style="margin:0;flex:1">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="protoSearch" placeholder="Hľadať prototyp..." oninput="renderPrototypes()" autocomplete="off">
+          </div>
+          <button class="btn-primary" onclick="openPrototypeModal()">+ Nový prototyp</button>
+        </div>
+        <div id="protoList" class="dev-list"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== PROJECT MODAL ===== -->
+  <div id="projectModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeProjectModal()"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header"><h2 id="pjModalTitle">Nový projekt</h2><button class="modal-close" onclick="closeProjectModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="pjId">
+        <div class="form-row">
+          <div class="form-group"><label>Názov *</label><input type="text" id="pjTitle" placeholder="napr. FOS senzor X"></div>
+          <div class="form-group"><label>Kód</label><input type="text" id="pjCode" placeholder="napr. P-2026-01"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Fáza</label>
+            <select id="pjPhase">
+              <option value="koncept">Koncept</option><option value="prototyp">Prototyp</option>
+              <option value="testovanie">Testovanie</option><option value="vyroba">Výroba</option><option value="ukoncene">Ukončené</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Priorita</label>
+            <select id="pjPriority"><option value="low">Nízka</option><option value="normal" selected>Normálna</option><option value="high">Vysoká</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Zodpovedný</label><input type="text" id="pjOwner" placeholder="Meno"></div>
+          <div class="form-group"><label>Termín (deadline)</label><input type="date" id="pjDeadline"></div>
+        </div>
+        <div class="form-group"><label>Priečinok / odkaz</label><input type="text" id="pjFolder" placeholder="G:\Projekty\..."></div>
+        <div class="form-group"><label>Tagy (čiarkou)</label><input type="text" id="pjTags" placeholder="optika, senzor"></div>
+        <div class="form-group"><label>Poznámky</label><textarea id="pjNotes" rows="3"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="pjDeleteBtn" onclick="deleteProject(document.getElementById('pjId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeProjectModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveProject()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TEST MODAL ===== -->
+  <div id="testModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeTestModal()"></div>
+    <div class="modal-box">
+      <div class="modal-header"><h2 id="tsModalTitle">Nový protokol</h2><button class="modal-close" onclick="closeTestModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="tsId">
+        <div class="form-row">
+          <div class="form-group"><label>Názov *</label><input type="text" id="tsTitle" placeholder="napr. Test optických strát"></div>
+          <div class="form-group"><label>Dátum</label><input type="date" id="tsDate"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Projekt</label><input type="text" id="tsProject" placeholder="názov projektu"></div>
+          <div class="form-group"><label>Výrobok</label><input type="text" id="tsProduct" placeholder="názov/model"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Tester</label><input type="text" id="tsTester" placeholder="Meno"></div>
+          <div class="form-group"><label>Typ testu</label><input type="text" id="tsType" placeholder="napr. optické straty"></div>
+        </div>
+        <div class="form-group"><label>Výsledok</label>
+          <div class="status-select">
+            <label class="status-opt"><input type="radio" name="tsResult" value="pass"> ✅ Vyhovel</label>
+            <label class="status-opt"><input type="radio" name="tsResult" value="fail"> ❌ Nevyhovel</label>
+            <label class="status-opt"><input type="radio" name="tsResult" value="na" checked> N/A</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="proc-rows-hdr"><label>Merania</label><button type="button" class="btn-sm" onclick="addMeasureRow()">+ Pridať meranie</button></div>
+          <div id="tsMeasRows" class="proc-rows"></div>
+        </div>
+        <div class="form-group"><label>Poznámka</label><textarea id="tsNote" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="tsDeleteBtn" onclick="deleteTest(document.getElementById('tsId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeTestModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveTest()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== INSTRUMENT MODAL ===== -->
+  <div id="instrumentModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeInstrumentModal()"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header"><h2 id="inModalTitle">Nový prístroj</h2><button class="modal-close" onclick="closeInstrumentModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="inId">
+        <div class="form-row">
+          <div class="form-group"><label>Názov *</label><input type="text" id="inName" placeholder="napr. Multimeter Fluke"></div>
+          <div class="form-group"><label>Sériové č.</label><input type="text" id="inSerial"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Typ</label><input type="text" id="inType" placeholder="napr. multimeter"></div>
+          <div class="form-group"><label>Umiestnenie</label><input type="text" id="inLocation" placeholder="Lab FOS"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Posledná kalibrácia</label><input type="date" id="inLast"></div>
+          <div class="form-group"><label>Interval (mesiace)</label><input type="number" id="inInterval" min="1" max="120" placeholder="12"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Ďalšia kalibrácia</label><input type="date" id="inNext"><span class="form-hint">auto z poslednej + interval, dá sa prepísať</span></div>
+          <div class="form-group"><label>Zodpovedný</label><input type="text" id="inResponsible"></div>
+        </div>
+        <div class="form-group"><label>Poznámka</label><input type="text" id="inNote"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="inDeleteBtn" onclick="deleteInstrument(document.getElementById('inId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeInstrumentModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveInstrument()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PROTOTYPE MODAL ===== -->
+  <div id="prototypeModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closePrototypeModal()"></div>
+    <div class="modal-box">
+      <div class="modal-header"><h2 id="ptModalTitle">Nový prototyp</h2><button class="modal-close" onclick="closePrototypeModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="ptId">
+        <div class="form-row">
+          <div class="form-group"><label>Názov *</label><input type="text" id="ptName" placeholder="napr. Senzor X — vzorka A"></div>
+          <div class="form-group"><label>Kód</label><input type="text" id="ptCode"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Verzia</label><input type="text" id="ptVersion" placeholder="v1.0"></div>
+          <div class="form-group"><label>Projekt</label><input type="text" id="ptProject"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Dátum</label><input type="date" id="ptDate"></div>
+          <div class="form-group"><label>Stav</label><select id="ptStatus"><option value="active">Aktívny</option><option value="archived">Archivovaný</option></select></div>
+        </div>
+        <div class="form-group"><label>Popis</label><textarea id="ptDescription" rows="2"></textarea></div>
+        <div class="form-group"><label>Výsledky / poznatky</label><textarea id="ptResults" rows="3"></textarea></div>
+        <div class="form-group">
+          <label>Obrázky</label>
+          <div id="ptImages" class="image-preview-list"></div>
+          <button type="button" class="btn-sm" onclick="addPrototypeImage()">🖼 Pridať obrázok</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="ptDeleteBtn" onclick="deletePrototype(document.getElementById('ptId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closePrototypeModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="savePrototype()">Uložiť</button>
       </div>
     </div>
   </div>
