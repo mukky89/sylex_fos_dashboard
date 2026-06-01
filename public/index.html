@@ -820,6 +820,7 @@
         <button class="admin-tab" data-dtab="instruments" onclick="switchDevTab('instruments')">📐 Kalibrácie</button>
         <button class="admin-tab" data-dtab="prototypes" onclick="switchDevTab('prototypes')">🔧 Prototypy</button>
         <button class="admin-tab" data-dtab="owners" onclick="switchDevTab('owners')">👤 Vlastníci</button>
+        <button class="admin-tab" data-dtab="interrogators" onclick="switchDevTab('interrogators')">📟 Interrogátory</button>
       </div>
 
       <!-- Projekty (board) -->
@@ -886,8 +887,78 @@
           </table>
         </div>
       </div>
+
+      <!-- Interrogátory (evidencia kusov) -->
+      <div class="admin-panel" id="devTab-interrogators">
+        <div class="dev-toolbar">
+          <div class="proc-search-wrap" style="margin:0;flex:1">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="intgSearch" placeholder="Hľadať sériové č. / zákazník / model..." oninput="renderInterrogators()" autocomplete="off">
+          </div>
+          <button class="btn-primary" onclick="openInterrogatorModal()">+ Nový kus</button>
+        </div>
+        <div class="owners-table-wrap">
+          <table class="owners-table">
+            <thead><tr><th>Sériové č.</th><th>Model</th><th>Vyrobené</th><th>Stav</th><th>Zákazník</th><th>Predané</th><th>Opravy</th><th></th></tr></thead>
+            <tbody id="intgBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </main>
+
+  <!-- ===== INTERROGATOR MODAL ===== -->
+  <div id="interrogatorModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeInterrogatorModal()"></div>
+    <div class="modal-box">
+      <div class="modal-header"><h2 id="igModalTitle">Nový interrogátor</h2><button class="modal-close" onclick="closeInterrogatorModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="igId">
+        <div class="form-row">
+          <div class="form-group"><label>Sériové číslo *</label><input type="text" id="igSerial" placeholder="napr. SL-2026-0042"></div>
+          <div class="form-group"><label>Model / typ</label><input type="text" id="igModel" placeholder="napr. S-line S16"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Počet kanálov</label><input type="number" id="igChannels" min="1" max="256" placeholder="napr. 16"></div>
+          <div class="form-group"><label>Firmware</label><input type="text" id="igFirmware" placeholder="napr. v2.3.1"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>HW revízia</label><input type="text" id="igHw" placeholder="napr. Rev. C"></div>
+          <div class="form-group"><label>Dátum výroby</label><input type="date" id="igMade"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Stav</label>
+            <select id="igStatus">
+              <option value="sklad">Na sklade</option>
+              <option value="predany">Predaný</option>
+              <option value="zakaznik">U zákazníka</option>
+              <option value="oprava">V oprave</option>
+              <option value="vyradeny">Vyradený</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Umiestnenie</label><input type="text" id="igLocation" placeholder="sklad / zákazník / lab"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Zákazník</label><input type="text" id="igCustomer" placeholder="názov firmy"></div>
+          <div class="form-group"><label>Komu predaný</label><input type="text" id="igSoldTo" placeholder="kontakt / firma"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Dátum predaja</label><input type="date" id="igSoldAt"></div>
+          <div class="form-group"><label>Záruka do</label><input type="date" id="igWarranty"></div>
+        </div>
+        <div class="form-group"><label>Poznámky</label><textarea id="igNotes" rows="2"></textarea></div>
+        <div class="form-group">
+          <div class="proc-rows-hdr"><label>História opráv</label><button type="button" class="btn-sm" onclick="addRepairRow()">+ Pridať opravu</button></div>
+          <div id="igRepairs" class="proc-rows"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="igDeleteBtn" onclick="deleteInterrogator(document.getElementById('igId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeInterrogatorModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveInterrogator()">Uložiť</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== OWNER MODAL ===== -->
   <div id="ownerModal" class="modal hidden">

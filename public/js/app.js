@@ -2587,6 +2587,7 @@ function switchDevTab(tab) {
   if (tab === 'instruments') loadInstruments();
   if (tab === 'prototypes') loadPrototypes();
   if (tab === 'owners') loadOwners();
+  if (tab === 'interrogators') loadInterrogators();
 }
 
 const PJ_PHASES = [
@@ -3155,6 +3156,105 @@ async function deleteUser(id) {
     if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
     closeUserModal(); loadUsers();
   } catch { alert('Chyba'); }
+}
+
+// ==============================
+// INTERROGÁTORY (evidencia kusov + história opráv)
+// ==============================
+let interrogatorsData = [];
+const IG_STATUS = {
+  sklad:    { l: 'Na sklade',  c: 'proc-status-draft' },
+  predany:  { l: 'Predaný',    c: 'proc-status-active' },
+  zakaznik: { l: 'U zákazníka',c: 'proc-status-active' },
+  oprava:   { l: 'V oprave',   c: 'proc-status-archived' },
+  vyradeny: { l: 'Vyradený',   c: 'proc-status-archived' },
+};
+async function loadInterrogators() {
+  try { interrogatorsData = await fetch('/api/interrogators').then(r => r.json()); if (!Array.isArray(interrogatorsData)) interrogatorsData = []; }
+  catch { interrogatorsData = []; }
+  renderInterrogators();
+}
+function renderInterrogators() {
+  const tb = document.getElementById('intgBody'); if (!tb) return;
+  const q = (document.getElementById('intgSearch')?.value || '').toLowerCase();
+  const items = interrogatorsData.filter(i => !q || (i.serial || '').toLowerCase().includes(q) ||
+    (i.customer || '').toLowerCase().includes(q) || (i.model || '').toLowerCase().includes(q) || (i.soldTo || '').toLowerCase().includes(q));
+  if (!items.length) { tb.innerHTML = '<tr><td colspan="8" class="owners-empty">Žiadne interrogátory.</td></tr>'; return; }
+  tb.innerHTML = '';
+  items.forEach(i => {
+    const st = IG_STATUS[i.status] || IG_STATUS.sklad;
+    const rc = (i.repairs || []).length;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${escHtml(i.serial)}</strong></td>
+      <td>${escHtml(i.model || '')}${i.channels ? ' · ' + i.channels + ' kn.' : ''}</td>
+      <td>${i.manufacturedAt ? fmtDate(i.manufacturedAt) : '—'}</td>
+      <td><span class="proc-status-badge ${st.c}">${st.l}</span></td>
+      <td>${escHtml(i.customer || '—')}</td>
+      <td>${i.soldAt ? fmtDate(i.soldAt) : '—'}</td>
+      <td>${rc ? '🔧 ' + rc : '—'}</td>
+      <td class="owner-actions">
+        <button class="admin-icon-btn" onclick="openInterrogatorModal(interrogatorsData.find(x=>x._id==='${i._id}'))" title="Detail / upraviť">✎</button>
+        <button class="admin-icon-btn danger" onclick="deleteInterrogator('${i._id}')" title="Odstrániť">✕</button>
+      </td>`;
+    tb.appendChild(tr);
+  });
+}
+function addRepairRow(r = {}) {
+  const c = document.getElementById('igRepairs');
+  const row = document.createElement('div'); row.className = 'proc-row';
+  row.innerHTML = `
+    <input type="date" class="rp-date" value="${r.date ? String(r.date).slice(0, 10) : ''}" style="max-width:140px">
+    <input type="text" class="rp-desc" placeholder="Popis opravy" value="${escHtml(r.description || '')}" style="flex:2">
+    <input type="text" class="rp-tech" placeholder="Technik" value="${escHtml(r.technician || '')}">
+    <input type="text" class="rp-cost" placeholder="Cena" value="${escHtml(r.cost || '')}" style="max-width:90px">
+    <button type="button" class="proc-row-del" onclick="procRemoveRow(this)">✕</button>`;
+  c.appendChild(row);
+}
+function openInterrogatorModal(i = null) {
+  const e = i && typeof i === 'object';
+  document.getElementById('igModalTitle').textContent = e ? ('Interrogátor ' + (i.serial || '')) : 'Nový interrogátor';
+  const v = (id, val) => { document.getElementById(id).value = val; };
+  v('igId', e ? i._id : ''); v('igSerial', e ? (i.serial || '') : ''); v('igModel', e ? (i.model || 'S-line') : 'S-line');
+  v('igChannels', e && i.channels ? i.channels : ''); v('igFirmware', e ? (i.firmware || '') : ''); v('igHw', e ? (i.hwRevision || '') : '');
+  v('igMade', e && i.manufacturedAt ? String(i.manufacturedAt).slice(0, 10) : '');
+  v('igStatus', e ? (i.status || 'sklad') : 'sklad'); v('igLocation', e ? (i.location || '') : '');
+  v('igCustomer', e ? (i.customer || '') : ''); v('igSoldTo', e ? (i.soldTo || '') : '');
+  v('igSoldAt', e && i.soldAt ? String(i.soldAt).slice(0, 10) : ''); v('igWarranty', e && i.warrantyUntil ? String(i.warrantyUntil).slice(0, 10) : '');
+  v('igNotes', e ? (i.notes || '') : '');
+  document.getElementById('igRepairs').innerHTML = '';
+  (e && i.repairs ? i.repairs : []).forEach(addRepairRow);
+  document.getElementById('igDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('interrogatorModal').classList.remove('hidden');
+}
+function closeInterrogatorModal() { document.getElementById('interrogatorModal').classList.add('hidden'); }
+async function saveInterrogator() {
+  const serial = document.getElementById('igSerial').value.trim();
+  if (!serial) { alert('Zadajte sériové číslo'); return; }
+  const repairs = [...document.querySelectorAll('#igRepairs .proc-row')].map(r => ({
+    date: r.querySelector('.rp-date').value || null, description: r.querySelector('.rp-desc').value.trim(),
+    technician: r.querySelector('.rp-tech').value.trim(), cost: r.querySelector('.rp-cost').value.trim()
+  })).filter(x => x.description || x.date);
+  const num = (id) => { const x = document.getElementById(id).value; return x ? Number(x) : null; };
+  const dt = (id) => document.getElementById(id).value || null;
+  const body = {
+    serial, model: document.getElementById('igModel').value.trim(), channels: num('igChannels'),
+    firmware: document.getElementById('igFirmware').value.trim(), hwRevision: document.getElementById('igHw').value.trim(),
+    manufacturedAt: dt('igMade'), status: document.getElementById('igStatus').value,
+    location: document.getElementById('igLocation').value.trim(), customer: document.getElementById('igCustomer').value.trim(),
+    soldTo: document.getElementById('igSoldTo').value.trim(), soldAt: dt('igSoldAt'), warrantyUntil: dt('igWarranty'),
+    notes: document.getElementById('igNotes').value.trim(), repairs
+  };
+  const id = document.getElementById('igId').value;
+  try {
+    const r = await fetch(id ? '/api/interrogators/' + id : '/api/interrogators', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
+    closeInterrogatorModal(); loadInterrogators();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteInterrogator(id) {
+  if (!id || !confirm('Naozaj odstrániť tento interrogátor z evidencie?')) return;
+  try { await fetch('/api/interrogators/' + id, { method: 'DELETE' }); closeInterrogatorModal(); loadInterrogators(); } catch { alert('Chyba'); }
 }
 
 // ==============================

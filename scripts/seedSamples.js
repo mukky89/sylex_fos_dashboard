@@ -12,6 +12,7 @@ const Project     = require('../models/Project');
 const Instrument  = require('../models/Instrument');
 const TestProtocol = require('../models/TestProtocol');
 const Prototype   = require('../models/Prototype');
+const Interrogator = require('../models/Interrogator');
 
 const now = Date.now();
 const dPlus = (days) => new Date(now + days * 864e5);
@@ -157,8 +158,15 @@ const PROCEDURES = [
     risks: [], attachments: [] },
 ];
 
+const INTERROGATORS = [
+  { serial: 'SL-2025-0007', model: 'S-line S16', channels: 16, firmware: 'v2.3.1', hwRevision: 'Rev. C', manufacturedAt: dPlus(-420), status: 'zakaznik', customer: 'Metro Praha', soldTo: 'Metro Praha a.s.', soldAt: dPlus(-360), warrantyUntil: dPlus(360), location: 'Tunel Praha', notes: 'Monitoring tunela.', repairs: [{ date: dPlus(-120), description: 'Výmena napájacieho zdroja', technician: 'P. Kováč', cost: '120 €' }] },
+  { serial: 'SL-2025-0012', model: 'S-line S4', channels: 4, firmware: 'v2.3.1', hwRevision: 'Rev. C', manufacturedAt: dPlus(-300), status: 'predany', customer: 'GeoTest', soldTo: 'GeoTest s.r.o.', soldAt: dPlus(-200), warrantyUntil: dPlus(530), location: 'u zákazníka', notes: '', repairs: [] },
+  { serial: 'SL-2026-0003', model: 'S-line S16', channels: 16, firmware: 'v2.4.0', hwRevision: 'Rev. D', manufacturedAt: dPlus(-40), status: 'sklad', customer: '', soldTo: '', location: 'sklad FOS', notes: 'Pripravený na expedíciu.', repairs: [] },
+  { serial: 'SL-2024-0021', model: 'S-line S8', channels: 8, firmware: 'v2.2.0', hwRevision: 'Rev. B', manufacturedAt: dPlus(-700), status: 'oprava', customer: 'Most SK', soldTo: 'NDS', soldAt: dPlus(-650), warrantyUntil: dPlus(-100), location: 'servis FOS', notes: 'Reklamácia po záruke.', repairs: [{ date: dPlus(-30), description: 'Diagnostika optického modulu', technician: 'J. Novák', cost: '—' }, { date: dPlus(-10), description: 'Výmena konektorov FC/APC', technician: 'J. Novák', cost: '60 €' }] },
+];
+
 async function seedSamples() {
-  const result = { announcements: 0, categories: 0, products: 0, procedures: 0, projects: 0, instruments: 0, tests: 0, prototypes: 0 };
+  const result = { announcements: 0, categories: 0, products: 0, procedures: 0, projects: 0, instruments: 0, tests: 0, prototypes: 0, interrogators: 0 };
 
   // Novinky
   for (const a of ANNOUNCEMENTS) {
@@ -201,6 +209,10 @@ async function seedSamples() {
   // Prototypy
   for (const pt of PROTOTYPES) {
     if (!(await Prototype.exists({ name: pt.name }))) { await Prototype.create(pt); result.prototypes++; }
+  }
+
+  for (const ig of INTERROGATORS) {
+    if (!(await Interrogator.exists({ serial: ig.serial }))) { await Interrogator.create(ig); result.interrogators++; }
   }
 
   return result;
