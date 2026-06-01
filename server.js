@@ -252,6 +252,7 @@ app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/crm', require('./routes/crm'));
 app.use('/api/owners', require('./routes/owners'));
+app.use('/api/interrogators', require('./routes/interrogators'));
 app.use('/api/admin', require('./routes/admin')(sensorCfg));
 
 // Credentials endpoint (internal use only)
