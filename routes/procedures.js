@@ -448,3 +448,4 @@ router.get('/:id/docx', async (req, res) => {
 
 module.exports = router;
 module.exports.buildDoc = buildDoc; // exported for testing / reuse
+module.exports.htmlToParagraphs = htmlToParagraphs; // znovupoužitie v datasheetoch

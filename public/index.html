@@ -830,6 +830,7 @@
         <button class="admin-tab" data-dtab="prototypes" onclick="switchDevTab('prototypes')">🔧 Prototypy</button>
         <button class="admin-tab" data-dtab="owners" onclick="switchDevTab('owners')">👤 Vlastníci</button>
         <button class="admin-tab" data-dtab="interrogators" onclick="switchDevTab('interrogators')">📟 Interrogátory</button>
+        <button class="admin-tab" data-dtab="datasheets" onclick="switchDevTab('datasheets')">📄 Datasheety</button>
       </div>
 
       <!-- Projekty (board) -->
@@ -913,8 +914,71 @@
           </table>
         </div>
       </div>
+
+      <!-- Datasheety -->
+      <div class="admin-panel" id="devTab-datasheets">
+        <div id="dsListView">
+          <div class="dev-toolbar">
+            <div class="proc-search-wrap" style="margin:0;flex:1">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="dsSearch" placeholder="Hľadať datasheet..." oninput="renderDatasheets()" autocomplete="off">
+            </div>
+            <button class="btn-primary" onclick="openDatasheetModal()">+ Nový datasheet</button>
+          </div>
+          <div id="dsList" class="dev-list"></div>
+        </div>
+        <div id="dsDetail" class="ds-detail hidden"></div>
+      </div>
     </div>
   </main>
+
+  <!-- ===== DATASHEET MODAL ===== -->
+  <div id="datasheetModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeDatasheetModal()"></div>
+    <div class="modal-box">
+      <div class="modal-header"><h2 id="dsModalTitle">Nový datasheet</h2><button class="modal-close" onclick="closeDatasheetModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="dsId">
+        <div class="form-row">
+          <div class="form-group"><label>Názov produktu *</label><input type="text" id="dsTitle" placeholder="napr. Strain Cable SC-01"></div>
+          <div class="form-group"><label>Part number</label><input type="text" id="dsPart" placeholder="SC-01"></div>
+        </div>
+        <div class="form-group"><label>Podnadpis</label><input type="text" id="dsTagline" placeholder="napr. FBG strain cable sensor"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Model</label><input type="text" id="dsModel"></div>
+          <div class="form-group"><label>Kategória</label><input type="text" id="dsCategory" placeholder="Sensing systems"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Verzia</label><input type="text" id="dsVersion" placeholder="1.0"></div>
+          <div class="form-group"><label>Dátum</label><input type="date" id="dsDate"></div>
+          <div class="form-group"><label>Stav</label><select id="dsStatus"><option value="draft">Draft</option><option value="released">Released</option></select></div>
+        </div>
+        <div class="form-group"><label>Popis</label><div class="ds-editor" id="dsDescEditor"></div></div>
+        <div class="form-group"><label>Vlastnosti <span class="form-hint">(jedna na riadok)</span></label><textarea id="dsFeatures" rows="3" placeholder="napr. Imunita voči EMI"></textarea></div>
+        <div class="form-group">
+          <div class="proc-rows-hdr"><label>Špecifikácie</label><button type="button" class="btn-sm" onclick="addSpecRow()">+ Pridať</button></div>
+          <div id="dsSpecs" class="proc-rows"></div>
+        </div>
+        <div class="form-group"><label>Aplikácie <span class="form-hint">(jedna na riadok)</span></label><textarea id="dsApps" rows="2"></textarea></div>
+        <div class="form-group">
+          <div class="proc-rows-hdr"><label>Objednávacie informácie</label><button type="button" class="btn-sm" onclick="addOrderRow()">+ Pridať</button></div>
+          <div id="dsOrdering" class="proc-rows"></div>
+        </div>
+        <div class="form-group"><label>Rozmery</label><textarea id="dsDimensions" rows="2"></textarea></div>
+        <div class="form-group">
+          <label>Obrázky <span class="form-hint">(pretiahni sem alebo klikni)</span></label>
+          <div id="dsImages" class="image-preview-list"></div>
+          <button type="button" class="btn-sm" onclick="addDatasheetImage()">🖼 Pridať obrázok</button>
+        </div>
+        <div class="form-group"><label>Poznámky</label><textarea id="dsNotes" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="dsDeleteBtn" onclick="deleteDatasheet(document.getElementById('dsId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeDatasheetModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveDatasheet()">Uložiť</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== INTERROGATOR MODAL ===== -->
   <div id="interrogatorModal" class="modal hidden">
