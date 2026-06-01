@@ -2489,3 +2489,10 @@ body {
 .owner-note { color: rgba(255,255,255,0.55); max-width: 240px; }
 .owner-actions { white-space: nowrap; text-align: right; }
 .owners-empty { text-align: center; color: rgba(255,255,255,0.4); padding: 24px; }
+
+/* FBG strain karta */
+.fbg-card-title { font-size:0.9rem; font-weight:600; color:#f1f5f9; margin-bottom:8px; }
+.fbg-frame-tall { min-height: 640px; }
+.fbg-frame-card { margin-bottom: 16px; }
+.fbg-card-title { padding: 12px 14px 0; }
+.fbg-frame-tall { height: 680px; }

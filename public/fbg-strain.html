@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SC-01 — vizualizácia pnutia a posunu FBG peaku</title>
+<style>
+  :root { --cyan:#22d3ee; --accent:#00d4ff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: Inter, system-ui, sans-serif; background:#0d1225; color:#e2e8f0; padding:16px; }
+  .wrap { max-width: 920px; margin:0 auto; }
+  .card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:14px 16px; margin-bottom:14px; }
+  h2 { font-size:0.95rem; margin:0 0 10px; color:#f1f5f9; font-weight:600; letter-spacing:0.02em; }
+  .ctrl { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .ctrl label { font-size:0.8rem; color:#94a3b8; }
+  input[type=range]{ flex:1; min-width:200px; accent-color:var(--accent); }
+  .readouts { display:flex; gap:18px; flex-wrap:wrap; margin-top:10px; }
+  .ro { background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.25); border-radius:8px; padding:7px 12px; }
+  .ro .v { font-size:1.15rem; font-weight:700; color:var(--cyan); font-variant-numeric:tabular-nums; }
+  .ro .k { font-size:0.66rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; }
+  .btn { padding:7px 14px; border-radius:8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:#e2e8f0; cursor:pointer; font-size:0.82rem; }
+  .btn.active { background:var(--accent); color:#06121f; border-color:var(--accent); font-weight:600; }
+  svg { width:100%; display:block; }
+  .hint { font-size:0.72rem; color:#64748b; margin-top:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card">
+    <h2>Strain Cable SC-01 — namáhanie senzora</h2>
+    <svg id="cable" viewBox="0 0 1000 150"></svg>
+    <div class="hint">Pri ťahu sa Braggova mriežka (FBG) v jadre naťahuje → rastie perióda mriežky Λ → posúva sa odrazená vlnová dĺžka λ<sub>B</sub>.</div>
+  </div>
+
+  <div class="card">
+    <div class="ctrl">
+      <label>Pnutie (strain)</label>
+      <input type="range" id="strain" min="0" max="5000" step="10" value="1200">
+      <button class="btn" id="play">▶ Auto</button>
+    </div>
+    <div class="readouts">
+      <div class="ro"><div class="v"><span id="vEps">0</span> µε</div><div class="k">Pnutie ε</div></div>
+      <div class="ro"><div class="v"><span id="vLb">1550.00</span> nm</div><div class="k">λ_B (Bragg)</div></div>
+      <div class="ro"><div class="v">+<span id="vShift">0</span> pm</div><div class="k">Posun Δλ_B</div></div>
+      <div class="ro"><div class="v"><span id="vForce">0.0</span> kN</div><div class="k">~Sila (orient.)</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Odrazové spektrum FBG — posun peaku</h2>
+    <svg id="spec" viewBox="0 0 1000 320"></svg>
+    <div class="hint">Sivý peak = nezaťažený stav (λ<sub>B0</sub> = 1550 nm). Modrý peak = aktuálny stav pri zadanom pnutí. Citlivosť ≈ 1,2 pm/µε.</div>
+  </div>
+
+</div>
+
+<script>
+const SENS = 0.0012;       // nm na µε (≈1.2 pm/µε pri 1550 nm)
+const LB0 = 1550;          // nezaťažená Braggova λ
+const cable = document.getElementById('cable');
+const spec  = document.getElementById('spec');
+const NS = 'http://www.w3.org/2000/svg';
+function el(t, a){ const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); return e; }
+
+// ---- Káblový senzor ----
+function drawCable(eps){
+  cable.innerHTML='';
+  const cy=75;
+  const stretch = (eps/5000)*70;          // posun pravej strany [px]
+  const leftX=40, rightX=960+stretch*0;    // ľavá kotva fixná
+  // čierny kábel
+  cable.appendChild(el('line',{x1:60,y1:cy,x2:940,y2:cy,stroke:'#111827','stroke-width':10,'stroke-linecap':'round'}));
+  // ľavá zelená koncovka (fixná)
+  cable.appendChild(el('circle',{cx:50,cy:cy,r:11,fill:'#16a34a'}));
+  cable.appendChild(el('rect',{x:58,y:cy-5,width:26,height:10,rx:3,fill:'#1f9e4d'}));
+  // pravá zelená koncovka (posúva sa s pnutím)
+  const rx=950+stretch;
+  cable.appendChild(el('line',{x1:916,y1:cy,x2:rx-12,y2:cy,stroke:'#111827','stroke-width':10,'stroke-linecap':'round'}));
+  cable.appendChild(el('rect',{x:rx-30,y:cy-5,width:26,height:10,rx:3,fill:'#1f9e4d'}));
+  cable.appendChild(el('circle',{cx:rx,cy:cy,r:11,fill:'#16a34a'}));
+  // sivé konektory
+  [ {x:150}, {x:300}, {x:700+stretch*0}, {x:850} ].forEach(c=>{
+    cable.appendChild(el('rect',{x:c.x,y:cy-13,width:46,height:26,rx:5,fill:'#9aa3af',stroke:'#7b828d'}));
+  });
+  // FBG mriežková zóna v strede (naťahuje sa)
+  const zx0=420, zw=160 + stretch;          // šírka zóny rastie
+  cable.appendChild(el('rect',{x:zx0,y:cy-16,width:zw,height:32,rx:6,fill:'rgba(0,212,255,0.10)',stroke:'var(--accent)','stroke-width':1.5}));
+  // jadro vlákna v zóne
+  cable.appendChild(el('line',{x1:zx0,y1:cy,x2:zx0+zw,y2:cy,stroke:'#67e8f9','stroke-width':2}));
+  // mriežkové čiary — spacing rastie s pnutím (Λ↑)
+  const base=9, gap=base*(1+(eps/5000)*0.9);
+  let x=zx0+6;
+  while(x<zx0+zw-4){ cable.appendChild(el('line',{x1:x,y1:cy-14,x2:x,y2:cy+14,stroke:'#22d3ee','stroke-width':1.4,opacity:0.85})); x+=gap; }
+  // popisok + šípky ťahu
+  cable.appendChild(el('text',{x:zx0+zw/2,y:cy-22,fill:'#67e8f9','font-size':12,'text-anchor':'middle','font-family':'monospace'})).textContent='FBG (Λ)';
+  if(eps>20){
+    const ar=el('path',{d:`M${rx+16},${cy} l16,0 m-6,-5 l6,5 l-6,5`,stroke:'#22d3ee','stroke-width':2,fill:'none'}); cable.appendChild(ar);
+  }
+}
+
+// ---- Spektrum ----
+const X0=70, X1=970, Y0=30, Y1=270;        // kreslená oblasť
+const WL_MIN=1548, WL_MAX=1558;
+function wlx(wl){ return X0 + (wl-WL_MIN)/(WL_MAX-WL_MIN)*(X1-X0); }
+function gauss(wl, center, amp, sigma){ return amp*Math.exp(-Math.pow(wl-center,2)/(2*sigma*sigma)); }
+function peakPath(center, amp){
+  const sigma=0.35; let d='';
+  for(let wl=WL_MIN; wl<=WL_MAX; wl+=0.05){
+    const y=Y1 - gauss(wl,center,amp,sigma)*(Y1-Y0);
+    d+=(d?'L':'M')+wlx(wl).toFixed(1)+','+y.toFixed(1)+' ';
+  }
+  return d;
+}
+function drawSpec(lb){
+  spec.innerHTML='';
+  // osi
+  spec.appendChild(el('line',{x1:X0,y1:Y1,x2:X1,y2:Y1,stroke:'rgba(255,255,255,0.3)','stroke-width':1}));
+  spec.appendChild(el('line',{x1:X0,y1:Y0,x2:X0,y2:Y1,stroke:'rgba(255,255,255,0.15)','stroke-width':1}));
+  // popis osí
+  for(let wl=WL_MIN; wl<=WL_MAX; wl+=2){
+    const x=wlx(wl);
+    spec.appendChild(el('line',{x1:x,y1:Y1,x2:x,y2:Y1+5,stroke:'rgba(255,255,255,0.3)'}));
+    const t=el('text',{x:x,y:Y1+20,fill:'#94a3b8','font-size':11,'text-anchor':'middle','font-family':'monospace'}); t.textContent=wl; spec.appendChild(t);
+  }
+  spec.appendChild(el('text',{x:(X0+X1)/2,y:Y1+40,fill:'#94a3b8','font-size':12,'text-anchor':'middle'})).textContent='vlnová dĺžka λ [nm]';
+  spec.appendChild(el('text',{x:X0-8,y:Y0+6,fill:'#94a3b8','font-size':11,'text-anchor':'end'})).textContent='R';
+  // referenčný (nezaťažený) peak — sivý
+  spec.appendChild(el('path',{d:peakPath(LB0,0.9),fill:'none',stroke:'rgba(148,163,184,0.55)','stroke-width':1.6,'stroke-dasharray':'4 3'}));
+  // aktuálny peak — modrý, vyplnený
+  spec.appendChild(el('path',{d:peakPath(lb,0.9)+`L${wlx(WL_MAX)},${Y1} L${wlx(WL_MIN)},${Y1} Z`,fill:'rgba(0,212,255,0.12)',stroke:'#22d3ee','stroke-width':2.4}));
+  // zvislá čiara + bod na vrchole
+  const px=wlx(lb), py=Y1-0.9*(Y1-Y0);
+  spec.appendChild(el('line',{x1:px,y1:py,x2:px,y2:Y1,stroke:'rgba(0,212,255,0.5)','stroke-dasharray':'3 3'}));
+  spec.appendChild(el('circle',{cx:px,cy:py,r:5,fill:'#00d4ff'}));
+  spec.appendChild(el('text',{x:px,y:py-10,fill:'#67e8f9','font-size':12,'text-anchor':'middle','font-family':'monospace'})).textContent='λ_B';
+  // šípka posunu
+  if(lb>LB0+0.05){
+    const x0=wlx(LB0), x1=px;
+    spec.appendChild(el('line',{x1:x0,y1:Y0+14,x2:x1,y2:Y0+14,stroke:'#fbbf24','stroke-width':1.5,'marker':''}));
+    spec.appendChild(el('path',{d:`M${x1},${Y0+14} l-7,-4 m7,4 l-7,4`,stroke:'#fbbf24','stroke-width':1.5,fill:'none'}));
+    spec.appendChild(el('text',{x:(x0+x1)/2,y:Y0+10,fill:'#fbbf24','font-size':11,'text-anchor':'middle'})).textContent='Δλ_B';
+  }
+}
+
+function update(){
+  const eps=+document.getElementById('strain').value;
+  const shiftNm=eps*SENS;            // nm
+  const lb=LB0+shiftNm;
+  document.getElementById('vEps').textContent=eps;
+  document.getElementById('vLb').textContent=lb.toFixed(2);
+  document.getElementById('vShift').textContent=Math.round(shiftNm*1000);
+  document.getElementById('vForce').textContent=(eps*0.0016).toFixed(1); // orientačné
+  drawCable(eps); drawSpec(lb);
+}
+document.getElementById('strain').addEventListener('input',update);
+
+// auto-play oscilácia
+let playing=false, dir=1, raf=null;
+document.getElementById('play').addEventListener('click',function(){
+  playing=!playing; this.classList.toggle('active',playing); this.textContent=playing?'⏸ Stop':'▶ Auto';
+  const s=document.getElementById('strain');
+  function step(){ if(!playing) return; let v=+s.value+dir*25; if(v>=5000){v=5000;dir=-1;} if(v<=0){v=0;dir=1;} s.value=v; update(); raf=requestAnimationFrame(step); }
+  if(playing) step(); else cancelAnimationFrame(raf);
+});
+update();
+</script>
+</body>
+</html>
