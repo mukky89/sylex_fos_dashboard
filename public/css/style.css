@@ -2441,3 +2441,51 @@ body {
 .crm-email-actions { display: flex; gap: 4px; flex-shrink: 0; }
 
 @media (max-width: 760px) { .crm-layout { grid-template-columns: 1fr; } .crm-sidebar { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); } }
+
+/* =============================================
+   Hero — animovaný FBG peak (wavelength shift)
+   ============================================= */
+.fbg-hero-svg .fbg-peak { animation: fbgShift 4.5s ease-in-out infinite; }
+@keyframes fbgShift { 0%,100% { transform: translateX(-9px); } 50% { transform: translateX(9px); } }
+.fbg-hero-svg .fbg-dot { animation: fbgDot 1.7s ease-in-out infinite; transform-origin: center; }
+@keyframes fbgDot { 0%,100% { r: 3.3; opacity: 1; } 50% { r: 4.8; opacity: 0.7; } }
+.fbg-hero-svg .fbg-glow { opacity: 0.22; animation: fbgGlow 1.7s ease-in-out infinite; }
+@keyframes fbgGlow { 0%,100% { opacity: 0.18; } 50% { opacity: 0.42; } }
+@media (prefers-reduced-motion: reduce) { .fbg-hero-svg .fbg-peak, .fbg-hero-svg .fbg-dot, .fbg-hero-svg .fbg-glow { animation: none; } }
+
+/* =============================================
+   Mobil — posuvná navigácia v hlavičke
+   ============================================= */
+@media (max-width: 820px) {
+  .header-inner { padding: 0 10px; }
+  .logo { margin-right: 10px; }
+  .logo-divider, .logo-sub-text { display: none; }
+  .nav {
+    margin-left: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav-link { flex: 0 0 auto; white-space: nowrap; scroll-snap-align: start; }
+  .header-right { flex-shrink: 0; gap: 4px; margin-left: 4px; }
+  .app-version { display: none; }
+}
+
+/* =============================================
+   Vlastníci produktov — tabuľka
+   ============================================= */
+.owners-table-wrap { overflow-x: auto; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-lg); }
+.owners-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; min-width: 720px; }
+.owners-table th { text-align: left; padding: 11px 14px; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.5); border-bottom: 1px solid rgba(255,255,255,0.12); white-space: nowrap; }
+.owners-table td { padding: 11px 14px; color: #e2e8f0; border-bottom: 1px solid rgba(255,255,255,0.06); vertical-align: top; }
+.owners-table tr:hover td { background: rgba(255,255,255,0.03); }
+.owner-expired td { opacity: 0.5; }
+.owner-note { color: rgba(255,255,255,0.55); max-width: 240px; }
+.owner-actions { white-space: nowrap; text-align: right; }
+.owners-empty { text-align: center; color: rgba(255,255,255,0.4); padding: 24px; }

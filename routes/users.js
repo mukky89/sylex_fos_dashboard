@@ -4,6 +4,12 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 
+// Zoznam mien používateľov pre výbery (PO/BO, priradenia) — dostupné každému prihlásenému
+router.get('/options', requireAuth, async (req, res) => {
+  try { res.json(await User.find({ active: true }).select('name username').sort({ name: 1 })); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.use(requireAuth, requireAdmin);
 
 router.get('/', async (req, res) => {

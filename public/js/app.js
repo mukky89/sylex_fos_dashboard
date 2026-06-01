@@ -2586,6 +2586,7 @@ function switchDevTab(tab) {
   if (tab === 'tests') loadTests();
   if (tab === 'instruments') loadInstruments();
   if (tab === 'prototypes') loadPrototypes();
+  if (tab === 'owners') loadOwners();
 }
 
 const PJ_PHASES = [
@@ -3154,6 +3155,89 @@ async function deleteUser(id) {
     if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
     closeUserModal(); loadUsers();
   } catch { alert('Chyba'); }
+}
+
+// ==============================
+// VLASTNÍCI PRODUKTOV (PO / BO)
+// ==============================
+let ownersData = [];
+let userOptions = null;
+async function loadUserOptions() {
+  if (userOptions) return userOptions;
+  try { userOptions = await fetch('/api/users/options').then(r => r.json()); if (!Array.isArray(userOptions)) userOptions = []; }
+  catch { userOptions = []; }
+  return userOptions;
+}
+function userName(u) { return u ? (u.name || u.username || '—') : '—'; }
+async function loadOwners() {
+  await loadUserOptions();
+  try { ownersData = await fetch('/api/owners').then(r => r.json()); if (!Array.isArray(ownersData)) ownersData = []; }
+  catch { ownersData = []; }
+  renderOwners();
+}
+function renderOwners() {
+  const tb = document.getElementById('ownersBody'); if (!tb) return;
+  const q = (document.getElementById('ownerSearch')?.value || '').toLowerCase();
+  const items = ownersData.filter(o => !q || (o.product || '').toLowerCase().includes(q) ||
+    userName(o.po).toLowerCase().includes(q) || userName(o.bo).toLowerCase().includes(q));
+  if (!items.length) { tb.innerHTML = '<tr><td colspan="7" class="owners-empty">Žiadne záznamy.</td></tr>'; return; }
+  const today = calYmd(new Date());
+  tb.innerHTML = '';
+  items.forEach(o => {
+    const expired = o.validTo && String(o.validTo).slice(0, 10) < today;
+    const tr = document.createElement('tr');
+    if (expired) tr.className = 'owner-expired';
+    tr.innerHTML = `
+      <td><strong>${escHtml(o.product)}</strong></td>
+      <td>👤 ${escHtml(userName(o.po))}</td>
+      <td>${o.bo ? '🔁 ' + escHtml(userName(o.bo)) : '—'}</td>
+      <td>${o.validFrom ? fmtDate(o.validFrom) : '—'}</td>
+      <td>${o.validTo ? fmtDate(o.validTo) : '—'}</td>
+      <td class="owner-note">${escHtml(o.note || '')}</td>
+      <td class="owner-actions">
+        <button class="admin-icon-btn" onclick="openOwnerModal(ownersData.find(x=>x._id==='${o._id}'))" title="Upraviť">✎</button>
+        <button class="admin-icon-btn danger" onclick="deleteOwner('${o._id}')" title="Odstrániť">✕</button>
+      </td>`;
+    tb.appendChild(tr);
+  });
+}
+function fillUserSelect(sel, val) {
+  sel.innerHTML = '<option value="">— nikto —</option>' + (userOptions || []).map(u => `<option value="${u._id}">${escHtml(userName(u))}</option>`).join('');
+  sel.value = val || '';
+}
+async function openOwnerModal(o = null) {
+  await loadUserOptions();
+  const e = o && typeof o === 'object';
+  document.getElementById('owModalTitle').textContent = e ? 'Upraviť vlastníctvo' : 'Nový záznam vlastníctva';
+  document.getElementById('owId').value = e ? o._id : '';
+  document.getElementById('owProduct').value = e ? (o.product || '') : '';
+  fillUserSelect(document.getElementById('owPO'), e && o.po ? (o.po._id || o.po) : '');
+  fillUserSelect(document.getElementById('owBO'), e && o.bo ? (o.bo._id || o.bo) : '');
+  document.getElementById('owFrom').value = e && o.validFrom ? String(o.validFrom).slice(0, 10) : calYmd(new Date());
+  document.getElementById('owTo').value = e && o.validTo ? String(o.validTo).slice(0, 10) : '';
+  document.getElementById('owNote').value = e ? (o.note || '') : '';
+  document.getElementById('owDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('ownerModal').classList.remove('hidden');
+}
+function closeOwnerModal() { document.getElementById('ownerModal').classList.add('hidden'); }
+async function saveOwner() {
+  const product = document.getElementById('owProduct').value.trim();
+  if (!product) { alert('Zadajte produkt'); return; }
+  const body = {
+    product, po: document.getElementById('owPO').value || null, bo: document.getElementById('owBO').value || null,
+    validFrom: document.getElementById('owFrom').value || null, validTo: document.getElementById('owTo').value || null,
+    note: document.getElementById('owNote').value.trim()
+  };
+  const id = document.getElementById('owId').value;
+  try {
+    const r = await fetch(id ? '/api/owners/' + id : '/api/owners', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
+    closeOwnerModal(); loadOwners();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteOwner(id) {
+  if (!id || !confirm('Odstrániť záznam vlastníctva?')) return;
+  try { await fetch('/api/owners/' + id, { method: 'DELETE' }); closeOwnerModal(); loadOwners(); } catch { alert('Chyba'); }
 }
 
 // ==============================
