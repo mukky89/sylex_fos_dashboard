@@ -174,12 +174,21 @@
           <div class="pulse-ring"></div>
           <div class="pulse-ring delay1"></div>
           <div class="pulse-ring delay2"></div>
-          <svg viewBox="0 0 120 120" width="110" height="110" style="position:relative;z-index:1;filter:drop-shadow(0 0 20px rgba(0,212,255,0.4))">
-            <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
-            <path d="M20 60 Q35 30 60 60 Q85 90 100 60" fill="none" stroke="#00d4ff" stroke-width="2.5" stroke-linecap="round"/>
-            <path d="M20 50 Q35 20 60 50 Q85 80 100 50" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M20 70 Q35 40 60 70 Q85 100 100 70" fill="none" stroke="rgba(0,212,255,0.4)" stroke-width="1.5" stroke-linecap="round"/>
-            <circle cx="60" cy="60" r="6" fill="#00d4ff"/>
+          <svg viewBox="0 0 120 120" width="120" height="120" class="fbg-hero-svg" style="position:relative;z-index:1;filter:drop-shadow(0 0 18px rgba(0,212,255,0.45))">
+            <!-- osi (λ × odrazivosť) -->
+            <line x1="14" y1="92" x2="112" y2="92" stroke="rgba(0,212,255,0.28)" stroke-width="1"/>
+            <line x1="16" y1="18" x2="16" y2="92" stroke="rgba(0,212,255,0.16)" stroke-width="1"/>
+            <g stroke="rgba(255,255,255,0.06)" stroke-width="0.6">
+              <line x1="38" y1="20" x2="38" y2="92"/><line x1="64" y1="20" x2="64" y2="92"/><line x1="90" y1="20" x2="90" y2="92"/>
+            </g>
+            <!-- pohyblivý FBG odrazový peak (wavelength shift) -->
+            <g class="fbg-peak">
+              <path class="fbg-glow" d="M-12,90 L44,90 C54,90 55,26 64,24 C73,26 74,90 84,90 L132,90" fill="none" stroke="#00d4ff" stroke-width="6.5" stroke-linecap="round"/>
+              <path d="M-12,90 L44,90 C54,90 55,26 64,24 C73,26 74,90 84,90 L132,90" fill="rgba(0,212,255,0.12)" stroke="#22d3ee" stroke-width="2.4" stroke-linecap="round"/>
+              <line x1="64" y1="25" x2="64" y2="92" stroke="rgba(0,212,255,0.5)" stroke-width="0.8" stroke-dasharray="2 2"/>
+              <circle class="fbg-dot" cx="64" cy="24" r="3.3" fill="#00d4ff"/>
+            </g>
+            <text x="106" y="100" fill="rgba(0,212,255,0.45)" font-size="7" font-family="monospace">λ</text>
           </svg>
         </div>
       </div>
@@ -810,6 +819,7 @@
         <button class="admin-tab" data-dtab="tests" onclick="switchDevTab('tests')">🧪 Testy</button>
         <button class="admin-tab" data-dtab="instruments" onclick="switchDevTab('instruments')">📐 Kalibrácie</button>
         <button class="admin-tab" data-dtab="prototypes" onclick="switchDevTab('prototypes')">🔧 Prototypy</button>
+        <button class="admin-tab" data-dtab="owners" onclick="switchDevTab('owners')">👤 Vlastníci</button>
       </div>
 
       <!-- Projekty (board) -->
@@ -859,8 +869,51 @@
         </div>
         <div id="protoList" class="dev-list"></div>
       </div>
+
+      <!-- Vlastníci (PO / BO) -->
+      <div class="admin-panel" id="devTab-owners">
+        <div class="dev-toolbar">
+          <div class="proc-search-wrap" style="margin:0;flex:1">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="ownerSearch" placeholder="Hľadať produkt / vlastníka..." oninput="renderOwners()" autocomplete="off">
+          </div>
+          <button class="btn-primary" onclick="openOwnerModal()">+ Nový záznam</button>
+        </div>
+        <div class="owners-table-wrap">
+          <table class="owners-table">
+            <thead><tr><th>Produkt</th><th>Product owner</th><th>Backup owner</th><th>Platí od</th><th>Platí do</th><th>Poznámka</th><th></th></tr></thead>
+            <tbody id="ownersBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </main>
+
+  <!-- ===== OWNER MODAL ===== -->
+  <div id="ownerModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeOwnerModal()"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header"><h2 id="owModalTitle">Nový záznam vlastníctva</h2><button class="modal-close" onclick="closeOwnerModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="owId">
+        <div class="form-group"><label>Produkt *</label><input type="text" id="owProduct" placeholder="napr. FOS senzor X1"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Product owner (PO)</label><select id="owPO"></select></div>
+          <div class="form-group"><label>Backup owner (BO)</label><select id="owBO"></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Platí od</label><input type="date" id="owFrom"></div>
+          <div class="form-group"><label>Platí do</label><input type="date" id="owTo"></div>
+        </div>
+        <div class="form-group"><label>Poznámka</label><textarea id="owNote" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="owDeleteBtn" onclick="deleteOwner(document.getElementById('owId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeOwnerModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveOwner()">Uložiť</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== PROJECT MODAL ===== -->
   <div id="projectModal" class="modal hidden">
