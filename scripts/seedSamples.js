@@ -13,6 +13,7 @@ const Instrument  = require('../models/Instrument');
 const TestProtocol = require('../models/TestProtocol');
 const Prototype   = require('../models/Prototype');
 const Interrogator = require('../models/Interrogator');
+const Datasheet   = require('../models/Datasheet');
 
 const now = Date.now();
 const dPlus = (days) => new Date(now + days * 864e5);
@@ -165,8 +166,28 @@ const INTERROGATORS = [
   { serial: 'SL-2024-0021', model: 'S-line S8', channels: 8, firmware: 'v2.2.0', hwRevision: 'Rev. B', manufacturedAt: dPlus(-700), status: 'oprava', customer: 'Most SK', soldTo: 'NDS', soldAt: dPlus(-650), warrantyUntil: dPlus(-100), location: 'servis FOS', notes: 'Reklamácia po záruke.', repairs: [{ date: dPlus(-30), description: 'Diagnostika optického modulu', technician: 'J. Novák', cost: '—' }, { date: dPlus(-10), description: 'Výmena konektorov FC/APC', technician: 'J. Novák', cost: '60 €' }] },
 ];
 
+const DATASHEETS = [
+  { title: 'Strain Cable SC-01', partNumber: 'SC-01', tagline: 'FBG strain cable sensor pre monitoring pretvorenia', model: 'SC-01', category: 'Sensing systems', version: '1.0', status: 'released',
+    description: '<p>SC-01 je <strong>FBG káblový tenzometer</strong> založený na technológii Draw Tower Grating (DTG). Je určený na meranie pretvorenia (strain) v stavebných a geotechnických konštrukciách. Vďaka optickému princípu je imúnny voči elektromagnetickému rušeniu a vhodný na dlhodobý monitoring.</p>',
+    features: ['Imunita voči EMI/RFI', 'Multiplexovateľný (WDM na jednom vlákne)', 'Vhodný na zaliatie do betónu', 'Dlhodobá stabilita a životnosť', 'Vysoké rozlíšenie merania'],
+    specs: [
+      { param: 'Merací rozsah', value: '±2500', unit: 'µε' },
+      { param: 'Vlnová dĺžka (λB)', value: '1510 – 1590', unit: 'nm' },
+      { param: 'Citlivosť', value: '~1.2', unit: 'pm/µε' },
+      { param: 'Pracovná teplota', value: '-40 … +120', unit: '°C' },
+      { param: 'Typ vlákna', value: 'SMF / DTG', unit: '' },
+      { param: 'Dĺžka kábla', value: 'na mieru', unit: 'm' }
+    ],
+    applications: ['Monitoring mostov a tunelov', 'Geotechnika a zemné konštrukcie', 'Sledovanie zdravia konštrukcií (SHM)', 'Priehrady a oporné múry'],
+    ordering: [{ code: 'SC-01-L', description: 'Strain cable SC-01, dĺžka na mieru (uveďte v m)' }, { code: 'SC-01-C', description: 'Konektor FC/APC (voliteľné)' }],
+    dimensions: 'Priemer kábla cca 3–6 mm, koncovky s ochranným návlekom.',
+    notes: 'Ukážkový datasheet vygenerovaný v dashboarde — uprav podľa oficiálnej PDF predlohy.',
+    images: []
+  },
+];
+
 async function seedSamples() {
-  const result = { announcements: 0, categories: 0, products: 0, procedures: 0, projects: 0, instruments: 0, tests: 0, prototypes: 0, interrogators: 0 };
+  const result = { announcements: 0, categories: 0, products: 0, procedures: 0, projects: 0, instruments: 0, tests: 0, prototypes: 0, interrogators: 0, datasheets: 0 };
 
   // Novinky
   for (const a of ANNOUNCEMENTS) {
@@ -213,6 +234,10 @@ async function seedSamples() {
 
   for (const ig of INTERROGATORS) {
     if (!(await Interrogator.exists({ serial: ig.serial }))) { await Interrogator.create(ig); result.interrogators++; }
+  }
+
+  for (const d of DATASHEETS) {
+    if (!(await Datasheet.exists({ title: d.title }))) { await Datasheet.create(d); result.datasheets++; }
   }
 
   return result;

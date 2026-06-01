@@ -2535,3 +2535,38 @@ body {
 .mgmt-q-date { font-size: 0.68rem; color: rgba(255,255,255,0.4); }
 .mgmt-q-actions { display: flex; gap: 6px; align-items: center; }
 @media (max-width: 760px) { .mgmt-grid { grid-template-columns: 1fr; } }
+
+/* =============================================
+   DATASHEETY — editor + náhľad (papier) + tlač PDF
+   ============================================= */
+.ds-editor { background:#fff; border:1px solid var(--border); border-radius:var(--radius); }
+.ds-paper { background:#fff; color:#1e293b; border-radius:var(--radius-lg); padding:34px 40px; box-shadow:var(--shadow-lg); max-width:860px; margin:0 auto; }
+.dsv-head { text-align:center; border-bottom:3px solid var(--accent); padding-bottom:14px; margin-bottom:18px; }
+.dsv-eyebrow { font-size:0.72rem; font-weight:700; letter-spacing:0.2em; color:var(--accent); }
+.dsv-title { font-family:var(--font-title); font-size:1.9rem; font-weight:700; color:#0f172a; margin:4px 0; }
+.dsv-tag { font-size:0.95rem; color:#64748b; font-style:italic; }
+.dsv-meta { width:100%; border-collapse:collapse; margin-bottom:18px; font-size:0.86rem; }
+.dsv-meta th { text-align:left; width:160px; color:#475569; padding:4px 8px; background:#f1f5f9; border:1px solid #e2e8f0; }
+.dsv-meta td { padding:4px 8px; border:1px solid #e2e8f0; color:#1e293b; }
+.dsv-section { margin-bottom:18px; }
+.dsv-section h3 { font-size:0.95rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.04em; border-bottom:1px solid #e2e8f0; padding-bottom:5px; margin:0 0 10px; }
+.dsv-rich { font-size:0.9rem; line-height:1.6; color:#334155; }
+.dsv-rich img { max-width:100%; }
+.dsv-section ul { margin:0; padding-left:20px; font-size:0.9rem; line-height:1.7; color:#334155; }
+.dsv-specs { width:100%; border-collapse:collapse; font-size:0.86rem; }
+.dsv-specs th { background:#f1f5f9; text-align:left; padding:7px 10px; border:1px solid #e2e8f0; color:#334155; }
+.dsv-specs td { padding:7px 10px; border:1px solid #e2e8f0; color:#1e293b; }
+.dsv-images { display:flex; flex-wrap:wrap; gap:14px; justify-content:center; }
+.dsv-images figure { margin:0; text-align:center; max-width:48%; }
+.dsv-images img { max-width:100%; border:1px solid #e2e8f0; border-radius:6px; }
+.dsv-images figcaption { font-size:0.76rem; color:#64748b; font-style:italic; margin-top:4px; }
+
+/* Tlač do PDF — len datasheet papier */
+@media print {
+  body.printing-ds { background:#fff !important; }
+  body.printing-ds > *:not(#page-dev) { display:none !important; }
+  body.printing-ds #page-dev .admin-hdr, body.printing-ds #page-dev .admin-tabs,
+  body.printing-ds #dsListView, body.printing-ds .pdv-toolbar { display:none !important; }
+  body.printing-ds #page-dev, body.printing-ds .dev-inner, body.printing-ds #devTab-datasheets, body.printing-ds #dsDetail { display:block !important; }
+  body.printing-ds .ds-paper { box-shadow:none; max-width:100%; padding:0; }
+}

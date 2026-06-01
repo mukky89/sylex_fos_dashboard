@@ -2590,6 +2590,7 @@ function switchDevTab(tab) {
   if (tab === 'prototypes') loadPrototypes();
   if (tab === 'owners') loadOwners();
   if (tab === 'interrogators') loadInterrogators();
+  if (tab === 'datasheets') loadDatasheets();
 }
 
 const PJ_PHASES = [
@@ -3340,6 +3341,156 @@ async function saveOwner() {
 async function deleteOwner(id) {
   if (!id || !confirm('Odstrániť záznam vlastníctva?')) return;
   try { await fetch('/api/owners/' + id, { method: 'DELETE' }); closeOwnerModal(); loadOwners(); } catch { alert('Chyba'); }
+}
+
+// ==============================
+// DATASHEETY (editor → Word + tlač do PDF)
+// ==============================
+let datasheetsData = [];
+let dsDescEditor = null;
+let dsImagesData = [];
+let currentDatasheet = null;
+
+async function loadDatasheets() {
+  backToDatasheetList();
+  try { datasheetsData = await fetch('/api/datasheets').then(r => r.json()); if (!Array.isArray(datasheetsData)) datasheetsData = []; }
+  catch { datasheetsData = []; }
+  renderDatasheets();
+}
+function renderDatasheets() {
+  const el = document.getElementById('dsList'); if (!el) return;
+  const q = (document.getElementById('dsSearch')?.value || '').toLowerCase();
+  const items = datasheetsData.filter(d => !q || (d.title || '').toLowerCase().includes(q) || (d.partNumber || '').toLowerCase().includes(q));
+  if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne datasheety.<div class="proc-empty-actions"><button class="btn-primary" onclick="openDatasheetModal()">+ Vytvoriť datasheet</button></div></div>'; return; }
+  el.innerHTML = '';
+  items.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'proc-card';
+    card.innerHTML = `
+      <div class="proc-card-main" onclick="showDatasheetDetail('${d._id}')">
+        <div class="proc-card-top"><span class="proc-card-title">${escHtml(d.title)}</span>
+          <span class="proc-status-badge ${d.status === 'released' ? 'proc-status-active' : 'proc-status-draft'}">${d.status === 'released' ? 'Released' : 'Draft'}</span></div>
+        <div class="proc-card-meta">${d.partNumber ? `<span>🔖 ${escHtml(d.partNumber)}</span>` : ''}${d.category ? `<span>🏷️ ${escHtml(d.category)}</span>` : ''}<span>v${escHtml(d.version || '1.0')}</span><span>🕒 ${fmtDate(d.updatedAt)}</span></div>
+      </div>
+      <div class="proc-card-actions">
+        <button class="btn-word" onclick="dsWord('${d._id}')" title="Word">⬇ Word</button>
+        <button class="admin-icon-btn" onclick="showDatasheetDetail('${d._id}')" title="Náhľad">👁</button>
+        <button class="admin-icon-btn danger" onclick="deleteDatasheet('${d._id}')" title="Odstrániť">✕</button>
+      </div>`;
+    el.appendChild(card);
+  });
+}
+function dsWord(id) { window.location.href = `/api/datasheets/${id}/docx${tokenQS()}`; }
+
+function renderDatasheetDetailHtml(p) {
+  const meta = [['Part number', p.partNumber], ['Model', p.model], ['Kategória', p.category], ['Verzia', p.version], ['Dátum', fmtDate(p.date)], ['Stav', p.status === 'released' ? 'Released' : 'Draft']].filter(r => r[1]);
+  const list = (arr) => (arr || []).filter(x => (x || '').trim()).map(x => `<li>${escHtml(x)}</li>`).join('');
+  const specs = (p.specs || []).filter(s => (s.param || '').trim());
+  const ord = (p.ordering || []).filter(o => (o.code || o.description || '').trim());
+  let h = `<div class="dsv-head"><div class="dsv-eyebrow">DATASHEET</div><h1 class="dsv-title">${escHtml(p.title || '')}</h1>${p.tagline ? `<div class="dsv-tag">${escHtml(p.tagline)}</div>` : ''}</div>`;
+  h += `<table class="dsv-meta">${meta.map(([k, v]) => `<tr><th>${k}</th><td>${escHtml(String(v))}</td></tr>`).join('')}</table>`;
+  if ((p.description || '').trim()) h += `<div class="dsv-section"><h3>Popis</h3><div class="dsv-rich">${p.description}</div></div>`;
+  if (list(p.features)) h += `<div class="dsv-section"><h3>Vlastnosti</h3><ul>${list(p.features)}</ul></div>`;
+  if (specs.length) h += `<div class="dsv-section"><h3>Špecifikácie</h3><table class="dsv-specs"><thead><tr><th>Parameter</th><th>Hodnota</th><th>Jednotka</th></tr></thead><tbody>${specs.map(s => `<tr><td>${escHtml(s.param)}</td><td>${escHtml(s.value || '')}</td><td>${escHtml(s.unit || '')}</td></tr>`).join('')}</tbody></table></div>`;
+  if (list(p.applications)) h += `<div class="dsv-section"><h3>Aplikácie</h3><ul>${list(p.applications)}</ul></div>`;
+  if ((p.dimensions || '').trim()) h += `<div class="dsv-section"><h3>Rozmery</h3><p>${escHtml(p.dimensions).replace(/\n/g, '<br>')}</p></div>`;
+  if (ord.length) h += `<div class="dsv-section"><h3>Objednávacie informácie</h3><table class="dsv-specs"><thead><tr><th>Kód</th><th>Popis</th></tr></thead><tbody>${ord.map(o => `<tr><td>${escHtml(o.code || '')}</td><td>${escHtml(o.description || '')}</td></tr>`).join('')}</tbody></table></div>`;
+  if ((p.images || []).length) h += `<div class="dsv-section dsv-images">${p.images.map(im => `<figure><img src="${escHtml(im.url)}" alt="">${im.caption ? `<figcaption>${escHtml(im.caption)}</figcaption>` : ''}</figure>`).join('')}</div>`;
+  if ((p.notes || '').trim()) h += `<div class="dsv-section"><h3>Poznámky</h3><p>${escHtml(p.notes).replace(/\n/g, '<br>')}</p></div>`;
+  return h;
+}
+async function showDatasheetDetail(id) {
+  let p = datasheetsData.find(x => x._id === id);
+  try { const f = await fetch('/api/datasheets/' + id).then(r => r.json()); if (f && !f.error) p = f; } catch {}
+  if (!p) { alert('Nepodarilo sa načítať'); return; }
+  currentDatasheet = p;
+  const det = document.getElementById('dsDetail');
+  det.innerHTML = `
+    <div class="pdv-toolbar">
+      <button class="btn-secondary" onclick="backToDatasheetList()">← Späť</button>
+      <div class="pdv-toolbar-actions">
+        <button class="btn-word" onclick="dsWord('${p._id}')">⬇ Word</button>
+        <button class="btn-primary" onclick="printDatasheet()">🖨 Tlač / PDF</button>
+        <button class="btn-edit" onclick="openDatasheetModal(currentDatasheet)">✎ Upraviť</button>
+      </div>
+    </div>
+    <div class="ds-paper" id="dsPaper">${renderDatasheetDetailHtml(p)}</div>`;
+  document.getElementById('dsListView').classList.add('hidden');
+  det.classList.remove('hidden');
+}
+function backToDatasheetList() {
+  document.getElementById('dsDetail')?.classList.add('hidden');
+  document.getElementById('dsListView')?.classList.remove('hidden');
+}
+function printDatasheet() { document.body.classList.add('printing-ds'); window.print(); setTimeout(() => document.body.classList.remove('printing-ds'), 500); }
+
+function addSpecRow(s = {}) {
+  const c = document.getElementById('dsSpecs'); const row = document.createElement('div'); row.className = 'proc-row';
+  row.innerHTML = `<input type="text" class="sp-param" placeholder="Parameter" value="${escHtml(s.param || '')}" style="flex:2">
+    <input type="text" class="sp-value" placeholder="Hodnota" value="${escHtml(s.value || '')}">
+    <input type="text" class="sp-unit" placeholder="Jedn." value="${escHtml(s.unit || '')}" style="max-width:90px">
+    <button type="button" class="proc-row-del" onclick="procRemoveRow(this)">✕</button>`;
+  c.appendChild(row);
+}
+function addOrderRow(o = {}) {
+  const c = document.getElementById('dsOrdering'); const row = document.createElement('div'); row.className = 'proc-row';
+  row.innerHTML = `<input type="text" class="or-code" placeholder="Kód" value="${escHtml(o.code || '')}">
+    <input type="text" class="or-desc" placeholder="Popis" value="${escHtml(o.description || '')}" style="flex:2">
+    <button type="button" class="proc-row-del" onclick="procRemoveRow(this)">✕</button>`;
+  c.appendChild(row);
+}
+function renderDsImages() {
+  const el = document.getElementById('dsImages'); if (!el) return;
+  el.innerHTML = '';
+  dsImagesData.forEach((img, i) => { const d = document.createElement('div'); d.className = 'image-preview-item'; d.innerHTML = `<img src="${escHtml(img.url)}" alt=""><button class="image-preview-remove" onclick="removeDsImage(${i})">✕</button>`; el.appendChild(d); });
+}
+function removeDsImage(i) { dsImagesData.splice(i, 1); renderDsImages(); }
+async function addDatasheetImage() { const url = await pickImageUpload(); if (url) { dsImagesData.push({ url, caption: '' }); renderDsImages(); } }
+
+function openDatasheetModal(p = null) {
+  const e = p && typeof p === 'object';
+  document.getElementById('dsModalTitle').textContent = e ? 'Upraviť datasheet' : 'Nový datasheet';
+  const v = (id, val) => document.getElementById(id).value = val;
+  v('dsId', e ? p._id : ''); v('dsTitle', e ? (p.title || '') : ''); v('dsPart', e ? (p.partNumber || '') : '');
+  v('dsTagline', e ? (p.tagline || '') : ''); v('dsModel', e ? (p.model || '') : ''); v('dsCategory', e ? (p.category || 'Sensing systems') : 'Sensing systems');
+  v('dsVersion', e ? (p.version || '1.0') : '1.0'); v('dsDate', e && p.date ? String(p.date).slice(0, 10) : calYmd(new Date()));
+  v('dsStatus', e ? (p.status || 'draft') : 'draft');
+  v('dsFeatures', e ? (p.features || []).join('\n') : ''); v('dsApps', e ? (p.applications || []).join('\n') : '');
+  v('dsDimensions', e ? (p.dimensions || '') : ''); v('dsNotes', e ? (p.notes || '') : '');
+  document.getElementById('dsSpecs').innerHTML = ''; ((e && p.specs && p.specs.length) ? p.specs : [{}]).forEach(addSpecRow);
+  document.getElementById('dsOrdering').innerHTML = ''; ((e && p.ordering && p.ordering.length) ? p.ordering : [{}]).forEach(addOrderRow);
+  dsImagesData = e ? [...(p.images || [])] : []; renderDsImages();
+  enableFileDrop(document.getElementById('dsImages'), (files) => dropImagesTo(files, (url) => { dsImagesData.push({ url, caption: '' }); renderDsImages(); }));
+  if (dsDescEditor) { try { dsDescEditor.destroy(); } catch (_) {} dsDescEditor = null; }
+  dsDescEditor = mountStepEditor(document.getElementById('dsDescEditor'), e ? (p.description || '') : '');
+  document.getElementById('dsDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('datasheetModal').classList.remove('hidden');
+}
+function closeDatasheetModal() { document.getElementById('datasheetModal').classList.add('hidden'); }
+async function saveDatasheet() {
+  const title = document.getElementById('dsTitle').value.trim();
+  if (!title) { alert('Zadajte názov produktu'); return; }
+  const lines = (id) => document.getElementById(id).value.split('\n').map(s => s.trim()).filter(Boolean);
+  const specs = [...document.querySelectorAll('#dsSpecs .proc-row')].map(r => ({ param: r.querySelector('.sp-param').value.trim(), value: r.querySelector('.sp-value').value.trim(), unit: r.querySelector('.sp-unit').value.trim() })).filter(s => s.param);
+  const ordering = [...document.querySelectorAll('#dsOrdering .proc-row')].map(r => ({ code: r.querySelector('.or-code').value.trim(), description: r.querySelector('.or-desc').value.trim() })).filter(o => o.code || o.description);
+  const body = {
+    title, partNumber: document.getElementById('dsPart').value.trim(), tagline: document.getElementById('dsTagline').value.trim(),
+    model: document.getElementById('dsModel').value.trim(), category: document.getElementById('dsCategory').value.trim(),
+    version: document.getElementById('dsVersion').value.trim(), date: document.getElementById('dsDate').value || undefined,
+    status: document.getElementById('dsStatus').value, description: dsDescEditor ? dsDescEditor.getHTML() : '',
+    features: lines('dsFeatures'), applications: lines('dsApps'), specs, ordering,
+    dimensions: document.getElementById('dsDimensions').value.trim(), notes: document.getElementById('dsNotes').value.trim(), images: dsImagesData
+  };
+  const id = document.getElementById('dsId').value;
+  try {
+    const r = await fetch(id ? '/api/datasheets/' + id : '/api/datasheets', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
+    closeDatasheetModal(); loadDatasheets();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteDatasheet(id) {
+  if (!id || !confirm('Naozaj odstrániť datasheet?')) return;
+  try { await fetch('/api/datasheets/' + id, { method: 'DELETE' }); closeDatasheetModal(); loadDatasheets(); } catch { alert('Chyba'); }
 }
 
 // ==============================
