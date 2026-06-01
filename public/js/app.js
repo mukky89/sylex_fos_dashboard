@@ -363,6 +363,7 @@ async function handleHash(hash) {
   if (hash === 'dev')     { _activatePage('dev');     loadDev(); return; }
   if (hash === 'tasks')   { _activatePage('tasks');   loadTasks(); return; }
   if (hash === 'crm')     { _activatePage('crm');     loadCrm(); return; }
+  if (hash === 'mgmt')    { _activatePage('mgmt');    loadManagement(); return; }
   if (hash === 'admin')   { _activatePage('admin');   switchAdminTab('links'); return; }
   if (hash === 'wiki') { _activatePage('wiki'); await loadWiki(); return; }
   if (hash.startsWith('wiki/cat/')) {
@@ -394,6 +395,7 @@ function showPage(name) {
   if (name === 'dev')     loadDev();
   if (name === 'tasks')   loadTasks();
   if (name === 'crm')     loadCrm();
+  if (name === 'mgmt')    loadManagement();
   if (name === 'admin')   switchAdminTab('links');
 }
 
@@ -3338,6 +3340,89 @@ async function saveOwner() {
 async function deleteOwner(id) {
   if (!id || !confirm('Odstrániť záznam vlastníctva?')) return;
   try { await fetch('/api/owners/' + id, { method: 'DELETE' }); closeOwnerModal(); loadOwners(); } catch { alert('Chyba'); }
+}
+
+// ==============================
+// MANAŽMENT — prehľad + anonymné otázky
+// ==============================
+const PHASE_LABELS = { koncept: 'Koncept', prototyp: 'Prototyp', testovanie: 'Testovanie', vyroba: 'Výroba', ukoncene: 'Ukončené' };
+const IGS_LABELS = { sklad: 'Na sklade', predany: 'Predaný', zakaznik: 'U zákazníka', oprava: 'V oprave', vyradeny: 'Vyradený' };
+
+async function loadManagement() {
+  await renderMgmtQuestions();
+  let s = null;
+  try { s = await fetch('/api/management/summary').then(r => r.json()); } catch {}
+  if (!s || s.error) { document.getElementById('mgmtStats').innerHTML = '<div class="mgmt-empty">Prehľad sa nepodarilo načítať.</div>'; return; }
+
+  const card = (label, val, sub, cls) => `<div class="mgmt-stat ${cls || ''}"><div class="mgmt-stat-val">${val}</div><div class="mgmt-stat-lbl">${label}</div>${sub ? `<div class="mgmt-stat-sub">${sub}</div>` : ''}</div>`;
+  document.getElementById('mgmtStats').innerHTML =
+    card('Aktívne úlohy', s.taskTotals.open, '', 'st-blue') +
+    card('Po termíne', s.taskTotals.overdue, '', s.taskTotals.overdue ? 'st-red' : '') +
+    card('Hotové úlohy', s.taskTotals.done, '', 'st-green') +
+    card('Projekty', s.projectsTotal, (s.phases.vyroba || 0) + ' vo výrobe', 'st-cyan') +
+    card('Interrogátory', s.igTotal, (s.igStatus.sklad || 0) + ' na sklade', 'st-cyan');
+
+  // Kto na čom pracuje
+  const u = document.getElementById('mgmtUsers');
+  if (!s.users.length) u.innerHTML = '<div class="mgmt-empty">Žiadne úlohy zatiaľ.</div>';
+  else u.innerHTML = s.users.map(x => {
+    const proj = (s.ownerProjects[x.name] || []).map(p => `<span class="mgmt-proj-chip">${escHtml(p.title)}</span>`).join('');
+    return `<div class="mgmt-user">
+      <div class="mgmt-user-top"><span class="mgmt-user-name">${escHtml(x.name)}</span>
+        <span class="mgmt-user-counts">${x.open} aktívnych${x.overdue ? ` · <span class="task-od">${x.overdue} po termíne</span>` : ''} · ${x.done} hotových</span></div>
+      ${proj ? `<div class="mgmt-user-proj">${proj}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  // Projekty podľa fáz
+  document.getElementById('mgmtPhases').innerHTML = Object.keys(PHASE_LABELS).map(k =>
+    `<div class="mgmt-bar-row"><span>${PHASE_LABELS[k]}</span><span class="mgmt-bar-val">${s.phases[k] || 0}</span></div>`).join('');
+  // Interrogátory podľa stavu
+  document.getElementById('mgmtInterr').innerHTML = Object.keys(IGS_LABELS).map(k =>
+    `<div class="mgmt-bar-row"><span>${IGS_LABELS[k]}</span><span class="mgmt-bar-val">${s.igStatus[k] || 0}</span></div>`).join('');
+}
+
+async function renderMgmtQuestions() {
+  const el = document.getElementById('mgmtQList'); if (!el) return;
+  let qs = [];
+  try { qs = await fetch('/api/questions').then(r => r.json()); if (!Array.isArray(qs)) qs = []; } catch { qs = []; }
+  const isAdmin = CURRENT_USER && CURRENT_USER.role === 'admin';
+  if (!qs.length) { el.innerHTML = '<div class="mgmt-empty">Zatiaľ žiadne otázky.</div>'; return; }
+  el.innerHTML = qs.map(q => `
+    <div class="mgmt-q ${q.answered ? 'answered' : ''}">
+      <div class="mgmt-q-text">❓ ${escHtml(q.text)}</div>
+      ${q.answer ? `<div class="mgmt-q-answer">💬 ${escHtml(q.answer)}</div>` : ''}
+      <div class="mgmt-q-foot">
+        <span class="mgmt-q-date">${fmtDate(q.createdAt)}${q.answered ? ' · zodpovedané' : ''}</span>
+        ${isAdmin ? `<span class="mgmt-q-actions">
+          <button class="btn-sm" onclick="answerQuestion('${q._id}', ${JSON.stringify(q.answer || '').replace(/"/g, '&quot;')})">${q.answered ? 'Upraviť odpoveď' : 'Odpovedať'}</button>
+          <button class="admin-icon-btn danger" onclick="deleteQuestion('${q._id}')">✕</button>
+        </span>` : ''}
+      </div>
+    </div>`).join('');
+}
+async function submitQuestion() {
+  const inp = document.getElementById('mgmtQInput');
+  const text = inp.value.trim();
+  if (!text) { alert('Napíš otázku'); return; }
+  try {
+    const r = await fetch('/api/questions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); alert('Chyba: ' + (e.error || r.status)); return; }
+    inp.value = '';
+    renderMgmtQuestions();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function answerQuestion(id, current) {
+  const ans = window.prompt('Odpoveď na otázku:', current || '');
+  if (ans === null) return;
+  try {
+    await fetch('/api/questions/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ answer: ans }) });
+    renderMgmtQuestions();
+  } catch { alert('Chyba'); }
+}
+async function deleteQuestion(id) {
+  if (!confirm('Odstrániť otázku?')) return;
+  try { await fetch('/api/questions/' + id, { method: 'DELETE' }); renderMgmtQuestions(); } catch { alert('Chyba'); }
 }
 
 // ==============================
