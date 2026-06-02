@@ -63,6 +63,223 @@ function renderUserChip() {
 }
 function tokenQS() { return AUTH_TOKEN ? ('?token=' + encodeURIComponent(AUTH_TOKEN)) : ''; }
 
+// ==============================
+// GUIDED TOUR
+// ==============================
+
+const TOUR_STEPS = [
+  {
+    el: null,
+    title: '👋 Vitaj v FOS Dashboard!',
+    desc: 'Tento sprievodca ťa prevedie všetkými modulmi dashboardu a vysvetlí čo kde nájdeš. Naviguj tlačidlami <strong>Ďalší / Späť</strong> alebo klávesmi <kbd>→</kbd> / <kbd>←</kbd>. Kedykoľvek ukonči klávesom <kbd>Esc</kbd> alebo kliknutím mimo panel.',
+  },
+  {
+    el: '.logo',
+    title: 'FOS Dashboard — logo',
+    desc: 'Kliknutím na logo sa kedykoľvek vrátiš na úvodnú stránku. <strong>FOS Dashboard</strong> je centrálny hub pre Fiber Optics Sensors divíziu — dokumentácia, systémy a nástroje na jednom mieste.',
+  },
+  {
+    el: '#headerQuicklinks',
+    title: '🔗 Rýchle linky',
+    desc: 'Okamžitý prístup k interným systémom:<ul><li><strong>DBFOS</strong> — databáza projektov FOS</li><li><strong>ISYS</strong> — ERP systém Sylex</li><li><strong>PEAKLOGGER 🔑</strong> — záznamy meraní (klik = prihlasovacie údaje)</li></ul>Tlačidlo <strong>Linky ▾</strong> odkryje Dochádzku, Obedy a SharePoint linky.',
+  },
+  {
+    el: '.nav',
+    title: '🧭 Hlavná navigácia',
+    desc: 'Všetky moduly dashboardu v jednom riadku. Ikonky sa plynulo rozvinú s názvom pri nabehnutí myšou. Aktívna stránka je vždy zvýraznená. Nasledujúce kroky každý modul podrobnejšie opíšu.',
+  },
+  {
+    el: '[data-page="wiki"]',
+    title: '📖 WIKI — Knowledge Base',
+    desc: 'Centralizovaná technická dokumentácia: zariadenia, softvér, sieťová infraštruktúra FOS. Záznamy sú v kategóriách, s fulltextovým vyhľadávaním a podporou obrázkov. <em>Ideálne pre návody, konfigurácie a datasheety.</em>',
+  },
+  {
+    el: '[data-page="calendar"]',
+    title: '📅 Kalendár',
+    desc: 'Prehľad udalostí tímu: porady, <strong>dovolenky</strong>, služobné cesty, PN. Plánované dovolenky sa automaticky zobrazujú aj v <em>Manažment prehľade</em>. Podporuje export do Excelu.',
+  },
+  {
+    el: '[data-page="procedures"]',
+    title: '📋 Pracovné postupy',
+    desc: 'Štandardizované SOP pre laboratórium FOS — lepenie vlákien, kalibrácie, manipulácia s chemikáliami. Každý postup obsahuje <strong>kroky, BOZP pokyny, ochranné pomôcky</strong> a prílohy.',
+  },
+  {
+    el: '[data-page="fbg"]',
+    title: '📡 FBG Peak — vizualizácia',
+    desc: 'Interaktívna vizualizácia <strong>Fibre Bragg Grating</strong> senzorov:<ul><li><em>Animovaná mriežka</em> — grating zóna sa rozťahuje/zmršťuje, farebné spektrum</li><li><em>Strain Cable SC-01</em> — simulácia pnutia s heat-map farbením (modrá 0µε → červená 5000µε)</li></ul>',
+  },
+  {
+    el: '[data-page="dev"]',
+    title: '⭐ Vývoj výrobkov',
+    desc: 'Správa vývojového procesu — 7 záložiek:<ul><li><strong>Projekty</strong> — kanban podľa fáz</li><li><strong>Testy, Kalibrácie, Prototypy</strong></li><li><strong>Interrogátory S-line</strong> — inventár so zákazníkmi</li><li><strong>Datasheety</strong> — export do Word</li></ul>',
+  },
+  {
+    el: '[data-page="tasks"]',
+    title: '✅ Úlohy',
+    desc: 'Správa úloh pre tím — priradenie osobe, termín, priorita, projekt. Úlohy po termíne sú červene zvýraznené. Celkový prehľad plnenia nájdeš v <em>Manažment dashboarde</em>.',
+  },
+  {
+    el: '[data-page="crm"]',
+    title: '👥 CRM — zákazníci & kontakty',
+    desc: 'Evidencia zákazníkov a partnerov. Funkcie:<ul><li><strong>Import emailov drag-and-drop</strong> (.eml / .msg) s automatickým parsovaním</li><li>Komunikácia per-kontakt, filtre podľa stavu</li><li>Stavy: Lead → Aktívny → Neaktívny</li></ul>',
+  },
+  {
+    el: '[data-page="mgmt"]',
+    title: '📊 Manažment — prehľad',
+    desc: 'Dashboard pre vedenie:<ul><li>Kto na čom pracuje (úlohy + projekty)</li><li><strong>🏖️ Dovolenky</strong> — aktuálne a najbližších 30 dní</li><li>Stav projektov podľa fáz</li><li>Anonymné otázky pre manažment</li></ul>',
+  },
+  {
+    el: '[data-page="admin"]',
+    title: '⚙️ Administrácia',
+    desc: 'Správa dashboardu pre <strong>Admin</strong> rolu:<ul><li>Linky v hlavičke — pridávanie, úprava, poradie</li><li>Nastavenia senzora T3511 (IP, interval)</li><li>Správa používateľov a systémové nastavenia</li></ul>',
+  },
+  {
+    el: '#annSection',
+    title: '📢 Oznámenia od vedenia',
+    desc: 'Dôležité správy priamo na úvodnej stránke. Typy: <strong>📢 Info · 🚨 Dôležité · ⚠️ Upozornenie · ✅ Vyriešené</strong>. Oznámenia možno pripnúť navrch, upravovať a archivovať — zostávajú dostupné v archíve.',
+  },
+  {
+    el: '.home-kb-section',
+    title: '📚 Knowledge Base — náhľad',
+    desc: 'Rýchly prístup k dokumentácii z úvodnej stránky: fulltextové vyhľadávanie, prehľad kategórií a posledné záznamy. Pre plnú správu klikni <em>Otvoriť KB</em> alebo naviguj do modulu <em>WIKI</em>.',
+  },
+  {
+    el: '.thermo-corner',
+    title: '🌡️ Live merania senzora',
+    desc: 'Aktuálne hodnoty zo <strong>senzora T3511</strong> v laboratóriu FOS — teplota (°C) a vlhkosť (%RH). Kliknutím sa dostaneš na stránku <em>Senzory</em> s grafom histórie. Dáta sa obnovujú každých 60 sekúnd.',
+  },
+  {
+    el: null,
+    title: '🎉 Sprievodca dokončený!',
+    desc: 'Teraz poznáš všetky moduly FOS Dashboard. Ak niekedy zabudneš kde čo nájsť — klikni na tlačidlo <strong>Pomoc ?</strong> v ľavom dolnom rohu. Sprievodca je dostupný kedykoľvek.<br><br><strong>Príjemnú prácu!</strong> 🚀',
+  },
+];
+
+let _tourIdx   = 0;
+let _tourSaved = [];
+
+function startTour() {
+  showPage('home');
+  _tourIdx = 0;
+  document.body.classList.add('tour-active');
+  document.getElementById('tourOverlay').classList.remove('hidden');
+  _tourRender(0);
+  document.addEventListener('keydown', _tourKey);
+}
+
+function endTour() {
+  _tourRestoreEls();
+  document.body.classList.remove('tour-active');
+  const ov = document.getElementById('tourOverlay');
+  ov.classList.add('hidden');
+  ov.classList.remove('tour-no-el');
+  document.getElementById('tourHighlight').classList.add('hidden');
+  document.removeEventListener('keydown', _tourKey);
+}
+
+function tourBgClick(e) {
+  if (e.target === document.getElementById('tourOverlay')) endTour();
+}
+
+function tourNav(dir) {
+  const nxt = _tourIdx + dir;
+  if (nxt >= TOUR_STEPS.length) { endTour(); return; }
+  if (nxt < 0) return;
+  _tourIdx = nxt;
+  _tourRender(_tourIdx);
+}
+
+function _tourKey(e) {
+  if (e.key === 'Escape')     { endTour(); }
+  if (e.key === 'ArrowRight') { tourNav(1);  }
+  if (e.key === 'ArrowLeft')  { tourNav(-1); }
+}
+
+function _tourRestoreEls() {
+  _tourSaved.forEach(({ el, z, pos }) => { el.style.zIndex = z; el.style.position = pos; });
+  _tourSaved = [];
+}
+
+function _tourElevate(el) {
+  _tourSaved.push({ el, z: el.style.zIndex, pos: el.style.position });
+  if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+  el.style.zIndex = '9801';
+}
+
+function _tourRender(idx) {
+  _tourRestoreEls();
+  const step  = TOUR_STEPS[idx];
+  const total = TOUR_STEPS.length;
+
+  // text content
+  document.getElementById('tourStepNum').textContent  = `${idx + 1} / ${total}`;
+  document.getElementById('tourTitle').textContent    = step.title;
+  document.getElementById('tourDesc').innerHTML       = step.desc;
+  document.getElementById('tourProgFill').style.width = `${(idx / (total - 1)) * 100}%`;
+
+  // buttons
+  const prevBtn = document.getElementById('tourPrev');
+  const nextBtn = document.getElementById('tourNext');
+  if (idx === 0) prevBtn.classList.add('hidden'); else prevBtn.classList.remove('hidden');
+  nextBtn.textContent = (idx === total - 1) ? '✓ Zavrieť' : 'Ďalší →';
+  nextBtn.classList.toggle('done', idx === total - 1);
+
+  const overlay = document.getElementById('tourOverlay');
+  const hl  = document.getElementById('tourHighlight');
+  const pop = document.getElementById('tourPopover');
+
+  if (!step.el) {
+    // Žiadny element — tmavé pozadie na overlay, schovaj highlight
+    overlay.classList.add('tour-no-el');
+    hl.classList.add('hidden');
+    pop.style.cssText = 'top:50%;left:50%;transform:translate(-50%,-50%);';
+    return;
+  }
+
+  // Má element — spotlight cez box-shadow na .tour-hl (overlay musí byť priehľadný)
+  overlay.classList.remove('tour-no-el');
+
+  const target = document.querySelector(step.el);
+  if (!target) {
+    overlay.classList.add('tour-no-el');
+    hl.classList.add('hidden');
+    pop.style.cssText = 'top:50%;left:50%;transform:translate(-50%,-50%);';
+    return;
+  }
+
+  // Scroll into view for non-fixed elements
+  const posStyle = getComputedStyle(target).position;
+  if (posStyle !== 'fixed') {
+    target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // Elevate non-header page elements above overlay
+  const inHeader = !!target.closest('.header');
+  if (!inHeader && posStyle !== 'fixed') {
+    _tourElevate(target);
+  }
+
+  // Render after scroll settles
+  requestAnimationFrame(() => {
+    const r   = target.getBoundingClientRect();
+    const pad = 6;
+    hl.classList.remove('hidden');
+    hl.style.cssText = `top:${r.top-pad}px;left:${r.left-pad}px;width:${r.width+pad*2}px;height:${r.height+pad*2}px;`;
+    _tourPlacePop(r, pop);
+  });
+}
+
+function _tourPlacePop(rect, pop) {
+  const PW = 360, PH = 270, GAP = 14;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let top, left;
+  if (rect.bottom + PH + GAP < vh)      top = rect.bottom + GAP;
+  else if (rect.top - PH - GAP > 0)     top = rect.top - PH - GAP;
+  else                                   top = Math.max(GAP, (vh - PH) / 2);
+  left = Math.max(GAP, Math.min(vw - PW - GAP, rect.left + rect.width / 2 - PW / 2));
+  pop.style.cssText = `top:${top}px;left:${left}px;transform:none;`;
+}
+
 // Spustí appku po úspešnom prihlásení
 function startApp() {
   renderUserChip();
