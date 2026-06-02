@@ -831,6 +831,7 @@
         <button class="admin-tab" data-dtab="owners" onclick="switchDevTab('owners')">👤 Vlastníci</button>
         <button class="admin-tab" data-dtab="interrogators" onclick="switchDevTab('interrogators')">📟 Interrogátory</button>
         <button class="admin-tab" data-dtab="datasheets" onclick="switchDevTab('datasheets')">📄 Datasheety</button>
+        <button class="admin-tab" data-dtab="fbgtools" onclick="switchDevTab('fbgtools')">🧮 FBG nástroje</button>
       </div>
 
       <!-- Projekty (board) -->
@@ -929,8 +930,81 @@
         </div>
         <div id="dsDetail" class="ds-detail hidden"></div>
       </div>
+
+      <!-- FBG nástroje -->
+      <div class="admin-panel" id="devTab-fbgtools">
+        <div class="fbg-tools-grid">
+          <!-- Kalkulačka -->
+          <div class="mgmt-card">
+            <h2 class="mgmt-card-title">🧮 FBG kalkulačka</h2>
+            <div class="fbg-calc">
+              <label>Typ senzora
+                <select id="calcType" onchange="calcApplyType()"><option value="">— vlastné —</option></select>
+              </label>
+              <div class="fbg-calc-row">
+                <label>λ_B0 [nm]<input type="number" id="calcL0" value="1550" step="0.01"></label>
+                <label>λ_B [nm]<input type="number" id="calcLb" value="1551.2" step="0.01" oninput="calcRun()"></label>
+              </div>
+              <div class="fbg-calc-row">
+                <label>S_ε [pm/µε]<input type="number" id="calcSe" value="1.2" step="0.01" oninput="calcRun()"></label>
+                <label>S_T [pm/°C]<input type="number" id="calcSt" value="10" step="0.1" oninput="calcRun()"></label>
+                <label>ΔT [°C]<input type="number" id="calcDt" value="0" step="0.1" oninput="calcRun()"></label>
+              </div>
+              <div class="fbg-calc-out">
+                <div class="ro"><div class="v"><span id="calcShift">0</span> pm</div><div class="k">Posun Δλ</div></div>
+                <div class="ro"><div class="v"><span id="calcEps">0</span> µε</div><div class="k">Pnutie ε</div></div>
+              </div>
+              <div class="hint">ε = (Δλ − S_T·ΔT) / S_ε. Δλ = λ_B − λ_B0. Pri ΔT=0 sa berie čistý mechanický posun.</div>
+            </div>
+          </div>
+
+          <!-- Kalibračné koeficienty -->
+          <div class="mgmt-card">
+            <div class="proc-rows-hdr"><h2 class="mgmt-card-title">📚 Kalibračné koeficienty</h2><button class="btn-sm" onclick="openSensorTypeModal()">+ Typ</button></div>
+            <div class="owners-table-wrap">
+              <table class="owners-table"><thead><tr><th>Typ</th><th>λ_B0</th><th>S_ε</th><th>S_T</th><th>±rozsah</th><th></th></tr></thead>
+              <tbody id="stBody"></tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- WDM plánovač -->
+        <div class="mgmt-card" style="margin-top:14px">
+          <div class="proc-rows-hdr"><h2 class="mgmt-card-title">📏 WDM plánovač vlnových dĺžok</h2><button class="btn-sm" onclick="addWdmRow()">+ Kanál</button></div>
+          <p class="hint" style="margin:0 0 10px">Pre každý kanál zadaj λ_B0 a max. pnutie — nástroj vypočíta obsadené pásmo (λ_B0 ± S_ε·ε_max) a upozorní na prekrytie peakov.</p>
+          <div id="wdmRows" class="proc-rows"></div>
+          <svg id="wdmChart" viewBox="0 0 1000 150" style="width:100%;margin-top:12px"></svg>
+          <div id="wdmWarn" class="wdm-warn"></div>
+        </div>
+      </div>
     </div>
   </main>
+
+  <!-- ===== SENSOR TYPE MODAL ===== -->
+  <div id="sensorTypeModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeSensorTypeModal()"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header"><h2 id="stModalTitle">Typ senzora</h2><button class="modal-close" onclick="closeSensorTypeModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="stId">
+        <div class="form-group"><label>Názov *</label><input type="text" id="stName" placeholder="napr. SC-01"></div>
+        <div class="form-row">
+          <div class="form-group"><label>λ_B0 [nm]</label><input type="number" id="stL0" value="1550" step="0.01"></div>
+          <div class="form-group"><label>±rozsah [µε]</label><input type="number" id="stRange" value="2500"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>S_ε [pm/µε]</label><input type="number" id="stSe" value="1.2" step="0.01"></div>
+          <div class="form-group"><label>S_T [pm/°C]</label><input type="number" id="stSt" value="10" step="0.1"></div>
+        </div>
+        <div class="form-group"><label>Poznámka</label><input type="text" id="stNote"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="stDeleteBtn" onclick="deleteSensorType(document.getElementById('stId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeSensorTypeModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveSensorType()">Uložiť</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== DATASHEET MODAL ===== -->
   <div id="datasheetModal" class="modal hidden">

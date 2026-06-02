@@ -254,6 +254,7 @@ app.use('/api/crm', require('./routes/crm'));
 app.use('/api/owners', require('./routes/owners'));
 app.use('/api/interrogators', require('./routes/interrogators'));
 app.use('/api/datasheets', require('./routes/datasheets'));
+app.use('/api/sensor-types', require('./routes/sensorTypes'));
 app.use('/api/questions', require('./routes/questions'));
 app.use('/api/management', require('./routes/management'));
 app.use('/api/admin', require('./routes/admin')(sensorCfg));

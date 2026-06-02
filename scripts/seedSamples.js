@@ -253,6 +253,12 @@ const VACATIONS = [
   { title: 'Dovolenka — Lab',      person: 'Lab',       type: 'dovolenka', date: dPlus(22), endDate: dPlus(23), allDay: true, color: '#fbbf24', note: 'Náhradné voľno.' },
 ];
 
+const SENSOR_TYPES = [
+  { name: 'SC-01 (strain cable)', lambda0: 1550, sEps: 1.2, sTemp: 10, rangeEps: 2500, note: 'FBG strain cable' },
+  { name: 'Temperature FBG', lambda0: 1545, sEps: 1.2, sTemp: 10.5, rangeEps: 0, note: 'teplotný senzor' },
+  { name: 'Anchor load cell', lambda0: 1555, sEps: 1.15, sTemp: 9.8, rangeEps: 3000, note: 'load cell' },
+];
+
 async function seedSamples() {
   const result = { announcements: 0, categories: 0, products: 0, procedures: 0, projects: 0, instruments: 0, tests: 0, prototypes: 0, interrogators: 0, datasheets: 0, contacts: 0, vacations: 0 };
 
@@ -317,6 +323,10 @@ async function seedSamples() {
     if (!(await CalendarEvent.exists({ title: v.title, date: v.date }))) {
       await CalendarEvent.create(v); result.vacations++;
     }
+  }
+
+  for (const t of SENSOR_TYPES) {
+    if (!(await SensorType.exists({ name: t.name }))) { await SensorType.create(t); result.sensorTypes++; }
   }
 
   return result;
