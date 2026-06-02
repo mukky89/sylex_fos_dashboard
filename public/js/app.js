@@ -173,6 +173,7 @@ function endTour() {
   const ov = document.getElementById('tourOverlay');
   ov.classList.add('hidden');
   ov.classList.remove('tour-no-el');
+  ov.style.clipPath = 'none'; ov.style.webkitClipPath = 'none';
   document.getElementById('tourHighlight').classList.add('hidden');
   document.removeEventListener('keydown', _tourKey);
 }
@@ -200,14 +201,14 @@ function _tourRestoreEls() {
   _tourSaved = [];
 }
 
-function _tourElevate(el) {
-  _tourSaved.push({ el, z: el.style.zIndex, pos: el.style.position });
-  if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
-  el.style.zIndex = '9801';
+// Vyreže "dieru" do tmavého overlayu presne na komponente (zvyšok ostane zašedený)
+function _spotlightClip(x, y, w, h) {
+  const X = Math.max(0, Math.round(x)), Y = Math.max(0, Math.round(y));
+  const R = Math.round(x + w), B = Math.round(y + h);
+  return `polygon(0px 0px, 0px 100%, ${X}px 100%, ${X}px ${Y}px, ${R}px ${Y}px, ${R}px ${B}px, ${X}px ${B}px, ${X}px 100%, 100% 100%, 100% 0px)`;
 }
 
 function _tourRender(idx) {
-  _tourRestoreEls();
   const step  = TOUR_STEPS[idx];
   const total = TOUR_STEPS.length;
 
@@ -228,43 +229,34 @@ function _tourRender(idx) {
   const hl  = document.getElementById('tourHighlight');
   const pop = document.getElementById('tourPopover');
 
-  if (!step.el) {
-    // Žiadny element — tmavé pozadie na overlay, schovaj highlight
+  const noTarget = () => {
     overlay.classList.add('tour-no-el');
+    overlay.style.clipPath = 'none'; overlay.style.webkitClipPath = 'none';
     hl.classList.add('hidden');
     pop.style.cssText = 'top:50%;left:50%;transform:translate(-50%,-50%);';
-    return;
-  }
+  };
 
-  // Má element — spotlight cez box-shadow na .tour-hl (overlay musí byť priehľadný)
+  if (!step.el) { noTarget(); return; }
+  const target = document.querySelector(step.el);
+  if (!target) { noTarget(); return; }
+
   overlay.classList.remove('tour-no-el');
 
-  const target = document.querySelector(step.el);
-  if (!target) {
-    overlay.classList.add('tour-no-el');
-    hl.classList.add('hidden');
-    pop.style.cssText = 'top:50%;left:50%;transform:translate(-50%,-50%);';
-    return;
+  // Scroll do view pre nefixované prvky
+  if (getComputedStyle(target).position !== 'fixed') {
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
-  // Scroll into view for non-fixed elements
-  const posStyle = getComputedStyle(target).position;
-  if (posStyle !== 'fixed') {
-    target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
-
-  // Elevate non-header page elements above overlay
-  const inHeader = !!target.closest('.header');
-  if (!inHeader && posStyle !== 'fixed') {
-    _tourElevate(target);
-  }
-
-  // Render after scroll settles
   requestAnimationFrame(() => {
-    const r   = target.getBoundingClientRect();
+    const r = target.getBoundingClientRect();
+    if (!r.width && !r.height) { noTarget(); return; }
     const pad = 6;
+    // tmavý overlay s dierou na komponente → zvyšok zašedený
+    const clip = _spotlightClip(r.left - pad, r.top - pad, r.width + pad * 2, r.height + pad * 2);
+    overlay.style.clipPath = clip; overlay.style.webkitClipPath = clip;
+    // cyan rámik okolo komponentu
     hl.classList.remove('hidden');
-    hl.style.cssText = `top:${r.top-pad}px;left:${r.left-pad}px;width:${r.width+pad*2}px;height:${r.height+pad*2}px;`;
+    hl.style.cssText = `top:${r.top - pad}px;left:${r.left - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px;`;
     _tourPlacePop(r, pop);
   });
 }

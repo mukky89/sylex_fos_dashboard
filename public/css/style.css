@@ -1456,29 +1456,26 @@ body {
   position: fixed; inset: 0;
   z-index: 9800;
   pointer-events: all;
-  /* BEZ background — tmu vytvorí box-shadow na .tour-hl (spotlight efekt) */
+  /* tmavé pozadie; clip-path vyreže dieru na zvýraznenom komponente */
+  background: rgba(5, 8, 22, 0.80);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  transition: clip-path 0.25s ease;
 }
-/* Keď nie je zvýraznený žiadny element, ukáž tmavé pozadie priamo na overlay */
-.tour-overlay.tour-no-el {
-  background: rgba(5, 8, 22, 0.78);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-}
+.tour-overlay.tour-no-el { /* bez diery — celé tmavé */ }
 .tour-overlay.hidden { display: none; }
 
-/* ── Spotlight highlight — box-shadow vytvorí "dieru v tme" ──────────────────── */
+/* ── Spotlight rámik okolo komponentu (stmavenie robí overlay clip-path) ─────── */
 .tour-hl {
   position: fixed;
-  background: transparent;          /* priehľadné vnútro = element cez neho vidno */
+  background: transparent;
   border: 2px solid rgba(0, 212, 255, 0.95);
   border-radius: 10px;
-  z-index: 9802;                    /* nad overlay (9800) aj nad headerom (9801) */
+  z-index: 9802;
   pointer-events: none;
-  /* box-shadow: veľký spread = tmavý overlay cez celú stránku okolo výrezu */
   box-shadow:
-    0 0 0 9999px rgba(5, 8, 22, 0.76),   /* ← toto je "overlay" */
-    0 0 0 4px   rgba(0, 212, 255, 0.18), /* vnútorná žiara */
-    0 0 22px 4px rgba(0, 212, 255, 0.4); /* vonkajšia žiara */
+    0 0 0 4px   rgba(0, 212, 255, 0.18),
+    0 0 26px 6px rgba(0, 212, 255, 0.5);
   transition: top    0.28s cubic-bezier(.4,0,.2,1),
               left   0.28s cubic-bezier(.4,0,.2,1),
               width  0.28s cubic-bezier(.4,0,.2,1),
@@ -1600,10 +1597,8 @@ body {
 }
 .tour-fab svg { flex-shrink: 0; }
 
-/* ── Prvky vyvýšené NAD overlay (9800), ale stále POD tour-hl (9802) ─────────
-   Tým pádom box-shadow z tour-hl ich pokryje okrem zvýraznenej oblasti.        */
-body.tour-active .header        { z-index: 9801 !important; }
-body.tour-active .thermo-corner { z-index: 9801 !important; }
+/* Overlay (9800) prekryje a zašedí celú stránku vrátane hlavičky;
+   clip-path vyreže dieru len na zvýraznenom komponente. Žiadne dvíhanie z-indexu. */
 
 /* ==============================
    RESPONSIVE
