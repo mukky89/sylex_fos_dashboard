@@ -2812,6 +2812,151 @@ function switchDevTab(tab) {
   if (tab === 'owners') loadOwners();
   if (tab === 'interrogators') loadInterrogators();
   if (tab === 'datasheets') loadDatasheets();
+  if (tab === 'fbgtools') loadFbgTools();
+}
+
+// ==============================
+// FBG NÁSTROJE — kalkulačka, koeficienty, WDM plánovač
+// ==============================
+let sensorTypesData = [];
+const WDM_COLORS = ['#00d4ff', '#a78bfa', '#34d399', '#fbbf24', '#f472b6', '#f97316', '#22d3ee', '#4ade80'];
+let _wdmSeq = 0;
+
+async function loadFbgTools() {
+  try { sensorTypesData = await fetch('/api/sensor-types').then(r => r.json()); if (!Array.isArray(sensorTypesData)) sensorTypesData = []; }
+  catch { sensorTypesData = []; }
+  renderSensorTypes();
+  // naplň dropdown kalkulačky
+  const sel = document.getElementById('calcType');
+  if (sel) sel.innerHTML = '<option value="">— vlastné —</option>' + sensorTypesData.map(t => `<option value="${t._id}">${escHtml(t.name)}</option>`).join('');
+  // WDM — inicializuj ak prázdne
+  if (!document.querySelectorAll('#wdmRows .proc-row').length) {
+    addWdmRow({ name: 'FBG 1', l0: 1530, se: 1.2, eps: 2000 });
+    addWdmRow({ name: 'FBG 2', l0: 1535, se: 1.2, eps: 2000 });
+  }
+  calcRun(); wdmCompute();
+}
+
+// ── Koeficienty (tabuľka + modal) ──
+function renderSensorTypes() {
+  const tb = document.getElementById('stBody'); if (!tb) return;
+  if (!sensorTypesData.length) { tb.innerHTML = '<tr><td colspan="6" class="owners-empty">Žiadne typy. Pridaj typ senzora.</td></tr>'; return; }
+  tb.innerHTML = '';
+  sensorTypesData.forEach(t => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><strong>${escHtml(t.name)}</strong></td><td>${t.lambda0}</td><td>${t.sEps}</td><td>${t.sTemp}</td><td>±${t.rangeEps}</td>
+      <td class="owner-actions"><button class="admin-icon-btn" onclick="openSensorTypeModal(sensorTypesData.find(x=>x._id==='${t._id}'))">✎</button>
+      <button class="admin-icon-btn danger" onclick="deleteSensorType('${t._id}')">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+function openSensorTypeModal(t = null) {
+  const e = t && typeof t === 'object';
+  document.getElementById('stModalTitle').textContent = e ? 'Upraviť typ senzora' : 'Nový typ senzora';
+  document.getElementById('stId').value = e ? t._id : '';
+  document.getElementById('stName').value = e ? (t.name || '') : '';
+  document.getElementById('stL0').value = e ? (t.lambda0 ?? 1550) : 1550;
+  document.getElementById('stRange').value = e ? (t.rangeEps ?? 2500) : 2500;
+  document.getElementById('stSe').value = e ? (t.sEps ?? 1.2) : 1.2;
+  document.getElementById('stSt').value = e ? (t.sTemp ?? 10) : 10;
+  document.getElementById('stNote').value = e ? (t.note || '') : '';
+  document.getElementById('stDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('sensorTypeModal').classList.remove('hidden');
+}
+function closeSensorTypeModal() { document.getElementById('sensorTypeModal').classList.add('hidden'); }
+async function saveSensorType() {
+  const name = document.getElementById('stName').value.trim();
+  if (!name) { alert('Zadaj názov typu'); return; }
+  const body = { name, lambda0: +document.getElementById('stL0').value || 1550, rangeEps: +document.getElementById('stRange').value || 2500,
+    sEps: +document.getElementById('stSe').value || 1.2, sTemp: +document.getElementById('stSt').value || 10, note: document.getElementById('stNote').value.trim() };
+  const id = document.getElementById('stId').value;
+  try {
+    const r = await fetch(id ? '/api/sensor-types/' + id : '/api/sensor-types', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
+    closeSensorTypeModal(); loadFbgTools();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteSensorType(id) {
+  if (!id || !confirm('Odstrániť typ senzora?')) return;
+  try { await fetch('/api/sensor-types/' + id, { method: 'DELETE' }); closeSensorTypeModal(); loadFbgTools(); } catch { alert('Chyba'); }
+}
+
+// ── Kalkulačka ──
+function calcApplyType() {
+  const t = sensorTypesData.find(x => x._id === document.getElementById('calcType').value);
+  if (!t) return;
+  document.getElementById('calcL0').value = t.lambda0;
+  document.getElementById('calcSe').value = t.sEps;
+  document.getElementById('calcSt').value = t.sTemp;
+  calcRun();
+}
+function calcRun() {
+  const l0 = +document.getElementById('calcL0').value, lb = +document.getElementById('calcLb').value;
+  const se = +document.getElementById('calcSe').value || 1.2, st = +document.getElementById('calcSt').value || 0, dt = +document.getElementById('calcDt').value || 0;
+  const shiftPm = (lb - l0) * 1000;
+  const eps = (shiftPm - st * dt) / se;
+  document.getElementById('calcShift').textContent = Math.round(shiftPm);
+  document.getElementById('calcEps').textContent = Math.round(eps);
+}
+
+// ── WDM plánovač ──
+function addWdmRow(d = {}) {
+  const c = document.getElementById('wdmRows'); const id = 'wdm_' + (++_wdmSeq);
+  const row = document.createElement('div'); row.className = 'proc-row'; row.dataset.id = id;
+  const opts = '<option value="">vlastné</option>' + sensorTypesData.map(t => `<option value="${t._id}">${escHtml(t.name)}</option>`).join('');
+  row.innerHTML = `
+    <input type="text" class="wdm-name" placeholder="Názov" value="${escHtml(d.name || '')}" style="max-width:120px" oninput="wdmCompute()">
+    <select class="wdm-type" onchange="wdmApplyType(this)" style="max-width:120px">${opts}</select>
+    <input type="number" class="wdm-l0" placeholder="λB0" value="${d.l0 ?? 1530}" step="0.1" oninput="wdmCompute()" style="max-width:90px">
+    <input type="number" class="wdm-se" placeholder="S_ε" value="${d.se ?? 1.2}" step="0.01" oninput="wdmCompute()" style="max-width:80px">
+    <input type="number" class="wdm-eps" placeholder="ε_max" value="${d.eps ?? 2000}" step="50" oninput="wdmCompute()" style="max-width:90px">
+    <button type="button" class="proc-row-del" onclick="this.closest('.proc-row').remove(); wdmCompute();">✕</button>`;
+  c.appendChild(row);
+}
+function wdmApplyType(sel) {
+  const t = sensorTypesData.find(x => x._id === sel.value); if (!t) return;
+  const row = sel.closest('.proc-row');
+  row.querySelector('.wdm-l0').value = t.lambda0; row.querySelector('.wdm-se').value = t.sEps;
+  if (!row.querySelector('.wdm-name').value) row.querySelector('.wdm-name').value = t.name;
+  row.querySelector('.wdm-eps').value = t.rangeEps;
+  wdmCompute();
+}
+function wdmCompute() {
+  const rows = [...document.querySelectorAll('#wdmRows .proc-row')];
+  const chans = rows.map((r, i) => {
+    const l0 = +r.querySelector('.wdm-l0').value, se = +r.querySelector('.wdm-se').value || 1.2, eps = +r.querySelector('.wdm-eps').value || 0;
+    const half = (se * eps) / 1000; // nm
+    return { name: r.querySelector('.wdm-name').value || ('FBG ' + (i + 1)), l0, min: l0 - half, max: l0 + half, color: WDM_COLORS[i % WDM_COLORS.length] };
+  }).filter(c => c.l0);
+  drawWdm(chans);
+  // detekcia prekrytí
+  const warn = [];
+  for (let i = 0; i < chans.length; i++) for (let j = i + 1; j < chans.length; j++) {
+    if (chans[i].min <= chans[j].max && chans[j].min <= chans[i].max) warn.push(`${chans[i].name} ✕ ${chans[j].name}`);
+  }
+  const w = document.getElementById('wdmWarn');
+  w.innerHTML = warn.length ? `⚠️ Prekrytie pásiem: <strong>${warn.join(', ')}</strong> — uprav λB0 alebo rozsah.` : (chans.length ? '✅ Žiadne prekrytie — kanály sú oddelené.' : '');
+  w.className = 'wdm-warn ' + (warn.length ? 'wdm-bad' : 'wdm-ok');
+}
+function drawWdm(chans) {
+  const svg = document.getElementById('wdmChart'); if (!svg) return;
+  const NS = 'http://www.w3.org/2000/svg'; const mk = (t, a) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  svg.innerHTML = '';
+  const WMIN = 1500, WMAX = 1600, X0 = 50, X1 = 970, Y = 95;
+  const x = (wl) => X0 + (wl - WMIN) / (WMAX - WMIN) * (X1 - X0);
+  svg.appendChild(mk('line', { x1: X0, y1: Y, x2: X1, y2: Y, stroke: 'rgba(255,255,255,0.3)' }));
+  for (let wl = WMIN; wl <= WMAX; wl += 20) {
+    svg.appendChild(mk('line', { x1: x(wl), y1: Y, x2: x(wl), y2: Y + 5, stroke: 'rgba(255,255,255,0.3)' }));
+    const t = mk('text', { x: x(wl), y: Y + 18, fill: '#94a3b8', 'font-size': 11, 'text-anchor': 'middle', 'font-family': 'monospace' }); t.textContent = wl; svg.appendChild(t);
+  }
+  const tl = mk('text', { x: (X0 + X1) / 2, y: Y + 34, fill: '#94a3b8', 'font-size': 11, 'text-anchor': 'middle' }); tl.textContent = 'vlnová dĺžka λ [nm]'; svg.appendChild(tl);
+  chans.forEach((c, i) => {
+    const yb = 20 + (i % 3) * 18;
+    const xa = x(c.min), xb = x(c.max);
+    svg.appendChild(mk('rect', { x: xa, y: yb, width: Math.max(2, xb - xa), height: 12, rx: 3, fill: c.color, opacity: 0.5, stroke: c.color }));
+    svg.appendChild(mk('line', { x1: x(c.l0), y1: yb - 3, x2: x(c.l0), y2: yb + 15, stroke: c.color, 'stroke-width': 2 }));
+    const t = mk('text', { x: x(c.l0), y: yb - 5, fill: c.color, 'font-size': 10, 'text-anchor': 'middle' }); t.textContent = c.name; svg.appendChild(t);
+  });
 }
 
 const PJ_PHASES = [
