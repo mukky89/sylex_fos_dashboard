@@ -9,20 +9,17 @@
     --bg:        #0d1225;
     --bg2:       #131a36;
     --grid:      rgba(255,255,255,0.06);
-    --grid2:     rgba(255,255,255,0.12);
     --axis:      rgba(200,216,240,0.55);
     --text:      #c8d8f0;
     --dim:       rgba(255,255,255,0.45);
-    --accent:    #0891b2;  /* cyan  */
-    --accent2:   #1d4ed8;  /* blue  */
-    --peak:      #22d3ee;  /* bright cyan */
+    --accent:    #0891b2;
+    --accent2:   #1d4ed8;
+    --peak:      #22d3ee;
     --peak-glow: rgba(34,211,238,0.55);
     --core:      #38bdf8;
     --font:      'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
   html, body {
     height: 100%;
     background: radial-gradient(circle at 30% 0%, var(--bg2), var(--bg) 70%);
@@ -30,69 +27,43 @@
     color: var(--text);
     overflow: hidden;
   }
-
   .fbg-stage {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    padding: 14px 16px;
-    gap: 8px;
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    padding: 14px 16px; gap: 8px;
   }
-
   .fbg-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    flex: 0 0 auto;
+    display: flex; align-items: baseline;
+    justify-content: space-between; flex: 0 0 auto;
   }
-  .fbg-title {
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    color: var(--text);
-  }
+  .fbg-title { font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text); }
   .fbg-title span { color: var(--peak); }
-  .fbg-readout {
-    font-variant-numeric: tabular-nums;
-    font-size: 12px;
-    color: var(--dim);
-  }
-  .fbg-readout b {
-    color: var(--peak);
-    font-weight: 600;
-  }
-
-  canvas {
-    flex: 1 1 auto;
-    width: 100%;
-    min-height: 0;
-    display: block;
-  }
+  .fbg-readout { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--dim); }
+  .fbg-readout b { color: var(--peak); font-weight: 600; }
+  canvas { flex: 1 1 auto; width: 100%; min-height: 0; display: block; }
 </style>
 </head>
 <body>
-  <div class="fbg-stage">
-    <div class="fbg-head">
-      <div class="fbg-title">Fibre Bragg Grating · <span>reflexný peak</span></div>
-      <div class="fbg-readout">λ<sub>B</sub> = <b id="lambdaOut">1550.00</b> nm</div>
-    </div>
-    <canvas id="fbg"></canvas>
+<div class="fbg-stage">
+  <div class="fbg-head">
+    <div class="fbg-title">Fibre Bragg Grating · <span>reflexný peak</span></div>
+    <div class="fbg-readout">λ<sub>B</sub> = <b id="lambdaOut">1550.00</b> nm &nbsp;|&nbsp; Λ = <b id="lambdaScale">100</b>%</div>
   </div>
+  <canvas id="fbg"></canvas>
+</div>
 
 <script>
 (function () {
   "use strict";
 
-  const canvas = document.getElementById("fbg");
-  const ctx = canvas.getContext("2d");
-  const lambdaOut = document.getElementById("lambdaOut");
+  const canvas     = document.getElementById("fbg");
+  const ctx        = canvas.getContext("2d");
+  const lambdaOut  = document.getElementById("lambdaOut");
+  const lambdaScale = document.getElementById("lambdaScale");
 
-  // Canvas does not resolve CSS var(); keep literal colours here (in sync
-  // with the :root palette above).
   const COL = {
     grid:     "rgba(255,255,255,0.06)",
+    grid2:    "rgba(255,255,255,0.10)",
     axis:     "rgba(200,216,240,0.55)",
     dim:      "rgba(255,255,255,0.45)",
     accent:   "#0891b2",
@@ -101,12 +72,10 @@
     peakGlow: "rgba(34,211,238,0.55)"
   };
 
-  // --- physical model -----------------------------------------------------
-  // Wavelength window (nm) shown on the spectrum x-axis.
   const LAMBDA_MIN = 1540;
   const LAMBDA_MAX = 1560;
-  const LAMBDA_0   = 1550;     // nominal Bragg wavelength (no strain)
-  const FWHM       = 0.35;     // grating bandwidth (nm) -> narrow peak
+  const LAMBDA_0   = 1550;
+  const FWHM       = 0.35;
 
   const reduceMotion = window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -124,80 +93,144 @@
   }
   window.addEventListener("resize", resize);
 
-  // Simulated sensing: the Bragg wavelength drifts slowly (strain/temp).
   function braggShift(t) {
     if (reduceMotion) return 0;
-    return 1.6 * Math.sin(t * 0.45) +
-           0.4 * Math.sin(t * 1.30 + 1.1);   // small ripple
+    return 1.8 * Math.sin(t * 0.45) + 0.5 * Math.sin(t * 1.30 + 1.1);
   }
 
-  // Gaussian reflection peak, normalised to 1 at the centre.
   function reflectivity(lambda, lambdaB) {
-    const sigma = FWHM / 2.3548;            // FWHM -> sigma
+    const sigma = FWHM / 2.3548;
     const d = lambda - lambdaB;
     return Math.exp(-(d * d) / (2 * sigma * sigma));
   }
 
-  // map helpers
   const xOf = (lambda, x0, w) =>
     x0 + ((lambda - LAMBDA_MIN) / (LAMBDA_MAX - LAMBDA_MIN)) * w;
 
-  // --- drawing ------------------------------------------------------------
-  function drawGratingSchematic(x0, y0, w, h, lambdaB, t) {
-    // fibre cladding
-    const cy = y0 + h / 2;
-    const coreH = Math.max(10, h * 0.34);
+  // NIR pseudo-color strip: 1540→1560 nm mapped to deep violet-red → orange-yellow
+  function nirColor(lambda, alpha) {
+    const t = (lambda - LAMBDA_MIN) / (LAMBDA_MAX - LAMBDA_MIN); // 0-1
+    // false-color NIR: violet-red → orange → amber
+    const r = Math.round(140 + t * 115);
+    const g = Math.round(0   + t * 80);
+    const b = Math.round(200 - t * 200);
+    return `rgba(${r},${g},${b},${alpha ?? 0.85})`;
+  }
 
+  // Peak fill color that shifts with λB position
+  function peakFillColor(lambdaB, alpha0, alpha1) {
+    const t = (lambdaB - LAMBDA_MIN) / (LAMBDA_MAX - LAMBDA_MIN);
+    // t=0 → cool cyan, t=1 → warm orange
+    const r0 = Math.round(34  + t * 221),  g0 = Math.round(211 - t * 91),  b0 = Math.round(238 - t * 238);
+    const r1 = Math.round(34  + t * 221),  g1 = Math.round(211 - t * 91),  b1 = Math.round(238 - t * 238);
+    return [`rgba(${r0},${g0},${b0},${alpha0})`, `rgba(${r1},${g1},${b1},${alpha1})`];
+  }
+
+  // --- Grating schematic -------------------------------------------------------
+  function drawGratingSchematic(x0, y0, w, h, lambdaB, t) {
+    const cy    = y0 + h / 2;
+    const coreH = Math.max(10, h * 0.34);
     ctx.save();
 
-    // cladding glow
+    // Cladding glow
     const clad = ctx.createLinearGradient(x0, cy - coreH, x0, cy + coreH);
-    clad.addColorStop(0, "rgba(56,189,248,0.05)");
-    clad.addColorStop(0.5, "rgba(56,189,248,0.14)");
-    clad.addColorStop(1, "rgba(56,189,248,0.05)");
+    clad.addColorStop(0,   "rgba(56,189,248,0.04)");
+    clad.addColorStop(0.5, "rgba(56,189,248,0.13)");
+    clad.addColorStop(1,   "rgba(56,189,248,0.04)");
     ctx.fillStyle = clad;
     ctx.fillRect(x0, cy - coreH, w, coreH * 2);
 
-    // fibre core line
-    ctx.strokeStyle = "rgba(120,180,240,0.35)";
+    // Fiber core boundaries
+    ctx.strokeStyle = "rgba(120,180,240,0.3)";
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x0, cy - coreH); ctx.lineTo(x0 + w, cy - coreH);
-    ctx.moveTo(x0, cy + coreH); ctx.lineTo(x0 + w, cy + coreH); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x0, cy - coreH); ctx.lineTo(x0 + w, cy - coreH);
+    ctx.moveTo(x0, cy + coreH); ctx.lineTo(x0 + w, cy + coreH);
+    ctx.stroke();
 
-    // --- grating region (periodic index modulation) ---
-    const gx0 = x0 + w * 0.34;
-    const gx1 = x0 + w * 0.66;
-    const period = 6;
-    // pitch visually breathes with the Bragg shift to imply Λ change
-    const pitch = period + (lambdaB - LAMBDA_0) * 0.9;
-    ctx.lineWidth = 2;
-    for (let x = gx0; x <= gx1; x += pitch) {
-      const a = 0.55 + 0.25 * Math.sin((x - gx0) * 0.4);
-      ctx.strokeStyle = "rgba(34,211,238," + a.toFixed(3) + ")";
+    // --- ANIMATED GRATING ZONE —————————————————————————————————————————
+    // Zone width EXPANDS when λB rises, CONTRACTS when it falls
+    const shift     = lambdaB - LAMBDA_0;           // nm, can be negative
+    const baseW     = w * 0.30;                      // nominal zone width (px)
+    const maxDelta  = w * 0.12;                      // max ±expansion
+    const gw        = baseW + (shift / 2.3) * maxDelta;  // animated width
+    const gwClamped = Math.max(baseW * 0.55, Math.min(baseW * 1.45, gw));
+    const gx0       = x0 + w * 0.50 - gwClamped / 2;
+    const gx1       = gx0 + gwClamped;
+
+    // Zone background glow — color indicates state
+    const zoneAlpha = 0.08 + 0.04 * Math.abs(shift);
+    const zoneGrad  = ctx.createLinearGradient(gx0, 0, gx1, 0);
+    const hueFrac   = (shift + 2.3) / 4.6;          // 0-1
+    const hue       = Math.round(200 - hueFrac * 160); // 200=cyan, 40=orange
+    zoneGrad.addColorStop(0,   `hsla(${hue}, 80%, 60%, 0)`);
+    zoneGrad.addColorStop(0.5, `hsla(${hue}, 80%, 60%, ${zoneAlpha * 2})`);
+    zoneGrad.addColorStop(1,   `hsla(${hue}, 80%, 60%, 0)`);
+    ctx.fillStyle = zoneGrad;
+    ctx.fillRect(gx0, cy - coreH * 0.95, gwClamped, coreH * 1.9);
+
+    // Zone border
+    ctx.strokeStyle = `hsla(${hue}, 85%, 65%, 0.55)`;
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([3, 3]);
+    ctx.strokeRect(gx0, cy - coreH * 0.95, gwClamped, coreH * 1.9);
+    ctx.setLineDash([]);
+
+    // Rainbow grating lines — pitch also breathes
+    const basePitch = 7;
+    const pitch     = basePitch + shift * 1.2;          // Λ changes with λB
+    const numSlots  = Math.floor(gwClamped / pitch);
+    const startX    = gx0 + (gwClamped - numSlots * pitch) / 2;
+    ctx.lineWidth = 1.8;
+    for (let i = 0; i < numSlots; i++) {
+      const lx  = startX + i * pitch;
+      if (lx < gx0 || lx > gx1) continue;
+      const frac = numSlots > 1 ? i / (numSlots - 1) : 0.5;
+      // Rainbow: violet → cyan → green → yellow → red
+      const lineHue = Math.round(280 - frac * 280);     // 280→0 (violet→red)
+      const bright  = 60 + 15 * Math.sin(frac * Math.PI);
+      ctx.strokeStyle = `hsla(${lineHue}, 90%, ${bright}%, 0.88)`;
+      ctx.shadowColor = `hsla(${lineHue}, 90%, 70%, 0.5)`;
+      ctx.shadowBlur  = 3;
       ctx.beginPath();
-      ctx.moveTo(x, cy - coreH * 0.82);
-      ctx.lineTo(x, cy + coreH * 0.82);
+      ctx.moveTo(lx, cy - coreH * 0.84);
+      ctx.lineTo(lx, cy + coreH * 0.84);
       ctx.stroke();
     }
+    ctx.shadowBlur = 0;
 
-    // --- input broadband light (spectrum of dashes moving right) ---
+    // Zone size indicator text (Λ %)
+    const scalePercent = Math.round((gwClamped / baseW) * 100);
+    lambdaScale.textContent = scalePercent;
+    ctx.fillStyle = `hsla(${hue}, 80%, 75%, 0.75)`;
+    ctx.font = `bold 9px ${getComputedStyle(document.body).fontFamily}`;
+    ctx.textAlign = "center";
+    ctx.fillText(`Λ ${scalePercent > 100 ? "↑" : scalePercent < 100 ? "↓" : "·"}${scalePercent}%`, (gx0 + gx1) / 2, cy + coreH + 13);
+
+    // --- Input broadband light ---
     const flow = reduceMotion ? 0 : (t * 60) % 16;
-    ctx.lineCap = "round";
+    ctx.lineCap  = "round";
     ctx.lineWidth = 2;
-    ctx.strokeStyle = "rgba(160,210,255,0.55)";
     ctx.setLineDash([6, 10]);
+
+    // Broadband in (left) — rainbow dashes
+    const inGrad = ctx.createLinearGradient(x0, 0, gx0, 0);
+    inGrad.addColorStop(0,   "rgba(200,140,255,0.4)");
+    inGrad.addColorStop(0.4, "rgba(100,180,255,0.55)");
+    inGrad.addColorStop(1,   "rgba(160,220,255,0.55)");
+    ctx.strokeStyle   = inGrad;
     ctx.lineDashOffset = -flow;
     ctx.beginPath(); ctx.moveTo(x0 + 4, cy); ctx.lineTo(gx0, cy); ctx.stroke();
 
-    // --- transmitted light (notch -> dimmer) ---
-    ctx.strokeStyle = "rgba(160,210,255,0.22)";
+    // Transmitted (right) — dimmer
+    ctx.strokeStyle = "rgba(160,210,255,0.2)";
     ctx.lineDashOffset = -flow;
     ctx.beginPath(); ctx.moveTo(gx1, cy); ctx.lineTo(x0 + w - 4, cy); ctx.stroke();
 
-    // --- reflected narrow band (moves back left, glowing peak colour) ---
-    ctx.strokeStyle = "rgba(34,211,238,0.9)";
-    ctx.shadowColor = COL.peakGlow;
-    ctx.shadowBlur = 8;
+    // Reflected narrow band (back left) — colored by hue
+    ctx.strokeStyle = `hsla(${hue}, 90%, 68%, 0.95)`;
+    ctx.shadowColor  = `hsla(${hue}, 90%, 68%, 0.55)`;
+    ctx.shadowBlur   = 8;
     ctx.lineDashOffset = flow;
     ctx.beginPath();
     ctx.moveTo(gx0, cy + coreH * 0.42);
@@ -206,63 +239,105 @@
     ctx.setLineDash([]);
     ctx.shadowBlur = 0;
 
-    // arrows / labels
-    ctx.fillStyle = "rgba(200,216,240,0.65)";
-    ctx.font = "10px " + getComputedStyle(document.body).fontFamily;
-    ctx.textAlign = "left";
+    // Labels
+    ctx.fillStyle  = "rgba(200,216,240,0.6)";
+    ctx.font       = `10px ${getComputedStyle(document.body).fontFamily}`;
+    ctx.textAlign  = "left";
     ctx.fillText("broadband in →", x0 + 2, cy - coreH - 6);
-    ctx.textAlign = "center";
-    ctx.fillText("grating Λ", (gx0 + gx1) / 2, cy + coreH + 14);
-    ctx.textAlign = "right";
+    ctx.textAlign  = "right";
     ctx.fillText("→ transmitted", x0 + w - 2, cy - coreH - 6);
-    ctx.fillStyle = "rgba(34,211,238,0.8)";
-    ctx.textAlign = "left";
+    ctx.fillStyle  = `hsla(${hue}, 85%, 70%, 0.85)`;
+    ctx.textAlign  = "left";
     ctx.fillText("← reflected λB", x0 + 2, cy + coreH + 14);
+    ctx.textAlign  = "center";
+    ctx.fillStyle  = "rgba(200,216,240,0.5)";
+    ctx.fillText("grating zone", (gx0 + gx1) / 2, cy - coreH - 6);
 
     ctx.restore();
   }
 
+  // --- Spectrum chart ----------------------------------------------------------
   function drawSpectrum(x0, y0, w, h, lambdaB) {
     ctx.save();
 
-    // plot frame background
     ctx.fillStyle = "rgba(255,255,255,0.015)";
     ctx.fillRect(x0, y0, w, h);
 
-    const baseY = y0 + h - 18;     // y for reflectivity = 0
-    const topY  = y0 + 6;          // y for reflectivity = 1
+    const baseY = y0 + h - 28;
+    const topY  = y0 + 6;
     const plotH = baseY - topY;
 
-    // --- grid + wavelength ticks ---
-    ctx.font = "10px " + getComputedStyle(document.body).fontFamily;
+    // -- Vertical grid ---
+    ctx.font = `10px ${getComputedStyle(document.body).fontFamily}`;
     ctx.textBaseline = "top";
     for (let lam = LAMBDA_MIN; lam <= LAMBDA_MAX + 0.01; lam += 5) {
       const gx = xOf(lam, x0, w);
       ctx.strokeStyle = COL.grid;
-      ctx.lineWidth = 1;
+      ctx.lineWidth   = 1;
       ctx.beginPath(); ctx.moveTo(gx, topY); ctx.lineTo(gx, baseY); ctx.stroke();
-      ctx.fillStyle = COL.dim;
-      ctx.textAlign = "center";
+      ctx.fillStyle  = COL.dim;
+      ctx.textAlign  = "center";
       ctx.fillText(lam.toFixed(0) + " nm", gx, baseY + 4);
     }
-    // baseline (axis)
+
+    // Baseline
     ctx.strokeStyle = COL.axis;
-    ctx.lineWidth = 1;
+    ctx.lineWidth   = 1;
     ctx.beginPath(); ctx.moveTo(x0, baseY); ctx.lineTo(x0 + w, baseY); ctx.stroke();
 
-    // --- the FBG reflection peak (filled curve) ---
-    const steps = 240;
-    const pts = [];
+    // === COLOUR SPECTRUM STRIP ================================================
+    // False-color NIR gradient bar below tick labels
+    const stripY = baseY + 17;
+    const stripH = 5;
+    const specGrad = ctx.createLinearGradient(x0, 0, x0 + w, 0);
+    // 1540→1560 nm pseudo-color (NIR false-color: deep violet-red → amber)
+    specGrad.addColorStop(0.00, "rgba(160, 0, 180, 0.9)");
+    specGrad.addColorStop(0.15, "rgba(200, 0, 100, 0.9)");
+    specGrad.addColorStop(0.35, "rgba(240, 30,  20, 0.9)");
+    specGrad.addColorStop(0.55, "rgba(255, 110,  0, 0.9)");
+    specGrad.addColorStop(0.75, "rgba(255, 190,  0, 0.9)");
+    specGrad.addColorStop(1.00, "rgba(255, 240, 80, 0.9)");
+
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(x0, stripY, w, stripH, 3)
+                  : ctx.rect(x0, stripY, w, stripH);
+    ctx.fillStyle = specGrad;
+    ctx.fill();
+
+    // Marker on spectrum strip at current λB position
+    const mpx = xOf(lambdaB, x0, w);
+    ctx.fillStyle = "#ffffff";
+    ctx.shadowColor = "rgba(255,255,255,0.8)";
+    ctx.shadowBlur  = 6;
+    ctx.beginPath();
+    ctx.arc(mpx, stripY + stripH / 2, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // Arrow from strip to peak
+    ctx.strokeStyle = "rgba(255,255,255,0.2)";
+    ctx.lineWidth   = 1;
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.moveTo(mpx, stripY); ctx.lineTo(mpx, baseY); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // === FBG REFLECTION PEAK ==================================================
+    const steps = 280;
+    const pts   = [];
     for (let i = 0; i <= steps; i++) {
       const lam = LAMBDA_MIN + (i / steps) * (LAMBDA_MAX - LAMBDA_MIN);
-      const r = reflectivity(lam, lambdaB);
+      const r   = reflectivity(lam, lambdaB);
       pts.push([xOf(lam, x0, w), baseY - r * plotH]);
     }
 
-    // glow fill
+    // Peak color based on λB position (cyan → warm orange)
+    const t = (lambdaB - LAMBDA_MIN) / (LAMBDA_MAX - LAMBDA_MIN);
+    const peakH   = Math.round(190 - t * 160); // hue: 190=cyan, 30=orange
+    const [fillTop, fillBot] = peakFillColor(lambdaB, 0.52, 0.02);
+
+    // Glow fill
     const fill = ctx.createLinearGradient(0, topY, 0, baseY);
-    fill.addColorStop(0, "rgba(34,211,238,0.55)");
-    fill.addColorStop(1, "rgba(34,211,238,0.02)");
+    fill.addColorStop(0, fillTop);
+    fill.addColorStop(1, fillBot);
     ctx.beginPath();
     ctx.moveTo(pts[0][0], baseY);
     for (const p of pts) ctx.lineTo(p[0], p[1]);
@@ -271,60 +346,66 @@
     ctx.fillStyle = fill;
     ctx.fill();
 
-    // peak stroke with glow
-    ctx.shadowColor = COL.peakGlow;
-    ctx.shadowBlur = 12;
-    ctx.lineWidth = 2;
+    // Peak stroke with glow
+    ctx.shadowColor = `hsla(${peakH}, 90%, 65%, 0.6)`;
+    ctx.shadowBlur  = 14;
+    ctx.lineWidth   = 2.2;
     const stroke = ctx.createLinearGradient(x0, 0, x0 + w, 0);
-    stroke.addColorStop(0, COL.accent2);
-    stroke.addColorStop(0.5, COL.peak);
-    stroke.addColorStop(1, COL.accent);
+    stroke.addColorStop(0,   `hsla(${peakH + 30}, 80%, 55%, 0.6)`);
+    stroke.addColorStop(0.5, `hsl(${peakH}, 90%, 68%)`);
+    stroke.addColorStop(1,   `hsla(${peakH + 30}, 80%, 55%, 0.6)`);
     ctx.strokeStyle = stroke;
     ctx.beginPath();
     pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // --- peak marker + tracking line ---
+    // Peak marker + vertical tracking line
     const px = xOf(lambdaB, x0, w);
     ctx.setLineDash([3, 4]);
-    ctx.strokeStyle = "rgba(34,211,238,0.5)";
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = `hsla(${peakH}, 85%, 65%, 0.6)`;
+    ctx.lineWidth   = 1;
     ctx.beginPath(); ctx.moveTo(px, topY); ctx.lineTo(px, baseY); ctx.stroke();
     ctx.setLineDash([]);
 
-    // marker dot
-    ctx.fillStyle = COL.peak;
-    ctx.shadowColor = COL.peakGlow;
-    ctx.shadowBlur = 10;
-    ctx.beginPath(); ctx.arc(px, topY, 3.5, 0, Math.PI * 2); ctx.fill();
-    ctx.shadowBlur = 0;
+    // Dot at peak top
+    ctx.fillStyle   = `hsl(${peakH}, 90%, 68%)`;
+    ctx.shadowColor = `hsla(${peakH}, 90%, 68%, 0.7)`;
+    ctx.shadowBlur  = 12;
+    ctx.beginPath(); ctx.arc(px, topY, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur  = 0;
 
-    // label
-    ctx.fillStyle = COL.peak;
-    ctx.font = "11px " + getComputedStyle(document.body).fontFamily;
-    ctx.textAlign = px > x0 + w - 60 ? "right" : "left";
+    // Label
+    ctx.fillStyle   = `hsl(${peakH}, 85%, 72%)`;
+    ctx.font        = `bold 11px ${getComputedStyle(document.body).fontFamily}`;
+    ctx.textAlign   = px > x0 + w - 60 ? "right" : "left";
     ctx.textBaseline = "bottom";
-    ctx.fillText("λB", px + (px > x0 + w - 60 ? -6 : 6), topY + 14);
+    ctx.fillText("λ_B", px + (px > x0 + w - 60 ? -8 : 8), topY + 15);
+
+    // Y-axis label
+    ctx.fillStyle = COL.dim;
+    ctx.font      = `9px ${getComputedStyle(document.body).fontFamily}`;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "top";
+    ctx.fillText("R", x0 - 3, topY);
 
     ctx.restore();
   }
 
-  // --- main loop ----------------------------------------------------------
+  // --- Main loop ---------------------------------------------------------------
   let start = null;
   function frame(ts) {
     if (start === null) start = ts;
-    const t = (ts - start) / 1000;
-
+    const t      = (ts - start) / 1000;
     const lambdaB = LAMBDA_0 + braggShift(t);
     lambdaOut.textContent = lambdaB.toFixed(2);
 
     ctx.clearRect(0, 0, W, H);
 
-    const pad = 4;
-    const schemaH = Math.min(H * 0.42, 150);
+    const pad     = 4;
+    const schemaH = Math.min(H * 0.42, 155);
     drawGratingSchematic(pad, pad, W - pad * 2, schemaH, lambdaB, t);
-    drawSpectrum(pad, pad + schemaH + 6, W - pad * 2, H - schemaH - pad * 2 - 6, lambdaB);
+    drawSpectrum(pad, pad + schemaH + 8, W - pad * 2, H - schemaH - pad * 2 - 8, lambdaB);
 
     requestAnimationFrame(frame);
   }

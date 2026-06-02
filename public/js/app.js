@@ -3531,6 +3531,33 @@ async function loadManagement() {
   // Interrogátory podľa stavu
   document.getElementById('mgmtInterr').innerHTML = Object.keys(IGS_LABELS).map(k =>
     `<div class="mgmt-bar-row"><span>${IGS_LABELS[k]}</span><span class="mgmt-bar-val">${s.igStatus[k] || 0}</span></div>`).join('');
+
+  // ── Dovolenky ────────────────────────────────────────────────────────────
+  const vacEl = document.getElementById('mgmtVacations');
+  if (vacEl) {
+    const vacs = s.vacations || [];
+    if (!vacs.length) {
+      vacEl.innerHTML = '<div class="mgmt-empty">Žiadne plánované dovolenky v najbližších 30 dňoch.</div>';
+    } else {
+      vacEl.innerHTML = vacs.map(v => {
+        const dateFrom = v.date ? new Date(v.date).toLocaleDateString('sk-SK', {day:'numeric', month:'numeric', year:'numeric'}) : '—';
+        const dateTo   = v.endDate ? new Date(v.endDate).toLocaleDateString('sk-SK', {day:'numeric', month:'numeric', year:'numeric'}) : null;
+        const dateStr  = dateTo && dateTo !== dateFrom ? `${dateFrom} – ${dateTo}` : dateFrom;
+        const active   = v.isActive;
+        return `<div class="mgmt-vac-row${active ? ' vac-active' : ''}">
+          <span class="mgmt-vac-icon">${active ? '🏖️' : '📅'}</span>
+          <div class="mgmt-vac-info">
+            <span class="mgmt-vac-person">${escHtml(v.person)}</span>
+            ${v.title && v.title !== v.person ? `<span class="mgmt-vac-title">${escHtml(v.title)}</span>` : ''}
+          </div>
+          <div class="mgmt-vac-right">
+            <span class="mgmt-vac-dates">${dateStr}</span>
+            ${active ? '<span class="vac-badge-now">Teraz</span>' : ''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
 }
 
 async function renderMgmtQuestions() {

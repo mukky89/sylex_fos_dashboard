@@ -4,16 +4,18 @@
  * Alebo cez Admin → Systém → "Naplniť ukážkovými dátami" (POST /api/admin/seed-samples).
  * Idempotentné — preskočí záznamy, ktoré už existujú (podľa názvu).
  */
-const Category    = require('../models/Category');
-const Product     = require('../models/Product');
+const Category     = require('../models/Category');
+const Product      = require('../models/Product');
 const Announcement = require('../models/Announcement');
-const Procedure   = require('../models/Procedure');
-const Project     = require('../models/Project');
-const Instrument  = require('../models/Instrument');
+const Procedure    = require('../models/Procedure');
+const Project      = require('../models/Project');
+const Instrument   = require('../models/Instrument');
 const TestProtocol = require('../models/TestProtocol');
-const Prototype   = require('../models/Prototype');
+const Prototype    = require('../models/Prototype');
 const Interrogator = require('../models/Interrogator');
-const Datasheet   = require('../models/Datasheet');
+const Datasheet    = require('../models/Datasheet');
+const Contact      = require('../models/Contact');
+const CalendarEvent = require('../models/CalendarEvent');
 
 const now = Date.now();
 const dPlus = (days) => new Date(now + days * 864e5);
@@ -24,6 +26,16 @@ const PROJECTS = [
   { title: 'Optický merač strát', code: 'P-2025-11', phase: 'vyroba', owner: 'J. Novák', priority: 'normal', folder: 'G:\\Projekty\\FOS\\OLM' },
   { title: 'Kalibračná stanica v2', code: 'P-2026-03', phase: 'koncept', owner: 'Lab', priority: 'low' },
   { title: 'Senzor vibrácií', code: 'P-2025-08', phase: 'ukoncene', owner: 'M. Horák', priority: 'normal' },
+  { title: 'FBG tlakový senzor PT-01', code: 'P-2026-04', phase: 'koncept', owner: 'P. Kováč', priority: 'high', deadline: dPlus(90), tags: ['tlak', 'FBG'], notes: 'Pre monitorovanie priehrady.' },
+  { title: 'Senzor pretvorenia betónu BC-02', code: 'P-2026-05', phase: 'prototyp', owner: 'M. Horák', priority: 'normal', deadline: dPlus(45), folder: 'G:\\Projekty\\FOS\\BC02', tags: ['strain', 'beton', 'DTG'] },
+  { title: 'Distribuovaný senzor DTS-100', code: 'P-2025-14', phase: 'testovanie', owner: 'J. Novák', priority: 'high', deadline: dPlus(15), tags: ['DTS', 'raman', 'distribuovany'] },
+  { title: 'Smart zátkový senzor SB-03', code: 'P-2026-06', phase: 'vyroba', owner: 'Lab', priority: 'normal', folder: 'G:\\Projekty\\FOS\\SB03', tags: ['smart', 'zatok', 'vstavba'] },
+  { title: 'Optický akcelerometer OA-01', code: 'P-2025-10', phase: 'ukoncene', owner: 'M. Horák', priority: 'normal', tags: ['akcelerometer', 'seizmika'] },
+  { title: 'Multiplexér 16-kanálový MX-16', code: 'P-2026-07', phase: 'koncept', owner: 'P. Kováč', priority: 'low', tags: ['multiplex', 'WDM'] },
+  { title: 'FBG dotazovač nxt gen QT-2', code: 'P-2026-08', phase: 'prototyp', owner: 'J. Novák', priority: 'high', deadline: dPlus(120), tags: ['interrogator', 'nxtgen'] },
+  { title: 'Káblový teplomer CT-01', code: 'P-2025-12', phase: 'vyroba', owner: 'M. Horák', priority: 'normal', folder: 'G:\\Projekty\\FOS\\CT01', tags: ['teplota', 'kabel'] },
+  { title: 'Senzor bočného posunu LP-05', code: 'P-2025-09', phase: 'ukoncene', owner: 'Lab', priority: 'normal', tags: ['posun', 'inklinometer'] },
+  { title: 'Optický korelátor OC-01', code: 'P-2026-09', phase: 'koncept', owner: 'J. Novák', priority: 'low', tags: ['korelator', 'research'] },
 ];
 
 const INSTRUMENTS = [
@@ -31,6 +43,13 @@ const INSTRUMENTS = [
   { name: 'Optický reflektometer OTDR', serial: 'OTDR-22', type: 'OTDR', location: 'Lab FOS', responsible: 'J. Novák', lastCalibration: dPlus(-350), nextCalibration: dPlus(15), intervalMonths: 12 },
   { name: 'Teplotná komora', serial: 'TK-05', type: 'klimatická komora', location: 'Lab', responsible: 'Lab', lastCalibration: dPlus(-400), nextCalibration: dPlus(-5), intervalMonths: 12 },
   { name: 'Posuvné meradlo digitálne', serial: 'PM-12', type: 'meradlo', location: 'Dielňa', responsible: 'M. Horák', lastCalibration: dPlus(-100), nextCalibration: dPlus(265), intervalMonths: 12 },
+  { name: 'Optický spektrálny analyzátor OSA', serial: 'OSA-03', type: 'spektrálny analyzátor', location: 'Lab FOS', responsible: 'J. Novák', lastCalibration: dPlus(-180), nextCalibration: dPlus(185), intervalMonths: 12 },
+  { name: 'Osciloskop Tektronix TBS2104', serial: 'OSCI-07', type: 'osciloskop', location: 'Lab FOS', responsible: 'P. Kováč', lastCalibration: dPlus(-365), nextCalibration: dPlus(0), intervalMonths: 12 },
+  { name: 'Momentový kľúč 10–50 Nm', serial: 'MK-02', type: 'meradlo', location: 'Dielňa', responsible: 'M. Horák', lastCalibration: dPlus(-200), nextCalibration: dPlus(165), intervalMonths: 12 },
+  { name: 'FBG interrogátor (referenčný)', serial: 'SI-REF-01', type: 'FBG interrogátor', location: 'Lab FOS', responsible: 'J. Novák', lastCalibration: dPlus(-90), nextCalibration: dPlus(275), intervalMonths: 12 },
+  { name: 'Tenzometrický most HBM QuantumX', serial: 'HBM-QX-05', type: 'tenzometer', location: 'Lab FOS', responsible: 'P. Kováč', lastCalibration: dPlus(-240), nextCalibration: dPlus(125), intervalMonths: 12 },
+  { name: 'Vodováha laserová BOSCH GLL 3-80', serial: 'LL-04', type: 'meradlo', location: 'Dielňa', responsible: 'Lab', lastCalibration: dPlus(-50), nextCalibration: dPlus(315), intervalMonths: 12 },
+  { name: 'Digitálny manometer', serial: 'DM-11', type: 'manometer', location: 'Lab', responsible: 'P. Kováč', lastCalibration: dPlus(-420), nextCalibration: dPlus(-55), intervalMonths: 12 },
 ];
 
 const TESTS = [
@@ -40,12 +59,36 @@ const TESTS = [
     measurements: [{ name: 'Odchýlka pri -20°C', value: '3.2', unit: '%', min: '0', max: '2', pass: false }] },
   { title: 'Ťahová skúška puzdra', project: 'FOS senzor teploty X1', product: 'X1', tester: 'M. Horák', ptype: 'mechanická', result: 'pass',
     measurements: [{ name: 'Sila do poškodenia', value: '120', unit: 'N', min: '100', max: '', pass: true }] },
+  { title: 'Kalibrációna presnosť — SC-01', project: 'FBG tlakový senzor PT-01', product: 'SC-01', tester: 'J. Novák', ptype: 'kalibrácia', result: 'pass',
+    measurements: [{ name: 'Citlivosť', value: '1.21', unit: 'pm/µε', min: '1.18', max: '1.25', pass: true }, { name: 'Linearita', value: '0.98', unit: 'R²', min: '0.995', max: '', pass: true }] },
+  { title: 'Vlhkostná odolnosť — H2 v1.1', project: 'Vlhkostný senzor H2', product: 'H2', tester: 'P. Kováč', ptype: 'IP krytie', result: 'pass',
+    measurements: [{ name: 'IP67 — ponorovanie 30 min', value: 'ok', unit: '', min: '', max: '', pass: true }] },
+  { title: 'Termocyklus -40 až +80°C — BC-02', project: 'Senzor pretvorenia betónu BC-02', product: 'BC-02', tester: 'M. Horák', ptype: 'teplotný cyklus', result: 'pass',
+    measurements: [{ name: 'Drift λB po 50 cykloch', value: '0.04', unit: 'nm', min: '0', max: '0.1', pass: true }] },
+  { title: 'Rázová odolnosť — PT-01 puzdro', project: 'FBG tlakový senzor PT-01', product: 'PT-01', tester: 'M. Horák', ptype: 'mechanická', result: 'fail',
+    measurements: [{ name: 'Pád z 1m na betón', value: 'poškodenie krytu', unit: '', min: '', max: '', pass: false }] },
+  { title: 'Presnosť vlnovej dĺžky — OSA ref.', project: 'FBG dotazovač nxt gen QT-2', product: 'QT-2', tester: 'J. Novák', ptype: 'optická presnosť', result: 'pass',
+    measurements: [{ name: 'Odchýlka λ od OSA', value: '0.003', unit: 'nm', min: '0', max: '0.01', pass: true }, { name: 'Opakovateľnosť', value: '0.001', unit: 'nm', min: '0', max: '0.005', pass: true }] },
+  { title: 'Záťažový test kabeláže — CT-01', project: 'Káblový teplomer CT-01', product: 'CT-01', tester: 'P. Kováč', ptype: 'mechanická', result: 'pass',
+    measurements: [{ name: 'Min. polomer ohybu', value: '35', unit: 'mm', min: '30', max: '', pass: true }, { name: 'Odolnosť ťahu', value: '450', unit: 'N', min: '400', max: '', pass: true }] },
+  { title: 'EMI odolnosť — DTS-100', project: 'Distribuovaný senzor DTS-100', product: 'DTS-100', tester: 'J. Novák', ptype: 'EMC', result: 'pass',
+    measurements: [{ name: 'Rušenie pri 100 V/m', value: 'bez vplyvu', unit: '', min: '', max: '', pass: true }] },
+  { title: 'Citlivostný test — OA-01 senzor', project: 'Optický akcelerometer OA-01', product: 'OA-01', tester: 'M. Horák', ptype: 'dynamická', result: 'na',
+    measurements: [{ name: 'Frekvencia 1–100 Hz', value: '—', unit: 'Hz', min: '', max: '', pass: false }, { name: 'Amplitúda 0.01g', value: '—', unit: 'g', min: '', max: '', pass: false }] },
 ];
 
 const PROTOTYPES = [
   { name: 'X1 — vzorka A', code: 'X1-A', version: 'v1.0', project: 'FOS senzor teploty X1', status: 'active', description: 'Prvý prototyp puzdra.', results: 'Funkčné, drobné netesnosti.' },
   { name: 'X1 — vzorka B', code: 'X1-B', version: 'v1.1', project: 'FOS senzor teploty X1', status: 'active', description: 'Upravené tesnenie.', results: 'OK.' },
   { name: 'H2 — vzorka A', code: 'H2-A', version: 'v0.9', project: 'Vlhkostný senzor H2', status: 'archived', description: 'Skúšobná vzorka.', results: 'Nahradená v0.9.1.' },
+  { name: 'BC-02 — vzorka A', code: 'BC02-A', version: 'v1.0', project: 'Senzor pretvorenia betónu BC-02', status: 'active', description: 'Prvý prototyp pre zaliatie do betónu.', results: 'Prežil cyklus. Potrebná lepšia ochrana vlákna.' },
+  { name: 'PT-01 — vzorka A', code: 'PT01-A', version: 'v0.5', project: 'FBG tlakový senzor PT-01', status: 'active', description: 'Konceptuálny prototyp tlakového senzora.', results: 'Skúšobné meranie tlaku 0–50 bar, odchýlka ±2 bar.' },
+  { name: 'PT-01 — vzorka B', code: 'PT01-B', version: 'v0.8', project: 'FBG tlakový senzor PT-01', status: 'active', description: 'Nové puzdro z nerezu.', results: 'Lepší výsledok, odchýlka ±0.5 bar.' },
+  { name: 'DTS-100 — pilot unit', code: 'DTS100-P1', version: 'v1.0', project: 'Distribuovaný senzor DTS-100', status: 'active', description: 'Pilotná jednotka pre field test.', results: 'Merací rozsah 10 km, 1°C rozlíšenie. Vyžaduje ďalšie ladenie DSP.' },
+  { name: 'QT-2 — vzorka A (PCB v2)', code: 'QT2-A', version: 'v2.0', project: 'FBG dotazovač nxt gen QT-2', status: 'active', description: 'Nová DFB laserová platforma.', results: 'Rýchlosť skenovania 250 Hz, šum -65 dBm. Čaká na firmware.' },
+  { name: 'CT-01 — vzorka A', code: 'CT01-A', version: 'v1.0', project: 'Káblový teplomer CT-01', status: 'archived', description: 'Prvý kábel — 5 mm priemer.', results: 'Príliš tuhý. Nahradený CT01-B (3 mm).' },
+  { name: 'CT-01 — vzorka B', code: 'CT01-B', version: 'v1.2', project: 'Káblový teplomer CT-01', status: 'active', description: 'Štíhlejší kábel 3 mm, TPU opletenie.', results: 'Flexibilita OK, min. polomer 35 mm. Schválený pre sériovú výrobu.' },
+  { name: 'OA-01 — vzorka A', code: 'OA01-A', version: 'v1.0', project: 'Optický akcelerometer OA-01', status: 'archived', description: 'Prvý prototyp s interferometrickým snímaním.', results: 'Nízka citlivosť pod 10 Hz. Projekt pozastavený.' },
 ];
 
 const ANNOUNCEMENTS = [
@@ -186,8 +229,32 @@ const DATASHEETS = [
   },
 ];
 
+// ── CRM kontakty ───────────────────────────────────────────────────────────────
+const CRM_CONTACTS = [
+  { name: 'Ing. Tomáš Blaho',    company: 'Metrostav SK a.s.',       email: 'blaho@metrostav.sk',         phone: '+421 910 201 300', status: 'active',   tags: ['most', 'tunel', 'monitoring'],        note: 'Kontakt pre projekty železničných tunelov. Záujem o SC-01.' },
+  { name: 'Mgr. Jana Kováčová',  company: 'GEO-INS s.r.o.',          email: 'kovacova@geo-ins.sk',        phone: '+421 903 445 112', status: 'active',   tags: ['geotechnika', 'svah', 'priehrada'],   note: 'Dlhodobý zákazník, každoročné objednávky senzorov.' },
+  { name: 'Dr. Petr Sedláček',   company: 'VŠB-TU Ostrava',          email: 'sedlacek@vsb.cz',            phone: '+420 596 991 500', status: 'lead',     tags: ['academia', 'výzkum', 'grant'],        note: 'Záujem o kolaboráciu na EU projekte Horizon.' },
+  { name: 'Ing. Marta Szabó',    company: 'NDS a.s.',                 email: 'szabo@nds.sk',               phone: '+421 2 5823 5000', status: 'active',   tags: ['diaľnica', 'most', 'NDS'],            note: 'Manažér divízie mostného monitoringu NDS.' },
+  { name: 'František Horník',    company: 'ZIPP Brno s.r.o.',         email: 'hornik@zipp.cz',             phone: '+420 541 320 100', status: 'active',   tags: ['stavba', 'konštrukcia'],             note: 'Opakovaný nákup, vždy S-line S4.' },
+  { name: 'Ing. Lukáš Mrázek',   company: 'CEZ a.s.',                 email: 'mrazek.l@cez.cz',            phone: '+420 211 040 111', status: 'lead',     tags: ['energetika', 'priehrada', 'CEZ'],    note: 'Prvý kontakt na konferencii SHM 2025.' },
+  { name: 'Bc. Silvia Timková',  company: 'SHM Solutions s.r.o.',     email: 'timkova@shmsolutions.eu',    phone: '+421 908 556 712', status: 'active',   tags: ['SHM', 'distribútor', 'partner'],     note: 'Distribučný partner pre CZ/SK trh.' },
+  { name: 'Dr. Klaus Weber',     company: 'TU München',               email: 'k.weber@tum.de',             phone: '+49 89 289 22000', status: 'lead',     tags: ['academia', 'nemecko', 'FBG'],        note: 'Vedúci katedry, záujem o 16ch S-line pre lab.' },
+  { name: 'Mgr. Rastislav Novák','company': 'Ponting s.r.o.',         email: 'novak@ponting.sk',           phone: '+421 911 778 034', status: 'inactive', tags: ['mostné konštrukcie'],                note: 'Projekt stojí, čaká na financovanie EU.' },
+  { name: 'Ing. Andrea Lenártová','company': 'Dopravný podnik BA',    email: 'lenartova@dpba.sk',          phone: '+421 2 5950 9111', status: 'lead',     tags: ['metro', 'tunel', 'BA'],              note: 'Záujem o pilotné meranie na Petržalskej linke.' },
+  { name: 'Ing. Martin Ošťádal', company: 'Skanska SK a.s.',          email: 'ostadal@skanska.sk',         phone: '+421 2 5823 9000', status: 'active',   tags: ['skanska', 'stavba', 'projekt'],      note: 'Dlhodobý zákazník, projekt D1 Lietavská Lúčka.' },
+  { name: 'Bc. Eva Horáková',    company: 'ČVUT Praha',               email: 'horakova@cvut.cz',           phone: '+420 224 353 000', status: 'lead',     tags: ['academia', 'diplomovka', 'Praha'],   note: 'Doktorandka, záujem o zapožičanie senzora na DP.' },
+];
+
+// ── Dovolenky v kalendári (ukážkové) ──────────────────────────────────────────
+const VACATIONS = [
+  { title: 'Dovolenka — M. Horák', person: 'M. Horák', type: 'dovolenka', date: dPlus(3),  endDate: dPlus(10), allDay: true, color: '#fbbf24', note: 'Dovolenka v Chorvátsku.' },
+  { title: 'Dovolenka — J. Novák', person: 'J. Novák', type: 'dovolenka', date: dPlus(0),  endDate: dPlus(2),  allDay: true, color: '#fbbf24', note: 'Voľno — osobné dôvody.' },
+  { title: 'Dovolenka — P. Kováč', person: 'P. Kováč', type: 'dovolenka', date: dPlus(18), endDate: dPlus(25), allDay: true, color: '#fbbf24', note: 'Letná dovolenka.' },
+  { title: 'Dovolenka — Lab',      person: 'Lab',       type: 'dovolenka', date: dPlus(22), endDate: dPlus(23), allDay: true, color: '#fbbf24', note: 'Náhradné voľno.' },
+];
+
 async function seedSamples() {
-  const result = { announcements: 0, categories: 0, products: 0, procedures: 0, projects: 0, instruments: 0, tests: 0, prototypes: 0, interrogators: 0, datasheets: 0 };
+  const result = { announcements: 0, categories: 0, products: 0, procedures: 0, projects: 0, instruments: 0, tests: 0, prototypes: 0, interrogators: 0, datasheets: 0, contacts: 0, vacations: 0 };
 
   // Novinky
   for (const a of ANNOUNCEMENTS) {
@@ -238,6 +305,18 @@ async function seedSamples() {
 
   for (const d of DATASHEETS) {
     if (!(await Datasheet.exists({ title: d.title }))) { await Datasheet.create(d); result.datasheets++; }
+  }
+
+  // CRM kontakty
+  for (const c of CRM_CONTACTS) {
+    if (!(await Contact.exists({ email: c.email }))) { await Contact.create(c); result.contacts++; }
+  }
+
+  // Dovolenky v kalendári
+  for (const v of VACATIONS) {
+    if (!(await CalendarEvent.exists({ title: v.title, date: v.date }))) {
+      await CalendarEvent.create(v); result.vacations++;
+    }
   }
 
   return result;
