@@ -230,8 +230,7 @@ function _tourRender(idx) {
   const pop = document.getElementById('tourPopover');
 
   const noTarget = () => {
-    overlay.classList.add('tour-no-el');
-    overlay.style.clipPath = 'none'; overlay.style.webkitClipPath = 'none';
+    overlay.classList.add('tour-no-el');     // celé tmavé (dim cez overlay)
     hl.classList.add('hidden');
     pop.style.cssText = 'top:50%;left:50%;transform:translate(-50%,-50%);';
   };
@@ -240,9 +239,9 @@ function _tourRender(idx) {
   const target = document.querySelector(step.el);
   if (!target) { noTarget(); return; }
 
+  // Stmavenie robí box-shadow na .tour-hl (zaoblená diera, bez švu); overlay len blokuje kliky
   overlay.classList.remove('tour-no-el');
 
-  // Scroll do view pre nefixované prvky
   if (getComputedStyle(target).position !== 'fixed') {
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
@@ -250,13 +249,12 @@ function _tourRender(idx) {
   requestAnimationFrame(() => {
     const r = target.getBoundingClientRect();
     if (!r.width && !r.height) { noTarget(); return; }
-    const pad = 6;
-    // tmavý overlay s dierou na komponente → zvyšok zašedený
-    const clip = _spotlightClip(r.left - pad, r.top - pad, r.width + pad * 2, r.height + pad * 2);
-    overlay.style.clipPath = clip; overlay.style.webkitClipPath = clip;
-    // cyan rámik okolo komponentu
+    const pad = 8;
     hl.classList.remove('hidden');
-    hl.style.cssText = `top:${r.top - pad}px;left:${r.left - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px;`;
+    hl.style.top = `${r.top - pad}px`;
+    hl.style.left = `${r.left - pad}px`;
+    hl.style.width = `${r.width + pad * 2}px`;
+    hl.style.height = `${r.height + pad * 2}px`;
     _tourPlacePop(r, pop);
   });
 }
