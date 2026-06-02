@@ -1456,33 +1456,44 @@ body {
   position: fixed; inset: 0;
   z-index: 9800;
   pointer-events: all;
-  /* tmavé pozadie; clip-path vyreže dieru na zvýraznenom komponente */
-  background: rgba(5, 8, 22, 0.80);
+  background: transparent;   /* tmu robí box-shadow na .tour-hl (zaoblená diera, bez švu) */
+}
+.tour-overlay.tour-no-el {   /* žiadny prvok → celé tmavé */
+  background: rgba(5, 8, 22, 0.82);
   -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
-  transition: clip-path 0.25s ease;
 }
-.tour-overlay.tour-no-el { /* bez diery — celé tmavé */ }
 .tour-overlay.hidden { display: none; }
 
-/* ── Spotlight rámik okolo komponentu (stmavenie robí overlay clip-path) ─────── */
+/* ── Spotlight: zaoblená "diera v tme" + výrazný pulzujúci rámik ─────────────── */
 .tour-hl {
   position: fixed;
   background: transparent;
-  border: 2px solid rgba(0, 212, 255, 0.95);
-  border-radius: 10px;
+  border-radius: 14px;
   z-index: 9802;
   pointer-events: none;
   box-shadow:
-    0 0 0 4px   rgba(0, 212, 255, 0.18),
-    0 0 26px 6px rgba(0, 212, 255, 0.5);
-  transition: top    0.28s cubic-bezier(.4,0,.2,1),
-              left   0.28s cubic-bezier(.4,0,.2,1),
-              width  0.28s cubic-bezier(.4,0,.2,1),
-              height 0.28s cubic-bezier(.4,0,.2,1),
+    0 0 0 9999px rgba(5, 8, 22, 0.82),       /* stmavenie zvyšku stránky */
+    0 0 0 2px    rgba(0, 212, 255, 0.95),    /* ostrý cyan rámik */
+    0 0 0 7px    rgba(0, 212, 255, 0.22),    /* jemná aura */
+    0 0 34px 10px rgba(0, 212, 255, 0.6);    /* žiara */
+  transition: top    0.3s cubic-bezier(.4,0,.2,1),
+              left   0.3s cubic-bezier(.4,0,.2,1),
+              width  0.3s cubic-bezier(.4,0,.2,1),
+              height 0.3s cubic-bezier(.4,0,.2,1),
               opacity 0.18s;
 }
 .tour-hl.hidden { opacity: 0; pointer-events: none; }
+.tour-hl::after {
+  content: ''; position: absolute; inset: -5px;
+  border: 2px solid rgba(0, 212, 255, 0.7);
+  border-radius: 18px; pointer-events: none;
+  animation: tourPulse 1.7s ease-in-out infinite;
+}
+@keyframes tourPulse {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50%      { opacity: 0;    transform: scale(1.05); }
+}
 
 /* ── Popover card ──────────────────────────────────────────────────────────── */
 .tour-popover {
