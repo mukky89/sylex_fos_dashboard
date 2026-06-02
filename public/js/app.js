@@ -242,11 +242,7 @@ function _tourRender(idx) {
   // Stmavenie robí box-shadow na .tour-hl (zaoblená diera, bez švu); overlay len blokuje kliky
   overlay.classList.remove('tour-no-el');
 
-  if (getComputedStyle(target).position !== 'fixed') {
-    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
-  requestAnimationFrame(() => {
+  const measure = () => {
     const r = target.getBoundingClientRect();
     if (!r.width && !r.height) { noTarget(); return; }
     const pad = 8;
@@ -256,7 +252,25 @@ function _tourRender(idx) {
     hl.style.width = `${r.width + pad * 2}px`;
     hl.style.height = `${r.height + pad * 2}px`;
     _tourPlacePop(r, pop);
-  });
+  };
+
+  if (getComputedStyle(target).position === 'fixed') {
+    requestAnimationFrame(measure);
+  } else {
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    _afterScroll(measure);   // meraj až keď sa rolovanie zastaví
+  }
+}
+
+// Zavolá cb keď sa stránka prestane rolovať (alebo po ~1.9 s poistka)
+function _afterScroll(cb) {
+  let last = null, tries = 0;
+  const tick = () => {
+    const y = window.scrollY;
+    if (y === last || tries++ > 30) { cb(); return; }
+    last = y; setTimeout(tick, 60);
+  };
+  setTimeout(tick, 70);
 }
 
 function _tourPlacePop(rect, pop) {
