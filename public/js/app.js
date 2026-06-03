@@ -301,10 +301,87 @@ function _tourPlacePop(rect, pop) {
 }
 
 // Spustí appku po úspešnom prihlásení
+// ══════════════════════════════════════════════════════════════════════════════
+//  UI LAYOUT — alternatívny sidebar (konfigurovateľný v Admin → Vzhľad)
+// ══════════════════════════════════════════════════════════════════════════════
+const SB_THEMES = ['dark', 'light', 'minimal', 'icon', 'gradient'];
+let UI_CFG = { nav: 'header', sidebarTheme: 'dark' };
+
+function applyUiLayout() {
+  const b = document.body;
+  b.classList.toggle('layout-sidebar', UI_CFG.nav === 'sidebar');
+  SB_THEMES.forEach(t => b.classList.toggle('sbt-' + t, UI_CFG.nav === 'sidebar' && UI_CFG.sidebarTheme === t));
+  renderSidebarUser();
+}
+
+function renderSidebarUser() {
+  const el = document.getElementById('asbUser');
+  if (!el || !CURRENT_USER) return;
+  const name = CURRENT_USER.name || CURRENT_USER.username || '';
+  const initials = name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+  el.innerHTML = `<div class="asb-user">
+    <div class="asb-avatar">${escHtml(initials)}</div>
+    <div class="asb-user-info">
+      <span class="asb-user-name">${escHtml(name)}</span>
+      <span class="asb-user-mail">${escHtml(CURRENT_USER.email || (CURRENT_USER.role === 'admin' ? 'administrátor' : 'používateľ'))}</span>
+    </div>
+    <button class="asb-logout" onclick="logout()" title="Odhlásiť sa"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+  </div>`;
+}
+
+async function loadUiConfig() {
+  // 1) okamžite z localStorage (žiadny blik), 2) potvrď zo servera
+  try {
+    const cached = JSON.parse(localStorage.getItem('fos_ui') || 'null');
+    if (cached && cached.nav) { UI_CFG = { ...UI_CFG, ...cached }; applyUiLayout(); }
+  } catch {}
+  try {
+    const cfg = await fetch('/api/admin/config').then(r => r.json());
+    if (Array.isArray(cfg)) {
+      const get = k => cfg.find(c => c.key === k)?.value;
+      const nav = get('ui.nav'); const theme = get('ui.sidebarTheme');
+      if (nav) UI_CFG.nav = nav;
+      if (theme && SB_THEMES.includes(theme)) UI_CFG.sidebarTheme = theme;
+      localStorage.setItem('fos_ui', JSON.stringify(UI_CFG));
+      applyUiLayout();
+    }
+  } catch {}
+}
+
+async function _saveUiCfg(key, value) {
+  localStorage.setItem('fos_ui', JSON.stringify(UI_CFG));
+  try {
+    await fetch('/api/admin/config/' + key, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value })
+    });
+    const s = document.getElementById('apprSaved');
+    if (s) { s.textContent = '✓ Uložené'; s.classList.add('show'); setTimeout(() => s.classList.remove('show'), 1600); }
+  } catch {}
+}
+
+function setNavLayout(nav) {
+  UI_CFG.nav = nav; applyUiLayout(); renderAppearanceAdmin(); _saveUiCfg('ui.nav', nav);
+}
+function setSidebarTheme(theme) {
+  if (!SB_THEMES.includes(theme)) return;
+  UI_CFG.sidebarTheme = theme;
+  if (UI_CFG.nav !== 'sidebar') { UI_CFG.nav = 'sidebar'; applyUiLayout(); _saveUiCfg('ui.nav', 'sidebar'); }
+  else applyUiLayout();
+  renderAppearanceAdmin(); _saveUiCfg('ui.sidebarTheme', theme);
+}
+
+function renderAppearanceAdmin() {
+  document.querySelectorAll('.appr-layout').forEach(b => b.classList.toggle('active', b.dataset.nav === UI_CFG.nav));
+  document.querySelectorAll('.appr-theme').forEach(b => b.classList.toggle('active', b.dataset.theme === UI_CFG.sidebarTheme));
+  const sec = document.getElementById('apprThemeSection');
+  if (sec) sec.classList.toggle('dim', UI_CFG.nav !== 'sidebar');
+}
+
 function startApp() {
   renderUserChip();
   if (_appStarted) { loadNotif(); return; }
   _appStarted = true;
+  loadUiConfig();
   loadHeaderLinks();
   loadAppVersion();
   loadNotif();
@@ -617,6 +694,7 @@ async function handleHash(hash) {
 function _activatePage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(l => l.classList.toggle('active', l.dataset.page === name));
+  document.querySelectorAll('.asb-link').forEach(l => l.classList.toggle('active', l.dataset.page === name));
   const pg = document.getElementById('page-' + name);
   if (pg) pg.classList.add('active');
 }
@@ -2444,6 +2522,7 @@ function switchAdminTab(tab) {
   if (tab === 'links')  loadAdminLinks();
   if (tab === 'sensor') { loadSensorConfigAdmin(); loadSensorStats(); }
   if (tab === 'users') loadUsers();
+  if (tab === 'appearance') renderAppearanceAdmin();
 }
 
 // ── Header links management ──────────────────────────────────────────────
@@ -4120,6 +4199,8 @@ async function loadManagement() {
     card('Projekty', s.projectsTotal, (s.phases.vyroba || 0) + ' vo výrobe', 'st-cyan') +
     card('Interrogátory', s.igTotal, (s.igStatus.sklad || 0) + ' na sklade', 'st-cyan');
 
+  renderMgmtAnalytics(s);
+
   // Kto na čom pracuje
   const u = document.getElementById('mgmtUsers');
   if (!s.users.length) u.innerHTML = '<div class="mgmt-empty">Žiadne úlohy zatiaľ.</div>';
@@ -4165,6 +4246,151 @@ async function loadManagement() {
       }).join('');
     }
   }
+}
+
+// ── R&D & výrobné analytiky (vizuálne) ────────────────────────────────────────
+function _svgDonut(segs, size = 96) {
+  const r = size / 2 - 8, cx = size / 2, cy = size / 2, C = 2 * Math.PI * r;
+  const total = segs.reduce((a, s) => a + s.v, 0) || 1;
+  let off = 0;
+  const arcs = segs.filter(s => s.v > 0).map(s => {
+    const len = C * s.v / total;
+    const c = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.c}" stroke-width="11" stroke-dasharray="${len.toFixed(2)} ${(C - len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    off += len; return c;
+  }).join('');
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="11"/>${arcs}
+    <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" fill="currentColor" font-size="${(size * 0.28).toFixed(0)}" font-weight="700">${segs.reduce((a, s) => a + s.v, 0)}</text>
+  </svg>`;
+}
+function _svgGauge(pct, size = 124) {
+  pct = Math.max(0, Math.min(100, pct));
+  const r = size / 2 - 11, cx = size / 2, cy = size / 2, C = Math.PI * r;
+  const len = C * pct / 100;
+  const col = pct >= 85 ? '#10b981' : pct >= 55 ? '#fbbf24' : '#67e8f9';
+  const d = `M11 ${cy} A ${r} ${r} 0 0 1 ${size - 11} ${cy}`;
+  return `<svg width="${size}" height="${size / 2 + 8}" viewBox="0 0 ${size} ${size / 2 + 8}">
+    <path d="${d}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="11" stroke-linecap="round"/>
+    <path d="${d}" fill="none" stroke="${col}" stroke-width="11" stroke-linecap="round" stroke-dasharray="${len.toFixed(2)} ${C.toFixed(2)}"/>
+  </svg>`;
+}
+
+function renderMgmtAnalytics(s) {
+  const el = document.getElementById('mgmtAnalytics');
+  if (!el) return;
+  const cards = [];
+
+  // 1) Vyťaženie R&D tímu (kapacita) — z reálnych úloh
+  const users = s.users || [];
+  if (users.length) {
+    const utils = users.map(u => {
+      const util = Math.min(130, Math.round(u.open * 15 + u.overdue * 12));
+      return { name: u.name, util, open: u.open, overdue: u.overdue };
+    }).sort((a, b) => b.util - a.util);
+    const avg = Math.round(utils.reduce((a, u) => a + Math.min(100, u.util), 0) / utils.length);
+    const rows = utils.map(u => {
+      const w = Math.min(100, u.util);
+      const cls = u.util >= 90 ? 'hi' : u.util >= 60 ? 'mid' : 'lo';
+      return `<div class="an-cap-row">
+        <div class="an-cap-top"><span class="an-cap-name">${escHtml(u.name)}</span><span class="an-cap-pct">${u.util}%${u.util > 100 ? ' ⚠' : ''}</span></div>
+        <div class="an-cap-track"><div class="an-cap-fill ${cls}" style="width:${w}%"></div></div>
+        <div class="an-cap-sub">${u.open} aktívnych${u.overdue ? ' · ' + u.overdue + ' po termíne' : ''}</div>
+      </div>`;
+    }).join('');
+    const badge = avg >= 90 ? 'bad' : avg >= 70 ? 'warn' : 'ok';
+    cards.push(`<div class="an-card">
+      <div class="an-card-hdr"><span class="an-title">👥 Vyťaženie R&D tímu</span><span class="an-badge ${badge}">Ø ${avg}%</span></div>
+      ${rows}
+      <div class="an-foot-note">Odhad z počtu aktívnych úloh a sklzov · &gt;100 % = preťaženie</div>
+    </div>`);
+  }
+
+  // 2) Rozloženie projektov podľa fáz — donut (reálne)
+  const phaseColors = { koncept: '#6366f1', prototyp: '#00d4ff', testovanie: '#fbbf24', vyroba: '#10b981', ukoncene: '#64748b' };
+  const phaseSegs = Object.keys(PHASE_LABELS).map(k => ({ v: s.phases[k] || 0, c: phaseColors[k], l: PHASE_LABELS[k] }));
+  const phaseTotal = phaseSegs.reduce((a, x) => a + x.v, 0);
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">🗂️ Projekty podľa fáz</span><span class="an-badge info">${phaseTotal} spolu</span></div>
+    <div class="an-donut-wrap">
+      <div style="color:#e8f0fb">${_svgDonut(phaseSegs)}</div>
+      <div class="an-legend">${phaseSegs.map(x => `<div class="an-leg-row"><span class="an-leg-dot" style="background:${x.c}"></span>${x.l}<span class="an-leg-val">${x.v}</span></div>`).join('')}</div>
+    </div>
+  </div>`);
+
+  // 3) Výrobná kapacita interrogátorov — gauge (cieľ kvartál, ilustračný)
+  const produced = s.igTotal || 0;
+  const target = Math.max(24, Math.ceil((produced || 1) / 6) * 6 + 6);
+  const pct = Math.round(produced / target * 100);
+  const gBadge = pct >= 85 ? 'ok' : pct >= 55 ? 'warn' : 'bad';
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">🏭 Výrobná kapacita</span><span class="an-badge ${gBadge}">${pct}%</span></div>
+    <div class="an-gauge-wrap">
+      <div style="color:#e8f0fb">${_svgGauge(pct)}</div>
+      <div class="an-gauge-meta">
+        <div><span class="an-gauge-big">${produced}</span> / ${target}</div>
+        <div class="an-gauge-lbl">interrogátorov · cieľ kvartálu</div>
+        <div class="an-gauge-lbl">${s.igStatus?.oprava || 0} v oprave · ${s.igStatus?.sklad || 0} na sklade</div>
+      </div>
+    </div>
+    <div class="an-foot-note">Cieľ kvartálu je ilustračný (odvodený od stavu)</div>
+  </div>`);
+
+  // 4) Priepustnosť tímu (velocity) — 8 týždňov (ilustračný trend ukotvený na hotové úlohy)
+  const done = s.taskTotals?.done || 0;
+  const base = Math.max(3, Math.round(done / 8) || 4);
+  const wave = [0.7, 0.85, 0.6, 1.0, 0.8, 1.15, 0.95, 1.1];
+  const velo = wave.map((w, i) => Math.max(1, Math.round(base * w) + (i === 7 ? 0 : 0)));
+  const vmax = Math.max(...velo, 1);
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">⚡ Priepustnosť tímu</span><span class="an-badge info">${velo.reduce((a, b) => a + b, 0)} / 8 týž.</span></div>
+    <div class="an-bars">${velo.map((v, i) => `<div class="an-bar-col"><div class="an-bar-stack"><div class="an-bar real" style="height:${Math.round(v / vmax * 100)}%"></div></div><div class="an-bar-x">T${i + 1}</div></div>`).join('')}</div>
+    <div class="an-foot-note">Hotové úlohy / týždeň — ilustračný trend (Σ hotových: ${done})</div>
+  </div>`);
+
+  // 5) Plán vs. dostupná kapacita — najbližších 6 týždňov (ilustračné)
+  const teamCap = Math.max(1, users.length) * 5; // 5 "kapacitných bodov"/osoba/týždeň
+  const planW = [0.9, 1.05, 0.8, 1.2, 0.95, 0.7];
+  const pmax = Math.max(teamCap, ...planW.map(w => teamCap * w));
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">📅 Plán vs. kapacita</span><span class="an-badge info">6 týždňov</span></div>
+    <div class="an-bars">${planW.map((w, i) => {
+      const plan = Math.round(teamCap * w);
+      const ph = Math.round(teamCap / pmax * 100);
+      const planh = Math.round(plan / pmax * 100);
+      return `<div class="an-bar-col"><div class="an-bar-stack" style="flex-direction:row;align-items:flex-end;gap:2px;max-width:30px">
+        <div class="an-bar real" style="height:${planh}%;width:50%" title="Plán: ${plan}"></div>
+        <div class="an-bar plan" style="height:${ph}%;width:50%" title="Kapacita: ${teamCap}"></div>
+      </div><div class="an-bar-x">T${i + 1}</div></div>`;
+    }).join('')}</div>
+    <div class="an-bars-legend"><span><i style="background:linear-gradient(180deg,#00d4ff,#6366f1)"></i> Plán</span><span><i style="background:rgba(99,102,241,0.55)"></i> Dostupná kapacita</span></div>
+    <div class="an-foot-note">Kapacita = ${users.length || 0} ľudí × 5 b./týž. · ilustračné</div>
+  </div>`);
+
+  // 6) R&D pipeline — funnel (reálne fázy)
+  const fn = [
+    { l: 'Koncept', v: s.phases.koncept || 0, c: '#6366f1' },
+    { l: 'Prototyp', v: s.phases.prototyp || 0, c: '#00d4ff' },
+    { l: 'Testovanie', v: s.phases.testovanie || 0, c: '#fbbf24' },
+    { l: 'Výroba', v: s.phases.vyroba || 0, c: '#10b981' },
+  ];
+  const fmax = Math.max(...fn.map(x => x.v), 1);
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">🔬 R&D pipeline</span><span class="an-badge info">lievik</span></div>
+    <div class="an-funnel">${fn.map(x => `<div class="an-fn-row"><span class="an-fn-lbl">${x.l}</span><div class="an-fn-bar" style="width:${Math.max(12, x.v / fmax * 100)}%;background:${x.c}">${x.v}</div></div>`).join('')}</div>
+    <div class="an-foot-note">Počet projektov v jednotlivých fázach vývoja</div>
+  </div>`);
+
+  // 7) Interrogátory podľa stavu — stacked bar (reálne)
+  const igColors = { sklad: '#10b981', predany: '#6366f1', zakaznik: '#00d4ff', oprava: '#f59e0b', vyradeny: '#64748b' };
+  const igTot = s.igTotal || 0;
+  const igSegs = Object.keys(IGS_LABELS).map(k => ({ l: IGS_LABELS[k], v: s.igStatus[k] || 0, c: igColors[k] })).filter(x => x.v > 0);
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">📟 Interrogátory — stav</span><span class="an-badge info">${igTot} ks</span></div>
+    <div class="an-stackbar">${igTot ? igSegs.map(x => `<div class="an-stackbar-seg" style="width:${x.v / igTot * 100}%;background:${x.c}" title="${x.l}: ${x.v}"></div>`).join('') : ''}</div>
+    <div class="an-stack-legend">${igSegs.map(x => `<div class="an-leg-row"><span class="an-leg-dot" style="background:${x.c}"></span>${x.l}<span class="an-leg-val">${x.v}</span></div>`).join('') || '<span class="mgmt-empty">Žiadne interrogátory.</span>'}</div>
+  </div>`);
+
+  el.innerHTML = cards.join('');
 }
 
 async function renderMgmtQuestions() {
