@@ -81,6 +81,7 @@
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   let W = 0, H = 0, dpr = 1;
+  let _nz = [], _nzFrame = 0;   // šumové pole pre baseline spektra
 
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -322,11 +323,20 @@
 
     // === FBG REFLECTION PEAK ==================================================
     const steps = 280;
+    // šum: prepočítaj pole zhruba 12×/s (jemné "živé" mihanie baseline)
+    if (_nz.length !== steps + 1 || (_nzFrame++ % 5 === 0)) {
+      _nz = new Array(steps + 1);
+      for (let i = 0; i <= steps; i++) _nz[i] = Math.random();
+    }
+    const FLOOR = 0.012;   // DC úroveň noise floor (nad osou)
+    const NAMP  = 0.05;    // amplitúda zrnenia
     const pts   = [];
     for (let i = 0; i <= steps; i++) {
       const lam = LAMBDA_MIN + (i / steps) * (LAMBDA_MAX - LAMBDA_MIN);
       const r   = reflectivity(lam, lambdaB);
-      pts.push([xOf(lam, x0, w), baseY - r * plotH]);
+      // šum hlavne na spodku (kde r→0), vrchol peaku ostáva čistý
+      const noise = (FLOOR + _nz[i] * NAMP) * (1 - r);
+      pts.push([xOf(lam, x0, w), baseY - r * plotH - noise * plotH]);
     }
 
     // Peak color based on λB position (cyan → warm orange)

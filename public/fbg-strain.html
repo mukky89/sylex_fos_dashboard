@@ -236,7 +236,10 @@ function gauss(wl, center, amp, sigma){ return amp*Math.exp(-Math.pow(wl-center,
 function peakPath(center, amp) {
   const sigma = 0.35; let d = '';
   for (let wl = WL_MIN; wl <= WL_MAX; wl += 0.04) {
-    const y = Y1 - gauss(wl, center, amp, sigma) * (Y1-Y0);
+    const val  = gauss(wl, center, amp, sigma);
+    const norm = val / amp;                                   // 0..1
+    const noise = (0.012 + Math.random() * 0.05) * (1 - norm); // šum hlavne na spodku
+    const y = Y1 - (val + noise) * (Y1 - Y0);
     d += (d ? 'L' : 'M') + wlx(wl).toFixed(1) + ',' + y.toFixed(1) + ' ';
   }
   return d;
