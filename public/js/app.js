@@ -2721,6 +2721,231 @@ function cmdSearch(q) {
   });
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  FOS ASISTENT — vizuálny rule-based chatbot (bez externého LLM)
+// ══════════════════════════════════════════════════════════════════════════════
+let _botInit = false;
+
+// Báza znalostí: k = kľúčové slová, a = HTML odpoveď, go = stránka na otvorenie (voliteľné)
+const BOT_KB = [
+  { k: ['ahoj', 'cau', 'cаo', 'hello', 'hi', 'zdravim', 'dobry den', 'cica'],
+    a: 'Ahoj! 👋 Som <b>FOS Asistent</b>. Pomôžem ti zorientovať sa v dashboarde — opýtaj sa napr. „ako pridám postup?", „kde nájdem datasheet?" alebo „čo je vo Vývoji?".' },
+
+  { k: ['co vies', 'co dokazes', 'help', 'pomoc', 'na co si', 'co robis', 'ako mi pomozes', 'funkcie'],
+    a: 'Viem ťa naviesť po celom systéme. Hlavné moduly:<ul><li>📚 <b>WIKI FOS</b> — produkty a znalostná báza</li><li>📋 <b>Postupy</b> — pracovné postupy + export do Wordu</li><li>📅 <b>Kalendár</b> — udalosti, export do Excelu</li><li>✅ <b>Úlohy</b> — osobné úlohy</li><li>📧 <b>CRM</b> — kontakty a e-maily</li><li>🔬 <b>Vývoj</b> — projekty, testy, kalibrácie, FBG nástroje, interrogátory…</li><li>📈 <b>Management</b> — prehľad tímu</li></ul>Klikni na chip nižšie alebo napíš otázku.' },
+
+  { k: ['wiki', 'znalost', 'produkt', 'senzor produkt', 'katalog', 'baza'],
+    a: 'V <b>WIKI FOS</b> nájdeš produkty a znalostnú bázu FOS divízie. Otvoríš produkt kliknutím na kartu; vyhľadávať môžeš aj cez <code>Ctrl+K</code>.', go: 'wiki' },
+
+  { k: ['postup', 'procedur', 'navod', 'pracovny postup', 'instrukcia', 'work instruction'],
+    a: 'Modul <b>Postupy</b> obsahuje pracovné postupy s bohatým editorom (obrázky, výstrahy, PPE ikony). Nový postup pridáš tlačidlom <b>+ Nový postup</b>, hotový vieš <b>exportovať do Wordu</b> (s obsahom, obrázkami a krížovými odkazmi).', go: 'procedures' },
+
+  { k: ['ako pridam postup', 'novy postup', 'vytvorit postup', 'pridat postup'],
+    a: 'Pridanie postupu:<ul><li>Otvor modul <b>Postupy</b></li><li>Klikni <b>+ Nový postup</b></li><li>Vyplň názov, oddelenie a obsah v editore</li><li>Ulož — potom ho môžeš exportovať do Wordu</li></ul>', go: 'procedures' },
+
+  { k: ['kalendar', 'udalost', 'event', 'termin', 'stretnutie', 'porada'],
+    a: 'V <b>Kalendári</b> spravuješ udalosti tímu. Klikni na deň pre novú udalosť. Celý kalendár vieš <b>exportovať do Excelu</b> tlačidlom v hlavičke modulu.', go: 'calendar' },
+
+  { k: ['uloha', 'ulohy', 'task', 'todo', 'to do', 'co mam robit', 'moje ulohy'],
+    a: 'Modul <b>Úlohy</b> je tvoj osobný zoznam úloh — pridávaj, označuj ako hotové a sleduj stav. Manažér vidí súhrn úloh celého tímu v <b>Managemente</b>.', go: 'tasks' },
+
+  { k: ['crm', 'kontakt', 'email', 'mail', 'zakaznik', 'klient', 'firma'],
+    a: 'V <b>CRM</b> vedieš kontakty a e-mailovú komunikáciu. E-maily (<code>.eml</code>) vieš pridať jednoduchým <b>pretiahnutím</b> do okna (drag &amp; drop).', go: 'crm' },
+
+  { k: ['vyvoj', 'dev', 'projekt', 'kanban', 'test', 'kalibracia', 'prototyp', 'r&d', 'rnd'],
+    a: 'Sekcia <b>Vývoj</b> združuje R&amp;D nástroje:<ul><li>Projekty (kanban)</li><li>Testy &amp; Kalibrácie</li><li>Prototypy</li><li>Vlastníci PO/BO</li><li>Interrogátory S-line</li><li>Datasheety</li><li>FBG nástroje</li></ul>', go: 'dev' },
+
+  { k: ['datasheet', 'datovy list', 'specifikacia', 'sc-01', 'sc01'],
+    a: 'Datasheety nájdeš vo <b>Vývoji → Datasheety</b>. Každý datasheet vieš exportovať do <b>Wordu</b> s obrázkami a tabuľkami parametrov.', go: 'dev' },
+
+  { k: ['interrogator', 'interogator', 's-line', 'sline', 'jednotka', 'oprava'],
+    a: 'Register <b>Interrogátorov S-line</b> je vo Vývoji — evidujú sa kusy, ich stav a história opráv. Skladové počty vidno aj v <b>Managemente</b>.', go: 'dev' },
+
+  { k: ['fbg', 'peak', 'vlnova dlzka', 'wavelength', 'strain', 'napatie', 'kalkulacka', 'wdm', 'koeficient', 'bragg'],
+    a: 'FBG nástroje (vo Vývoji aj na samostatnej stránke <b>FBG</b>): vizualizácia spektra a posunu peaku, prepočet <b>vlnová dĺžka ↔ strain/teplota</b>, kalibračné koeficienty a <b>WDM plánovač</b> kanálov.', go: 'fbg' },
+
+  { k: ['management', 'manazer', 'prehlad', 'kto na com robi', 'dovolenka', 'vacation', 'summary', 'tim'],
+    a: 'Modul <b>Management</b> ukazuje, kto na čom pracuje, stav úloh a projektov, sklad interrogátorov a <b>prehľad dovoleniek</b>. Nájdeš tu aj anonymné otázky tímu.', go: 'mgmt' },
+
+  { k: ['anonym', 'otazka', 'spytat sa', 'anonymna otazka'],
+    a: 'Anonymné otázky pošleš v module <b>Management</b> — autor sa neukladá, takže sa môžeš pýtať bez obáv. Odpovedať/mazať môže len admin.', go: 'mgmt' },
+
+  { k: ['vyhladaj', 'vyhladavanie', 'hladat', 'search', 'najst', 'ctrl k', 'ctrl+k'],
+    a: 'Rýchle vyhľadávanie otvoríš klávesovou skratkou <code>Ctrl+K</code> (alebo <code>Cmd+K</code>). Hľadá naprieč produktmi, postupmi, novinkami aj odkazmi. Skús aj sem napísať názov a vyhľadám to za teba.' },
+
+  { k: ['admin', 'nastavenie', 'sprava', 'pouzivatel', 'user', 'heslo', 'odkazy', 'links'],
+    a: 'V <b>Admin</b> sekcii (len pre adminov) sa spravujú používatelia, odkazy v hlavičke, senzory a systémové nástroje (napr. naplnenie ukážkových dát).', go: 'admin' },
+
+  { k: ['prihlasenie', 'login', 'odhlasit', 'logout', 'heslo zabudol', 'prihlasit'],
+    a: 'Do systému sa prihlasuješ menom a heslom. Odhlásiš sa cez menu používateľa vpravo hore. Zabudnuté heslo ti resetuje administrátor cez Admin → Používatelia.' },
+
+  { k: ['pwa', 'mobil', 'aplikacia', 'android', 'install', 'instalovat', 'telefon', 'na plochu'],
+    a: 'Dashboard je <b>PWA</b> — vieš si ho nainštalovať do telefónu: otvor v prehliadači, ponuka → <b>Pridať na plochu</b>. Funguje aj offline (základné dáta).' },
+
+  { k: ['novinka', 'oznam', 'announcement', 'aktualita', 'news'],
+    a: 'Novinky/oznamy tímu sa zobrazujú na <b>Domovskej stránke</b>. Nový oznam pridáš cez tlačidlo <b>+</b> v hlavičke → Novinka.', go: 'home' },
+
+  { k: ['sprievodca', 'tour', 'preliadka', 'prehliadka', 'navod aplikacie'],
+    a: 'Interaktívneho <b>Sprievodcu</b> spustíš tlačidlom <b>Pomoc</b> vľavo dole — krok za krokom ťa prevedie všetkými modulmi aj podstránkami.' },
+
+  { k: ['teplota', 'vlhkost', 'thermo', 'klima', 'laborator klima'],
+    a: 'Aktuálna <b>teplota a vlhkosť</b> z laboratória sa ukazuje v pravom dolnom rohu. Klikni na ikonu grafu pre detail v module <b>Senzory</b>.', go: 'sensors' },
+
+  { k: ['vdaka', 'dakujem', 'super', 'diky', 'thanks', 'paradne'],
+    a: 'Nie je za čo! 😊 Ak budeš ešte niečo potrebovať, som tu vpravo dole.' },
+];
+
+const BOT_CHIPS = [
+  { t: 'Čo vieš?', q: 'co vies' },
+  { t: '📋 Pridať postup', q: 'ako pridam postup' },
+  { t: '🔬 Vývoj', q: 'vyvoj' },
+  { t: '📈 Management', q: 'management' },
+  { t: '🔍 Vyhľadávanie', q: 'vyhladavanie' },
+  { t: '📱 Mobilná appka', q: 'pwa' },
+];
+
+function _botStrip(s) {
+  return (s || '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // odstráň diakritiku
+    .replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function toggleBot() {
+  const panel = document.getElementById('botPanel');
+  const fab = document.getElementById('botFab');
+  if (!panel) return;
+  const opening = panel.classList.contains('hidden');
+  panel.classList.toggle('hidden');
+  if (fab) fab.style.display = opening ? 'none' : '';
+  if (opening) {
+    if (!_botInit) { _botInit = true; botGreet(); }
+    setTimeout(() => document.getElementById('botInput')?.focus(), 80);
+  }
+}
+
+function botGreet() {
+  botAddMsg('bot', 'Ahoj! 👋 Som <b>FOS Asistent</b>. Spýtaj sa ma na čokoľvek o systéme — alebo klikni na jednu z možností nižšie.');
+  botRenderChips();
+}
+
+function botRenderChips() {
+  const el = document.getElementById('botChips'); if (!el) return;
+  el.innerHTML = '';
+  BOT_CHIPS.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'bot-chip'; b.textContent = c.t;
+    b.onclick = () => { botAddMsg('user', escHtml(c.t)); botRespond(c.q); };
+    el.appendChild(b);
+  });
+}
+
+function botAddMsg(who, html, actionHtml) {
+  const box = document.getElementById('botMsgs'); if (!box) return null;
+  const wrap = document.createElement('div');
+  wrap.className = 'bot-msg ' + who;
+  const av = who === 'bot' ? '<div class="bot-msg-av">🤖</div>' : '';
+  wrap.innerHTML = `${av}<div class="bot-bubble">${html}${actionHtml || ''}</div>`;
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+  return wrap;
+}
+
+function botTyping(on) {
+  const box = document.getElementById('botMsgs'); if (!box) return;
+  let t = document.getElementById('botTyping');
+  if (on) {
+    if (t) return;
+    t = document.createElement('div');
+    t.id = 'botTyping'; t.className = 'bot-msg bot';
+    t.innerHTML = '<div class="bot-msg-av">🤖</div><div class="bot-bubble bot-typing"><span></span><span></span><span></span></div>';
+    box.appendChild(t); box.scrollTop = box.scrollHeight;
+  } else if (t) { t.remove(); }
+}
+
+function botSend() {
+  const inp = document.getElementById('botInput'); if (!inp) return;
+  const q = inp.value.trim(); if (!q) return;
+  inp.value = '';
+  botAddMsg('user', escHtml(q));
+  botRespond(q);
+}
+
+function botRespond(q) {
+  botTyping(true);
+  setTimeout(() => {
+    botTyping(false);
+    const hit = botMatch(q);
+    if (hit) {
+      let action = '';
+      if (hit.go) action = `<div><button class="bot-action" onclick="botGo('${hit.go}')">Otvoriť modul →</button></div>`;
+      botAddMsg('bot', hit.a, action);
+    } else {
+      botSearchFallback(q);
+    }
+  }, 360 + Math.random() * 320);
+}
+
+function botMatch(q) {
+  const s = _botStrip(q);
+  if (!s) return null;
+  const words = s.split(' ');
+  let best = null, bestScore = 0;
+  for (const item of BOT_KB) {
+    let score = 0;
+    for (const kw of item.k) {
+      const ks = _botStrip(kw);
+      if (!ks) continue;
+      if (s.includes(ks)) { score += ks.includes(' ') ? 5 : 3; continue; }
+      // čiastočná zhoda po slovách
+      if (words.some(w => w.length > 2 && ks.split(' ').some(p => p.startsWith(w) || w.startsWith(p)))) score += 1;
+    }
+    if (score > bestScore) { bestScore = score; best = item; }
+  }
+  return bestScore >= 2 ? best : null;
+}
+
+async function botSearchFallback(q) {
+  const s = _botStrip(q);
+  try {
+    if (!cmdCache) { botTyping(true); await loadCmdData(); botTyping(false); }
+  } catch { /* ignore */ }
+  const results = [];
+  const m = (txt) => txt && _botStrip(txt).includes(s);
+  (cmdCache?.prods || []).filter(p => m(p.name) || m(p.model)).slice(0, 4)
+    .forEach(p => results.push({ icon: '📚', label: p.name, sub: 'WIKI', go: () => { showPage('wiki'); setTimeout(() => openProduct(p._id), 240); } }));
+  (cmdCache?.procs || []).filter(p => m(p.title) || m(p.department)).slice(0, 4)
+    .forEach(p => results.push({ icon: '📋', label: p.title, sub: 'Postup', go: () => { showPage('procedures'); setTimeout(() => openProcedureById(p._id), 260); } }));
+  (cmdCache?.anns || []).filter(a => m(a.title)).slice(0, 3)
+    .forEach(a => results.push({ icon: '📢', label: a.title, sub: 'Novinka', go: () => showPage('home') }));
+
+  if (results.length) {
+    botAddMsg('bot', `Našiel som <b>${results.length}</b> ${results.length === 1 ? 'výsledok' : 'výsledkov'} pre „${escHtml(q)}":`);
+    const box = document.getElementById('botMsgs');
+    const wrap = document.createElement('div');
+    wrap.className = 'bot-msg bot';
+    wrap.innerHTML = '<div class="bot-msg-av">🔍</div><div class="bot-bubble" id="botResWrap"></div>';
+    box.appendChild(wrap);
+    const rw = wrap.querySelector('#botResWrap');
+    results.forEach((r, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'bot-action'; btn.style.marginRight = '6px';
+      btn.innerHTML = `${r.icon} ${escHtml(r.label)} <span style="opacity:.6">· ${r.sub}</span>`;
+      btn.onclick = () => { r.go(); toggleBot(); };
+      rw.appendChild(btn);
+    });
+    box.scrollTop = box.scrollHeight;
+  } else {
+    botAddMsg('bot', `Hmm, na „${escHtml(q)}" nemám priamu odpoveď. 🤔 Skús to inak, alebo klikni na niektorú z možností:`);
+    botRenderChips();
+  }
+}
+
+function botGo(page) {
+  const panel = document.getElementById('botPanel');
+  if (panel && !panel.classList.contains('hidden')) toggleBot();
+  showPage(page);
+}
+
 // ── Rýchle pridanie (+) ───────────────────────────────────────────────────────
 function toggleQuickAdd(e) {
   e.stopPropagation();
