@@ -68,90 +68,89 @@ function tokenQS() { return AUTH_TOKEN ? ('?token=' + encodeURIComponent(AUTH_TO
 // ==============================
 
 const TOUR_STEPS = [
-  {
-    el: null,
+  { page: 'home', el: null,
     title: '👋 Vitaj v FOS Dashboard!',
-    desc: 'Tento sprievodca ťa prevedie všetkými modulmi dashboardu a vysvetlí čo kde nájdeš. Naviguj tlačidlami <strong>Ďalší / Späť</strong> alebo klávesmi <kbd>→</kbd> / <kbd>←</kbd>. Kedykoľvek ukonči klávesom <kbd>Esc</kbd> alebo kliknutím mimo panel.',
+    desc: 'Tento sprievodca ťa prevedie <strong>všetkými modulmi</strong> — a postupne otvorí každú podstránku a ukáže jej komponenty. Naviguj tlačidlami <strong>Ďalší / Späť</strong> alebo klávesmi <kbd>→</kbd> / <kbd>←</kbd>. Ukonči <kbd>Esc</kbd>.',
   },
-  {
-    el: '.logo',
+  { page: 'home', el: '.logo',
     title: 'FOS Dashboard — logo',
-    desc: 'Kliknutím na logo sa kedykoľvek vrátiš na úvodnú stránku. <strong>FOS Dashboard</strong> je centrálny hub pre Fiber Optics Sensors divíziu — dokumentácia, systémy a nástroje na jednom mieste.',
+    desc: 'Kliknutím na logo sa kedykoľvek vrátiš na úvod. <strong>FOS Dashboard</strong> je centrálny hub pre divíziu Fiber Optics Sensors.',
   },
-  {
-    el: '#headerQuicklinks',
+  { page: 'home', el: '#headerQuicklinks',
     title: '🔗 Rýchle linky',
-    desc: 'Okamžitý prístup k interným systémom:<ul><li><strong>DBFOS</strong> — databáza projektov FOS</li><li><strong>ISYS</strong> — ERP systém Sylex</li><li><strong>PEAKLOGGER 🔑</strong> — záznamy meraní (klik = prihlasovacie údaje)</li></ul>Tlačidlo <strong>Linky ▾</strong> odkryje Dochádzku, Obedy a SharePoint linky.',
+    desc: 'Prístup k interným systémom: <strong>DBFOS</strong>, <strong>ISYS</strong>, <strong>PEAKLOGGER 🔑</strong>. Rozbalovacie menu odkryje Dochádzku, Obedy a SharePoint.',
   },
-  {
-    el: '.nav',
+  { page: 'home', el: '.header-right',
+    title: '🔍 Rýchle akcie v hlavičke',
+    desc: 'Vpravo: <strong>vyhľadávanie (Ctrl+K)</strong> naprieč celým dashboardom, <strong>rýchle pridanie (+)</strong>, <strong>notifikácie 🔔</strong> a prihlásený používateľ s odhlásením.',
+  },
+  { page: 'home', el: '.nav',
     title: '🧭 Hlavná navigácia',
-    desc: 'Všetky moduly dashboardu v jednom riadku. Ikonky sa plynulo rozvinú s názvom pri nabehnutí myšou. Aktívna stránka je vždy zvýraznená. Nasledujúce kroky každý modul podrobnejšie opíšu.',
+    desc: 'Všetky moduly v jednom riadku. Teraz ťa sprievodca po nich postupne <strong>preklikne a ukáže ich obsah</strong>.',
   },
-  {
-    el: '[data-page="wiki"]',
+
+  // ── Podstránky ──
+  { page: 'wiki', el: '#page-wiki .sidebar',
     title: '📖 WIKI — Knowledge Base',
-    desc: 'Centralizovaná technická dokumentácia: zariadenia, softvér, sieťová infraštruktúra FOS. Záznamy sú v kategóriách, s fulltextovým vyhľadávaním a podporou obrázkov. <em>Ideálne pre návody, konfigurácie a datasheety.</em>',
+    desc: 'Technická dokumentácia v kategóriách. Vľavo je <strong>vyhľadávanie</strong>, zoznam kategórií a tlačidlo <strong>+ Nový záznam</strong>. Podporuje obrázky a rich-text.',
   },
-  {
-    el: '[data-page="calendar"]',
+  { page: 'calendar', el: '#page-calendar .cal-toolbar',
     title: '📅 Kalendár',
-    desc: 'Prehľad udalostí tímu: porady, <strong>dovolenky</strong>, služobné cesty, PN. Plánované dovolenky sa automaticky zobrazujú aj v <em>Manažment prehľade</em>. Podporuje export do Excelu.',
+    desc: 'Udalosti tímu — porady, <strong>dovolenky</strong>, služobné cesty, PN. Tu prepínaš mesiace a exportuješ do <strong>Excelu</strong>. Dovolenky sa premietnu do Manažmentu.',
   },
-  {
-    el: '[data-page="procedures"]',
+  { page: 'procedures', el: '#procListView',
     title: '📋 Pracovné postupy',
-    desc: 'Štandardizované SOP pre laboratórium FOS — lepenie vlákien, kalibrácie, manipulácia s chemikáliami. Každý postup obsahuje <strong>kroky, BOZP pokyny, ochranné pomôcky</strong> a prílohy.',
+    desc: 'Štandardizované SOP. Každý postup má <strong>operácie (rich-text), BOZP upozornenia, ochranné pomôcky, obrázky</strong> a export do <strong>Wordu</strong> aj náhľad/tlač.',
   },
-  {
-    el: '[data-page="fbg"]',
+  { page: 'fbg', el: '#page-fbg .fbg-frame-card',
     title: '📡 FBG Peak — vizualizácia',
-    desc: 'Interaktívna vizualizácia <strong>Fibre Bragg Grating</strong> senzorov:<ul><li><em>Animovaná mriežka</em> — grating zóna sa rozťahuje/zmršťuje, farebné spektrum</li><li><em>Strain Cable SC-01</em> — simulácia pnutia s heat-map farbením (modrá 0µε → červená 5000µε)</li></ul>',
+    desc: 'Interaktívna animácia FBG senzorov: naťahovanie mriežky a <strong>posun odrazového peaku</strong>. Nižšie je simulácia <strong>Strain Cable SC-01</strong> s farebnou heat-mapou pnutia.',
   },
-  {
-    el: '[data-page="dev"]',
-    title: '⭐ Vývoj výrobkov',
-    desc: 'Správa vývojového procesu — 7 záložiek:<ul><li><strong>Projekty</strong> — kanban podľa fáz</li><li><strong>Testy, Kalibrácie, Prototypy</strong></li><li><strong>Interrogátory S-line</strong> — inventár so zákazníkmi</li><li><strong>Datasheety</strong> — export do Word</li></ul>',
+  { page: 'dev', el: '#page-dev .admin-tabs',
+    title: '⭐ Vývoj výrobkov — 9 záložiek',
+    desc: 'Projekty (kanban), Testy, Kalibrácie, Prototypy, Vlastníci (PO/BO), <strong>Interrogátory S-line</strong>, Datasheety a <strong>FBG nástroje</strong> (kalkulačka + WDM plánovač).',
   },
-  {
-    el: '[data-page="tasks"]',
+  { page: 'dev', el: '#projectsBoard',
+    title: '🗂️ Projekty — kanban',
+    desc: 'Projekty po fázach <strong>Koncept → Prototyp → Testovanie → Výroba → Ukončené</strong>. Kartu posúvaš medzi fázami šípkami, klik = úprava.',
+  },
+  { page: 'tasks', el: '#page-tasks .tasks-filters',
     title: '✅ Úlohy',
-    desc: 'Správa úloh pre tím — priradenie osobe, termín, priorita, projekt. Úlohy po termíne sú červene zvýraznené. Celkový prehľad plnenia nájdeš v <em>Manažment dashboarde</em>.',
+    desc: 'Tvoje osobné úlohy — termín, priorita, odškrtnutie. Filtre <strong>Aktívne / Všetky / Hotové</strong>. Úlohy s termínom dnes/po termíne sa zobrazia aj v notifikáciách.',
   },
-  {
-    el: '[data-page="crm"]',
-    title: '👥 CRM — zákazníci & kontakty',
-    desc: 'Evidencia zákazníkov a partnerov. Funkcie:<ul><li><strong>Import emailov drag-and-drop</strong> (.eml / .msg) s automatickým parsovaním</li><li>Komunikácia per-kontakt, filtre podľa stavu</li><li>Stavy: Lead → Aktívny → Neaktívny</li></ul>',
+  { page: 'crm', el: '#page-crm .crm-sidebar',
+    title: '👥 CRM — zákazníci & emaily',
+    desc: 'Evidencia kontaktov a komunikácie. <strong>Pretiahni email (.eml/.msg)</strong> do schránky → automaticky sa rozparsuje a priradí ku kontaktu.',
   },
-  {
-    el: '[data-page="mgmt"]',
+  { page: 'mgmt', el: '#page-mgmt .mgmt-grid',
     title: '📊 Manažment — prehľad',
-    desc: 'Dashboard pre vedenie:<ul><li>Kto na čom pracuje (úlohy + projekty)</li><li><strong>🏖️ Dovolenky</strong> — aktuálne a najbližších 30 dní</li><li>Stav projektov podľa fáz</li><li>Anonymné otázky pre manažment</li></ul>',
+    desc: 'Kto na čom pracuje, stav úloh a projektov, <strong>🏖️ dovolenky</strong>, sklad interrogátorov a <strong>anonymné otázky</strong> pre vedenie.',
   },
-  {
-    el: '[data-page="admin"]',
+  { page: 'admin', el: '#page-admin .admin-tabs',
     title: '⚙️ Administrácia',
-    desc: 'Správa dashboardu pre <strong>Admin</strong> rolu:<ul><li>Linky v hlavičke — pridávanie, úprava, poradie</li><li>Nastavenia senzora T3511 (IP, interval)</li><li>Správa používateľov a systémové nastavenia</li></ul>',
+    desc: 'Pre admin rolu: linky v hlavičke, nastavenia senzora T3511, <strong>správa používateľov</strong> a systém (ukážkové dáta).',
   },
-  {
-    el: '#annSection',
-    title: '📢 Oznámenia od vedenia',
-    desc: 'Dôležité správy priamo na úvodnej stránke. Typy: <strong>📢 Info · 🚨 Dôležité · ⚠️ Upozornenie · ✅ Vyriešené</strong>. Oznámenia možno pripnúť navrch, upravovať a archivovať — zostávajú dostupné v archíve.',
+
+  // ── Späť na úvod ──
+  { page: 'home', el: '.home-news-section',
+    title: '📢 Novinky / oznámenia',
+    desc: 'Dôležité správy priamo na úvode (info / dôležité / upozornenie / vyriešené). Možno ich pripnúť navrch a upravovať.',
   },
-  {
-    el: '.home-kb-section',
-    title: '📚 Knowledge Base — náhľad',
-    desc: 'Rýchly prístup k dokumentácii z úvodnej stránky: fulltextové vyhľadávanie, prehľad kategórií a posledné záznamy. Pre plnú správu klikni <em>Otvoriť KB</em> alebo naviguj do modulu <em>WIKI</em>.',
+  { page: 'home', el: '.home-side',
+    title: '📅 Kalendár + ✅ úlohy na úvode',
+    desc: 'Vpravo na úvode máš najbližšie udalosti z kalendára a svoje aktívne úlohy — rýchle odškrtnutie aj preklik na detail.',
   },
-  {
-    el: '.thermo-corner',
+  { page: 'home', el: '.thermo-corner',
     title: '🌡️ Live merania senzora',
-    desc: 'Aktuálne hodnoty zo <strong>senzora T3511</strong> v laboratóriu FOS — teplota (°C) a vlhkosť (%RH). Kliknutím sa dostaneš na stránku <em>Senzory</em> s grafom histórie. Dáta sa obnovujú každých 60 sekúnd.',
+    desc: 'Aktuálna teplota a vlhkosť zo senzora T3511 v labe. Klik → graf histórie. Obnovuje sa automaticky.',
   },
-  {
-    el: null,
+  { page: 'home', el: '.tour-fab',
+    title: '❓ Pomoc kedykoľvek',
+    desc: 'Týmto tlačidlom spustíš sprievodcu znova kedykoľvek.',
+  },
+  { page: 'home', el: null,
     title: '🎉 Sprievodca dokončený!',
-    desc: 'Teraz poznáš všetky moduly FOS Dashboard. Ak niekedy zabudneš kde čo nájsť — klikni na tlačidlo <strong>Pomoc ?</strong> v ľavom dolnom rohu. Sprievodca je dostupný kedykoľvek.<br><br><strong>Príjemnú prácu!</strong> 🚀',
+    desc: 'Teraz poznáš všetky moduly FOS Dashboard aj ich obsah. <strong>Príjemnú prácu!</strong> 🚀',
   },
 ];
 
@@ -235,31 +234,48 @@ function _tourRender(idx) {
     pop.style.cssText = 'top:50%;left:50%;transform:translate(-50%,-50%);';
   };
 
-  if (!step.el) { noTarget(); return; }
-  const target = document.querySelector(step.el);
-  if (!target) { noTarget(); return; }
-
-  // Stmavenie robí box-shadow na .tour-hl (zaoblená diera, bez švu); overlay len blokuje kliky
-  overlay.classList.remove('tour-no-el');
-
-  const measure = () => {
-    const r = target.getBoundingClientRect();
-    if (!r.width && !r.height) { noTarget(); return; }
-    const pad = 8;
-    hl.classList.remove('hidden');
-    hl.style.top = `${r.top - pad}px`;
-    hl.style.left = `${r.left - pad}px`;
-    hl.style.width = `${r.width + pad * 2}px`;
-    hl.style.height = `${r.height + pad * 2}px`;
-    _tourPlacePop(r, pop);
-  };
-
-  if (getComputedStyle(target).position === 'fixed') {
-    requestAnimationFrame(measure);
-  } else {
-    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    _afterScroll(measure);   // meraj až keď sa rolovanie zastaví
+  // Ak krok patrí na inú stránku, najprv tam prejdi
+  if (step.page && _activePageName() !== step.page) {
+    showPage(step.page);
   }
+
+  if (!step.el) { noTarget(); return; }
+
+  // Počkaj kým je cieľový prvok v DOM a viditeľný (podstránky sa načítavajú async)
+  _waitForEl(step.el, (target) => {
+    if (!target) { noTarget(); return; }
+    overlay.classList.remove('tour-no-el');
+
+    const measure = () => {
+      const r = target.getBoundingClientRect();
+      if (!r.width && !r.height) { noTarget(); return; }
+      const pad = 8;
+      hl.classList.remove('hidden');
+      hl.style.top = `${r.top - pad}px`;
+      hl.style.left = `${r.left - pad}px`;
+      hl.style.width = `${r.width + pad * 2}px`;
+      hl.style.height = `${r.height + pad * 2}px`;
+      _tourPlacePop(r, pop);
+    };
+
+    if (getComputedStyle(target).position === 'fixed') {
+      requestAnimationFrame(measure);
+    } else {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      _afterScroll(measure);
+    }
+  });
+}
+
+function _activePageName() {
+  return (document.querySelector('.page.active')?.id || '').replace('page-', '');
+}
+// Počká kým prvok existuje a má rozmer (max ~2.7 s), potom zavolá cb
+function _waitForEl(sel, cb, tries = 0) {
+  const t = document.querySelector(sel);
+  if (t && (t.offsetWidth || t.offsetHeight || t.getClientRects().length)) return cb(t);
+  if (tries > 45) return cb(t || null);
+  setTimeout(() => _waitForEl(sel, cb, tries + 1), 60);
 }
 
 // Zavolá cb keď sa stránka prestane rolovať (alebo po ~1.9 s poistka)
