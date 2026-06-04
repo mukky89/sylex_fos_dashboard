@@ -674,6 +674,7 @@ async function handleHash(hash) {
   if (hash === 'fbg')     { _activatePage('fbg'); return; }
   if (hash === 'calendar') { _activatePage('calendar'); loadCalendar(); return; }
   if (hash === 'procedures') { _activatePage('procedures'); loadProcedures(); return; }
+  if (hash === 'guides')  { _activatePage('guides');  loadGuides(); return; }
   if (hash === 'dev')     { _activatePage('dev');     loadDev(); return; }
   if (hash === 'tasks')   { _activatePage('tasks');   loadTasks(); return; }
   if (hash === 'crm')     { _activatePage('crm');     loadCrm(); return; }
@@ -707,6 +708,7 @@ function showPage(name) {
   if (name === 'sensors') { loadThermoData(); loadSensorChart(); }
   if (name === 'calendar') loadCalendar();
   if (name === 'procedures') loadProcedures();
+  if (name === 'guides')  loadGuides();
   if (name === 'dev')     loadDev();
   if (name === 'tasks')   loadTasks();
   if (name === 'crm')     loadCrm();
@@ -2506,6 +2508,309 @@ async function deleteProcedure(id) {
   } catch { alert('Chyba pri odstraňovaní'); }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  NÁVODY (Guides) — dokumenty s revíziami, rich-text obsah, Word export
+// ══════════════════════════════════════════════════════════════════════════════
+let guidesData = [];
+let guideEditor = null;       // SylexEditor handle pre hlavný obsah
+let currentGuide = null;      // práve otvorený návod (vrátane revisions[])
+
+async function loadGuides() {
+  backToGuideList();
+  const list = document.getElementById('guideList');
+  if (list) list.innerHTML = '<div class="admin-loading">Načítavam…</div>';
+  try {
+    const r = await fetch('/api/guides');
+    guidesData = await r.json();
+    if (!Array.isArray(guidesData)) guidesData = [];
+  } catch { guidesData = []; }
+  renderGuides();
+}
+
+function backToGuideList() {
+  document.getElementById('guideEditView')?.classList.add('hidden');
+  document.getElementById('guideListView')?.classList.remove('hidden');
+}
+
+function renderGuides() {
+  const list = document.getElementById('guideList');
+  if (!list) return;
+  const q = (document.getElementById('guideSearch')?.value || '').toLowerCase();
+  const items = guidesData.filter(g =>
+    !q || (g.title || '').toLowerCase().includes(q) ||
+    (g.category || '').toLowerCase().includes(q) ||
+    (g.author || '').toLowerCase().includes(q)
+  );
+  if (items.length === 0) {
+    list.innerHTML = guidesData.length === 0
+      ? '<div class="proc-empty">Zatiaľ žiadne návody.<div class="proc-empty-actions"><button class="btn-primary" onclick="openGuideModal()">+ Vytvoriť prvý návod</button></div></div>'
+      : '<div class="proc-empty">Žiadne výsledky pre zadané hľadanie.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  items.forEach(g => {
+    const revCount = g.revCount != null ? g.revCount : (g.revisions || []).length;
+    const card = document.createElement('div');
+    card.className = 'proc-card';
+    card.innerHTML = `
+      <div class="proc-card-main" onclick="openGuideById('${g._id}')">
+        <div class="proc-card-top">
+          <span class="proc-card-title">${escHtml(g.title)}</span>
+          <span class="guide-rev-chip">r${g.rev || 1}</span>
+          <span class="proc-status-badge proc-status-${g.status}">${PROC_STATUS[g.status] || g.status}</span>
+        </div>
+        <div class="proc-card-meta">
+          ${g.category ? `<span>🗂️ ${escHtml(g.category)}</span>` : ''}
+          ${g.author ? `<span>👤 ${escHtml(g.author)}</span>` : ''}
+          <span>🏷 ${revCount} ${revCount === 1 ? 'revízia' : (revCount >= 2 && revCount <= 4 ? 'revízie' : 'revízií')}</span>
+          <span>🕒 ${fmtDate(g.updatedAt)}</span>
+        </div>
+      </div>
+      <div class="proc-card-actions">
+        <button class="btn-word" onclick="generateGuideWord('${g._id}')" title="Stiahnuť ako Word">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Word
+        </button>
+        <button class="admin-icon-btn" onclick="openGuideById('${g._id}')" title="Upraviť">✎</button>
+        <button class="admin-icon-btn danger" onclick="deleteGuide('${g._id}')" title="Odstrániť">✕</button>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+function generateGuideWord(id) { window.location.href = `/api/guides/${id}/docx` + tokenQS(); }
+
+async function openGuideById(id) {
+  let g = null;
+  try { g = await fetch('/api/guides/' + id).then(r => r.json()); } catch {}
+  if (!g || g.error) { alert('Návod sa nepodarilo načítať'); return; }
+  openGuideModal(g);
+}
+
+function addGuideAttRow(att = {}) {
+  const c = document.getElementById('gdAttRows');
+  const row = document.createElement('div');
+  row.className = 'proc-row';
+  row.innerHTML = `
+    <input type="text" class="gd-att-label" placeholder="Popis" value="${escHtml(att.label || '')}">
+    <input type="text" class="gd-att-url" placeholder="Odkaz / cesta" value="${escHtml(att.url || '')}">
+    <button type="button" class="proc-row-del" onclick="procRemoveRow(this)" title="Odstrániť">✕</button>`;
+  c.appendChild(row);
+}
+
+function openGuideModal(guide = null) {
+  const isEdit = guide && typeof guide === 'object';
+  currentGuide = isEdit ? guide : null;
+  document.getElementById('guideModalTitle').textContent = isEdit ? 'Upraviť návod' : 'Nový návod';
+  document.getElementById('gdId').value       = isEdit ? guide._id : '';
+  document.getElementById('gdTitle').value    = isEdit ? (guide.title || '') : '';
+  document.getElementById('gdCategory').value = isEdit ? (guide.category || '') : '';
+  document.getElementById('gdAuthor').value   = isEdit ? (guide.author || '') : (CURRENT_USER ? (CURRENT_USER.name || CURRENT_USER.username || '') : '');
+  document.getElementById('gdDate').value     = isEdit && guide.date ? String(guide.date).slice(0, 10) : calYmd(new Date());
+  document.getElementById('gdSummary').value  = isEdit ? (guide.summary || '') : '';
+  const statusVal = isEdit ? (guide.status || 'active') : 'active';
+  const sr = document.querySelector(`input[name="gdStatus"][value="${statusVal}"]`); if (sr) sr.checked = true;
+
+  document.getElementById('guideDeleteBtn').style.display = isEdit ? '' : 'none';
+  document.getElementById('guideRevBtn').style.display = isEdit ? '' : 'none';
+  const chip = document.getElementById('guideRevChip');
+  if (chip) { chip.style.display = isEdit ? '' : 'none'; chip.textContent = isEdit ? ('r' + (guide.rev || 1)) : ''; }
+
+  // Prílohy
+  document.getElementById('gdAttRows').innerHTML = '';
+  ((isEdit && guide.attachments) || []).forEach(addGuideAttRow);
+
+  // Hlavný rich-text editor
+  if (guideEditor) { try { guideEditor.destroy(); } catch (_) {} guideEditor = null; }
+  const edEl = document.getElementById('gdContentEditor');
+  edEl.innerHTML = '';
+  guideEditor = mountStepEditor(edEl, isEdit ? (guide.content || '') : '');
+
+  renderGuideRevisions();
+
+  document.getElementById('guideListView').classList.add('hidden');
+  document.getElementById('guideEditView').classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+function closeGuideModal() {
+  if (guideEditor) { try { guideEditor.destroy(); } catch (_) {} guideEditor = null; }
+  document.getElementById('guideEditView').classList.add('hidden');
+  document.getElementById('guideListView').classList.remove('hidden');
+  currentGuide = null;
+}
+
+function collectGuideForm() {
+  const atts = [...document.querySelectorAll('#gdAttRows .proc-row')].map(r => ({
+    label: r.querySelector('.gd-att-label').value.trim(),
+    url:   r.querySelector('.gd-att-url').value.trim()
+  })).filter(a => a.label || a.url);
+  return {
+    title:    document.getElementById('gdTitle').value.trim(),
+    category: document.getElementById('gdCategory').value.trim(),
+    author:   document.getElementById('gdAuthor').value.trim(),
+    date:     document.getElementById('gdDate').value || null,
+    summary:  document.getElementById('gdSummary').value.trim(),
+    content:  guideEditor ? guideEditor.getHTML() : '',
+    status:   (document.querySelector('input[name="gdStatus"]:checked') || {}).value || 'active',
+    attachments: atts
+  };
+}
+
+async function saveGuide() {
+  const body = collectGuideForm();
+  if (!body.title) { alert('Zadajte názov návodu'); return; }
+  const id = document.getElementById('gdId').value;
+  try {
+    const endpoint = id ? '/api/guides/' + id : '/api/guides';
+    const method   = id ? 'PUT' : 'POST';
+    const resp = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!resp.ok) { const e = await resp.json().catch(() => ({})); alert('Chyba ' + resp.status + ': ' + (e.error || '')); return; }
+    const saved = await resp.json();
+    // Ostaň v editore (aby šlo hneď vytvoriť revíziu), len obnov stav
+    currentGuide = saved;
+    document.getElementById('gdId').value = saved._id;
+    document.getElementById('guideDeleteBtn').style.display = '';
+    document.getElementById('guideRevBtn').style.display = '';
+    const chip = document.getElementById('guideRevChip');
+    if (chip) { chip.style.display = ''; chip.textContent = 'r' + (saved.rev || 1); }
+    document.getElementById('guideModalTitle').textContent = 'Upraviť návod';
+    renderGuideRevisions();
+    // Aktualizuj zoznam na pozadí
+    loadGuidesSilent();
+    toastGuide('Uložené ✓');
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+async function loadGuidesSilent() {
+  try { const r = await fetch('/api/guides'); const d = await r.json(); if (Array.isArray(d)) guidesData = d; } catch {}
+}
+
+async function createGuideRevision() {
+  const id = document.getElementById('gdId').value;
+  const body = collectGuideForm();
+  if (!body.title) { alert('Najprv zadajte názov a uložte návod'); return; }
+  if (!id) { alert('Najprv uložte návod (vznikne revízia r1), potom môžete pridávať ďalšie.'); return; }
+  const note = window.prompt('Popis zmeny pre novú revíziu (changelog):', '');
+  if (note === null) return;
+  try {
+    const resp = await fetch('/api/guides/' + id + '/revisions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...body, note })
+    });
+    if (!resp.ok) { const e = await resp.json().catch(() => ({})); alert('Chyba: ' + (e.error || resp.status)); return; }
+    currentGuide = await resp.json();
+    const chip = document.getElementById('guideRevChip');
+    if (chip) chip.textContent = 'r' + (currentGuide.rev || 1);
+    renderGuideRevisions();
+    loadGuidesSilent();
+    toastGuide('Revízia r' + currentGuide.rev + ' vytvorená ✓');
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+function renderGuideRevisions() {
+  const el = document.getElementById('gdRevList');
+  if (!el) return;
+  const id = document.getElementById('gdId').value;
+  const revs = (currentGuide && currentGuide.revisions) ? currentGuide.revisions.slice().sort((a, b) => b.rev - a.rev) : [];
+  if (!id) { el.innerHTML = '<div class="guide-rev-empty">Uložením návodu vznikne prvá revízia (r1).</div>'; return; }
+  if (!revs.length) { el.innerHTML = '<div class="guide-rev-empty">Žiadne revízie. Klikni „+ Nová".</div>'; return; }
+  const curRev = currentGuide.rev || revs[0].rev;
+  el.innerHTML = revs.map(r => `
+    <div class="guide-rev-item${r.rev === curRev ? ' current' : ''}">
+      <div class="guide-rev-item-top">
+        <span class="guide-rev-tag">r${r.rev}</span>
+        <span class="guide-rev-date">${fmtDate(r.date)}</span>
+      </div>
+      ${r.note ? `<div class="guide-rev-msg">${escHtml(r.note)}</div>` : ''}
+      ${r.author ? `<div class="guide-rev-auth">👤 ${escHtml(r.author)}</div>` : ''}
+      <div class="guide-rev-actions">
+        <button class="btn-xs" onclick="viewGuideRevision(${r.rev})" title="Zobraziť">👁</button>
+        <button class="btn-xs" onclick="generateGuideRevWord('${id}', ${r.rev})" title="Word">📄</button>
+        <button class="btn-xs" onclick="restoreGuideRevision(${r.rev})" title="Obnoviť do editora">↩ Obnoviť</button>
+      </div>
+    </div>`).join('');
+}
+
+function generateGuideRevWord(id, rev) { window.location.href = `/api/guides/${id}/revisions/${rev}/docx` + tokenQS(); }
+
+function viewGuideRevision(rev) {
+  const r = (currentGuide.revisions || []).find(x => x.rev === rev);
+  if (!r) return;
+  document.getElementById('guidePreviewTitle').textContent = `👁 Revízia r${rev} — ${currentGuide.title || ''}`;
+  document.getElementById('guidePreviewBody').innerHTML = buildGuideDetailHtml({
+    ...currentGuide, title: r.title || currentGuide.title, summary: r.summary, content: r.content, rev: r.rev, date: r.date
+  });
+  const foot = document.getElementById('guidePreviewFoot');
+  foot.innerHTML = `<button class="btn-secondary" onclick="closeGuidePreview()">Zavrieť</button>
+    <button class="btn-sm" onclick="generateGuideRevWord('${currentGuide._id}', ${rev})">📄 Word</button>
+    <button class="btn-primary" onclick="restoreGuideRevision(${rev}); closeGuidePreview();">↩ Obnoviť túto revíziu</button>`;
+  document.getElementById('guidePreviewModal').classList.remove('hidden');
+}
+
+async function restoreGuideRevision(rev) {
+  const id = document.getElementById('gdId').value;
+  if (!id) return;
+  if (!confirm(`Obnoviť obsah z revízie r${rev} do editora? Aktuálne neuložené zmeny sa prepíšu (vytvorenie revízie ostáva zachované).`)) return;
+  try {
+    const resp = await fetch(`/api/guides/${id}/restore/${rev}`, { method: 'POST' });
+    if (!resp.ok) { alert('Obnova zlyhala'); return; }
+    currentGuide = await resp.json();
+    // Naplň editor obnoveným obsahom
+    document.getElementById('gdTitle').value = currentGuide.title || '';
+    document.getElementById('gdSummary').value = currentGuide.summary || '';
+    if (guideEditor && guideEditor.setHTML) guideEditor.setHTML(currentGuide.content || '');
+    renderGuideRevisions();
+    loadGuidesSilent();
+    toastGuide('Obnovené z r' + rev + ' ✓');
+  } catch (e) { alert('Chyba: ' + e.message); }
+}
+
+async function deleteGuide(id) {
+  if (!id) return;
+  if (!confirm('Naozaj odstrániť tento návod vrátane všetkých revízií?')) return;
+  try {
+    await fetch('/api/guides/' + id, { method: 'DELETE' });
+    closeGuideModal();
+    loadGuides();
+  } catch { alert('Chyba pri odstraňovaní'); }
+}
+
+// ── Náhľad / detail (read-only HTML) ──────────────────────────────────────────
+function buildGuideDetailHtml(g) {
+  const meta = [];
+  if (g.category) meta.push(`<span>🗂️ ${escHtml(g.category)}</span>`);
+  if (g.author)   meta.push(`<span>👤 ${escHtml(g.author)}</span>`);
+  meta.push(`<span>🏷 r${g.rev || 1}</span>`);
+  if (g.date)     meta.push(`<span>📅 ${fmtDate(g.date)}</span>`);
+  const atts = (g.attachments || []).filter(a => a.label || a.url);
+  return `
+    <div class="proc-detail-head">
+      <h1 class="proc-detail-title">${escHtml(g.title || '')}</h1>
+      <div class="proc-detail-meta">${meta.join('')}</div>
+      ${g.summary ? `<p class="guide-detail-summary">${escHtml(g.summary)}</p>` : ''}
+    </div>
+    <div class="guide-detail-content">${g.content || '<p style="opacity:.5">— bez obsahu —</p>'}</div>
+    ${atts.length ? `<div class="proc-detail-sec"><h3>Prílohy / Odkazy</h3><ul>${atts.map(a => `<li>${escHtml(a.label || a.url)}${a.label && a.url ? ` — <span style="opacity:.6">${escHtml(a.url)}</span>` : ''}</li>`).join('')}</ul></div>` : ''}`;
+}
+
+function openGuidePreview() {
+  const g = collectGuideForm();
+  g.rev = currentGuide ? currentGuide.rev : 1;
+  document.getElementById('guidePreviewTitle').textContent = '👁 Náhľad návodu';
+  document.getElementById('guidePreviewBody').innerHTML = buildGuideDetailHtml(g);
+  document.getElementById('guidePreviewFoot').innerHTML = '<button class="btn-secondary" onclick="closeGuidePreview()">Zavrieť</button>';
+  document.getElementById('guidePreviewModal').classList.remove('hidden');
+}
+function closeGuidePreview() { document.getElementById('guidePreviewModal').classList.add('hidden'); }
+
+function toastGuide(msg) {
+  let t = document.getElementById('guideToast');
+  if (!t) { t = document.createElement('div'); t.id = 'guideToast'; t.className = 'guide-toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 1900);
+}
+
 // ==============================
 // ADMIN
 // ==============================
@@ -2821,6 +3126,9 @@ const BOT_KB = [
 
   { k: ['ako pridam postup', 'novy postup', 'vytvorit postup', 'pridat postup'],
     a: 'Pridanie postupu:<ul><li>Otvor modul <b>Postupy</b></li><li>Klikni <b>+ Nový postup</b></li><li>Vyplň názov, oddelenie a obsah v editore</li><li>Ulož — potom ho môžeš exportovať do Wordu</li></ul>', go: 'procedures' },
+
+  { k: ['navod', 'navody', 'manual', 'guide', 'revizia', 'revizie', 'verzia dokumentu', 'changelog'],
+    a: 'Modul <b>Návody</b> slúži na dokumenty s <b>revíziami</b> — rich-text obsah (formáty, farby, obrázky), história verzií a export do Wordu. Pri úprave klikni <b>🏷 Nová revízia</b> a vznikne milník, ku ktorému sa vieš vrátiť (Obnoviť). Každú revíziu vieš zobraziť aj stiahnuť ako Word.', go: 'guides' },
 
   { k: ['kalendar', 'udalost', 'event', 'termin', 'stretnutie', 'porada'],
     a: 'V <b>Kalendári</b> spravuješ udalosti tímu. Klikni na deň pre novú udalosť. Celý kalendár vieš <b>exportovať do Excelu</b> tlačidlom v hlavičke modulu.', go: 'calendar' },

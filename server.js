@@ -243,6 +243,7 @@ app.use('/api/products', require('./routes/products'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/calendar', require('./routes/calendar'));
 app.use('/api/procedures', require('./routes/procedures'));
+app.use('/api/guides', require('./routes/guides'));
 app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/projects', require('./routes/projects'));
 app.use('/api/tests', require('./routes/tests'));
