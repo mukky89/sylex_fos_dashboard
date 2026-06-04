@@ -125,5 +125,14 @@ module.exports = function(sensorCfg) {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // ── Import návodov z firemných dokumentov ─────────────────────────────────────
+  router.post('/seed-guides', async (req, res) => {
+    try {
+      const { seedGuides } = require('../scripts/seedGuides');
+      const result = await seedGuides();
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   return router;
 };

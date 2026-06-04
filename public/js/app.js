@@ -3045,6 +3045,17 @@ async function seedSampleData() {
   } catch (e) { if (el) el.textContent = 'Sieťová chyba: ' + e.message; }
 }
 
+async function seedGuidesData() {
+  const el = document.getElementById('seedGuidesResult');
+  if (el) el.textContent = 'Importujem…';
+  try {
+    const r = await fetch('/api/admin/seed-guides', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) { if (el) el.textContent = 'Chyba: ' + (d.error || r.status); return; }
+    if (el) el.innerHTML = `✓ Hotovo — vložené: <strong>${d.inserted}</strong>, preskočené (už existujú): <strong>${d.skipped}</strong>.${d.titles && d.titles.length ? ' Nové: ' + d.titles.map(escHtml).join(', ') : ''}`;
+  } catch (e) { if (el) el.textContent = 'Sieťová chyba: ' + e.message; }
+}
+
 // ==============================
 // HLAVIČKA — vyhľadávanie, rýchle pridanie, notifikácie
 // ==============================
