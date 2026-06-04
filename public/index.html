@@ -62,6 +62,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           <span class="nav-lbl">Postupy</span>
         </a>
+        <a class="nav-link" onclick="showPage('guides')" data-page="guides" title="Návody">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/><line x1="12" y1="7" x2="12" y2="21"/></svg>
+          <span class="nav-lbl">Návody</span>
+        </a>
         <a class="nav-link" onclick="showPage('fbg')" data-page="fbg" title="FBG Peak — vizualizácia">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h3l2-7 4 14 2-7h3l2 4h2"/></svg>
           <span class="nav-lbl">FBG</span>
@@ -151,6 +155,10 @@
       <a class="asb-link" data-page="procedures" onclick="showPage('procedures')" title="Pracovné postupy">
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
         <span class="asb-lbl">Postupy</span>
+      </a>
+      <a class="asb-link" data-page="guides" onclick="showPage('guides')" title="Návody">
+        <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/><line x1="12" y1="7" x2="12" y2="21"/></svg></span>
+        <span class="asb-lbl">Návody</span>
       </a>
       <a class="asb-link" data-page="fbg" onclick="showPage('fbg')" title="FBG vizualizácia">
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h3l2-7 4 14 2-7h3l2 4h2"/></svg></span>
@@ -867,6 +875,138 @@
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeProcedurePreview()">Zavrieť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== NÁVODY PAGE ===== -->
+  <main id="page-guides" class="page procedures-page">
+    <div class="proc-inner">
+
+      <!-- Zoznam návodov -->
+      <div id="guideListView">
+        <div class="proc-hdr">
+          <div>
+            <h1 class="proc-title">Návody</h1>
+            <p class="proc-sub">Tvorba a správa návodov · revízie · export do Wordu (.docx)</p>
+          </div>
+          <button class="btn-primary" onclick="openGuideModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nový návod
+          </button>
+        </div>
+
+        <div class="proc-search-wrap">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="guideSearch" placeholder="Hľadať návod..." oninput="renderGuides()" autocomplete="off">
+        </div>
+
+        <div id="guideList" class="proc-list">
+          <div class="admin-loading">Načítavam…</div>
+        </div>
+      </div>
+
+      <!-- Plnostránkový editor návodu -->
+      <div id="guideEditView" class="proc-edit hidden">
+        <div class="proc-edit-bar">
+          <button class="btn-secondary" onclick="closeGuideModal()">← Späť na zoznam</button>
+          <h2 id="guideModalTitle" class="proc-edit-title">Nový návod</h2>
+          <div class="proc-edit-bar-actions">
+            <span class="guide-rev-chip" id="guideRevChip" style="display:none"></span>
+            <button class="btn-sm" onclick="openGuidePreview()" title="Náhľad">👁 Náhľad</button>
+            <button class="btn-sm" id="guideRevBtn" onclick="createGuideRevision()" title="Uložiť ako novú revíziu" style="display:none">🏷 Nová revízia</button>
+            <button class="btn-delete" id="guideDeleteBtn" onclick="deleteGuide(document.getElementById('gdId').value)" style="display:none">🗑 Odstrániť</button>
+            <button class="btn-primary" onclick="saveGuide()">💾 Uložiť</button>
+          </div>
+        </div>
+
+        <div class="guide-edit-layout">
+          <div class="proc-edit-body guide-edit-main">
+            <input type="hidden" id="gdId">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Názov *</label>
+                <input type="text" id="gdTitle" placeholder="napr. Inštalácia FBG senzora na konštrukciu">
+              </div>
+              <div class="form-group">
+                <label>Kategória / oblasť</label>
+                <input type="text" id="gdCategory" placeholder="napr. Inštalácia">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Autor</label>
+                <input type="text" id="gdAuthor" placeholder="Meno autora">
+              </div>
+              <div class="form-group">
+                <label>Dátum</label>
+                <input type="date" id="gdDate">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Stav</label>
+              <div class="status-select">
+                <label class="status-opt"><input type="radio" name="gdStatus" value="active" checked> Aktívny</label>
+                <label class="status-opt"><input type="radio" name="gdStatus" value="draft"> Koncept</label>
+                <label class="status-opt"><input type="radio" name="gdStatus" value="archived"> Archivovaný</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Krátky úvod / popis</label>
+              <textarea id="gdSummary" rows="2" placeholder="O čom návod je, pre koho je určený"></textarea>
+            </div>
+
+            <!-- Hlavný obsah (rich text) -->
+            <div class="form-group">
+              <label>Obsah návodu <span class="form-hint">(text, formáty, farby, obrázky)</span></label>
+              <div id="gdContentEditor" class="guide-content-editor"></div>
+            </div>
+
+            <!-- Prílohy -->
+            <div class="form-group">
+              <div class="proc-rows-hdr">
+                <label>Prílohy / Odkazy</label>
+                <button type="button" class="btn-sm" onclick="addGuideAttRow()">+ Pridať</button>
+              </div>
+              <div id="gdAttRows" class="proc-rows"></div>
+            </div>
+          </div>
+
+          <!-- Bočný panel revízií -->
+          <aside class="guide-rev-panel">
+            <div class="guide-rev-hdr">
+              <span>🏷 Revízie</span>
+              <button class="btn-sm" onclick="createGuideRevision()" title="Vytvoriť novú revíziu">+ Nová</button>
+            </div>
+            <p class="guide-rev-note">Revízia je milník — uložená kópia obsahu, ku ktorej sa vieš kedykoľvek vrátiť.</p>
+            <div id="gdRevList" class="guide-rev-list">
+              <div class="guide-rev-empty">Uložením návodu vznikne prvá revízia.</div>
+            </div>
+          </aside>
+        </div>
+
+        <div class="proc-edit-foot">
+          <button class="btn-secondary" onclick="closeGuideModal()">Zrušiť</button>
+          <button class="btn-primary" onclick="saveGuide()">💾 Uložiť návod</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ===== GUIDE PREVIEW / REVISION MODAL ===== -->
+  <div id="guidePreviewModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeGuidePreview()"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="guidePreviewTitle">👁 Náhľad návodu</h2>
+        <button class="modal-close" onclick="closeGuidePreview()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="guidePreviewBody" class="proc-detail guide-detail"></div>
+      </div>
+      <div class="modal-footer" id="guidePreviewFoot">
+        <button class="btn-secondary" onclick="closeGuidePreview()">Zavrieť</button>
       </div>
     </div>
   </div>
