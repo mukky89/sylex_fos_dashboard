@@ -1903,6 +1903,14 @@
           <p class="admin-section-desc">Vloží ukážkové Novinky, WIKI záznamy a Pracovné postupy (po 5–6 ks) na vyskúšanie. Idempotentné — existujúce záznamy preskočí, nič neprepíše.</p>
           <div id="seedResult" class="admin-section-desc"></div>
         </div>
+        <div class="admin-section">
+          <div class="admin-section-hdr">
+            <h2 class="admin-section-title">Import návodov</h2>
+            <button class="btn-primary" onclick="seedGuidesData()">📥 Importovať návody</button>
+          </div>
+          <p class="admin-section-desc">Vloží návody pripravené z firemných dokumentov (Postup proforma · Transport kontakt) vrátane obrázkov. Idempotentné — existujúce návody (podľa názvu) preskočí.</p>
+          <div id="seedGuidesResult" class="admin-section-desc"></div>
+        </div>
         <div class="admin-coming-soon">
           <div class="acs-icon">🖥️</div>
           <div class="acs-title">Systém — informácie &amp; logy</div>

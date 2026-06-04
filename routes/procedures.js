@@ -121,8 +121,9 @@ function metaRow(label, value) {
 // ── Obrázky ───────────────────────────────────────────────────────────────────
 function readImageData(url, maxW = 460) {
   try {
-    if (!url || !url.startsWith('/uploads/')) return null;
-    const fp = path.join(PUBLIC_DIR, url);
+    if (!url || !(url.startsWith('/uploads/') || url.startsWith('/assets/'))) return null;
+    const fp = path.normalize(path.join(PUBLIC_DIR, url));
+    if (!fp.startsWith(PUBLIC_DIR)) return null; // ochrana proti path traversal
     if (!fs.existsSync(fp)) return null;
     const data = fs.readFileSync(fp);
     let dim = {}; try { dim = sizeOf(data); } catch (e) {}

@@ -115,10 +115,16 @@ async function autoSeed() {
     console.log('Seed: AppConfig inserted');
   }
 
+  // ── Návody z firemných dokumentov (idempotentné, beží vždy) ───────────────
+  try {
+    const { seedGuides } = require('./scripts/seedGuides');
+    const gr = await seedGuides();
+    if (gr.inserted) console.log(`Seed: Návody vložené (${gr.inserted})`);
+  } catch (e) { console.error('Seed Návody zlyhalo:', e.message); }
+
   // ── Seed KB sample data ───────────────────────────────────────────────────
   const count = await Product.countDocuments();
   if (count > 0) return; // DB already has KB data, skip
-
   console.log('Empty DB detected — seeding initial data...');
 
   const cat = await Category.create({ name: 'Tlačiarne', icon: '🖨️', color: '#00d4ff' });
