@@ -305,12 +305,37 @@ function _tourPlacePop(rect, pop) {
 //  UI LAYOUT — alternatívny sidebar (konfigurovateľný v Admin → Vzhľad)
 // ══════════════════════════════════════════════════════════════════════════════
 const SB_THEMES = ['dark', 'light', 'minimal', 'icon', 'gradient'];
-let UI_CFG = { nav: 'header', sidebarTheme: 'dark' };
+const UI_ACCENTS = {
+  cyan:    { '--accent': '#0891b2', '--accent2': '#1d4ed8', '--border-focus': '#0891b2', '--ui-accent': '#06b6d4', '--ui-accent2': '#3b82f6' },
+  indigo:  { '--accent': '#4f46e5', '--accent2': '#7c3aed', '--border-focus': '#4f46e5', '--ui-accent': '#6366f1', '--ui-accent2': '#8b5cf6' },
+  emerald: { '--accent': '#059669', '--accent2': '#0d9488', '--border-focus': '#059669', '--ui-accent': '#10b981', '--ui-accent2': '#14b8a6' },
+  amber:   { '--accent': '#d97706', '--accent2': '#b45309', '--border-focus': '#d97706', '--ui-accent': '#f59e0b', '--ui-accent2': '#f97316' },
+  rose:    { '--accent': '#e11d48', '--accent2': '#be123c', '--border-focus': '#e11d48', '--ui-accent': '#f43f5e', '--ui-accent2': '#fb7185' },
+  violet:  { '--accent': '#7c3aed', '--accent2': '#6d28d9', '--border-focus': '#7c3aed', '--ui-accent': '#8b5cf6', '--ui-accent2': '#a855f7' },
+};
+const UI_RADII = {
+  soft:  { '--radius': '8px',  '--radius-lg': '12px' },
+  sharp: { '--radius': '3px',  '--radius-lg': '4px' },
+  round: { '--radius': '14px', '--radius-lg': '20px' },
+};
+let UI_CFG = { nav: 'header', sidebarTheme: 'dark', accent: 'cyan', density: 'comfortable', radius: 'soft', motion: 'on' };
 
 function applyUiLayout() {
-  const b = document.body;
+  const b = document.body, r = document.documentElement;
   b.classList.toggle('layout-sidebar', UI_CFG.nav === 'sidebar');
   SB_THEMES.forEach(t => b.classList.toggle('sbt-' + t, UI_CFG.nav === 'sidebar' && UI_CFG.sidebarTheme === t));
+
+  // Akcentová farba
+  const acc = UI_ACCENTS[UI_CFG.accent] || UI_ACCENTS.cyan;
+  Object.entries(acc).forEach(([k, v]) => r.style.setProperty(k, v));
+  // Zaoblenie rohov
+  const rad = UI_RADII[UI_CFG.radius] || UI_RADII.soft;
+  Object.entries(rad).forEach(([k, v]) => r.style.setProperty(k, v));
+  // Hustota
+  b.classList.toggle('ui-compact', UI_CFG.density === 'compact');
+  // Animácie
+  b.classList.toggle('ui-reduce-motion', UI_CFG.motion === 'off');
+
   renderSidebarUser();
 }
 
@@ -340,8 +365,14 @@ async function loadUiConfig() {
     if (Array.isArray(cfg)) {
       const get = k => cfg.find(c => c.key === k)?.value;
       const nav = get('ui.nav'); const theme = get('ui.sidebarTheme');
+      const accent = get('ui.accent'); const density = get('ui.density');
+      const radius = get('ui.radius'); const motion = get('ui.motion');
       if (nav) UI_CFG.nav = nav;
       if (theme && SB_THEMES.includes(theme)) UI_CFG.sidebarTheme = theme;
+      if (accent && UI_ACCENTS[accent]) UI_CFG.accent = accent;
+      if (density === 'compact' || density === 'comfortable') UI_CFG.density = density;
+      if (radius && UI_RADII[radius]) UI_CFG.radius = radius;
+      if (motion === 'on' || motion === 'off') UI_CFG.motion = motion;
       localStorage.setItem('fos_ui', JSON.stringify(UI_CFG));
       applyUiLayout();
     }
@@ -369,10 +400,30 @@ function setSidebarTheme(theme) {
   else applyUiLayout();
   renderAppearanceAdmin(); _saveUiCfg('ui.sidebarTheme', theme);
 }
+function setAccent(accent) {
+  if (!UI_ACCENTS[accent]) return;
+  UI_CFG.accent = accent; applyUiLayout(); renderAppearanceAdmin(); _saveUiCfg('ui.accent', accent);
+}
+function setDensity(density) {
+  if (density !== 'compact' && density !== 'comfortable') return;
+  UI_CFG.density = density; applyUiLayout(); renderAppearanceAdmin(); _saveUiCfg('ui.density', density);
+}
+function setRadius(radius) {
+  if (!UI_RADII[radius]) return;
+  UI_CFG.radius = radius; applyUiLayout(); renderAppearanceAdmin(); _saveUiCfg('ui.radius', radius);
+}
+function setMotion(motion) {
+  if (motion !== 'on' && motion !== 'off') return;
+  UI_CFG.motion = motion; applyUiLayout(); renderAppearanceAdmin(); _saveUiCfg('ui.motion', motion);
+}
 
 function renderAppearanceAdmin() {
   document.querySelectorAll('.appr-layout').forEach(b => b.classList.toggle('active', b.dataset.nav === UI_CFG.nav));
   document.querySelectorAll('.appr-theme').forEach(b => b.classList.toggle('active', b.dataset.theme === UI_CFG.sidebarTheme));
+  document.querySelectorAll('.appr-accent').forEach(b => b.classList.toggle('active', b.dataset.accent === UI_CFG.accent));
+  document.querySelectorAll('.appr-opt[data-density]').forEach(b => b.classList.toggle('active', b.dataset.density === UI_CFG.density));
+  document.querySelectorAll('.appr-opt[data-radius]').forEach(b => b.classList.toggle('active', b.dataset.radius === UI_CFG.radius));
+  document.querySelectorAll('.appr-opt[data-motion]').forEach(b => b.classList.toggle('active', b.dataset.motion === UI_CFG.motion));
   const sec = document.getElementById('apprThemeSection');
   if (sec) sec.classList.toggle('dim', UI_CFG.nav !== 'sidebar');
 }
@@ -3604,6 +3655,7 @@ const PJ_PHASES = [
 ];
 const PJ_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#ef4444' } };
 let projectsData = [];
+let _dragPid = null;
 
 async function loadProjects() {
   try { projectsData = await fetch('/api/projects').then(r => r.json()); if (!Array.isArray(projectsData)) projectsData = []; }
@@ -3618,9 +3670,14 @@ function renderProjects() {
   PJ_PHASES.forEach((ph, idx) => {
     const col = document.createElement('div');
     col.className = 'kanban-col';
+    col.dataset.phase = ph.key;
     const colItems = items.filter(p => (p.phase || 'koncept') === ph.key);
     col.innerHTML = `<div class="kanban-col-hdr">${ph.label} <span class="kanban-count">${colItems.length}</span></div>`;
     const body = document.createElement('div'); body.className = 'kanban-col-body';
+    // Drop zóna — celý stĺpec
+    col.addEventListener('dragover', (e) => { if (_dragPid) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; col.classList.add('kanban-col-drop'); } });
+    col.addEventListener('dragleave', (e) => { if (!col.contains(e.relatedTarget)) col.classList.remove('kanban-col-drop'); });
+    col.addEventListener('drop', (e) => { e.preventDefault(); col.classList.remove('kanban-col-drop'); onKanbanDrop(ph.key); });
     colItems.forEach(p => {
       const prio = PJ_PRIO[p.priority] || PJ_PRIO.normal;
       const dl = p.deadline ? new Date(p.deadline) : null;
@@ -3628,9 +3685,20 @@ function renderProjects() {
       const card = document.createElement('div');
       card.className = 'kanban-card';
       card.style.setProperty('--prio', prio.c);
+      card.draggable = true;
+      card.dataset.pid = p._id;
+      card.addEventListener('dragstart', (e) => {
+        _dragPid = p._id; card.classList.add('kanban-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        try { e.dataTransfer.setData('text/plain', p._id); } catch (_) {}
+      });
+      card.addEventListener('dragend', () => {
+        _dragPid = null; card.classList.remove('kanban-dragging');
+        document.querySelectorAll('.kanban-col-drop').forEach(c => c.classList.remove('kanban-col-drop'));
+      });
       card.innerHTML = `
         <div class="kanban-card-top" onclick="openProjectModal(projectsData.find(x=>x._id==='${p._id}'))">
-          <span class="kanban-card-title">${escHtml(p.title)}</span>
+          <span class="kanban-card-title"><span class="kanban-grip" title="Potiahni na presun">⠿</span>${escHtml(p.title)}</span>
           ${p.code ? `<span class="kanban-card-code">${escHtml(p.code)}</span>` : ''}
         </div>
         <div class="kanban-card-meta">
@@ -3653,6 +3721,20 @@ function openFolderLink(enc) {
   const v = decodeURIComponent(enc);
   const href = isFilePath(v) ? toFileHref(v) : v;
   window.open(href, '_blank');
+}
+// Presun kartičky drag&drop do inej fázy (optimistický update + PUT)
+async function onKanbanDrop(phaseKey) {
+  const id = _dragPid; _dragPid = null;
+  if (!id) return;
+  const p = projectsData.find(x => x._id === id); if (!p) return;
+  const oldPhase = p.phase || 'koncept';
+  if (oldPhase === phaseKey) return;
+  p.phase = phaseKey;            // optimistický presun
+  renderProjects();
+  try {
+    const r = await fetch('/api/projects/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phase: phaseKey }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+  } catch { p.phase = oldPhase; renderProjects(); alert('Presun zlyhal — skús znova.'); }
 }
 async function moveProjectPhase(id, dir) {
   const p = projectsData.find(x => x._id === id); if (!p) return;
