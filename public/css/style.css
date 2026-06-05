@@ -3287,3 +3287,21 @@ body.ui-compact .nav-link { padding: 6px 9px; }
 body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion *::after {
   transition: none !important; animation: none !important; scroll-behavior: auto !important;
 }
+
+/* =============================================================================
+   DIALÓG OTVORENIA PRIEČINKA (file server)
+   ============================================================================= */
+.folder-dlg-hint { font-size: 0.86rem; color: var(--text-dim, #64748b); line-height: 1.5; margin-bottom: 12px; }
+.folder-dlg-path {
+  width: 100%; font-family: 'Consolas', 'Menlo', monospace; font-size: 0.86rem;
+  padding: 10px 12px; border: 1px solid var(--border, #e2e8f0); border-radius: var(--radius, 8px);
+  background: var(--page-bg, #f1f4f9); color: var(--text-bright, #0f172a);
+  margin-bottom: 14px; user-select: all;
+}
+.folder-dlg-steps { margin: 0 0 4px; padding-left: 20px; display: flex; flex-direction: column; gap: 7px; }
+.folder-dlg-steps li { font-size: 0.85rem; color: var(--text, #1e293b); line-height: 1.5; }
+.folder-dlg-steps kbd {
+  display: inline-block; font-family: inherit; font-size: 0.74rem; font-weight: 600;
+  padding: 1px 7px; border-radius: 5px; background: #1e293b; color: #e2e8f0;
+  border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 1px 0 rgba(0,0,0,0.25); margin: 0 1px;
+}
