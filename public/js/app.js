@@ -4733,6 +4733,8 @@ function setProdView(v) {
   document.querySelectorAll('[data-pview]').forEach(b => b.classList.toggle('active', b.dataset.pview === v));
   document.getElementById('prodKanban').classList.toggle('hidden', v !== 'kanban');
   document.getElementById('prodList').classList.toggle('hidden', v !== 'list');
+  document.getElementById('prodGantt').classList.toggle('hidden', v !== 'gantt');
+  document.getElementById('prodLinesCard')?.classList.toggle('hidden', v === 'gantt');
   renderProd();
 }
 
@@ -4757,7 +4759,9 @@ async function renderProdKpis() {
 }
 
 function renderProd() {
-  if (prodView === 'kanban') renderProdKanban(); else renderProdList();
+  if (prodView === 'kanban') renderProdKanban();
+  else if (prodView === 'list') renderProdList();
+  else if (prodView === 'gantt') renderProdGantt();
 }
 
 function prodCardHtml(o) {
@@ -4947,6 +4951,165 @@ async function seedProdData() {
     loadProd();
     setTimeout(() => alert('Hotovo — vytvorených ' + d.inserted + ' zákaziek.'), 200);
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+// ── Gantt rozvrh výroby + AI analýza/optimalizácia (vizuálne) ──────────────────
+let prodGanttDays = 14;
+let prodGanttStart = null;
+function prodGanttInit() { if (!prodGanttStart) { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - 3); prodGanttStart = d; } }
+function prodGanttShift(dir) { prodGanttInit(); prodGanttStart = new Date(prodGanttStart.getTime() + dir * prodGanttDays * 864e5); renderProdGantt(); }
+function prodGanttToday() { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - 3); prodGanttStart = d; renderProdGantt(); }
+function prodGanttSetRange(v) { prodGanttDays = Math.max(1, parseInt(v) || 14); renderProdGantt(); }
+
+// Odvodí časový úsek zákazky (start..due); ak chýba, dopočíta rozumný rozsah
+function prodSpan(o) {
+  let s = o.start ? new Date(o.start) : null;
+  let e = o.due ? new Date(o.due) : null;
+  if (!s && !e) return null;
+  if (!s) s = new Date(new Date(e).getTime() - 2 * 864e5);
+  if (!e) e = new Date(new Date(s).getTime() + 2 * 864e5);
+  if (e <= s) e = new Date(s.getTime() + 864e5);
+  return { s, e };
+}
+
+function renderProdGantt() {
+  const chart = document.getElementById('prodGanttChart'); if (!chart) return;
+  prodGanttInit();
+  const sel = document.getElementById('prodGanttRange'); if (sel) sel.value = String(prodGanttDays);
+  renderProdAi();
+  const ws = prodGanttStart.getTime(), winMs = prodGanttDays * 864e5, days = prodGanttDays;
+  const lbl = document.getElementById('prodGanttLabel');
+  if (lbl) lbl.textContent = `${fmtDate(prodGanttStart)} – ${fmtDate(new Date(ws + winMs - 1))}`;
+
+  const items = prodFiltered();
+  const groups = {};
+  items.forEach(o => {
+    const sp = prodSpan(o); if (!sp) return;
+    if (sp.e.getTime() <= ws || sp.s.getTime() >= ws + winMs) return;
+    const k = o.workstation || '— nepriradené —';
+    (groups[k] = groups[k] || []).push({ o, sp });
+  });
+
+  let head = '<div class="ug-corner">Pracovisko</div><div class="ug-days">';
+  for (let i = 0; i < days; i++) {
+    const d = new Date(ws + i * 864e5); const wd = d.getDay(); const we = (wd === 0 || wd === 6);
+    head += `<div class="ug-day${we ? ' ug-weekend' : ''}" style="left:${i / days * 100}%;width:${100 / days}%"><span class="ug-day-wd">${['Ne', 'Po', 'Ut', 'St', 'Št', 'Pi', 'So'][wd]}</span><span class="ug-day-d">${d.getDate()}.${d.getMonth() + 1}.</span></div>`;
+  }
+  head += '</div>';
+
+  let rows = '';
+  Object.keys(groups).sort().forEach(line => {
+    const arr = groups[line].sort((a, b) => a.sp.s - b.sp.s);
+    const laneEnds = [];
+    arr.forEach(it => { const s = it.sp.s.getTime(); let lane = laneEnds.findIndex(end => s >= end); if (lane === -1) { lane = laneEnds.length; laneEnds.push(it.sp.e.getTime()); } else laneEnds[lane] = it.sp.e.getTime(); it._lane = lane; });
+    const lanes = Math.max(1, laneEnds.length); const rowH = lanes * 30 + 8;
+    let grid = '';
+    for (let i = 0; i < days; i++) { const d = new Date(ws + i * 864e5); const we = (d.getDay() === 0 || d.getDay() === 6); grid += `<div class="ug-cell${we ? ' ug-weekend' : ''}" style="left:${i / days * 100}%;width:${100 / days}%"></div>`; }
+    let bars = '';
+    arr.forEach(it => {
+      const o = it.o; const s = Math.max(it.sp.s.getTime(), ws), e = Math.min(it.sp.e.getTime(), ws + winMs); if (e <= s) return;
+      const left = (s - ws) / winMs * 100, width = (e - s) / winMs * 100; const st = prodStageMap(o.stage); const od = prodOverdue(o);
+      const tip = `${o.number || ''} · ${o.product}\n${o.customer || ''}\n${o.qtyDone || 0}/${o.qtyPlanned || 0} ${o.unit || 'ks'} · ${st.label}${o.due ? '\nTermín: ' + fmtDate(o.due) : ''}`;
+      bars += `<div class="ug-bar pg-bar${od ? ' pg-bar-late' : ''}" style="left:${left}%;width:${Math.max(width, 1.5)}%;top:${it._lane * 30 + 4}px;background:${st.c}" title="${escHtml(tip)}" onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))"><span class="ug-bar-lbl">${escHtml(o.number || o.product)}</span></div>`;
+    });
+    const cnt = arr.length;
+    rows += `<div class="ug-row" style="height:${rowH}px"><div class="ug-eq" style="cursor:default"><div class="ug-eq-txt"><span class="ug-eq-name">${escHtml(line)}</span><span class="ug-eq-code">${cnt} ${cnt === 1 ? 'zákazka' : (cnt >= 2 && cnt <= 4 ? 'zákazky' : 'zákaziek')}</span></div></div><div class="ug-track">${grid}${bars}</div></div>`;
+  });
+  if (!Object.keys(groups).length) rows = '<div class="proc-empty" style="margin:20px">Žiadne naplánované zákazky v tomto období. Doplň termíny alebo posuň rozsah.</div>';
+
+  const now = Date.now(); let nowLine = '';
+  if (now >= ws && now <= ws + winMs) nowLine = `<div class="ug-now" style="left:calc(180px + (100% - 180px) * ${(now - ws) / winMs})"></div>`;
+  chart.innerHTML = `<div class="ug-head">${head}</div><div class="ug-body">${rows}</div>${nowLine}`;
+  const dayW = days <= 7 ? 96 : days <= 14 ? 78 : 58;
+  chart.style.minWidth = (180 + days * dayW) + 'px';
+}
+
+// ── "AI" analýza & optimalizácia (rule-based, prezentované ako AI) ─────────────
+function prodDaysLate(o) { return Math.max(1, Math.round((Date.now() - new Date(o.due)) / 864e5)); }
+function prodAiAnalyze() {
+  prodGanttInit();
+  const orders = prodData;
+  const now = new Date(new Date().toDateString());
+  const active = orders.filter(o => !['done', 'shipped'].includes(o.stage));
+  const overdue = active.filter(o => o.due && new Date(o.due) < now);
+  const unscheduled = active.filter(o => !o.start && !o.due);
+  const unassigned = active.filter(o => !o.workstation);
+  const urgentLate = active.filter(o => o.priority === 'urgent' && o.due && new Date(o.due) < now);
+
+  const ws = prodGanttStart.getTime(), winMs = prodGanttDays * 864e5, we = ws + winMs;
+  const lines = {};
+  active.forEach(o => { const sp = prodSpan(o); if (!sp) return; const k = o.workstation || '— nepriradené —'; (lines[k] = lines[k] || []).push({ o, sp }); });
+  const loads = []; let conflicts = 0; const conflictPairs = [];
+  Object.keys(lines).forEach(name => {
+    const arr = lines[name]; let used = 0;
+    arr.forEach(({ sp }) => { const s = Math.max(sp.s.getTime(), ws), e = Math.min(sp.e.getTime(), we); if (e > s) used += e - s; });
+    loads.push({ name, pct: Math.round(used / winMs * 100), count: arr.length });
+    const sorted = arr.slice().sort((a, b) => a.sp.s - b.sp.s);
+    for (let i = 0; i < sorted.length; i++) for (let j = i + 1; j < sorted.length; j++)
+      if (sorted[i].sp.e > sorted[j].sp.s && sorted[i].sp.s < sorted[j].sp.e) { conflicts++; conflictPairs.push([sorted[i].o, sorted[j].o]); }
+  });
+  loads.sort((a, b) => b.pct - a.pct);
+  const overloaded = loads.filter(l => l.pct > 85);
+
+  let score = 100 - overdue.length * 8 - conflicts * 6 - overloaded.length * 10 - unscheduled.length * 3 - urgentLate.length * 10 - unassigned.length * 2;
+  score = Math.max(5, Math.min(100, Math.round(score)));
+
+  const findings = [];
+  findings.push(overdue.length ? { t: 'bad', m: `<b>${overdue.length}</b> ${overdue.length === 1 ? 'zákazka' : 'zákaziek'} po termíne` } : { t: 'ok', m: 'Žiadne zákazky po termíne' });
+  findings.push(conflicts ? { t: 'bad', m: `<b>${conflicts}</b> ${conflicts === 1 ? 'konflikt prekrytia' : 'konfliktov prekrytia'} na pracoviskách` } : { t: 'ok', m: 'Žiadne kapacitné konflikty' });
+  if (overloaded.length) findings.push({ t: 'warn', m: `Preťažené: ${overloaded.map(l => escHtml(l.name) + ' (' + l.pct + '%)').join(', ')}` });
+  if (unassigned.length) findings.push({ t: 'warn', m: `<b>${unassigned.length}</b> zákaziek bez pracoviska` });
+  if (unscheduled.length) findings.push({ t: 'warn', m: `<b>${unscheduled.length}</b> zákaziek bez termínu` });
+  if (loads.length) findings.push({ t: 'info', m: `Najvyťaženejšie: <b>${escHtml(loads[0].name)}</b> (${loads[0].pct}%)` });
+
+  const sugg = [];
+  urgentLate.forEach(o => sugg.push(`⏫ Uprednostni urgentnú <b>${escHtml(o.number || o.product)}</b> — mešká ${prodDaysLate(o)} dní.`));
+  overdue.filter(o => o.priority !== 'urgent').slice(0, 3).forEach(o => sugg.push(`📅 Presuň <b>${escHtml(o.number || o.product)}</b> na začiatok radu — mešká ${prodDaysLate(o)} dní.`));
+  if (overloaded.length) { const free = loads.filter(l => l.pct < 50); overloaded.forEach(l => sugg.push(`⚖️ <b>${escHtml(l.name)}</b> vyťažená na ${l.pct}% — presuň časť zákaziek${free.length ? ` na <b>${escHtml(free[0].name)}</b> (${free[0].pct}%)` : ' na voľnejšie pracovisko'}.`)); }
+  conflictPairs.slice(0, 2).forEach(([a, b]) => sugg.push(`🔀 <b>${escHtml(a.number || a.product)}</b> a <b>${escHtml(b.number || b.product)}</b> sa prekrývajú — posuň jednu o 1–2 dni.`));
+  if (unassigned.length) sugg.push(`🏭 Prideľ pracovisko k <b>${unassigned.length}</b> zákazkám.`);
+  if (unscheduled.length) sugg.push(`🗓️ Doplň termíny k <b>${unscheduled.length}</b> zákazkám.`);
+  if (!sugg.length) sugg.push('✅ Plán je vyvážený — žiadne kritické úpravy nie sú potrebné.');
+
+  return { score, findings, suggestions: sugg, loads, overdue: overdue.length, conflicts };
+}
+
+function renderProdAi() {
+  const el = document.getElementById('prodAi'); if (!el) return;
+  const a = prodAiAnalyze();
+  const col = a.score >= 80 ? '#10b981' : a.score >= 55 ? '#f59e0b' : '#ef4444';
+  const lbl = a.score >= 80 ? 'Zdravý plán' : a.score >= 55 ? 'Vyžaduje pozornosť' : 'Kritický stav';
+  el.innerHTML = `
+    <div class="pg-ai-grid">
+      <div class="pg-ai-card">
+        <div class="pg-ai-head">🤖 AI analýza plánu</div>
+        <div class="pg-score-wrap"><div class="pg-score" style="color:${col}">${a.score}<span>/100</span></div><div class="pg-score-lbl" style="color:${col}">${lbl}</div></div>
+        <ul class="pg-findings">${a.findings.map(f => `<li class="pgf-${f.t}">${f.m}</li>`).join('')}</ul>
+      </div>
+      <div class="pg-ai-card">
+        <div class="pg-ai-head">✨ AI optimalizácia <span class="pg-ai-badge">návrh</span></div>
+        <ul class="pg-sugg">${a.suggestions.map(s => `<li>${s}</li>`).join('')}</ul>
+        <button class="btn-primary pg-opt-btn" onclick="prodOptimize()">✨ Optimalizovať plán</button>
+        <div class="pg-opt-note" id="prodOptNote"></div>
+      </div>
+    </div>`;
+}
+
+function prodOptimize() {
+  const note = document.getElementById('prodOptNote'); const btn = document.querySelector('.pg-opt-btn');
+  if (!note || !btn) return;
+  btn.disabled = true; btn.textContent = '🧠 Analyzujem…';
+  note.innerHTML = '<div class="pg-opt-prog"><div></div></div>';
+  setTimeout(() => {
+    const a = prodAiAnalyze();
+    const gain = Math.min(100 - a.score, a.overdue * 5 + a.conflicts * 4 + 6);
+    const proj = Math.min(100, a.score + gain);
+    btn.disabled = false; btn.textContent = '✨ Optimalizovať plán';
+    note.innerHTML = `<div class="pg-opt-result">
+      <div class="pg-opt-arrow">${a.score} <span>→</span> <b>${proj}</b> / 100</div>
+      <p>Navrhované kroky: zoradenie podľa <b>priority a termínov</b>, rozloženie záťaže z preťažených pracovísk a posun prekrývajúcich sa zákaziek. <i>Vizuálny návrh — neukladá sa do plánu.</i></p>
+    </div>`;
+  }, 1100);
 }
 
 // ==============================
