@@ -4552,6 +4552,9 @@ function renderUtilGantt() {
     nowLine = `<div class="ug-now" style="left:${leftPx}"></div>`;
   }
   wrap.innerHTML = `<div class="ug-head">${head}</div><div class="ug-body">${rows}</div>${nowLine}`;
+  // Minimálna šírka podľa počtu dní → pri 14/30 dňoch vznikne horizontálne scrollovanie
+  const dayW = days <= 7 ? 96 : days <= 14 ? 78 : 58;
+  wrap.style.minWidth = (180 + days * dayW) + 'px';
 }
 
 function utilTrackClick(e, eqId) {
