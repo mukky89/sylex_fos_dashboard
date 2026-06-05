@@ -728,6 +728,7 @@ async function handleHash(hash) {
   if (hash === 'guides')  { _activatePage('guides');  loadGuides(); return; }
   if (hash === 'dev')     { _activatePage('dev');     loadDev(); return; }
   if (hash === 'util')    { _activatePage('util');    loadUtil(); return; }
+  if (hash === 'prod')    { _activatePage('prod');    loadProd(); return; }
   if (hash === 'tasks')   { _activatePage('tasks');   loadTasks(); return; }
   if (hash === 'crm')     { _activatePage('crm');     loadCrm(); return; }
   if (hash === 'mgmt')    { _activatePage('mgmt');    loadManagement(); return; }
@@ -763,6 +764,7 @@ function showPage(name) {
   if (name === 'guides')  loadGuides();
   if (name === 'dev')     loadDev();
   if (name === 'util')    loadUtil();
+  if (name === 'prod')    loadProd();
   if (name === 'tasks')   loadTasks();
   if (name === 'crm')     loadCrm();
   if (name === 'mgmt')    loadManagement();
@@ -3300,6 +3302,9 @@ const BOT_KB = [
   { k: ['vytazenie', 'komora', 'komory', 'klimaticka', 'pec', 'pece', 'rezervacia', 'rezervovat', 'booking', 'obsadenost', 'kalendar komory', 'test bezi', 'gantt'],
     a: 'Modul <b>Vyťaženie technológií</b> je rezervačný kalendár (Gantt) pre <b>klimatické komory a pece</b>. Vidíš, čo a dokedy beží, koľko hodín zaberie test, ktoré objednávky sú kde a aké je % vyťaženie každého zariadenia. Klikni na riadok pre novú rezerváciu.', go: 'util' },
 
+  { k: ['vyroba', 'planovanie vyroby', 'vyrobna zakazka', 'work order', 'production', 'zakazka', 'pracovisko', 'linka', 'kanban vyroba', 'expedicia'],
+    a: 'Modul <b>Plánovanie výroby</b> spravuje <b>výrobné zákazky</b> cez fázy (Plánovaná → Príprava → Vo výrobe → Kontrola → Hotová → Expedovaná) na <b>Kanban tabuli s drag&amp;drop</b>. Sleduješ množstvá (plán/vyrobené), termíny, prioritu, vyťaženie pracovísk a KPI prehľad.', go: 'prod' },
+
   { k: ['management', 'manazer', 'prehlad', 'kto na com robi', 'dovolenka', 'vacation', 'summary', 'tim'],
     a: 'Modul <b>Management</b> ukazuje, kto na čom pracuje, stav úloh a projektov, sklad interrogátorov a <b>prehľad dovoleniek</b>. Nájdeš tu aj anonymné otázky tímu.', go: 'mgmt' },
 
@@ -4693,6 +4698,255 @@ async function deleteEquipment(id) {
     utilEquipment = utilEquipment.filter(e => e._id !== id);
     renderEquipMgr(); renderUtil();
   } catch { alert('Chyba'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  PLÁNOVANIE VÝROBY — výrobné zákazky (Kanban + zoznam + KPI + vyťaženie liniek)
+// ══════════════════════════════════════════════════════════════════════════════
+let prodData = [];
+let prodView = 'kanban';
+let _dragProdId = null;
+const PROD_STAGES = [
+  { key: 'plan', label: 'Plánovaná', c: '#64748b' },
+  { key: 'material', label: 'Príprava materiálu', c: '#8b5cf6' },
+  { key: 'production', label: 'Vo výrobe', c: '#0891b2' },
+  { key: 'qc', label: 'Kontrola kvality', c: '#f59e0b' },
+  { key: 'done', label: 'Hotová', c: '#10b981' },
+  { key: 'shipped', label: 'Expedovaná', c: '#3b82f6' }
+];
+const PROD_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#f59e0b' }, urgent: { l: 'Urgentná', c: '#ef4444' } };
+const prodStageMap = k => PROD_STAGES.find(s => s.key === k) || PROD_STAGES[0];
+
+async function loadProd() {
+  try { prodData = await fetch('/api/production').then(r => r.json()); if (!Array.isArray(prodData)) prodData = []; }
+  catch { prodData = []; }
+  // datalist pracovísk
+  const dl = document.getElementById('poLineList');
+  if (dl) { const set = [...new Set(prodData.map(o => o.workstation).filter(Boolean))]; dl.innerHTML = set.map(w => `<option value="${escHtml(w)}">`).join(''); }
+  renderProdKpis();
+  renderProd();
+  renderProdLines();
+}
+
+function setProdView(v) {
+  prodView = v;
+  document.querySelectorAll('[data-pview]').forEach(b => b.classList.toggle('active', b.dataset.pview === v));
+  document.getElementById('prodKanban').classList.toggle('hidden', v !== 'kanban');
+  document.getElementById('prodList').classList.toggle('hidden', v !== 'list');
+  renderProd();
+}
+
+function prodFiltered() {
+  const q = (document.getElementById('prodSearch')?.value || '').toLowerCase();
+  if (!q) return prodData.slice();
+  return prodData.filter(o => [o.number, o.product, o.customer, o.salesOrder, o.workstation, o.assignee].some(x => (x || '').toLowerCase().includes(q)));
+}
+function prodOverdue(o) { return o.due && !['done', 'shipped'].includes(o.stage) && new Date(o.due) < new Date(new Date().toDateString()); }
+
+async function renderProdKpis() {
+  let s = null;
+  try { s = await fetch('/api/production/summary').then(r => r.json()); } catch {}
+  const el = document.getElementById('prodKpis'); if (!el) return;
+  if (!s || s.error) { el.innerHTML = ''; return; }
+  const card = (val, label, sub, cls) => `<div class="prod-kpi ${cls || ''}"><div class="prod-kpi-val">${val}</div><div class="prod-kpi-lbl">${label}</div>${sub ? `<div class="prod-kpi-sub">${sub}</div>` : ''}</div>`;
+  el.innerHTML =
+    card(s.active, 'Aktívne zákazky', s.total + ' celkom', 'pk-blue') +
+    card(s.inProduction, 'Vo výrobe', '', 'pk-cyan') +
+    card(s.overdue, 'Po termíne', '', s.overdue ? 'pk-red' : '') +
+    card(s.fulfillment + '%', 'Plnenie množstva', s.qtyDone + ' / ' + s.qtyPlanned + ' ks', 'pk-green');
+}
+
+function renderProd() {
+  if (prodView === 'kanban') renderProdKanban(); else renderProdList();
+}
+
+function prodCardHtml(o) {
+  const prio = PROD_PRIO[o.priority] || PROD_PRIO.normal;
+  const od = prodOverdue(o);
+  const p = Math.max(0, Math.min(100, o.progress || 0));
+  const pcls = p >= 100 ? 'pf-done' : p >= 50 ? 'pf-mid' : 'pf-lo';
+  return `
+    <div class="kanban-card-top" onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))">
+      <span class="kanban-card-title"><span class="kanban-grip" title="Potiahni">⠿</span>${escHtml(o.product)}</span>
+      <span class="kanban-card-code">${escHtml(o.number || '')}${o.customer ? ' · ' + escHtml(o.customer) : ''}</span>
+    </div>
+    <div class="prod-card-chips">
+      ${o.priority && o.priority !== 'normal' ? `<span class="prod-chip" style="background:${prio.c}22;color:${prio.c};border:1px solid ${prio.c}55">${prio.l}</span>` : ''}
+      ${o.workstation ? `<span class="prod-chip prod-chip-line">🏭 ${escHtml(o.workstation)}</span>` : ''}
+    </div>
+    <div class="task-prog"><div class="task-prog-track"><div class="task-prog-fill ${pcls}" style="width:${p}%"></div></div><span class="task-prog-val">${p}%</span></div>
+    <div class="kanban-card-meta">
+      <span>📦 ${o.qtyDone || 0}/${o.qtyPlanned || 0} ${escHtml(o.unit || 'ks')}</span>
+      ${o.due ? `<span class="${od ? 'kanban-overdue' : ''}">📅 ${fmtDate(o.due)}</span>` : ''}
+    </div>`;
+}
+
+function renderProdKanban() {
+  const board = document.getElementById('prodKanban'); if (!board) return;
+  const items = prodFiltered();
+  board.innerHTML = '';
+  PROD_STAGES.forEach(st => {
+    const col = document.createElement('div');
+    col.className = 'kanban-col';
+    const colItems = items.filter(o => o.stage === st.key).sort((a, b) => (a.order || 0) - (b.order || 0));
+    col.innerHTML = `<div class="kanban-col-hdr" style="border-bottom-color:${st.c}66">${st.label} <span class="kanban-count">${colItems.length}</span></div>`;
+    const body = document.createElement('div'); body.className = 'kanban-col-body'; body.dataset.stage = st.key;
+    body.addEventListener('dragover', (e) => {
+      if (!_dragProdId) return; e.preventDefault();
+      const after = prodGetDragAfter(body, e.clientY);
+      const drag = document.querySelector('.kanban-dragging'); if (!drag) return;
+      if (after == null) body.appendChild(drag); else body.insertBefore(drag, after);
+      col.classList.add('kanban-col-drop');
+    });
+    body.addEventListener('dragleave', (e) => { if (!body.contains(e.relatedTarget)) col.classList.remove('kanban-col-drop'); });
+    body.addEventListener('drop', (e) => { e.preventDefault(); document.querySelectorAll('.kanban-col-drop').forEach(c => c.classList.remove('kanban-col-drop')); persistProdOrder(); });
+    colItems.forEach(o => {
+      const card = document.createElement('div');
+      card.className = 'kanban-card prod-card' + (prodOverdue(o) ? ' task-overdue' : '');
+      card.style.setProperty('--prio', (PROD_PRIO[o.priority] || PROD_PRIO.normal).c);
+      card.draggable = true; card.dataset.pid = o._id;
+      card.addEventListener('dragstart', (e) => { _dragProdId = o._id; card.classList.add('kanban-dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', o._id); } catch (_) {} });
+      card.addEventListener('dragend', () => { _dragProdId = null; card.classList.remove('kanban-dragging'); document.querySelectorAll('.kanban-col-drop').forEach(c => c.classList.remove('kanban-col-drop')); });
+      card.innerHTML = prodCardHtml(o);
+      body.appendChild(card);
+    });
+    col.appendChild(body);
+    board.appendChild(col);
+  });
+}
+function prodGetDragAfter(container, y) {
+  const els = [...container.querySelectorAll('.kanban-card:not(.kanban-dragging)')];
+  return els.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) return { offset, element: child };
+    return closest;
+  }, { offset: -Infinity }).element || null;
+}
+async function persistProdOrder() {
+  _dragProdId = null;
+  const payload = [];
+  document.querySelectorAll('#prodKanban .kanban-col-body').forEach(body => {
+    const stage = body.dataset.stage;
+    [...body.querySelectorAll('.kanban-card')].forEach(card => payload.push({ id: card.dataset.pid, order: payload.length, stage }));
+  });
+  payload.forEach(p => { const o = prodData.find(x => x._id === p.id); if (o) { o.order = p.order; o.stage = p.stage; } });
+  try { await fetch('/api/production/reorder', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: payload }) }); } catch {}
+  renderProdKpis(); renderProdLines();
+}
+
+function renderProdList() {
+  const el = document.getElementById('prodList'); if (!el) return;
+  const items = prodFiltered().sort((a, b) => (a.due ? String(a.due) : '9999').localeCompare(b.due ? String(b.due) : '9999'));
+  if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne výrobné zákazky.</div>'; return; }
+  el.innerHTML = `<table class="prod-table"><thead><tr>
+    <th>Zákazka</th><th>Produkt</th><th>Zákazník</th><th>Pracovisko</th><th>Množstvo</th><th>Fáza</th><th>Termín</th><th></th>
+    </tr></thead><tbody>${items.map(o => {
+    const st = prodStageMap(o.stage), prio = PROD_PRIO[o.priority] || PROD_PRIO.normal, od = prodOverdue(o);
+    const p = Math.max(0, Math.min(100, o.progress || 0));
+    return `<tr onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))">
+      <td><span class="prod-t-num">${escHtml(o.number || '')}</span><span class="prod-t-prio" style="color:${prio.c}">${o.priority !== 'normal' ? prio.l : ''}</span></td>
+      <td>${escHtml(o.product)}</td>
+      <td>${escHtml(o.customer || '—')}</td>
+      <td>${escHtml(o.workstation || '—')}</td>
+      <td><div class="prod-t-qty">${o.qtyDone || 0}/${o.qtyPlanned || 0} ${escHtml(o.unit || 'ks')}</div><div class="prod-t-bar"><div style="width:${p}%"></div></div></td>
+      <td><span class="prod-stage-badge" style="background:${st.c}22;color:${st.c};border:1px solid ${st.c}66">${st.label}</span></td>
+      <td class="${od ? 'task-od' : ''}">${o.due ? fmtDate(o.due) : '—'}</td>
+      <td><button class="admin-icon-btn danger" onclick="event.stopPropagation(); deleteProd('${o._id}')">✕</button></td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+function renderProdLines() {
+  const el = document.getElementById('prodLines'); if (!el) return;
+  const lines = {};
+  prodData.filter(o => !['done', 'shipped'].includes(o.stage)).forEach(o => {
+    const k = o.workstation || '— nepriradené —';
+    lines[k] = lines[k] || { name: k, orders: 0, qty: 0 };
+    lines[k].orders++; lines[k].qty += (o.qtyPlanned || 0);
+  });
+  const arr = Object.values(lines).sort((a, b) => b.orders - a.orders);
+  if (!arr.length) { el.innerHTML = '<div class="proc-empty">Žiadne aktívne zákazky.</div>'; return; }
+  const maxOrders = Math.max(...arr.map(l => l.orders), 1);
+  el.innerHTML = arr.map(l => `
+    <div class="prod-line-row">
+      <span class="prod-line-name">${escHtml(l.name)}</span>
+      <div class="prod-line-bar"><div class="prod-line-fill" style="width:${Math.round(l.orders / maxOrders * 100)}%"></div></div>
+      <span class="prod-line-meta">${l.orders} ${l.orders === 1 ? 'zákazka' : (l.orders >= 2 && l.orders <= 4 ? 'zákazky' : 'zákaziek')} · ${l.qty} ks</span>
+    </div>`).join('');
+}
+
+// ── modal ─────────────────────────────────────────────────────────────────────
+function prodSyncProgress() {
+  const pl = Number(document.getElementById('poQtyPlanned').value) || 0;
+  const dn = Number(document.getElementById('poQtyDone').value) || 0;
+  if (pl > 0) { const p = Math.max(0, Math.min(100, Math.round(dn / pl * 100))); document.getElementById('poProgress').value = p; document.getElementById('poProgressVal').textContent = p; }
+}
+function openProdModal(o = null) {
+  const e = o && typeof o === 'object';
+  document.getElementById('poModalTitle').textContent = e ? 'Upraviť zákazku' : 'Nová výrobná zákazka';
+  const set = (id, v) => document.getElementById(id).value = v;
+  set('poId', e ? o._id : '');
+  set('poNumber', e ? (o.number || '') : '');
+  set('poSalesOrder', e ? (o.salesOrder || '') : '');
+  set('poProduct', e ? (o.product || '') : '');
+  set('poCustomer', e ? (o.customer || '') : '');
+  set('poWorkstation', e ? (o.workstation || '') : '');
+  set('poQtyPlanned', e ? (o.qtyPlanned || 0) : '');
+  set('poQtyDone', e ? (o.qtyDone || 0) : '');
+  set('poUnit', e ? (o.unit || 'ks') : 'ks');
+  set('poStage', e ? (o.stage || 'plan') : 'plan');
+  set('poPriority', e ? (o.priority || 'normal') : 'normal');
+  set('poStart', e && o.start ? String(o.start).slice(0, 10) : '');
+  set('poDue', e && o.due ? String(o.due).slice(0, 10) : '');
+  set('poAssignee', e ? (o.assignee || '') : '');
+  const prog = e ? (o.progress || 0) : 0;
+  set('poProgress', prog); document.getElementById('poProgressVal').textContent = prog;
+  set('poNote', e ? (o.note || '') : '');
+  document.getElementById('poDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('prodModal').classList.remove('hidden');
+}
+function closeProdModal() { document.getElementById('prodModal').classList.add('hidden'); }
+async function saveProd() {
+  const body = {
+    number: document.getElementById('poNumber').value.trim(),
+    salesOrder: document.getElementById('poSalesOrder').value.trim(),
+    product: document.getElementById('poProduct').value.trim(),
+    customer: document.getElementById('poCustomer').value.trim(),
+    workstation: document.getElementById('poWorkstation').value.trim(),
+    qtyPlanned: Number(document.getElementById('poQtyPlanned').value) || 0,
+    qtyDone: Number(document.getElementById('poQtyDone').value) || 0,
+    unit: document.getElementById('poUnit').value.trim() || 'ks',
+    stage: document.getElementById('poStage').value,
+    priority: document.getElementById('poPriority').value,
+    start: document.getElementById('poStart').value || null,
+    due: document.getElementById('poDue').value || null,
+    assignee: document.getElementById('poAssignee').value.trim(),
+    progress: Number(document.getElementById('poProgress').value) || 0,
+    note: document.getElementById('poNote').value.trim()
+  };
+  if (!body.product) { alert('Zadaj produkt'); return; }
+  const id = document.getElementById('poId').value;
+  try {
+    const r = await fetch(id ? '/api/production/' + id : '/api/production', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
+    closeProdModal(); loadProd();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteProd(id) {
+  if (!id || !confirm('Odstrániť túto výrobnú zákazku?')) return;
+  try { await fetch('/api/production/' + id, { method: 'DELETE' }); closeProdModal(); loadProd(); }
+  catch { alert('Chyba'); }
+}
+async function seedProdData() {
+  if (!confirm('Vygenerovať ukážkové výrobné zákazky? Nahradia sa len predošlé ukážkové dáta.')) return;
+  try {
+    const r = await fetch('/api/admin/seed-production', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) { alert('Chyba: ' + (d.error || r.status)); return; }
+    loadProd();
+    setTimeout(() => alert('Hotovo — vytvorených ' + d.inserted + ' zákaziek.'), 200);
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 
 // ==============================

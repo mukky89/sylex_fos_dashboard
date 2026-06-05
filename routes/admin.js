@@ -143,5 +143,14 @@ module.exports = function(sensorCfg) {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // ── Ukážkové výrobné zákazky (Plánovanie výroby) ──────────────────────────────
+  router.post('/seed-production', async (req, res) => {
+    try {
+      const { seedProduction } = require('../scripts/seedProduction');
+      const result = await seedProduction();
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   return router;
 };

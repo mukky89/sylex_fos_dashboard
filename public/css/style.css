@@ -3457,3 +3457,61 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
   .ug-corner, .ug-eq { width: 120px; }
   .util-legend-hint { display: none; }
 }
+
+/* =============================================================================
+   PLÁNOVANIE VÝROBY (Production Planning)
+   ============================================================================= */
+.prod-page { background: var(--hdr-bg); }
+.prod-inner { max-width: 1280px; margin: 0 auto; padding: 28px 24px 52px; }
+.prod-hdr { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+.prod-title { font-family: var(--font-title); font-size: 1.7rem; font-weight: 800; color: #f0f9ff; }
+.prod-sub { color: #9fb3d1; font-size: 0.9rem; margin-top: 4px; }
+.prod-hdr-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* KPI */
+.prod-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.prod-kpi { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid #3b82f6; border-radius: 12px; padding: 14px 16px; }
+.prod-kpi-val { font-family: var(--font-title); font-size: 1.7rem; font-weight: 800; color: #f0f9ff; line-height: 1; }
+.prod-kpi-lbl { font-size: 0.78rem; color: #cbd5e1; margin-top: 6px; }
+.prod-kpi-sub { font-size: 0.68rem; color: #94a3b8; margin-top: 3px; }
+.prod-kpi.pk-blue { border-left-color: #3b82f6; } .prod-kpi.pk-cyan { border-left-color: #06b6d4; }
+.prod-kpi.pk-red { border-left-color: #ef4444; } .prod-kpi.pk-red .prod-kpi-val { color: #fca5a5; }
+.prod-kpi.pk-green { border-left-color: #10b981; }
+
+.prod-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+
+/* Kanban (6 stĺpcov) */
+.prod-kanban.kanban { grid-template-columns: repeat(6, minmax(220px, 1fr)); }
+.prod-card-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
+.prod-chip { font-size: 0.68rem; font-weight: 600; padding: 2px 8px; border-radius: 100px; white-space: nowrap; }
+.prod-chip-line { background: rgba(255,255,255,0.06); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.12); }
+.prod-card .task-prog { margin: 7px 0; }
+
+/* Zoznam */
+.prod-list { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden; }
+.prod-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.prod-table th { text-align: left; padding: 11px 12px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
+.prod-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); color: #dbe4f0; vertical-align: middle; }
+.prod-table tbody tr { cursor: pointer; transition: background .14s; }
+.prod-table tbody tr:hover { background: rgba(255,255,255,0.04); }
+.prod-t-num { font-weight: 700; color: #f0f9ff; display: block; }
+.prod-t-prio { font-size: 0.68rem; font-weight: 600; }
+.prod-t-qty { font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.prod-t-bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,0.1); overflow: hidden; margin-top: 3px; width: 90px; }
+.prod-t-bar > div { height: 100%; background: linear-gradient(90deg,#06b6d4,#3b82f6); border-radius: 3px; }
+.prod-stage-badge { font-size: 0.68rem; font-weight: 600; padding: 3px 9px; border-radius: 100px; white-space: nowrap; }
+
+/* vyťaženie liniek */
+.prod-lines-card { margin-top: 20px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 16px 18px; }
+.prod-lines-title { font-size: 1rem; font-weight: 700; color: #e8f0fb; margin-bottom: 12px; }
+.prod-lines { display: flex; flex-direction: column; gap: 10px; }
+.prod-line-row { display: flex; align-items: center; gap: 12px; }
+.prod-line-name { width: 200px; flex-shrink: 0; font-size: 0.82rem; color: #dbe4f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prod-line-bar { flex: 1; height: 9px; border-radius: 5px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.prod-line-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg,#06b6d4,#6366f1); transition: width .5s ease; }
+.prod-line-meta { font-size: 0.72rem; color: #94a3b8; width: 170px; flex-shrink: 0; text-align: right; }
+
+#poProgress { width: 100%; accent-color: var(--accent); }
+
+@media (max-width: 1100px) { .prod-kanban.kanban { grid-template-columns: repeat(6, 220px); } }
+@media (max-width: 768px) { .prod-line-name { width: 110px; } .prod-line-meta { width: 110px; } }
