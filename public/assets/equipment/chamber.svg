@@ -23,6 +23,8 @@
     <circle cx="150" cy="127" r="16" fill="none"/>
   </g>
   <g fill="#8a5824">
+    <animateTransform attributeName="transform" attributeType="XML" type="rotate"
+      from="0 150 127" to="360 150 127" dur="3s" repeatCount="indefinite"/>
     <path d="M150 127 L182 105 A40 40 0 0 1 188 134 Z"/>
     <path d="M150 127 L168 165 A40 40 0 0 1 138 166 Z"/>
     <path d="M150 127 L114 150 A40 40 0 0 1 110 118 Z"/>
