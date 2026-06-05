@@ -122,6 +122,20 @@ async function autoSeed() {
     if (gr.inserted) console.log(`Seed: Návody vložené (${gr.inserted})`);
   } catch (e) { console.error('Seed Návody zlyhalo:', e.message); }
 
+  // ── Zariadenia pre Vyťaženie technológií (idempotentné, beží vždy) ────────
+  try {
+    const Equipment = require('./models/Equipment');
+    if (await Equipment.countDocuments() === 0) {
+      await Equipment.insertMany([
+        { name: 'Klimatická komora 1', code: 'KK-01', type: 'chamber', color: '#0891b2', order: 0 },
+        { name: 'Klimatická komora 2', code: 'KK-02', type: 'chamber', color: '#2563eb', order: 1 },
+        { name: 'Pec na vypekanie 1',  code: 'PEC-01', type: 'oven',    color: '#d97706', order: 2 },
+        { name: 'Pec na vypekanie 2',  code: 'PEC-02', type: 'oven',    color: '#dc2626', order: 3 },
+      ]);
+      console.log('Seed: Equipment (komory + pece) vložené');
+    }
+  } catch (e) { console.error('Seed Equipment zlyhalo:', e.message); }
+
   // ── Seed KB sample data ───────────────────────────────────────────────────
   const count = await Product.countDocuments();
   if (count > 0) return; // DB already has KB data, skip
@@ -250,6 +264,8 @@ app.use('/api/categories', require('./routes/categories'));
 app.use('/api/calendar', require('./routes/calendar'));
 app.use('/api/procedures', require('./routes/procedures'));
 app.use('/api/guides', require('./routes/guides'));
+app.use('/api/equipment', require('./routes/equipment'));
+app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/projects', require('./routes/projects'));
 app.use('/api/tests', require('./routes/tests'));

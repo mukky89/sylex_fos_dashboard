@@ -727,6 +727,7 @@ async function handleHash(hash) {
   if (hash === 'procedures') { _activatePage('procedures'); loadProcedures(); return; }
   if (hash === 'guides')  { _activatePage('guides');  loadGuides(); return; }
   if (hash === 'dev')     { _activatePage('dev');     loadDev(); return; }
+  if (hash === 'util')    { _activatePage('util');    loadUtil(); return; }
   if (hash === 'tasks')   { _activatePage('tasks');   loadTasks(); return; }
   if (hash === 'crm')     { _activatePage('crm');     loadCrm(); return; }
   if (hash === 'mgmt')    { _activatePage('mgmt');    loadManagement(); return; }
@@ -761,6 +762,7 @@ function showPage(name) {
   if (name === 'procedures') loadProcedures();
   if (name === 'guides')  loadGuides();
   if (name === 'dev')     loadDev();
+  if (name === 'util')    loadUtil();
   if (name === 'tasks')   loadTasks();
   if (name === 'crm')     loadCrm();
   if (name === 'mgmt')    loadManagement();
@@ -1545,6 +1547,7 @@ function escHtml(str) {
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 function fmtDate(iso) { return new Date(iso).toLocaleDateString('sk-SK'); }
+function fmtDateTime(iso) { return new Date(iso).toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
 function pluralSk(n) {
   if (n === 1) return 'záznam';
   if (n >= 2 && n <= 4) return 'záznamy';
@@ -3294,6 +3297,9 @@ const BOT_KB = [
   { k: ['fbg', 'peak', 'vlnova dlzka', 'wavelength', 'strain', 'napatie', 'kalkulacka', 'wdm', 'koeficient', 'bragg'],
     a: 'FBG nástroje (vo Vývoji aj na samostatnej stránke <b>FBG</b>): vizualizácia spektra a posunu peaku, prepočet <b>vlnová dĺžka ↔ strain/teplota</b>, kalibračné koeficienty a <b>WDM plánovač</b> kanálov.', go: 'fbg' },
 
+  { k: ['vytazenie', 'komora', 'komory', 'klimaticka', 'pec', 'pece', 'rezervacia', 'rezervovat', 'booking', 'obsadenost', 'kalendar komory', 'test bezi', 'gantt'],
+    a: 'Modul <b>Vyťaženie technológií</b> je rezervačný kalendár (Gantt) pre <b>klimatické komory a pece</b>. Vidíš, čo a dokedy beží, koľko hodín zaberie test, ktoré objednávky sú kde a aké je % vyťaženie každého zariadenia. Klikni na riadok pre novú rezerváciu.', go: 'util' },
+
   { k: ['management', 'manazer', 'prehlad', 'kto na com robi', 'dovolenka', 'vacation', 'summary', 'tim'],
     a: 'Modul <b>Management</b> ukazuje, kto na čom pracuje, stav úloh a projektov, sklad interrogátorov a <b>prehľad dovoleniek</b>. Nájdeš tu aj anonymné otázky tímu.', go: 'mgmt' },
 
@@ -4404,6 +4410,259 @@ async function deleteTask(id) {
   if (!id || !confirm('Naozaj odstrániť úlohu?')) return;
   try { await fetch('/api/tasks/' + id, { method: 'DELETE' }); closeTaskModal(); loadTasks(); loadNotif(); }
   catch { alert('Chyba'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  VYŤAŽENIE TECHNOLÓGIÍ — rezervačný kalendár komôr a pecí (Gantt timeline)
+// ══════════════════════════════════════════════════════════════════════════════
+let utilEquipment = [];
+let utilBookings = [];
+let utilRangeDays = 7;
+let utilStart = null;            // Date — začiatok okna (00:00)
+const UTIL_STATUS = { planned: { l: 'Plánované', c: '#64748b' }, running: { l: 'Prebieha', c: '#10b981' }, done: { l: 'Dokončené', c: '#3b82f6' }, cancelled: { l: 'Zrušené', c: '#ef4444' } };
+const UTIL_TYPE_IMG = { chamber: '/assets/equipment/chamber.svg', oven: '/assets/equipment/oven.svg', other: '/assets/equipment/oven.svg' };
+
+function utilDayStart(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+function utilWindowEnd() { return new Date(utilStart.getTime() + utilRangeDays * 864e5); }
+function toLocalInput(d) { d = new Date(d); const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
+function utilDurStr(ms) {
+  const h = ms / 36e5;
+  if (h < 24) return (Math.round(h * 10) / 10) + ' h';
+  const d = Math.floor(h / 24), rh = Math.round(h - d * 24);
+  return d + ' d' + (rh ? ' ' + rh + ' h' : '');
+}
+
+async function loadUtil() {
+  if (!utilStart) utilStart = utilDayStart(new Date());
+  document.getElementById('utilRangeSel').value = String(utilRangeDays);
+  try {
+    const from = utilStart.toISOString(), to = utilWindowEnd().toISOString();
+    const [eq, bk] = await Promise.all([
+      fetch('/api/equipment').then(r => r.json()).catch(() => []),
+      fetch(`/api/bookings?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`).then(r => r.json()).catch(() => [])
+    ]);
+    utilEquipment = Array.isArray(eq) ? eq.filter(e => e.active !== false) : [];
+    utilBookings = Array.isArray(bk) ? bk : [];
+  } catch { utilEquipment = []; utilBookings = []; }
+  renderUtil();
+}
+function utilShift(dir) { utilStart = new Date(utilStart.getTime() + dir * utilRangeDays * 864e5); loadUtil(); }
+function utilToday() { utilStart = utilDayStart(new Date()); loadUtil(); }
+function utilSetRange(v) { utilRangeDays = Math.max(1, parseInt(v) || 7); loadUtil(); }
+
+function renderUtil() {
+  renderUtilLabel();
+  renderUtilStats();
+  renderUtilGantt();
+}
+function renderUtilLabel() {
+  const el = document.getElementById('utilRangeLabel'); if (!el) return;
+  const end = new Date(utilWindowEnd().getTime() - 1);
+  el.textContent = `${fmtDate(utilStart)} – ${fmtDate(end)}`;
+}
+
+function renderUtilStats() {
+  const el = document.getElementById('utilStats'); if (!el) return;
+  const winMs = utilRangeDays * 864e5;
+  const ws = utilStart.getTime(), we = utilWindowEnd().getTime();
+  el.innerHTML = utilEquipment.map(eq => {
+    const bs = utilBookings.filter(b => (b.equipment?._id || b.equipment) === eq._id && b.status !== 'cancelled');
+    let used = 0; bs.forEach(b => { const s = Math.max(new Date(b.start).getTime(), ws), e = Math.min(new Date(b.end).getTime(), we); if (e > s) used += e - s; });
+    const pct = Math.round(used / winMs * 100);
+    const cls = pct >= 80 ? 'hi' : pct >= 40 ? 'mid' : 'lo';
+    return `<div class="util-stat">
+      <div class="util-stat-top"><img src="${UTIL_TYPE_IMG[eq.type] || UTIL_TYPE_IMG.other}" class="util-stat-img" alt=""><div>
+        <div class="util-stat-name">${escHtml(eq.name)}</div>
+        <div class="util-stat-code">${escHtml(eq.code || '')}</div></div></div>
+      <div class="util-stat-bar"><div class="util-stat-fill us-${cls}" style="width:${Math.min(100, pct)}%"></div></div>
+      <div class="util-stat-meta"><span><strong>${pct}%</strong> vyťaženie</span><span>${utilDurStr(used)} · ${bs.length} ${bs.length === 1 ? 'rezervácia' : (bs.length >= 2 && bs.length <= 4 ? 'rezervácie' : 'rezervácií')}</span></div>
+    </div>`;
+  }).join('') || '<div class="proc-empty">Žiadne zariadenia. Pridaj ich cez „⚙ Zariadenia".</div>';
+}
+
+function renderUtilGantt() {
+  const wrap = document.getElementById('utilGantt'); if (!wrap) return;
+  const ws = utilStart.getTime(), winMs = utilRangeDays * 864e5;
+  const days = utilRangeDays;
+  // hlavička dní
+  let head = '<div class="ug-corner">Zariadenie</div><div class="ug-days">';
+  for (let i = 0; i < days; i++) {
+    const d = new Date(ws + i * 864e5);
+    const wd = d.getDay(); const weekend = (wd === 0 || wd === 6);
+    head += `<div class="ug-day${weekend ? ' ug-weekend' : ''}" style="left:${i / days * 100}%;width:${100 / days}%">
+      <span class="ug-day-wd">${['Ne', 'Po', 'Ut', 'St', 'Št', 'Pi', 'So'][wd]}</span>
+      <span class="ug-day-d">${d.getDate()}.${d.getMonth() + 1}.</span></div>`;
+  }
+  head += '</div>';
+
+  // riadky
+  let rows = '';
+  utilEquipment.forEach(eq => {
+    const bs = utilBookings.filter(b => (b.equipment?._id || b.equipment) === eq._id)
+      .sort((a, b) => new Date(a.start) - new Date(b.start));
+    const laneEnds = [];
+    bs.forEach(b => {
+      const s = new Date(b.start).getTime(), e = new Date(b.end).getTime();
+      let lane = laneEnds.findIndex(end => s >= end);
+      if (lane === -1) { lane = laneEnds.length; laneEnds.push(e); } else laneEnds[lane] = e;
+      b._lane = lane;
+    });
+    const lanes = Math.max(1, laneEnds.length);
+    const rowH = lanes * 30 + 8;
+    // gridlines
+    let grid = '';
+    for (let i = 0; i < days; i++) {
+      const d = new Date(ws + i * 864e5); const weekend = (d.getDay() === 0 || d.getDay() === 6);
+      grid += `<div class="ug-cell${weekend ? ' ug-weekend' : ''}" style="left:${i / days * 100}%;width:${100 / days}%"></div>`;
+    }
+    // bars
+    let bars = '';
+    bs.forEach(b => {
+      const s = Math.max(new Date(b.start).getTime(), ws), e = Math.min(new Date(b.end).getTime(), ws + winMs);
+      if (e <= s) return;
+      const left = (s - ws) / winMs * 100, width = (e - s) / winMs * 100;
+      const st = UTIL_STATUS[b.status] || UTIL_STATUS.planned;
+      const dur = utilDurStr(new Date(b.end) - new Date(b.start));
+      const tip = `${b.title}${b.order ? ' · ' + b.order : ''}${b.customer ? ' · ' + b.customer : ''}\n${fmtDateTime(b.start)} → ${fmtDateTime(b.end)} (${dur})${b.profile ? '\n' + b.profile : ''}`;
+      bars += `<div class="ug-bar ug-st-${b.status}" style="left:${left}%;width:${Math.max(width, 1.5)}%;top:${b._lane * 30 + 4}px;background:${st.c};border-left:3px solid ${eq.color || '#0891b2'}"
+        title="${escHtml(tip)}" onclick="event.stopPropagation(); openBookingModal(utilBookings.find(x=>x._id==='${b._id}'))">
+        <span class="ug-bar-lbl">${escHtml(b.title)}${b.order ? ' · ' + escHtml(b.order) : ''}</span></div>`;
+    });
+    rows += `<div class="ug-row" style="height:${rowH}px">
+      <div class="ug-eq"><img src="${UTIL_TYPE_IMG[eq.type] || UTIL_TYPE_IMG.other}" class="ug-eq-img" alt=""><div class="ug-eq-txt"><span class="ug-eq-name">${escHtml(eq.name)}</span><span class="ug-eq-code">${escHtml(eq.code || '')}</span></div></div>
+      <div class="ug-track" data-eqid="${eq._id}" onclick="utilTrackClick(event, '${eq._id}')">${grid}${bars}</div>
+    </div>`;
+  });
+  if (!utilEquipment.length) rows = '<div class="proc-empty" style="margin:20px">Žiadne zariadenia.</div>';
+
+  // čiara "teraz"
+  const now = Date.now(); let nowLine = '';
+  if (now >= ws && now <= ws + winMs) {
+    const leftPx = `calc(180px + (100% - 180px) * ${(now - ws) / winMs})`;
+    nowLine = `<div class="ug-now" style="left:${leftPx}"></div>`;
+  }
+  wrap.innerHTML = `<div class="ug-head">${head}</div><div class="ug-body">${rows}</div>${nowLine}`;
+}
+
+function utilTrackClick(e, eqId) {
+  if (e.target.closest('.ug-bar')) return;
+  const track = e.currentTarget;
+  const rect = track.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  let t = new Date(utilStart.getTime() + ratio * utilRangeDays * 864e5);
+  t.setMinutes(0, 0, 0); // zarovnaj na hodinu
+  openBookingModal(null, eqId, t);
+}
+
+// ── Booking modal ─────────────────────────────────────────────────────────────
+function utilEqOptions(sel) {
+  const s = document.getElementById('bkEquipment'); if (!s) return;
+  s.innerHTML = utilEquipment.map(eq => `<option value="${eq._id}">${escHtml(eq.name)}${eq.code ? ' (' + escHtml(eq.code) + ')' : ''}</option>`).join('');
+  if (sel) s.value = sel;
+}
+function openBookingModal(b = null, presetEq = null, presetStart = null) {
+  if (!utilEquipment.length) { alert('Najprv pridaj aspoň jedno zariadenie (⚙ Zariadenia).'); return; }
+  const e = b && typeof b === 'object';
+  document.getElementById('bkModalTitle').textContent = e ? 'Upraviť rezerváciu' : 'Nová rezervácia';
+  document.getElementById('bkId').value = e ? b._id : '';
+  utilEqOptions(e ? (b.equipment?._id || b.equipment) : (presetEq || utilEquipment[0]._id));
+  document.getElementById('bkTitle').value = e ? (b.title || '') : '';
+  document.getElementById('bkOrder').value = e ? (b.order || '') : '';
+  document.getElementById('bkCustomer').value = e ? (b.customer || '') : '';
+  const start = e ? new Date(b.start) : (presetStart || new Date());
+  const end = e ? new Date(b.end) : new Date(start.getTime() + 4 * 36e5);
+  document.getElementById('bkStart').value = toLocalInput(start);
+  document.getElementById('bkEnd').value = toLocalInput(end);
+  document.getElementById('bkStatus').value = e ? (b.status || 'planned') : 'planned';
+  document.getElementById('bkProfile').value = e ? (b.profile || '') : '';
+  document.getElementById('bkNote').value = e ? (b.note || '') : '';
+  document.getElementById('bkDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('bookingModal').classList.remove('hidden');
+  utilUpdateDurHint();
+  ['bkStart', 'bkEnd'].forEach(id => { document.getElementById(id).oninput = utilUpdateDurHint; });
+}
+function utilUpdateDurHint() {
+  const s = new Date(document.getElementById('bkStart').value), e = new Date(document.getElementById('bkEnd').value);
+  const hint = document.getElementById('bkDurHint');
+  if (isNaN(s) || isNaN(e) || e <= s) { hint.textContent = e <= s ? '⚠ Koniec musí byť po začiatku.' : ''; hint.className = 'util-dur-hint' + (e <= s ? ' warn' : ''); return; }
+  hint.textContent = '⏱ Trvanie: ' + utilDurStr(e - s); hint.className = 'util-dur-hint';
+}
+function closeBookingModal() { document.getElementById('bookingModal').classList.add('hidden'); }
+async function saveBooking() {
+  const body = {
+    equipment: document.getElementById('bkEquipment').value,
+    title: document.getElementById('bkTitle').value.trim(),
+    order: document.getElementById('bkOrder').value.trim(),
+    customer: document.getElementById('bkCustomer').value.trim(),
+    start: document.getElementById('bkStart').value ? new Date(document.getElementById('bkStart').value).toISOString() : null,
+    end: document.getElementById('bkEnd').value ? new Date(document.getElementById('bkEnd').value).toISOString() : null,
+    status: document.getElementById('bkStatus').value,
+    profile: document.getElementById('bkProfile').value.trim(),
+    note: document.getElementById('bkNote').value.trim()
+  };
+  if (!body.title) { alert('Zadaj názov testu'); return; }
+  if (!body.start || !body.end || new Date(body.end) <= new Date(body.start)) { alert('Skontroluj časový rozsah — koniec musí byť po začiatku.'); return; }
+  const id = document.getElementById('bkId').value;
+  try {
+    const r = await fetch(id ? '/api/bookings/' + id : '/api/bookings', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
+    closeBookingModal(); loadUtil();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteBooking(id) {
+  if (!id || !confirm('Odstrániť túto rezerváciu?')) return;
+  try { await fetch('/api/bookings/' + id, { method: 'DELETE' }); closeBookingModal(); loadUtil(); }
+  catch { alert('Chyba'); }
+}
+
+// ── Equipment manager ─────────────────────────────────────────────────────────
+function openEquipmentManager() { renderEquipMgr(); resetEquipForm(); document.getElementById('equipmentModal').classList.remove('hidden'); }
+function closeEquipmentManager() { document.getElementById('equipmentModal').classList.add('hidden'); }
+function renderEquipMgr() {
+  const el = document.getElementById('equipMgrList'); if (!el) return;
+  const typeLbl = { chamber: 'Komora', oven: 'Pec', other: 'Iné' };
+  el.innerHTML = utilEquipment.map(eq => `
+    <div class="equip-mgr-row">
+      <span class="equip-color" style="background:${eq.color || '#0891b2'}"></span>
+      <span class="equip-mgr-name">${escHtml(eq.name)} <span class="equip-mgr-code">${escHtml(eq.code || '')} · ${typeLbl[eq.type] || eq.type}</span></span>
+      <button class="btn-xs" onclick="editEquipment('${eq._id}')">✎</button>
+      <button class="btn-xs" onclick="deleteEquipment('${eq._id}')">✕</button>
+    </div>`).join('') || '<div class="proc-empty">Žiadne zariadenia.</div>';
+}
+function resetEquipForm() {
+  document.getElementById('eqId').value = ''; document.getElementById('eqName').value = '';
+  document.getElementById('eqCode').value = ''; document.getElementById('eqType').value = 'chamber';
+  document.getElementById('eqColor').value = '#0891b2';
+  document.getElementById('eqCancelBtn').style.display = 'none';
+}
+function editEquipment(id) {
+  const eq = utilEquipment.find(x => x._id === id); if (!eq) return;
+  document.getElementById('eqId').value = eq._id; document.getElementById('eqName').value = eq.name || '';
+  document.getElementById('eqCode').value = eq.code || ''; document.getElementById('eqType').value = eq.type || 'chamber';
+  document.getElementById('eqColor').value = eq.color || '#0891b2';
+  document.getElementById('eqCancelBtn').style.display = '';
+}
+async function saveEquipment() {
+  const body = {
+    name: document.getElementById('eqName').value.trim(), code: document.getElementById('eqCode').value.trim(),
+    type: document.getElementById('eqType').value, color: document.getElementById('eqColor').value
+  };
+  if (!body.name) { alert('Zadaj názov zariadenia'); return; }
+  const id = document.getElementById('eqId').value;
+  try {
+    const r = await fetch(id ? '/api/equipment/' + id : '/api/equipment', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
+    const eq = await fetch('/api/equipment').then(x => x.json()); utilEquipment = eq.filter(e => e.active !== false);
+    renderEquipMgr(); resetEquipForm(); renderUtil();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteEquipment(id) {
+  if (!confirm('Odstrániť zariadenie? Súvisiace rezervácie ostanú, ale nebudú sa zobrazovať.')) return;
+  try {
+    await fetch('/api/equipment/' + id, { method: 'DELETE' });
+    utilEquipment = utilEquipment.filter(e => e._id !== id);
+    renderEquipMgr(); renderUtil();
+  } catch { alert('Chyba'); }
 }
 
 // ==============================

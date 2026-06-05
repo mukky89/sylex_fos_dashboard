@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 380" fill="none">
+  <defs>
+    <linearGradient id="cc-body" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4f1ea"/><stop offset="1" stop-color="#e3ddd0"/>
+    </linearGradient>
+    <radialGradient id="cc-fan" cx="0.5" cy="0.45" r="0.6">
+      <stop offset="0" stop-color="#c98a4b"/><stop offset="0.7" stop-color="#a96f33"/><stop offset="1" stop-color="#8a5824"/>
+    </radialGradient>
+  </defs>
+  <!-- telo -->
+  <rect x="24" y="14" width="252" height="338" rx="12" fill="url(#cc-body)" stroke="#cabfa9" stroke-width="2"/>
+  <!-- značka -->
+  <rect x="40" y="26" width="120" height="14" rx="3" fill="#1f2937" opacity="0.85"/>
+  <text x="52" y="37" font-family="Arial" font-size="11" font-weight="700" fill="#fff">weiss</text>
+  <!-- dvere s oknom -->
+  <rect x="46" y="52" width="208" height="150" rx="8" fill="#2b2f36"/>
+  <rect x="58" y="64" width="184" height="126" rx="6" fill="#3a3f47"/>
+  <!-- ventilátor -->
+  <circle cx="150" cy="127" r="56" fill="url(#cc-fan)" stroke="#6f4719" stroke-width="2"/>
+  <g stroke="#b97e44" stroke-width="3" opacity="0.8">
+    <circle cx="150" cy="127" r="44" fill="none"/>
+    <circle cx="150" cy="127" r="30" fill="none"/>
+    <circle cx="150" cy="127" r="16" fill="none"/>
+  </g>
+  <g fill="#8a5824">
+    <path d="M150 127 L182 105 A40 40 0 0 1 188 134 Z"/>
+    <path d="M150 127 L168 165 A40 40 0 0 1 138 166 Z"/>
+    <path d="M150 127 L114 150 A40 40 0 0 1 110 118 Z"/>
+    <path d="M150 127 L138 90 A40 40 0 0 1 166 95 Z"/>
+  </g>
+  <circle cx="150" cy="127" r="9" fill="#5e3c16"/>
+  <!-- displej hore vpravo -->
+  <rect x="206" y="60" width="40" height="16" rx="2" fill="#0b1220"/>
+  <text x="212" y="72" font-family="Arial" font-size="9" font-weight="700" fill="#ff4d4d">+85.0</text>
+  <!-- panely / pánty vľavo -->
+  <rect x="30" y="70" width="8" height="20" rx="2" fill="#9aa0a6"/>
+  <rect x="30" y="160" width="8" height="20" rx="2" fill="#9aa0a6"/>
+  <!-- klučka -->
+  <rect x="252" y="110" width="9" height="60" rx="4" fill="#b8bdc4"/>
+  <!-- dotykový panel -->
+  <rect x="112" y="210" width="76" height="40" rx="6" fill="#2b2f36"/>
+  <rect x="120" y="216" width="60" height="28" rx="3" fill="#3b82f6" opacity="0.85"/>
+  <text x="129" y="234" font-family="Arial" font-size="10" font-weight="700" fill="#fff">85.0°</text>
+  <!-- spodné vetracie lamely -->
+  <g fill="#cdc4b1">
+    <rect x="60" y="266" width="180" height="9" rx="3"/>
+    <rect x="60" y="284" width="180" height="9" rx="3"/>
+    <rect x="60" y="302" width="180" height="9" rx="3"/>
+    <rect x="60" y="320" width="180" height="9" rx="3"/>
+  </g>
+  <!-- nožičky -->
+  <rect x="40" y="352" width="14" height="14" rx="3" fill="#6b7280"/>
+  <rect x="246" y="352" width="14" height="14" rx="3" fill="#6b7280"/>
+  <text x="262" y="214" font-family="Arial" font-size="9" font-weight="700" fill="#64748b" transform="rotate(90 262 214)">ClimeEvent</text>
+</svg>
