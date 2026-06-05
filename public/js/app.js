@@ -1120,22 +1120,50 @@ async function loadHomeTasks() {
   const el = document.getElementById('homeTaskList'); if (!el) return;
   let tasks = [];
   try { tasks = await fetch('/api/tasks').then(r => r.json()); if (!Array.isArray(tasks)) tasks = []; } catch { tasks = []; }
-  const open = tasks.filter(t => !t.done)
-    .sort((a, b) => (a.due ? String(a.due) : '9999').localeCompare(b.due ? String(b.due) : '9999')).slice(0, 6);
-  if (!open.length) { el.innerHTML = '<div class="home-cal-empty">Žiadne aktívne úlohy. 🎉</div>'; return; }
   const todayKey = calYmd(new Date());
+  // iba aktuálne NEDOKONČENÉ úlohy
+  const openAll = tasks.filter(t => !t.done);
+  // zoradenie: po termíne → s termínom (najbližší) → ostatné
+  const rank = t => (t.due && String(t.due).slice(0, 10) < todayKey) ? 0 : (t.due ? 1 : 2);
+  const open = openAll.slice().sort((a, b) => {
+    const ra = rank(a), rb = rank(b); if (ra !== rb) return ra - rb;
+    return (a.due ? String(a.due) : '9999').localeCompare(b.due ? String(b.due) : '9999');
+  }).slice(0, 6);
+
+  const cntEl = document.getElementById('homeTaskCount');
+  if (cntEl) cntEl.textContent = openAll.length ? openAll.length : '';
+
+  if (!open.length) { el.innerHTML = '<div class="home-cal-empty">Žiadne nedokončené úlohy. 🎉</div>'; return; }
+  const statusOf = t => (typeof taskStatusOf === 'function') ? taskStatusOf(t) : (t.status || (t.done ? 'done' : 'todo'));
   el.innerHTML = '';
   open.forEach(t => {
-    const prio = (typeof TK_PRIO !== 'undefined' ? TK_PRIO[t.priority] : null) || { c: '#3b82f6' };
+    const prio = (typeof TK_PRIO !== 'undefined' ? TK_PRIO[t.priority] : null) || { l: '', c: '#3b82f6' };
     const od = t.due && String(t.due).slice(0, 10) < todayKey;
     const row = document.createElement('div');
     row.className = 'home-task-item';
     row.style.setProperty('--ev', prio.c);
+
+    const chips = [];
+    if (t.project)  chips.push(`<span class="task-chip task-chip-pj">🗂️ ${escHtml(t.project)}</span>`);
+    if (t.customer) chips.push(`<span class="task-chip task-chip-cust">🏢 ${escHtml(t.customer)}</span>`);
+
+    const meta = [];
+    if (prio.l) meta.push(`<span class="home-task-prio" style="color:${prio.c}">${prio.l}</span>`);
+    if (t.due)  meta.push(`<span class="${od ? 'task-od' : ''}">📅 ${fmtDate(t.due)}${od ? ' — po termíne' : ''}</span>`);
+    if (t.createdAt) meta.push(`<span class="home-task-added" title="Dátum pridania">➕ ${fmtDate(t.createdAt)}</span>`);
+
+    const p = Math.max(0, Math.min(100, t.progress || 0));
+    const showProg = p > 0 || statusOf(t) === 'inprogress';
+    const pcls = p >= 100 ? 'pf-done' : p >= 50 ? 'pf-mid' : 'pf-lo';
+
     row.innerHTML = `
       <button class="home-task-check" title="Označiť ako hotové">✓</button>
       <div class="home-task-body">
         <div class="home-task-title">${escHtml(t.title)}</div>
-        ${t.due ? `<div class="home-task-meta ${od ? 'task-od' : ''}">📅 ${fmtDate(t.due)}${od ? ' — po termíne' : ''}</div>` : ''}
+        ${chips.length ? `<div class="home-task-chips">${chips.join('')}</div>` : ''}
+        <div class="home-task-meta">${meta.join('<span class="home-task-sep">·</span>')}</div>
+        ${showProg ? `<div class="task-prog home-task-prog"><div class="task-prog-track"><div class="task-prog-fill ${pcls}" style="width:${p}%"></div></div><span class="task-prog-val">${p}%</span></div>` : ''}
+        ${t.note ? `<div class="home-task-note">📝 ${escHtml(t.note)}</div>` : ''}
       </div>`;
     row.querySelector('.home-task-check').onclick = async (e) => {
       e.stopPropagation();
