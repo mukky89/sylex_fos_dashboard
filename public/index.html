@@ -1594,6 +1594,7 @@
           <button class="btn-sm" onclick="utilToday()">Dnes</button>
           <button class="cal-nav-btn" onclick="utilShift(1)" title="Ďalej">›</button>
           <span class="util-range-label" id="utilRangeLabel">—</span>
+          <button class="util-filter-chip hidden" id="utilFilterChip" onclick="utilSetFilter(null)"></button>
         </div>
         <div class="util-toolbar-right">
           <select id="utilRangeSel" class="util-select" onchange="utilSetRange(this.value)">

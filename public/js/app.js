@@ -4419,6 +4419,7 @@ let utilEquipment = [];
 let utilBookings = [];
 let utilRangeDays = 7;
 let utilStart = null;            // Date — začiatok okna (00:00)
+let utilFilterEq = null;         // _id zariadenia — filter Ganttu (null = všetky)
 const UTIL_STATUS = { planned: { l: 'Plánované', c: '#64748b' }, running: { l: 'Prebieha', c: '#10b981' }, done: { l: 'Dokončené', c: '#3b82f6' }, cancelled: { l: 'Zrušené', c: '#ef4444' } };
 const UTIL_TYPE_IMG = { chamber: '/assets/equipment/chamber.svg', oven: '/assets/equipment/oven.svg', other: '/assets/equipment/oven.svg' };
 
@@ -4461,9 +4462,24 @@ function utilToday() { utilStart = utilDayStart(new Date()); loadUtil(); }
 function utilSetRange(v) { utilRangeDays = Math.max(1, parseInt(v) || 7); loadUtil(); }
 
 function renderUtil() {
+  // ak filtrované zariadenie už neexistuje, zruš filter
+  if (utilFilterEq && !utilEquipment.some(e => e._id === utilFilterEq)) utilFilterEq = null;
   renderUtilLabel();
+  renderUtilFilterChip();
   renderUtilStats();
   renderUtilGantt();
+}
+function utilSetFilter(id) {
+  utilFilterEq = (id && utilFilterEq === id) ? null : (id || null);
+  renderUtil();
+}
+function renderUtilFilterChip() {
+  const chip = document.getElementById('utilFilterChip'); if (!chip) return;
+  if (!utilFilterEq) { chip.classList.add('hidden'); return; }
+  const eq = utilEquipment.find(e => e._id === utilFilterEq);
+  if (!eq) { chip.classList.add('hidden'); return; }
+  chip.classList.remove('hidden');
+  chip.innerHTML = `🔍 ${escHtml(eq.name)} <span class="ufc-x">✕</span>`;
 }
 function renderUtilLabel() {
   const el = document.getElementById('utilRangeLabel'); if (!el) return;
@@ -4480,7 +4496,7 @@ function renderUtilStats() {
     let used = 0; bs.forEach(b => { const s = Math.max(new Date(b.start).getTime(), ws), e = Math.min(new Date(b.end).getTime(), we); if (e > s) used += e - s; });
     const pct = Math.round(used / winMs * 100);
     const cls = pct >= 80 ? 'hi' : pct >= 40 ? 'mid' : 'lo';
-    return `<div class="util-stat">
+    return `<div class="util-stat${utilFilterEq === eq._id ? ' active' : ''}" onclick="utilSetFilter('${eq._id}')" title="Zobraziť len toto zariadenie v časovej osi">
       <div class="util-stat-top"><img src="${UTIL_TYPE_IMG[eq.type] || UTIL_TYPE_IMG.other}" class="util-stat-img" alt=""><div>
         <div class="util-stat-name">${escHtml(eq.name)}</div>
         <div class="util-stat-code">${escHtml(eq.code || '')}</div></div></div>
@@ -4505,9 +4521,10 @@ function renderUtilGantt() {
   }
   head += '</div>';
 
-  // riadky
+  // riadky (voliteľne filtrované na jedno zariadenie)
+  const eqList = utilFilterEq ? utilEquipment.filter(e => e._id === utilFilterEq) : utilEquipment;
   let rows = '';
-  utilEquipment.forEach(eq => {
+  eqList.forEach(eq => {
     const bs = utilBookings.filter(b => (b.equipment?._id || b.equipment) === eq._id)
       .sort((a, b) => new Date(a.start) - new Date(b.start));
     const laneEnds = [];
@@ -4539,7 +4556,7 @@ function renderUtilGantt() {
         <span class="ug-bar-lbl">${escHtml(b.title)}${b.order ? ' · ' + escHtml(b.order) : ''}</span></div>`;
     });
     rows += `<div class="ug-row" style="height:${rowH}px">
-      <div class="ug-eq"><img src="${UTIL_TYPE_IMG[eq.type] || UTIL_TYPE_IMG.other}" class="ug-eq-img" alt=""><div class="ug-eq-txt"><span class="ug-eq-name">${escHtml(eq.name)}</span><span class="ug-eq-code">${escHtml(eq.code || '')}</span></div></div>
+      <div class="ug-eq" onclick="utilSetFilter('${eq._id}')" title="Filtrovať len toto zariadenie"><img src="${UTIL_TYPE_IMG[eq.type] || UTIL_TYPE_IMG.other}" class="ug-eq-img" alt=""><div class="ug-eq-txt"><span class="ug-eq-name">${escHtml(eq.name)}</span><span class="ug-eq-code">${escHtml(eq.code || '')}</span></div></div>
       <div class="ug-track" data-eqid="${eq._id}" onclick="utilTrackClick(event, '${eq._id}')">${grid}${bars}</div>
     </div>`;
   });
