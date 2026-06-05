@@ -2715,13 +2715,22 @@ body {
 
 /* Úvod — pravý stĺpec (kalendár + úlohy) */
 .home-side { display: flex; flex-direction: column; gap: 18px; }
-.home-task-item { display: flex; align-items: center; gap: 9px; padding: 7px; border-radius: var(--radius); border-left: 3px solid var(--ev, #3b82f6); background: rgba(255,255,255,0.03); }
+.home-task-item { display: flex; align-items: flex-start; gap: 9px; padding: 8px; border-radius: var(--radius); border-left: 3px solid var(--ev, #3b82f6); background: rgba(255,255,255,0.03); }
 .home-task-item:hover { background: rgba(255,255,255,0.07); }
-.home-task-check { width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px; cursor: pointer; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.25); color: #34d399; font-weight: 700; font-size: 0.8rem; }
+.home-task-check { width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px; cursor: pointer; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.25); color: #34d399; font-weight: 700; font-size: 0.8rem; margin-top: 1px; }
 .home-task-check:hover { background: #10b981; border-color: #10b981; color: #fff; }
 .home-task-body { flex: 1; min-width: 0; cursor: pointer; }
 .home-task-title { font-size: 0.84rem; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.home-task-meta { font-size: 0.7rem; color: rgba(255,255,255,0.45); }
+.home-task-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.home-task-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 0.7rem; color: rgba(255,255,255,0.5); margin-top: 4px; }
+.home-task-prio { font-weight: 700; }
+.home-task-added { color: rgba(255,255,255,0.4); }
+.home-task-sep { opacity: 0.3; }
+.home-task-prog { margin-top: 6px; }
+.home-task-prog .task-prog-track { height: 6px; }
+.home-task-prog .task-prog-val { font-size: 0.66rem; }
+.home-task-note { font-size: 0.7rem; color: rgba(255,255,255,0.55); margin-top: 5px; background: rgba(255,255,255,0.04); border-radius: 5px; padding: 4px 7px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-task-count { display: inline-block; min-width: 18px; padding: 0 6px; font-size: 0.68rem; font-weight: 700; text-align: center; background: rgba(99,102,241,0.25); color: #c4b5fd; border-radius: 100px; vertical-align: middle; }
 
 /* =============================================
    Drag & drop — zvýraznenie
