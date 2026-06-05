@@ -134,5 +134,14 @@ module.exports = function(sensorCfg) {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // ── Ukážkové rezervácie (Vyťaženie technológií) ───────────────────────────────
+  router.post('/seed-bookings', async (req, res) => {
+    try {
+      const { seedBookings } = require('../scripts/seedBookings');
+      const result = await seedBookings();
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   return router;
 };
