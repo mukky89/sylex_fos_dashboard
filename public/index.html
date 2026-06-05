@@ -74,6 +74,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z"/></svg>
           <span class="nav-lbl">Vývoj</span>
         </a>
+        <a class="nav-link" onclick="showPage('util')" data-page="util" title="Vyťaženie technológií">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="13" x2="14" y2="13"/><line x1="10" y1="17" x2="18" y2="17"/></svg>
+          <span class="nav-lbl">Vyťaženie</span>
+        </a>
         <a class="nav-link" onclick="showPage('tasks')" data-page="tasks" title="Úlohy">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           <span class="nav-lbl">Úlohy</span>
@@ -167,6 +171,10 @@
       <a class="asb-link" data-page="dev" onclick="showPage('dev')" title="Vývoj výrobkov">
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z"/></svg></span>
         <span class="asb-lbl">Vývoj</span>
+      </a>
+      <a class="asb-link" data-page="util" onclick="showPage('util')" title="Vyťaženie technológií">
+        <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="13" x2="14" y2="13"/><line x1="10" y1="17" x2="18" y2="17"/></svg></span>
+        <span class="asb-lbl">Vyťaženie</span>
       </a>
       <a class="asb-link" data-page="tasks" onclick="showPage('tasks')" title="Úlohy">
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
@@ -1565,6 +1573,113 @@
         <button class="btn-delete" id="usDeleteBtn" onclick="deleteUser(document.getElementById('usId').value)" style="display:none">Odstrániť</button>
         <button class="btn-secondary" onclick="closeUserModal()">Zrušiť</button>
         <button class="btn-primary" onclick="saveUser()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== VYŤAŽENIE TECHNOLÓGIÍ (Equipment Utilization / Scheduling) ===== -->
+  <main id="page-util" class="page util-page">
+    <div class="util-inner">
+      <div class="util-hero">
+        <div class="util-hero-txt">
+          <h1 class="util-title">Vyťaženie technológií</h1>
+          <p class="util-sub">Rezervačný kalendár komôr a pecí · časová os (Gantt) · prehľad obsadenosti</p>
+        </div>
+        <img src="/assets/equipment/chamber.svg" alt="Klimatická komora" class="util-hero-img">
+      </div>
+
+      <div class="util-toolbar">
+        <div class="util-nav">
+          <button class="cal-nav-btn" onclick="utilShift(-1)" title="Späť">‹</button>
+          <button class="btn-sm" onclick="utilToday()">Dnes</button>
+          <button class="cal-nav-btn" onclick="utilShift(1)" title="Ďalej">›</button>
+          <span class="util-range-label" id="utilRangeLabel">—</span>
+        </div>
+        <div class="util-toolbar-right">
+          <select id="utilRangeSel" class="util-select" onchange="utilSetRange(this.value)">
+            <option value="3">3 dni</option>
+            <option value="7" selected>7 dní</option>
+            <option value="14">14 dní</option>
+            <option value="30">30 dní</option>
+          </select>
+          <button class="btn-secondary" onclick="openEquipmentManager()">⚙ Zariadenia</button>
+          <button class="btn-primary" onclick="openBookingModal()">+ Nová rezervácia</button>
+        </div>
+      </div>
+
+      <!-- Súhrn vyťaženia -->
+      <div id="utilStats" class="util-stats"></div>
+
+      <!-- Gantt časová os -->
+      <div class="util-gantt-wrap">
+        <div id="utilGantt" class="util-gantt"></div>
+      </div>
+
+      <div class="util-legend">
+        <span><i class="ulg-dot" style="background:#64748b"></i> Plánované</span>
+        <span><i class="ulg-dot" style="background:#10b981"></i> Prebieha</span>
+        <span><i class="ulg-dot" style="background:#3b82f6"></i> Dokončené</span>
+        <span class="util-legend-hint">Klikni na pruh pre úpravu · na riadok pre novú rezerváciu</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== BOOKING MODAL ===== -->
+  <div id="bookingModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeBookingModal()"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header"><h2 id="bkModalTitle">Nová rezervácia</h2><button class="modal-close" onclick="closeBookingModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="bkId">
+        <div class="form-group"><label>Zariadenie *</label><select id="bkEquipment"></select></div>
+        <div class="form-group"><label>Názov testu *</label><input type="text" id="bkTitle" placeholder="napr. Teplotný cyklus -40/+85 °C"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Objednávka / zákazka</label><input type="text" id="bkOrder" placeholder="napr. OBJ-2026-014"></div>
+          <div class="form-group"><label>Zákazník</label><input type="text" id="bkCustomer" placeholder="napr. US CONEC"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Začiatok *</label><input type="datetime-local" id="bkStart"></div>
+          <div class="form-group"><label>Koniec *</label><input type="datetime-local" id="bkEnd"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Stav</label>
+            <select id="bkStatus"><option value="planned">Plánované</option><option value="running">Prebieha</option><option value="done">Dokončené</option><option value="cancelled">Zrušené</option></select>
+          </div>
+          <div class="form-group"><label>Profil (teplota/vlhkosť)</label><input type="text" id="bkProfile" placeholder="napr. 85 °C / 85 % RH"></div>
+        </div>
+        <div class="form-group"><label>Poznámka</label><textarea id="bkNote" rows="2"></textarea></div>
+        <div class="util-dur-hint" id="bkDurHint"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="bkDeleteBtn" onclick="deleteBooking(document.getElementById('bkId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeBookingModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveBooking()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== EQUIPMENT MANAGER MODAL ===== -->
+  <div id="equipmentModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeEquipmentManager()"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header"><h2>Zariadenia</h2><button class="modal-close" onclick="closeEquipmentManager()">✕</button></div>
+      <div class="modal-body">
+        <div id="equipMgrList" class="equip-mgr-list"></div>
+        <div class="equip-mgr-form">
+          <input type="hidden" id="eqId">
+          <div class="form-row">
+            <div class="form-group"><label>Názov *</label><input type="text" id="eqName" placeholder="napr. Klimatická komora 3"></div>
+            <div class="form-group"><label>Kód</label><input type="text" id="eqCode" placeholder="KK-03"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Typ</label><select id="eqType"><option value="chamber">Klimatická komora</option><option value="oven">Pec na vypekanie</option><option value="other">Iné</option></select></div>
+            <div class="form-group"><label>Farba</label><input type="color" id="eqColor" value="#0891b2" class="util-color"></div>
+          </div>
+          <div class="equip-mgr-actions">
+            <button class="btn-sm" id="eqCancelBtn" onclick="resetEquipForm()" style="display:none">Zrušiť úpravu</button>
+            <button class="btn-primary" onclick="saveEquipment()">Uložiť zariadenie</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
