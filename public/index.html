@@ -1717,17 +1717,17 @@
           <input type="text" id="prodSearch" placeholder="Hľadať zákazku, produkt, zákazníka..." oninput="renderProd()" autocomplete="off">
         </div>
         <div class="tasks-viewtoggle">
-          <button class="tasks-view active" data-pview="kanban" onclick="setProdView('kanban')">▦ Kanban</button>
+          <button class="tasks-view active" data-pview="gantt" onclick="setProdView('gantt')">📊 Gantt + AI</button>
+          <button class="tasks-view" data-pview="kanban" onclick="setProdView('kanban')">▦ Kanban</button>
           <button class="tasks-view" data-pview="list" onclick="setProdView('list')">☰ Zoznam</button>
-          <button class="tasks-view" data-pview="gantt" onclick="setProdView('gantt')">📊 Gantt + AI</button>
         </div>
       </div>
 
-      <div id="prodKanban" class="kanban prod-kanban"></div>
+      <div id="prodKanban" class="kanban prod-kanban hidden"></div>
       <div id="prodList" class="prod-list hidden"></div>
 
-      <!-- Gantt + AI analýza / optimalizácia -->
-      <div id="prodGantt" class="prod-gantt-view hidden">
+      <!-- Gantt + AI analýza / optimalizácia (predvolený pohľad) -->
+      <div id="prodGantt" class="prod-gantt-view">
         <div class="pg-toolbar">
           <div class="util-nav">
             <button class="cal-nav-btn" onclick="prodGanttShift(-1)" title="Späť">‹</button>
@@ -1743,10 +1743,19 @@
         </div>
         <div id="prodAi" class="pg-ai"></div>
         <div class="util-gantt-wrap"><div id="prodGanttChart" class="util-gantt"></div></div>
+        <div class="pg-legend">
+          <span class="pg-leg-item"><i style="background:#64748b"></i>Plánovaná</span>
+          <span class="pg-leg-item"><i style="background:#8b5cf6"></i>Príprava</span>
+          <span class="pg-leg-item"><i style="background:#0891b2"></i>Vo výrobe</span>
+          <span class="pg-leg-item"><i style="background:#f59e0b"></i>Kontrola</span>
+          <span class="pg-leg-item"><i style="background:#10b981"></i>Hotová</span>
+          <span class="pg-leg-item"><i style="background:#3b82f6"></i>Expedovaná</span>
+          <span class="pg-leg-note">🔴 urgentná · <b style="color:#fca5a5">červený rám</b> = po termíne · biely prúžok = % hotové</span>
+        </div>
       </div>
 
       <!-- Vyťaženie pracovísk -->
-      <div class="prod-lines-card" id="prodLinesCard">
+      <div class="prod-lines-card hidden" id="prodLinesCard">
         <h2 class="prod-lines-title">🏭 Vyťaženie pracovísk / liniek</h2>
         <div id="prodLines" class="prod-lines"></div>
       </div>

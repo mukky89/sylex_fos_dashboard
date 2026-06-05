@@ -4704,7 +4704,7 @@ async function deleteEquipment(id) {
 //  PLÁNOVANIE VÝROBY — výrobné zákazky (Kanban + zoznam + KPI + vyťaženie liniek)
 // ══════════════════════════════════════════════════════════════════════════════
 let prodData = [];
-let prodView = 'kanban';
+let prodView = 'gantt';
 let _dragProdId = null;
 const PROD_STAGES = [
   { key: 'plan', label: 'Plánovaná', c: '#64748b' },
@@ -4724,7 +4724,7 @@ async function loadProd() {
   const dl = document.getElementById('poLineList');
   if (dl) { const set = [...new Set(prodData.map(o => o.workstation).filter(Boolean))]; dl.innerHTML = set.map(w => `<option value="${escHtml(w)}">`).join(''); }
   renderProdKpis();
-  renderProd();
+  setProdView(prodView);   // synchronizuj viditeľnosť pohľadu (default = gantt) + vykresli
   renderProdLines();
 }
 
@@ -5002,18 +5002,37 @@ function renderProdGantt() {
     const arr = groups[line].sort((a, b) => a.sp.s - b.sp.s);
     const laneEnds = [];
     arr.forEach(it => { const s = it.sp.s.getTime(); let lane = laneEnds.findIndex(end => s >= end); if (lane === -1) { lane = laneEnds.length; laneEnds.push(it.sp.e.getTime()); } else laneEnds[lane] = it.sp.e.getTime(); it._lane = lane; });
-    const lanes = Math.max(1, laneEnds.length); const rowH = lanes * 30 + 8;
+    const lanes = Math.max(1, laneEnds.length); const rowH = lanes * 34 + 8;
+    // vyťaženie pracoviska v okne
+    let used = 0; arr.forEach(({ sp }) => { const s = Math.max(sp.s.getTime(), ws), e = Math.min(sp.e.getTime(), ws + winMs); if (e > s) used += e - s; });
+    const loadPct = Math.round(used / winMs * 100);
+    const loadCls = loadPct > 85 ? 'pgl-hi' : loadPct > 50 ? 'pgl-mid' : 'pgl-lo';
     let grid = '';
     for (let i = 0; i < days; i++) { const d = new Date(ws + i * 864e5); const we = (d.getDay() === 0 || d.getDay() === 6); grid += `<div class="ug-cell${we ? ' ug-weekend' : ''}" style="left:${i / days * 100}%;width:${100 / days}%"></div>`; }
     let bars = '';
     arr.forEach(it => {
       const o = it.o; const s = Math.max(it.sp.s.getTime(), ws), e = Math.min(it.sp.e.getTime(), ws + winMs); if (e <= s) return;
       const left = (s - ws) / winMs * 100, width = (e - s) / winMs * 100; const st = prodStageMap(o.stage); const od = prodOverdue(o);
-      const tip = `${o.number || ''} · ${o.product}\n${o.customer || ''}\n${o.qtyDone || 0}/${o.qtyPlanned || 0} ${o.unit || 'ks'} · ${st.label}${o.due ? '\nTermín: ' + fmtDate(o.due) : ''}`;
-      bars += `<div class="ug-bar pg-bar${od ? ' pg-bar-late' : ''}" style="left:${left}%;width:${Math.max(width, 1.5)}%;top:${it._lane * 30 + 4}px;background:${st.c}" title="${escHtml(tip)}" onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))"><span class="ug-bar-lbl">${escHtml(o.number || o.product)}</span></div>`;
+      const prio = PROD_PRIO[o.priority] || PROD_PRIO.normal;
+      const p = Math.max(0, Math.min(100, o.progress || 0));
+      const cust = o.customer || o.product || '';
+      const label = `${o.priority === 'urgent' ? '🔴 ' : ''}${escHtml(cust)}${o.number ? ` · ${escHtml(o.number)}` : ''}`;
+      const tip = `${o.number || ''} · ${o.product}\nZákazník: ${o.customer || '—'}\n${o.qtyDone || 0}/${o.qtyPlanned || 0} ${o.unit || 'ks'} (${p} %) · ${st.label}${o.due ? '\nTermín: ' + fmtDate(o.due) : ''}${od ? ' ⚠ po termíne' : ''}`;
+      const prioEdge = (o.priority === 'urgent' || o.priority === 'high') ? `box-shadow: inset 4px 0 0 ${prio.c};` : '';
+      bars += `<div class="ug-bar pg-bar${od ? ' pg-bar-late' : ''}" style="left:${left}%;width:${Math.max(width, 2)}%;top:${it._lane * 34 + 4}px;background:${st.c};${prioEdge}" title="${escHtml(tip)}" onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))">
+        <span class="ug-bar-lbl">${label}</span>
+        <span class="pg-bar-prog"><i style="width:${p}%"></i></span>
+      </div>`;
     });
     const cnt = arr.length;
-    rows += `<div class="ug-row" style="height:${rowH}px"><div class="ug-eq" style="cursor:default"><div class="ug-eq-txt"><span class="ug-eq-name">${escHtml(line)}</span><span class="ug-eq-code">${cnt} ${cnt === 1 ? 'zákazka' : (cnt >= 2 && cnt <= 4 ? 'zákazky' : 'zákaziek')}</span></div></div><div class="ug-track">${grid}${bars}</div></div>`;
+    rows += `<div class="ug-row" style="height:${rowH}px">
+      <div class="ug-eq" style="cursor:default">
+        <div class="ug-eq-txt" style="flex:1">
+          <span class="ug-eq-name">${escHtml(line)}</span>
+          <span class="ug-eq-load"><span class="ug-eq-loadbar"><i class="${loadCls}" style="width:${Math.min(100, loadPct)}%"></i></span><span class="ug-eq-loadval">${loadPct}% · ${cnt}</span></span>
+        </div>
+      </div>
+      <div class="ug-track">${grid}${bars}</div></div>`;
   });
   if (!Object.keys(groups).length) rows = '<div class="proc-empty" style="margin:20px">Žiadne naplánované zákazky v tomto období. Doplň termíny alebo posuň rozsah.</div>';
 
@@ -5088,7 +5107,7 @@ function renderProdAi() {
       </div>
       <div class="pg-ai-card">
         <div class="pg-ai-head">✨ AI optimalizácia <span class="pg-ai-badge">návrh</span></div>
-        <ul class="pg-sugg">${a.suggestions.map(s => `<li>${s}</li>`).join('')}</ul>
+        <ul class="pg-sugg">${a.suggestions.slice(0, 4).map(s => `<li>${s}</li>`).join('')}${a.suggestions.length > 4 ? `<li class="pg-sugg-more">+ ${a.suggestions.length - 4} ďalších odporúčaní</li>` : ''}</ul>
         <button class="btn-primary pg-opt-btn" onclick="prodOptimize()">✨ Optimalizovať plán</button>
         <div class="pg-opt-note" id="prodOptNote"></div>
       </div>

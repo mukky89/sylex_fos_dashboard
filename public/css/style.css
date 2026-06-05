@@ -3546,3 +3546,34 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .pg-opt-arrow span { opacity: 0.5; margin: 0 4px; } .pg-opt-arrow b { color: #34d399; }
 .pg-opt-result p { font-size: 0.76rem; color: #9fb3d1; margin-top: 6px; line-height: 1.5; }
 .pg-bar-late { outline: 2px solid #f43f5e; outline-offset: -2px; }
+
+/* =============================================================================
+   PLÁNOVANIE VÝROBY — prepracovaný Gantt (profesionálny plánovač)
+   ============================================================================= */
+/* pruhy s menom zákazníka + progres + priorita */
+#prodGanttChart .ug-bar { height: 28px; border-radius: 6px; padding-right: 4px; }
+.pg-bar .ug-bar-lbl { font-size: 0.72rem; font-weight: 600; padding: 0 8px; }
+.pg-bar-prog { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(0,0,0,0.32); }
+.pg-bar-prog i { display: block; height: 100%; background: rgba(255,255,255,0.92); border-radius: 0 2px 0 0; }
+.pg-bar-late { outline: 2px solid #f43f5e; outline-offset: -2px; }
+
+/* vyťaženie pri pracovisku */
+.ug-eq-load { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.ug-eq-loadbar { flex: 1; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.12); overflow: hidden; min-width: 40px; }
+.ug-eq-loadbar i { display: block; height: 100%; border-radius: 3px; }
+.ug-eq-loadbar i.pgl-lo { background: #22d3ee; } .ug-eq-loadbar i.pgl-mid { background: #f59e0b; } .ug-eq-loadbar i.pgl-hi { background: #ef4444; }
+.ug-eq-loadval { font-size: 0.64rem; color: #94a3b8; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* legenda fáz */
+.pg-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 12px; padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; font-size: 0.74rem; color: #cbd5e1; }
+.pg-leg-item { display: inline-flex; align-items: center; gap: 6px; }
+.pg-leg-item i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.pg-leg-note { margin-left: auto; color: #94a3b8; font-style: italic; }
+
+/* kompaktnejší AI panel + scrollovateľné návrhy */
+.pg-ai-card { padding: 14px 16px; }
+.pg-score { font-size: 2.2rem; }
+.pg-sugg { max-height: 168px; overflow-y: auto; margin-bottom: 12px; scrollbar-width: thin; }
+.pg-sugg li { font-size: 0.78rem; padding: 7px 10px; }
+.pg-sugg-more { background: transparent !important; border-left: none !important; color: #94a3b8 !important; font-style: italic; padding-left: 2px !important; }
+.pg-findings li { font-size: 0.78rem; }
