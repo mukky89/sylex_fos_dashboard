@@ -4446,6 +4446,16 @@ async function loadUtil() {
   } catch { utilEquipment = []; utilBookings = []; }
   renderUtil();
 }
+async function seedUtilData() {
+  if (!confirm('Vygenerovať náhodné ukážkové rezervácie na najbližší mesiac?\nNahradia sa len predošlé ukážkové dáta — reálne rezervácie ostanú.')) return;
+  try {
+    const r = await fetch('/api/admin/seed-bookings', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) { alert('Chyba: ' + (d.error || r.status)); return; }
+    utilToday();
+    setTimeout(() => alert('Hotovo — vytvorených ' + d.inserted + ' rezervácií pre ' + d.equipment + ' zariadení.'), 200);
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
 function utilShift(dir) { utilStart = new Date(utilStart.getTime() + dir * utilRangeDays * 864e5); loadUtil(); }
 function utilToday() { utilStart = utilDayStart(new Date()); loadUtil(); }
 function utilSetRange(v) { utilRangeDays = Math.max(1, parseInt(v) || 7); loadUtil(); }
