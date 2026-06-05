@@ -1719,14 +1719,34 @@
         <div class="tasks-viewtoggle">
           <button class="tasks-view active" data-pview="kanban" onclick="setProdView('kanban')">▦ Kanban</button>
           <button class="tasks-view" data-pview="list" onclick="setProdView('list')">☰ Zoznam</button>
+          <button class="tasks-view" data-pview="gantt" onclick="setProdView('gantt')">📊 Gantt + AI</button>
         </div>
       </div>
 
       <div id="prodKanban" class="kanban prod-kanban"></div>
       <div id="prodList" class="prod-list hidden"></div>
 
+      <!-- Gantt + AI analýza / optimalizácia -->
+      <div id="prodGantt" class="prod-gantt-view hidden">
+        <div class="pg-toolbar">
+          <div class="util-nav">
+            <button class="cal-nav-btn" onclick="prodGanttShift(-1)" title="Späť">‹</button>
+            <button class="btn-sm" onclick="prodGanttToday()">Dnes</button>
+            <button class="cal-nav-btn" onclick="prodGanttShift(1)" title="Ďalej">›</button>
+            <span class="util-range-label" id="prodGanttLabel">—</span>
+          </div>
+          <select id="prodGanttRange" class="util-select" onchange="prodGanttSetRange(this.value)">
+            <option value="7">7 dní</option>
+            <option value="14" selected>14 dní</option>
+            <option value="30">30 dní</option>
+          </select>
+        </div>
+        <div id="prodAi" class="pg-ai"></div>
+        <div class="util-gantt-wrap"><div id="prodGanttChart" class="util-gantt"></div></div>
+      </div>
+
       <!-- Vyťaženie pracovísk -->
-      <div class="prod-lines-card">
+      <div class="prod-lines-card" id="prodLinesCard">
         <h2 class="prod-lines-title">🏭 Vyťaženie pracovísk / liniek</h2>
         <div id="prodLines" class="prod-lines"></div>
       </div>

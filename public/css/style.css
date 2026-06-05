@@ -3515,3 +3515,34 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 
 @media (max-width: 1100px) { .prod-kanban.kanban { grid-template-columns: repeat(6, 220px); } }
 @media (max-width: 768px) { .prod-line-name { width: 110px; } .prod-line-meta { width: 110px; } }
+
+/* =============================================================================
+   PLÁNOVANIE VÝROBY — Gantt + AI panel
+   ============================================================================= */
+.pg-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.pg-ai { margin-bottom: 16px; }
+.pg-ai-grid { display: grid; grid-template-columns: 1fr 1.25fr; gap: 14px; }
+@media (max-width: 900px) { .pg-ai-grid { grid-template-columns: 1fr; } }
+.pg-ai-card { background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(6,182,212,0.08)); border: 1px solid rgba(103,232,249,0.22); border-radius: 14px; padding: 16px 18px; }
+.pg-ai-head { font-weight: 700; font-size: 0.95rem; color: #e8f0fb; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.pg-ai-badge { font-size: 0.6rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: rgba(139,92,246,0.28); color: #c4b5fd; text-transform: uppercase; letter-spacing: 0.05em; }
+.pg-score-wrap { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+.pg-score { font-family: var(--font-title); font-size: 2.6rem; font-weight: 800; line-height: 1; }
+.pg-score span { font-size: 1rem; opacity: 0.55; font-weight: 600; }
+.pg-score-lbl { font-weight: 700; font-size: 0.9rem; }
+.pg-findings { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.pg-findings li { font-size: 0.8rem; padding-left: 22px; position: relative; color: #cbd5e1; line-height: 1.4; }
+.pg-findings li::before { position: absolute; left: 0; top: 0; }
+.pgf-ok::before { content: '✅'; } .pgf-bad::before { content: '⛔'; } .pgf-warn::before { content: '⚠️'; } .pgf-info::before { content: 'ℹ️'; }
+.pg-sugg { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.pg-sugg li { font-size: 0.82rem; color: #dbe4f0; line-height: 1.45; padding: 8px 11px; background: rgba(255,255,255,0.04); border-radius: 8px; border-left: 3px solid #8b5cf6; }
+.pg-opt-btn { width: 100%; }
+.pg-opt-note { margin-top: 10px; }
+.pg-opt-prog { height: 6px; border-radius: 4px; background: rgba(255,255,255,0.1); overflow: hidden; }
+.pg-opt-prog > div { height: 100%; width: 0; background: linear-gradient(90deg,#8b5cf6,#06b6d4); border-radius: 4px; animation: pgprog 1s ease forwards; }
+@keyframes pgprog { to { width: 100%; } }
+.pg-opt-result { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 10px; padding: 12px 14px; }
+.pg-opt-arrow { font-family: var(--font-title); font-size: 1.3rem; font-weight: 800; color: #e8f0fb; }
+.pg-opt-arrow span { opacity: 0.5; margin: 0 4px; } .pg-opt-arrow b { color: #34d399; }
+.pg-opt-result p { font-size: 0.76rem; color: #9fb3d1; margin-top: 6px; line-height: 1.5; }
+.pg-bar-late { outline: 2px solid #f43f5e; outline-offset: -2px; }
