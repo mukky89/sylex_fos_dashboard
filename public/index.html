@@ -1870,6 +1870,52 @@
             </button>
           </div>
         </div>
+
+        <!-- Akcentová farba -->
+        <div class="admin-section">
+          <div class="admin-section-hdr"><h2 class="admin-section-title">Akcentová farba</h2></div>
+          <p class="admin-section-desc">Hlavná farba tlačidiel, odkazov a zvýraznení.</p>
+          <div class="appr-accents" id="apprAccents">
+            <button class="appr-accent" data-accent="cyan" onclick="setAccent('cyan')" title="Cyan"><span class="apa-dot" style="background:#06b6d4"></span>Cyan</button>
+            <button class="appr-accent" data-accent="indigo" onclick="setAccent('indigo')" title="Indigo"><span class="apa-dot" style="background:#6366f1"></span>Indigo</button>
+            <button class="appr-accent" data-accent="emerald" onclick="setAccent('emerald')" title="Emerald"><span class="apa-dot" style="background:#10b981"></span>Emerald</button>
+            <button class="appr-accent" data-accent="amber" onclick="setAccent('amber')" title="Amber"><span class="apa-dot" style="background:#f59e0b"></span>Amber</button>
+            <button class="appr-accent" data-accent="rose" onclick="setAccent('rose')" title="Rose"><span class="apa-dot" style="background:#f43f5e"></span>Rose</button>
+            <button class="appr-accent" data-accent="violet" onclick="setAccent('violet')" title="Violet"><span class="apa-dot" style="background:#8b5cf6"></span>Violet</button>
+          </div>
+        </div>
+
+        <!-- Hustota + Zaoblenie + Animácie -->
+        <div class="admin-section">
+          <div class="admin-section-hdr"><h2 class="admin-section-title">Rozloženie &amp; efekty</h2></div>
+          <div class="appr-opt-grid">
+            <div class="appr-opt-group">
+              <div class="appr-opt-label">Hustota</div>
+              <div class="appr-opts">
+                <button class="appr-opt" data-density="comfortable" onclick="setDensity('comfortable')">Komfortné</button>
+                <button class="appr-opt" data-density="compact" onclick="setDensity('compact')">Kompaktné</button>
+              </div>
+              <div class="appr-opt-hint">Kompaktné zmenší odsadenia a písmo — viac obsahu na obrazovku.</div>
+            </div>
+            <div class="appr-opt-group">
+              <div class="appr-opt-label">Zaoblenie rohov</div>
+              <div class="appr-opts">
+                <button class="appr-opt" data-radius="sharp" onclick="setRadius('sharp')">Ostré</button>
+                <button class="appr-opt" data-radius="soft" onclick="setRadius('soft')">Mäkké</button>
+                <button class="appr-opt" data-radius="round" onclick="setRadius('round')">Guľaté</button>
+              </div>
+              <div class="appr-opt-hint">Zaoblenie kariet, tlačidiel a polí.</div>
+            </div>
+            <div class="appr-opt-group">
+              <div class="appr-opt-label">Animácie</div>
+              <div class="appr-opts">
+                <button class="appr-opt" data-motion="on" onclick="setMotion('on')">Zapnuté</button>
+                <button class="appr-opt" data-motion="off" onclick="setMotion('off')">Redukovať pohyb</button>
+              </div>
+              <div class="appr-opt-hint">Vypne prechody a animácie (prístupnosť, výkon).</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ── TAB: ACCESS (coming soon) ── -->
