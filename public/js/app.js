@@ -1620,14 +1620,67 @@ function isFilePath(val) {
   return /^[a-zA-Z]:[\\/]/.test(val) || /^\\\\/.test(val);
 }
 
+// Otvorenie priečinka na file serveri.
+// Prehliadače z bezpečnostných dôvodov blokujú navigáciu na file:// z https stránky,
+// preto cestu skopírujeme do schránky + zobrazíme dialóg s návodom (a skúsime aj priame otvorenie).
+function openServerFolder(path) {
+  if (!path) return;
+  if (!isFilePath(path)) { window.open(path, '_blank'); return; } // http(s) odkaz
+  try { navigator.clipboard && navigator.clipboard.writeText(path); } catch (_) {}
+  showFolderDialog(path);
+}
+
+function showFolderDialog(path) {
+  let m = document.getElementById('folderDialog');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'folderDialog'; m.className = 'modal hidden';
+    m.innerHTML = `<div class="modal-backdrop" onclick="closeFolderDialog()"></div>
+      <div class="modal-box modal-sm">
+        <div class="modal-header"><h2>📁 Otvoriť priečinok</h2><button class="modal-close" onclick="closeFolderDialog()">✕</button></div>
+        <div class="modal-body">
+          <p class="folder-dlg-hint">Prehliadač z bezpečnostných dôvodov nedokáže priamo otvoriť sieťový priečinok. Cesta je <strong>skopírovaná do schránky</strong> — stačí ju vložiť do Prieskumníka.</p>
+          <input type="text" id="folderDlgPath" class="folder-dlg-path" readonly>
+          <ol class="folder-dlg-steps">
+            <li>Otvor <strong>Prieskumník</strong> — <kbd>⊞ Win</kbd> + <kbd>E</kbd></li>
+            <li>Klikni do adresného riadku — <kbd>Ctrl</kbd> + <kbd>L</kbd></li>
+            <li>Vlož a potvrď — <kbd>Ctrl</kbd> + <kbd>V</kbd>, <kbd>Enter</kbd></li>
+          </ol>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="closeFolderDialog()">Zavrieť</button>
+          <button class="btn-sm" id="folderDlgTry">↗ Skúsiť otvoriť priamo</button>
+          <button class="btn-primary" id="folderDlgCopy">📋 Kopírovať cestu</button>
+        </div>
+      </div>`;
+    document.body.appendChild(m);
+  }
+  const inp = m.querySelector('#folderDlgPath');
+  inp.value = path;
+  m.querySelector('#folderDlgCopy').onclick = () => {
+    const b = m.querySelector('#folderDlgCopy');
+    try { navigator.clipboard.writeText(path); } catch (_) { inp.select(); try { document.execCommand('copy'); } catch (_) {} }
+    b.textContent = '✓ Skopírované'; setTimeout(() => { b.textContent = '📋 Kopírovať cestu'; }, 1400);
+  };
+  m.querySelector('#folderDlgTry').onclick = () => { try { window.open(toFileHref(path), '_blank'); } catch (_) {} };
+  m.classList.remove('hidden');
+  setTimeout(() => { inp.focus(); inp.select(); }, 50);
+}
+function closeFolderDialog() { document.getElementById('folderDialog')?.classList.add('hidden'); }
+
 // Riadok odkazu s cestou (serverové priečinky / šablóny) — otvoriť + kopírovať
 function fileRowHtml(l) {
-  const href = toFileHref(l.url);
-  const copyBtn = isFilePath(l.url)
-    ? `<button class="files-row-btn" onclick="copyToClipboard(this, ${JSON.stringify(l.url).replace(/"/g, '&quot;')})" title="Kopírovať cestu">⧉</button>`
+  const isFile = isFilePath(l.url);
+  const safeUrl = JSON.stringify(l.url).replace(/"/g, '&quot;');
+  const copyBtn = isFile
+    ? `<button class="files-row-btn" onclick="copyToClipboard(this, ${safeUrl})" title="Kopírovať cestu">⧉</button>`
     : '';
+  // File cesty otvárame cez openServerFolder (file:// z https je blokované), http(s) klasicky
+  const linkAttrs = isFile
+    ? `href="#" onclick="event.preventDefault(); openServerFolder(${safeUrl})"`
+    : `href="${escHtml(l.url)}" target="_blank"`;
   return `<div class="files-row">
-    <a class="files-row-link" href="${escHtml(href)}" target="_blank" title="${escHtml(l.url)}">
+    <a class="files-row-link" ${linkAttrs} title="${escHtml(l.url)}">
       <span class="files-row-label">${escHtml(l.label)}</span>
       <span class="files-row-path">${escHtml(l.url)}</span>
     </a>
@@ -3718,9 +3771,7 @@ function renderProjects() {
   });
 }
 function openFolderLink(enc) {
-  const v = decodeURIComponent(enc);
-  const href = isFilePath(v) ? toFileHref(v) : v;
-  window.open(href, '_blank');
+  openServerFolder(decodeURIComponent(enc));
 }
 // Presun kartičky drag&drop do inej fázy (optimistický update + PUT)
 async function onKanbanDrop(phaseKey) {
