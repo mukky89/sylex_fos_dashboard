@@ -152,5 +152,13 @@ module.exports = function(sensorCfg) {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  router.post('/seed-manufacturing', async (req, res) => {
+    try {
+      const { seedManufacturing } = require('../scripts/seedManufacturing');
+      const result = await seedManufacturing();
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   return router;
 };

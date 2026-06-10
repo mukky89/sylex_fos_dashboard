@@ -729,6 +729,7 @@ async function handleHash(hash) {
   if (hash === 'dev')     { _activatePage('dev');     loadDev(); return; }
   if (hash === 'util')    { _activatePage('util');    loadUtil(); return; }
   if (hash === 'prod')    { _activatePage('prod');    loadProd(); return; }
+  if (hash === 'mfg')     { _activatePage('mfg');     loadMfg(); return; }
   if (hash === 'tasks')   { _activatePage('tasks');   loadTasks(); return; }
   if (hash === 'crm')     { _activatePage('crm');     loadCrm(); return; }
   if (hash === 'mgmt')    { _activatePage('mgmt');    loadManagement(); return; }
@@ -765,6 +766,7 @@ function showPage(name) {
   if (name === 'dev')     loadDev();
   if (name === 'util')    loadUtil();
   if (name === 'prod')    loadProd();
+  if (name === 'mfg')     loadMfg();
   if (name === 'tasks')   loadTasks();
   if (name === 'crm')     loadCrm();
   if (name === 'mgmt')    loadManagement();
@@ -4950,6 +4952,290 @@ async function seedProdData() {
     if (!r.ok) { alert('Chyba: ' + (d.error || r.status)); return; }
     loadProd();
     setTimeout(() => alert('Hotovo — vytvorených ' + d.inserted + ' zákaziek.'), 200);
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  RIADENIE VÝROBY (MES / dielenská vrstva) — pracoviská · OEE · prestoje
+// ══════════════════════════════════════════════════════════════════════════════
+let mfgCenters = [];
+let mfgReports = [];
+let mfgSummary = null;
+
+const WC_STATUS_META = {
+  running:     { l: 'Beží',          c: '#10b981' },
+  setup:       { l: 'Pretypovanie',  c: '#8b5cf6' },
+  idle:        { l: 'Nečinné',       c: '#94a3b8' },
+  maintenance: { l: 'Údržba',        c: '#f59e0b' },
+  down:        { l: 'Porucha',       c: '#ef4444' }
+};
+const WC_KIND_META = { line: '🏭 Linka', machine: '⚙️ Stroj', assembly: '🔧 Montáž', manual: '✋ Ručné', inspection: '🔍 Kontrola' };
+const DT_REASON_META = {
+  breakdown: 'Porucha', setup: 'Nastavenie', material: 'Materiál', quality: 'Kvalita',
+  noOperator: 'Bez obsluhy', changeover: 'Pretypovanie', other: 'Iné'
+};
+const SHIFT_META = { R: 'Ranná', P: 'Poobedná', N: 'Nočná' };
+
+function mfgRange() { return parseInt(document.getElementById('mfgRange')?.value) || 7; }
+function oeeClass(v) { return v >= 85 ? 'oee-good' : v >= 60 ? 'oee-mid' : 'oee-low'; }
+function fmtMin(m) { m = Math.round(m || 0); if (m < 60) return m + ' min'; const h = Math.floor(m / 60); return h + ' h ' + (m % 60) + ' min'; }
+
+async function loadMfg() {
+  const days = mfgRange();
+  try {
+    const [c, r, s] = await Promise.all([
+      fetch('/api/manufacturing/workcenters').then(x => x.json()),
+      fetch('/api/manufacturing/reports?days=' + days).then(x => x.json()),
+      fetch('/api/manufacturing/summary?days=' + days).then(x => x.json())
+    ]);
+    mfgCenters = Array.isArray(c) ? c : [];
+    mfgReports = Array.isArray(r) ? r : [];
+    mfgSummary = s && !s.error ? s : null;
+  } catch { mfgCenters = []; mfgReports = []; mfgSummary = null; }
+  // datalist pracovísk do modalu výkazu
+  const dl = document.getElementById('srWcList');
+  if (dl) dl.innerHTML = mfgCenters.map(c => `<option value="${escHtml(c.name)}">`).join('');
+  renderMfgKpis();
+  renderMfgBoard();
+  renderMfgReports();
+  renderMfgDowntime();
+  renderMfgWcOee();
+}
+
+function renderMfgKpis() {
+  const el = document.getElementById('mfgKpis'); if (!el) return;
+  const s = mfgSummary;
+  if (!s) { el.innerHTML = '<div class="proc-empty" style="grid-column:1/-1">Žiadne dáta — pridaj pracovisko alebo vlož ukážkové dáta.</div>'; return; }
+  const card = (val, label, sub, cls) => `<div class="prod-kpi ${cls || ''}"><div class="prod-kpi-val">${val}</div><div class="prod-kpi-lbl">${label}</div>${sub ? `<div class="prod-kpi-sub">${sub}</div>` : ''}</div>`;
+  el.innerHTML =
+    card(s.oee + '%', 'OEE (celkové)', `D ${s.availability}% · V ${s.performance}% · K ${s.quality}%`, s.oee >= 85 ? 'pk-green' : s.oee >= 60 ? 'pk-cyan' : 'pk-red') +
+    card(s.running + '/' + s.centersTotal, 'Bežiace pracoviská', s.byStatus.down ? s.byStatus.down + ' v poruche' : 'bez porúch', s.byStatus.down ? 'pk-red' : 'pk-blue') +
+    card((s.goodToday + s.scrapToday), 'Výroba dnes (ks)', s.targetToday ? s.fulfillToday + '% cieľa' : '—', 'pk-blue') +
+    card(s.scrapRate + '%', 'Zmätkovitosť dnes', s.scrapToday + ' NOK ks', s.scrapRate > 5 ? 'pk-red' : '') +
+    card(fmtMin(s.downtimeToday), 'Prestoje dnes', s.downtimeByReason[0] ? DT_REASON_META[s.downtimeByReason[0].reason] : 'žiadne', s.downtimeToday ? 'pk-red' : '');
+}
+
+function renderMfgBoard() {
+  const el = document.getElementById('mfgBoard'); if (!el) return;
+  if (!mfgCenters.length) { el.innerHTML = '<div class="proc-empty">Žiadne pracoviská. Pridaj prvé tlačidlom „+ Pracovisko".</div>'; return; }
+  el.innerHTML = mfgCenters.map(c => {
+    const m = WC_STATUS_META[c.status] || WC_STATUS_META.idle;
+    const since = c.statusSince ? mfgSince(c.statusSince) : '';
+    const opts = Object.entries(WC_STATUS_META).map(([k, v]) => `<option value="${k}" ${k === c.status ? 'selected' : ''}>${v.l}</option>`).join('');
+    return `<div class="wc-card wc-status-${c.status}">
+      <div class="wc-top">
+        <div class="wc-name-wrap">
+          <span class="wc-name">${escHtml(c.name)}</span>
+          <span class="wc-meta">${escHtml(c.code || '')}${c.code ? ' · ' : ''}${WC_KIND_META[c.kind] || ''}</span>
+        </div>
+        <button class="wc-edit" onclick="openWcModal(mfgCenters.find(x=>x._id==='${c._id}'))" title="Upraviť">✎</button>
+      </div>
+      <div class="wc-status-row">
+        <span class="wc-dot wc-${c.status}"></span>
+        <select class="wc-status-sel" onchange="setWcStatus('${c._id}', this.value)">${opts}</select>
+        ${since ? `<span class="wc-since">${since}</span>` : ''}
+      </div>
+      <div class="wc-body">
+        ${c.currentOrder ? `<div class="wc-line"><span>Zákazka</span><b>${escHtml(c.currentOrder)}</b></div>` : ''}
+        ${c.operator ? `<div class="wc-line"><span>Operátor</span><b>${escHtml(c.operator)}</b></div>` : ''}
+        ${c.ratedCapacity ? `<div class="wc-line"><span>Kapacita</span><b>${c.ratedCapacity} ks/h</b></div>` : ''}
+        ${c.shiftTarget ? `<div class="wc-line"><span>Cieľ/zmena</span><b>${c.shiftTarget} ks</b></div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+function mfgSince(d) {
+  const mins = Math.round((Date.now() - new Date(d).getTime()) / 60000);
+  if (mins < 1) return 'teraz';
+  if (mins < 60) return mins + ' min';
+  const h = Math.floor(mins / 60); if (h < 24) return h + ' h';
+  return Math.floor(h / 24) + ' d';
+}
+
+async function setWcStatus(id, status) {
+  const c = mfgCenters.find(x => x._id === id); if (c) c.status = status;
+  try { await fetch('/api/manufacturing/workcenters/' + id + '/status', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }); } catch {}
+  loadMfg();
+}
+
+function renderMfgReports() {
+  const el = document.getElementById('mfgReports'); if (!el) return;
+  const q = (document.getElementById('mfgSearch')?.value || '').toLowerCase();
+  let items = mfgReports;
+  if (q) items = items.filter(r => [r.workCenter, r.product, r.orderNumber, r.operator].some(x => (x || '').toLowerCase().includes(q)));
+  if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne zmenové výkazy v zvolenom období.</div>'; return; }
+  el.innerHTML = `<table class="prod-table mfg-table"><thead><tr>
+    <th>Dátum</th><th>Zm.</th><th>Pracovisko</th><th>Dobré/NOK</th><th>Prestoj</th><th>OEE (D·V·K)</th><th></th>
+    </tr></thead><tbody>${items.map(r => {
+    const k = r.kpi || {};
+    return `<tr onclick="openSrModal(mfgReports.find(x=>x._id==='${r._id}'))" style="cursor:pointer">
+      <td>${fmtDate(r.date)}</td>
+      <td><span class="mfg-shift">${r.shift}</span></td>
+      <td><b>${escHtml(r.workCenter)}</b>${r.product ? `<div class="mfg-sub">${escHtml(r.product)}</div>` : ''}</td>
+      <td>${r.goodQty || 0}<span class="mfg-nok"> / ${r.scrapQty || 0}</span></td>
+      <td>${r.downtimeMinutes ? fmtMin(r.downtimeMinutes) + (r.downtimeReason && r.downtimeReason !== 'none' ? `<div class="mfg-sub">${DT_REASON_META[r.downtimeReason] || ''}</div>` : '') : '—'}</td>
+      <td><div class="mfg-oee-cell"><span class="mfg-oee-badge ${oeeClass(k.oee || 0)}">${k.oee || 0}%</span><span class="mfg-apq">${k.availability || 0}·${k.performance || 0}·${k.quality || 0}</span></div></td>
+      <td class="mfg-row-edit">✎</td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+function renderMfgDowntime() {
+  const el = document.getElementById('mfgDowntime'); if (!el) return;
+  const s = mfgSummary;
+  if (!s || !s.downtimeByReason.length) { el.innerHTML = '<div class="mfg-empty-sm">Bez evidovaných prestojov 🎉</div>'; return; }
+  const max = s.downtimeByReason[0].minutes || 1;
+  el.innerHTML = s.downtimeByReason.map(d => `
+    <div class="mfg-dt-row">
+      <div class="mfg-dt-top"><span>${DT_REASON_META[d.reason] || d.reason}</span><b>${fmtMin(d.minutes)}</b></div>
+      <div class="mfg-dt-track"><div class="mfg-dt-fill" style="width:${Math.round(d.minutes / max * 100)}%"></div></div>
+    </div>`).join('');
+}
+
+function renderMfgWcOee() {
+  const el = document.getElementById('mfgWcOee'); if (!el) return;
+  const s = mfgSummary;
+  if (!s || !s.centersOee.length) { el.innerHTML = '<div class="mfg-empty-sm">Zatiaľ bez výkazov.</div>'; return; }
+  el.innerHTML = s.centersOee.map(w => `
+    <div class="mfg-wco-row">
+      <div class="mfg-wco-top"><span>${escHtml(w.name)}</span><b class="${oeeClass(w.oee)}">${w.oee}%</b></div>
+      <div class="mfg-dt-track"><div class="mfg-wco-fill ${oeeClass(w.oee)}" style="width:${w.oee}%"></div></div>
+    </div>`).join('');
+}
+
+// ── Pracovisko: modal ──
+function openWcModal(wc = null) {
+  document.getElementById('wcModalTitle').textContent = wc ? 'Upraviť pracovisko' : 'Nové pracovisko';
+  document.getElementById('wcId').value = wc?._id || '';
+  document.getElementById('wcName').value = wc?.name || '';
+  document.getElementById('wcCode').value = wc?.code || '';
+  document.getElementById('wcKind').value = wc?.kind || 'line';
+  document.getElementById('wcStatus').value = wc?.status || 'idle';
+  document.getElementById('wcCapacity').value = wc?.ratedCapacity || '';
+  document.getElementById('wcTarget').value = wc?.shiftTarget || '';
+  document.getElementById('wcOrder').value = wc?.currentOrder || '';
+  document.getElementById('wcOperator').value = wc?.operator || '';
+  document.getElementById('wcLocation').value = wc?.location || '';
+  document.getElementById('wcNote').value = wc?.note || '';
+  document.getElementById('wcDeleteBtn').style.display = wc ? '' : 'none';
+  document.getElementById('wcModal').classList.remove('hidden');
+}
+function closeWcModal() { document.getElementById('wcModal').classList.add('hidden'); }
+async function saveWc() {
+  const id = document.getElementById('wcId').value;
+  const body = {
+    name: document.getElementById('wcName').value.trim(),
+    code: document.getElementById('wcCode').value.trim(),
+    kind: document.getElementById('wcKind').value,
+    status: document.getElementById('wcStatus').value,
+    ratedCapacity: document.getElementById('wcCapacity').value,
+    shiftTarget: document.getElementById('wcTarget').value,
+    currentOrder: document.getElementById('wcOrder').value.trim(),
+    operator: document.getElementById('wcOperator').value.trim(),
+    location: document.getElementById('wcLocation').value.trim(),
+    note: document.getElementById('wcNote').value.trim()
+  };
+  if (!body.name) { alert('Zadaj názov pracoviska.'); return; }
+  try {
+    const url = id ? '/api/manufacturing/workcenters/' + id : '/api/manufacturing/workcenters';
+    const r = await fetch(url, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const d = await r.json(); alert('Chyba: ' + (d.error || r.status)); return; }
+    closeWcModal(); loadMfg();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteWc(id) {
+  if (!id || !confirm('Odstrániť toto pracovisko?')) return;
+  try { await fetch('/api/manufacturing/workcenters/' + id, { method: 'DELETE' }); closeWcModal(); loadMfg(); }
+  catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+// ── Zmenový výkaz: modal ──
+function srToInputDate(d) { const x = d ? new Date(d) : new Date(); return x.toISOString().slice(0, 10); }
+function openSrModal(sr = null) {
+  document.getElementById('srModalTitle').textContent = sr ? 'Upraviť zmenový výkaz' : 'Nový zmenový výkaz';
+  document.getElementById('srId').value = sr?._id || '';
+  document.getElementById('srDate').value = srToInputDate(sr?.date);
+  document.getElementById('srShift').value = sr?.shift || 'R';
+  document.getElementById('srWorkCenter').value = sr?.workCenter || '';
+  document.getElementById('srOrder').value = sr?.orderNumber || '';
+  document.getElementById('srProduct').value = sr?.product || '';
+  document.getElementById('srPlanned').value = sr?.plannedMinutes ?? 480;
+  document.getElementById('srDowntime').value = sr?.downtimeMinutes ?? 0;
+  document.getElementById('srReason').value = sr?.downtimeReason || 'none';
+  document.getElementById('srGood').value = sr?.goodQty ?? 0;
+  document.getElementById('srScrap').value = sr?.scrapQty ?? 0;
+  document.getElementById('srIdealRate').value = sr?.idealRate ?? 0;
+  document.getElementById('srTarget').value = sr?.targetQty ?? 0;
+  document.getElementById('srOperator').value = sr?.operator || '';
+  document.getElementById('srNote').value = sr?.note || '';
+  document.getElementById('srDeleteBtn').style.display = sr ? '' : 'none';
+  srPreview();
+  document.getElementById('srModal').classList.remove('hidden');
+}
+function closeSrModal() { document.getElementById('srModal').classList.add('hidden'); }
+function srVal(id) { return Number(document.getElementById(id).value) || 0; }
+function srComputeOee() {
+  const planned = srVal('srPlanned'), downtime = Math.min(srVal('srDowntime'), planned);
+  const runtime = Math.max(0, planned - downtime);
+  const good = srVal('srGood'), scrap = srVal('srScrap'), total = good + scrap;
+  const ideal = srVal('srIdealRate'), target = srVal('srTarget');
+  const availability = planned > 0 ? runtime / planned : 0;
+  let performance;
+  if (ideal > 0 && runtime > 0) performance = total / (ideal * runtime / 60);
+  else if (target > 0) performance = total / target;
+  else performance = total > 0 ? 1 : 0;
+  performance = Math.max(0, Math.min(1, performance));
+  const quality = total > 0 ? good / total : 0;
+  const cl = v => Math.max(0, Math.min(100, Math.round(v * 100)));
+  return { a: cl(availability), p: cl(performance), q: cl(quality), oee: cl(availability * performance * quality) };
+}
+function srPreview() {
+  const el = document.getElementById('srPreviewBox'); if (!el) return;
+  const k = srComputeOee();
+  el.innerHTML = `<div class="mfg-prev-grid">
+    <div class="mfg-prev-cell"><span>Dostupnosť</span><b>${k.a}%</b></div>
+    <div class="mfg-prev-cell"><span>Výkon</span><b>${k.p}%</b></div>
+    <div class="mfg-prev-cell"><span>Kvalita</span><b>${k.q}%</b></div>
+    <div class="mfg-prev-cell mfg-prev-oee ${oeeClass(k.oee)}"><span>OEE</span><b>${k.oee}%</b></div>
+  </div>`;
+}
+async function saveSr() {
+  const id = document.getElementById('srId').value;
+  const body = {
+    date: document.getElementById('srDate').value || undefined,
+    shift: document.getElementById('srShift').value,
+    workCenter: document.getElementById('srWorkCenter').value.trim(),
+    orderNumber: document.getElementById('srOrder').value.trim(),
+    product: document.getElementById('srProduct').value.trim(),
+    plannedMinutes: srVal('srPlanned'), downtimeMinutes: srVal('srDowntime'),
+    downtimeReason: document.getElementById('srReason').value,
+    goodQty: srVal('srGood'), scrapQty: srVal('srScrap'),
+    idealRate: srVal('srIdealRate'), targetQty: srVal('srTarget'),
+    operator: document.getElementById('srOperator').value.trim(),
+    note: document.getElementById('srNote').value.trim()
+  };
+  if (!body.workCenter) { alert('Zadaj pracovisko.'); return; }
+  try {
+    const url = id ? '/api/manufacturing/reports/' + id : '/api/manufacturing/reports';
+    const r = await fetch(url, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const d = await r.json(); alert('Chyba: ' + (d.error || r.status)); return; }
+    closeSrModal(); loadMfg();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteSr(id) {
+  if (!id || !confirm('Odstrániť tento zmenový výkaz?')) return;
+  try { await fetch('/api/manufacturing/reports/' + id, { method: 'DELETE' }); closeSrModal(); loadMfg(); }
+  catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+async function seedMfgData() {
+  if (!confirm('Vygenerovať ukážkové pracoviská a zmenové výkazy? Nahradia sa len predošlé ukážkové dáta.')) return;
+  try {
+    const r = await fetch('/api/admin/seed-manufacturing', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) { alert('Chyba: ' + (d.error || r.status)); return; }
+    loadMfg();
+    setTimeout(() => alert(`Hotovo — ${d.centers} pracovísk a ${d.reports} výkazov.`), 200);
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 

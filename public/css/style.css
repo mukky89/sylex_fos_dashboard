@@ -3613,6 +3613,91 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .pg-findings li { font-size: 0.78rem; }
 
 /* =============================================================================
+   RIADENIE VÝROBY (MES / dielenská vrstva)
+   ============================================================================= */
+.mfg-page { background: var(--hdr-bg); }
+.mfg-inner { max-width: 1280px; margin: 0 auto; padding: 28px 24px 52px; }
+
+.mfg-section-hdr { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 22px 0 12px; }
+.mfg-legend { display: flex; gap: 14px; flex-wrap: wrap; }
+.mfg-leg { display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: #9fb3d1; }
+
+/* stavové bodky */
+.wc-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+.wc-running     { background: #10b981; box-shadow: 0 0 7px #10b981; animation: pulseDot 2s ease-in-out infinite; }
+.wc-setup       { background: #8b5cf6; }
+.wc-idle        { background: #94a3b8; }
+.wc-maintenance { background: #f59e0b; }
+.wc-down        { background: #ef4444; box-shadow: 0 0 7px #ef4444; }
+
+/* dielenská tabuľa */
+.mfg-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.wc-card {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+  border-top: 3px solid #94a3b8; border-radius: 13px; padding: 14px;
+  display: flex; flex-direction: column; gap: 10px; transition: border-color .16s, transform .16s;
+}
+.wc-card:hover { transform: translateY(-2px); }
+.wc-status-running     { border-top-color: #10b981; }
+.wc-status-setup       { border-top-color: #8b5cf6; }
+.wc-status-idle        { border-top-color: #94a3b8; }
+.wc-status-maintenance { border-top-color: #f59e0b; }
+.wc-status-down        { border-top-color: #ef4444; }
+.wc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.wc-name-wrap { display: flex; flex-direction: column; min-width: 0; }
+.wc-name { font-weight: 700; font-size: 0.95rem; color: #f0f9ff; }
+.wc-meta { font-size: 0.7rem; color: #94a3b8; margin-top: 2px; }
+.wc-edit { background: none; border: none; color: #64748b; cursor: pointer; font-size: 0.9rem; padding: 2px 4px; border-radius: 6px; transition: color .14s, background .14s; }
+.wc-edit:hover { color: #e2e8f0; background: rgba(255,255,255,0.08); }
+.wc-status-row { display: flex; align-items: center; gap: 8px; }
+.wc-status-sel { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e2e8f0; border-radius: 7px; padding: 5px 8px; font-family: var(--font); font-size: 0.78rem; cursor: pointer; }
+.wc-since { font-size: 0.66rem; color: #64748b; white-space: nowrap; }
+.wc-body { display: flex; flex-direction: column; gap: 4px; }
+.wc-line { display: flex; justify-content: space-between; gap: 8px; font-size: 0.78rem; color: #9fb3d1; }
+.wc-line b { color: #dbe4f0; font-weight: 600; }
+
+/* spodný grid */
+.mfg-grid { display: grid; grid-template-columns: 1.7fr 1fr; gap: 16px; margin-top: 22px; }
+.mfg-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09); border-radius: 14px; padding: 16px; }
+.mfg-card-hdr { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.mfg-card-hdr .prod-lines-title { margin-bottom: 0; }
+
+/* tabuľka výkazov */
+.mfg-table td { font-size: 0.8rem; }
+.mfg-shift { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: rgba(99,102,241,0.18); color: #c4b5fd; font-weight: 700; font-size: 0.74rem; }
+.mfg-sub { font-size: 0.68rem; color: #94a3b8; margin-top: 2px; }
+.mfg-nok { color: #fca5a5; }
+.mfg-oee-cell { display: flex; align-items: center; gap: 8px; }
+.mfg-oee-badge { font-weight: 700; font-size: 0.78rem; padding: 2px 8px; border-radius: 100px; }
+.mfg-apq { font-size: 0.66rem; color: #64748b; font-variant-numeric: tabular-nums; }
+.mfg-row-edit { color: #475569; text-align: center; }
+.mfg-table tbody tr:hover .mfg-row-edit { color: #e2e8f0; }
+.oee-good { color: #6ee7b7; } .mfg-oee-badge.oee-good { background: rgba(16,185,129,0.16); }
+.oee-mid  { color: #fcd34d; } .mfg-oee-badge.oee-mid  { background: rgba(245,158,11,0.16); }
+.oee-low  { color: #fca5a5; } .mfg-oee-badge.oee-low  { background: rgba(239,68,68,0.16); }
+
+/* prestoje + OEE pracovísk */
+.mfg-dt-row, .mfg-wco-row { margin-bottom: 11px; }
+.mfg-dt-top, .mfg-wco-top { display: flex; justify-content: space-between; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 5px; }
+.mfg-dt-top b, .mfg-wco-top b { color: #f0f9ff; font-variant-numeric: tabular-nums; }
+.mfg-dt-track { height: 7px; border-radius: 5px; background: rgba(255,255,255,0.07); overflow: hidden; }
+.mfg-dt-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #f59e0b, #ef4444); }
+.mfg-wco-fill { height: 100%; border-radius: 5px; background: #10b981; }
+.mfg-wco-fill.oee-mid { background: #f59e0b; } .mfg-wco-fill.oee-low { background: #ef4444; }
+.mfg-empty-sm { font-size: 0.8rem; color: #64748b; padding: 8px 0; }
+
+/* OEE náhľad v modale výkazu */
+.mfg-oee-preview { margin: 4px 0 8px; }
+.mfg-prev-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.mfg-prev-cell { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 9px; padding: 8px; text-align: center; }
+.mfg-prev-cell span { display: block; font-size: 0.64rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
+.mfg-prev-cell b { font-size: 1.05rem; color: #e2e8f0; font-family: var(--font-title); }
+.mfg-prev-oee { border-color: rgba(16,185,129,0.4); }
+.mfg-prev-oee.oee-mid { border-color: rgba(245,158,11,0.4); } .mfg-prev-oee.oee-low { border-color: rgba(239,68,68,0.4); }
+
+@media (max-width: 900px) { .mfg-grid { grid-template-columns: 1fr; } }
+
+/* =============================================================================
    UI/UX POLISH — prístupnosť & jemné vylepšenia (WCAG-friendly)
    ============================================================================= */
 /* Viditeľný focus ring LEN pri navigácii klávesnicou (myš ho neukáže) */

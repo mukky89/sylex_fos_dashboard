@@ -82,6 +82,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20h20"/><path d="M4 20V8l6 4V8l6 4V8l4 3v9"/></svg>
           <span class="nav-lbl">Výroba</span>
         </a>
+        <a class="nav-link" onclick="showPage('mfg')" data-page="mfg" title="Riadenie výroby — dielenská tabuľa, OEE">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>
+          <span class="nav-lbl">Riadenie</span>
+        </a>
         <a class="nav-link" onclick="showPage('tasks')" data-page="tasks" title="Úlohy">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           <span class="nav-lbl">Úlohy</span>
@@ -183,6 +187,10 @@
       <a class="asb-link" data-page="prod" onclick="showPage('prod')" title="Plánovanie výroby">
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20h20"/><path d="M4 20V8l6 4V8l6 4V8l4 3v9"/></svg></span>
         <span class="asb-lbl">Výroba</span>
+      </a>
+      <a class="asb-link" data-page="mfg" onclick="showPage('mfg')" title="Riadenie výroby">
+        <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg></span>
+        <span class="asb-lbl">Riadenie</span>
       </a>
       <a class="asb-link" data-page="tasks" onclick="showPage('tasks')" title="Úlohy">
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
@@ -1807,6 +1815,150 @@
         <button class="btn-delete" id="poDeleteBtn" onclick="deleteProd(document.getElementById('poId').value)" style="display:none">Odstrániť</button>
         <button class="btn-secondary" onclick="closeProdModal()">Zrušiť</button>
         <button class="btn-primary" onclick="saveProd()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RIADENIE VÝROBY (MES / dielenská vrstva) ===== -->
+  <main id="page-mfg" class="page mfg-page">
+    <div class="mfg-inner">
+      <div class="prod-hdr">
+        <div>
+          <h1 class="prod-title">Riadenie výroby</h1>
+          <p class="prod-sub">Dielenská tabuľa · živý stav pracovísk · OEE · prestoje · zmätkovitosť · zmenové výkazy</p>
+        </div>
+        <div class="prod-hdr-actions">
+          <select id="mfgRange" class="util-select" onchange="loadMfg()">
+            <option value="7" selected>Posledných 7 dní</option>
+            <option value="14">14 dní</option>
+            <option value="30">30 dní</option>
+          </select>
+          <button class="btn-secondary" onclick="seedMfgData()" title="Vygenerovať ukážkové dáta">🎲 Ukážkové dáta</button>
+          <button class="btn-secondary" onclick="openWcModal()">+ Pracovisko</button>
+          <button class="btn-primary" onclick="openSrModal()">+ Zmenový výkaz</button>
+        </div>
+      </div>
+
+      <!-- KPI -->
+      <div id="mfgKpis" class="prod-kpis"></div>
+
+      <!-- Dielenská tabuľa — živý stav pracovísk -->
+      <div class="mfg-section-hdr">
+        <h2 class="prod-lines-title">🏭 Dielenská tabuľa — živý stav pracovísk</h2>
+        <div class="mfg-legend">
+          <span class="mfg-leg"><i class="wc-dot wc-running"></i>Beží</span>
+          <span class="mfg-leg"><i class="wc-dot wc-setup"></i>Pretypovanie</span>
+          <span class="mfg-leg"><i class="wc-dot wc-idle"></i>Nečinné</span>
+          <span class="mfg-leg"><i class="wc-dot wc-maintenance"></i>Údržba</span>
+          <span class="mfg-leg"><i class="wc-dot wc-down"></i>Porucha</span>
+        </div>
+      </div>
+      <div id="mfgBoard" class="mfg-board"></div>
+
+      <!-- Spodný riadok: zmenové výkazy + prestoje -->
+      <div class="mfg-grid">
+        <div class="mfg-card mfg-reports-card">
+          <div class="mfg-card-hdr">
+            <h2 class="prod-lines-title">📋 Zmenové výkazy</h2>
+            <div class="proc-search-wrap" style="margin:0;max-width:240px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="mfgSearch" placeholder="Hľadať pracovisko, produkt..." oninput="renderMfgReports()" autocomplete="off">
+            </div>
+          </div>
+          <div id="mfgReports" class="mfg-reports"></div>
+        </div>
+
+        <div class="mfg-card mfg-side-card">
+          <h2 class="prod-lines-title">⏱️ Prestoje podľa dôvodu</h2>
+          <div id="mfgDowntime" class="mfg-downtime"></div>
+          <h2 class="prod-lines-title" style="margin-top:18px">🎯 OEE podľa pracoviska</h2>
+          <div id="mfgWcOee" class="mfg-wc-oee"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== WORK CENTER MODAL ===== -->
+  <div id="wcModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeWcModal()"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header"><h2 id="wcModalTitle">Nové pracovisko</h2><button class="modal-close" onclick="closeWcModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="wcId">
+        <div class="form-row">
+          <div class="form-group"><label>Názov *</label><input type="text" id="wcName" placeholder="napr. Linka A — montáž"></div>
+          <div class="form-group"><label>Kód</label><input type="text" id="wcCode" placeholder="WC-01"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Typ</label>
+            <select id="wcKind"><option value="line">Linka</option><option value="machine">Stroj</option><option value="assembly">Montáž</option><option value="manual">Ručné</option><option value="inspection">Kontrola</option></select>
+          </div>
+          <div class="form-group"><label>Stav</label>
+            <select id="wcStatus"><option value="running">Beží</option><option value="setup">Pretypovanie</option><option value="idle">Nečinné</option><option value="maintenance">Údržba</option><option value="down">Porucha</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Kapacita (ks/h)</label><input type="number" id="wcCapacity" min="0" placeholder="0"></div>
+          <div class="form-group"><label>Cieľ / zmena (ks)</label><input type="number" id="wcTarget" min="0" placeholder="0"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Aktuálna zákazka</label><input type="text" id="wcOrder" placeholder="VZ-2026-001"></div>
+          <div class="form-group"><label>Operátor</label><input type="text" id="wcOperator" placeholder="Meno"></div>
+        </div>
+        <div class="form-group"><label>Umiestnenie</label><input type="text" id="wcLocation" placeholder="napr. Hala 1"></div>
+        <div class="form-group"><label>Poznámka</label><textarea id="wcNote" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="wcDeleteBtn" onclick="deleteWc(document.getElementById('wcId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeWcModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveWc()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SHIFT REPORT MODAL ===== -->
+  <div id="srModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeSrModal()"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header"><h2 id="srModalTitle">Nový zmenový výkaz</h2><button class="modal-close" onclick="closeSrModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="srId">
+        <div class="form-row">
+          <div class="form-group"><label>Dátum</label><input type="date" id="srDate"></div>
+          <div class="form-group"><label>Zmena</label>
+            <select id="srShift"><option value="R">Ranná</option><option value="P">Poobedná</option><option value="N">Nočná</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Pracovisko *</label><input type="text" id="srWorkCenter" placeholder="napr. Linka A" list="srWcList"><datalist id="srWcList"></datalist></div>
+          <div class="form-group"><label>Zákazka</label><input type="text" id="srOrder" placeholder="VZ-2026-001"></div>
+        </div>
+        <div class="form-group"><label>Produkt</label><input type="text" id="srProduct" placeholder="napr. FBG senzor FT-100"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Plán. čas (min)</label><input type="number" id="srPlanned" min="0" value="480" oninput="srPreview()"></div>
+          <div class="form-group"><label>Prestoje (min)</label><input type="number" id="srDowntime" min="0" value="0" oninput="srPreview()"></div>
+          <div class="form-group"><label>Dôvod prestoja</label>
+            <select id="srReason"><option value="none">— žiadny —</option><option value="breakdown">Porucha</option><option value="setup">Nastavenie</option><option value="material">Materiál</option><option value="quality">Kvalita</option><option value="noOperator">Bez obsluhy</option><option value="changeover">Pretypovanie</option><option value="other">Iné</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Dobré ks</label><input type="number" id="srGood" min="0" value="0" oninput="srPreview()"></div>
+          <div class="form-group"><label>Nepodarky (NOK)</label><input type="number" id="srScrap" min="0" value="0" oninput="srPreview()"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Ideál. výkon (ks/h)</label><input type="number" id="srIdealRate" min="0" value="0" oninput="srPreview()"></div>
+          <div class="form-group"><label>Cieľ ks</label><input type="number" id="srTarget" min="0" value="0" oninput="srPreview()"></div>
+        </div>
+        <div id="srPreviewBox" class="mfg-oee-preview"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Operátor</label><input type="text" id="srOperator" placeholder="Meno"></div>
+        </div>
+        <div class="form-group"><label>Poznámka</label><textarea id="srNote" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="srDeleteBtn" onclick="deleteSr(document.getElementById('srId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeSrModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveSr()">Uložiť</button>
       </div>
     </div>
   </div>
