@@ -3067,6 +3067,38 @@ body.sbt-gradient .asb-link.active { background: rgba(255,255,255,0.2); color: #
 body.sbt-gradient .asb-foot { border-top-color: rgba(255,255,255,0.16); }
 body.sbt-gradient .asb-user-mail { opacity: 0.7; }
 
+/* ── Téma: AURORA (glassmorphism — matné sklo + farebná žiara) ── */
+body.sbt-aurora .app-sidebar {
+  background:
+    radial-gradient(150px 190px at 16% 5%, rgba(0,212,255,0.24), transparent 70%),
+    radial-gradient(190px 230px at 90% 24%, rgba(139,110,240,0.28), transparent 70%),
+    radial-gradient(210px 230px at 24% 97%, rgba(16,185,129,0.18), transparent 72%),
+    linear-gradient(180deg, rgba(13,20,48,0.90), rgba(18,15,42,0.92));
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  color: #d9e0f3; border-right: 1px solid rgba(255,255,255,0.10);
+}
+body.sbt-aurora .asb-brand { border-bottom-color: rgba(255,255,255,0.12); }
+body.sbt-aurora .asb-link { color: #b9c4e0; }
+body.sbt-aurora .asb-link:hover { background: rgba(255,255,255,0.08); color: #fff; }
+body.sbt-aurora .asb-link.active {
+  background: rgba(255,255,255,0.12); color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16), 0 4px 14px rgba(0,180,255,0.18);
+}
+body.sbt-aurora .asb-foot { border-top-color: rgba(255,255,255,0.12); }
+body.sbt-aurora .asb-user-mail { opacity: 0.6; }
+
+/* ── Téma: SUNSET (teplý gradient — západ slnka) ── */
+body.sbt-sunset .app-sidebar { background: linear-gradient(170deg, #f0506e 0%, #f5734f 50%, #f9a13c 100%); color: #fff4ec; border-right: none; }
+body.sbt-sunset .asb-brand { border-bottom-color: rgba(255,255,255,0.20); }
+body.sbt-sunset .asb-logo { background: rgba(255,255,255,0.94); color: #f0506e; }
+body.sbt-sunset .asb-avatar { background: rgba(255,255,255,0.94); color: #f0506e; }
+body.sbt-sunset .asb-link { color: #ffe6db; }
+body.sbt-sunset .asb-link:hover { background: rgba(255,255,255,0.16); color: #fff; }
+body.sbt-sunset .asb-link.active { background: rgba(255,255,255,0.24); color: #fff; font-weight: 600; }
+body.sbt-sunset .asb-foot { border-top-color: rgba(255,255,255,0.20); }
+body.sbt-sunset .asb-user-mail { opacity: 0.75; }
+
 @media (max-width: 900px) {
   body.layout-sidebar .page { padding-left: 0; }
   body.layout-sidebar .app-sidebar { transform: translateX(-100%); transition: transform .22s; }
@@ -3122,21 +3154,23 @@ body.sbt-gradient .asb-user-mail { opacity: 0.7; }
 .apt-minimal { background: #fbfcfe; } .apt-minimal i { background: #e2e8f0; } .apt-minimal i:first-child { background: #10b981; }
 .apt-icon { background: #0d1430; align-items: center; } .apt-icon i { width: 18px; height: 18px; border-radius: 5px; }
 .apt-gradient { background: linear-gradient(170deg,#6d4ed6,#8b6ef0); } .apt-gradient i { background: rgba(255,255,255,0.35); } .apt-gradient i:first-child { background: rgba(255,255,255,0.85); }
+.apt-aurora { background: radial-gradient(60% 50% at 80% 20%, rgba(139,110,240,0.7), transparent 70%), radial-gradient(50% 50% at 15% 10%, rgba(0,212,255,0.55), transparent 70%), linear-gradient(170deg,#0d1430,#1b1340); } .apt-aurora i { background: rgba(255,255,255,0.32); } .apt-aurora i:first-child { background: rgba(120,220,255,0.9); }
+.apt-sunset { background: linear-gradient(170deg,#f0506e,#f5734f 55%,#f9a13c); } .apt-sunset i { background: rgba(255,255,255,0.42); } .apt-sunset i:first-child { background: rgba(255,255,255,0.92); }
 .apt-name { font-size: 0.78rem; font-weight: 600; }
 
 /* =============================================================================
    MANAŽMENT — R&D & VÝROBNÉ ANALYTIKY (vizuálne)
    ============================================================================= */
 .mgmt-analytics-hdr { display: flex; align-items: baseline; gap: 12px; margin: 22px 0 12px; flex-wrap: wrap; }
-.mgmt-section-h { font-family: var(--font-title); font-size: 1.22rem; font-weight: 700; }
-.mgmt-section-note { font-size: 0.78rem; opacity: 0.55; }
+.mgmt-section-h { font-family: var(--font-title); font-size: 1.22rem; font-weight: 700; color: #f1f5f9; }
+.mgmt-section-note { font-size: 0.78rem; color: #94a3b8; }
 .mgmt-analytics { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
 .an-card {
-  background: var(--card-bg, rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 14px; padding: 16px 16px 14px; display: flex; flex-direction: column;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px; padding: 16px 16px 14px; display: flex; flex-direction: column; color: #cbd5e1;
 }
 .an-card-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
-.an-title { font-weight: 700; font-size: 0.95rem; }
+.an-title { font-weight: 700; font-size: 0.95rem; color: #f1f5f9; }
 .an-badge { font-size: 0.68rem; padding: 3px 9px; border-radius: 100px; font-weight: 600; }
 .an-badge.ok { background: rgba(16,185,129,0.15); color: #6ee7b7; }
 .an-badge.warn { background: rgba(245,158,11,0.16); color: #fcd34d; }
@@ -3146,7 +3180,7 @@ body.sbt-gradient .asb-user-mail { opacity: 0.7; }
 /* kapacitné riadky */
 .an-cap-row { margin-bottom: 11px; }
 .an-cap-top { display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 5px; }
-.an-cap-name { font-weight: 600; }
+.an-cap-name { font-weight: 600; color: #f1f5f9; }
 .an-cap-pct { opacity: 0.8; font-variant-numeric: tabular-nums; }
 .an-cap-track { height: 8px; border-radius: 5px; background: rgba(255,255,255,0.07); overflow: hidden; }
 .an-cap-fill { height: 100%; border-radius: 5px; transition: width .5s ease; }
@@ -3160,12 +3194,12 @@ body.sbt-gradient .asb-user-mail { opacity: 0.7; }
 .an-legend { display: flex; flex-direction: column; gap: 7px; flex: 1; }
 .an-leg-row { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
 .an-leg-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-.an-leg-val { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+.an-leg-val { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; color: #f1f5f9; }
 
 /* gauge */
 .an-gauge-wrap { display: flex; align-items: center; gap: 16px; }
 .an-gauge-meta { display: flex; flex-direction: column; gap: 4px; }
-.an-gauge-big { font-family: var(--font-title); font-size: 1.7rem; font-weight: 700; line-height: 1; }
+.an-gauge-big { font-family: var(--font-title); font-size: 1.7rem; font-weight: 700; line-height: 1; color: #f8fafc; }
 .an-gauge-lbl { font-size: 0.74rem; opacity: 0.6; }
 
 /* bars (velocity / kapacita po týždňoch) */
@@ -3577,3 +3611,218 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .pg-sugg li { font-size: 0.78rem; padding: 7px 10px; }
 .pg-sugg-more { background: transparent !important; border-left: none !important; color: #94a3b8 !important; font-style: italic; padding-left: 2px !important; }
 .pg-findings li { font-size: 0.78rem; }
+
+/* =============================================================================
+   RIADENIE VÝROBY (MES / dielenská vrstva)
+   ============================================================================= */
+.mfg-page { background: var(--hdr-bg); }
+.mfg-inner { max-width: 1280px; margin: 0 auto; padding: 28px 24px 52px; }
+
+.mfg-section-hdr { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 22px 0 12px; }
+.mfg-legend { display: flex; gap: 14px; flex-wrap: wrap; }
+.mfg-leg { display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: #9fb3d1; }
+
+/* stavové bodky */
+.wc-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+.wc-running     { background: #10b981; box-shadow: 0 0 7px #10b981; animation: pulseDot 2s ease-in-out infinite; }
+.wc-setup       { background: #8b5cf6; }
+.wc-idle        { background: #94a3b8; }
+.wc-maintenance { background: #f59e0b; }
+.wc-down        { background: #ef4444; box-shadow: 0 0 7px #ef4444; }
+
+/* dielenská tabuľa */
+.mfg-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.wc-card {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+  border-top: 3px solid #94a3b8; border-radius: 13px; padding: 14px;
+  display: flex; flex-direction: column; gap: 10px; transition: border-color .16s, transform .16s;
+}
+.wc-card:hover { transform: translateY(-2px); }
+.wc-status-running     { border-top-color: #10b981; }
+.wc-status-setup       { border-top-color: #8b5cf6; }
+.wc-status-idle        { border-top-color: #94a3b8; }
+.wc-status-maintenance { border-top-color: #f59e0b; }
+.wc-status-down        { border-top-color: #ef4444; }
+.wc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.wc-name-wrap { display: flex; flex-direction: column; min-width: 0; }
+.wc-name { font-weight: 700; font-size: 0.95rem; color: #f0f9ff; }
+.wc-meta { font-size: 0.7rem; color: #94a3b8; margin-top: 2px; }
+.wc-edit { background: none; border: none; color: #64748b; cursor: pointer; font-size: 0.9rem; padding: 2px 4px; border-radius: 6px; transition: color .14s, background .14s; }
+.wc-edit:hover { color: #e2e8f0; background: rgba(255,255,255,0.08); }
+.wc-status-row { display: flex; align-items: center; gap: 8px; }
+.wc-status-sel { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e2e8f0; border-radius: 7px; padding: 5px 8px; font-family: var(--font); font-size: 0.78rem; cursor: pointer; }
+.wc-since { font-size: 0.66rem; color: #64748b; white-space: nowrap; }
+.wc-body { display: flex; flex-direction: column; gap: 4px; }
+.wc-line { display: flex; justify-content: space-between; gap: 8px; font-size: 0.78rem; color: #9fb3d1; }
+.wc-line b { color: #dbe4f0; font-weight: 600; }
+
+/* spodný grid */
+.mfg-grid { display: grid; grid-template-columns: 1.7fr 1fr; gap: 16px; margin-top: 22px; }
+.mfg-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09); border-radius: 14px; padding: 16px; }
+.mfg-card-hdr { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.mfg-card-hdr .prod-lines-title { margin-bottom: 0; }
+
+/* tabuľka výkazov */
+.mfg-table td { font-size: 0.8rem; }
+.mfg-shift { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: rgba(99,102,241,0.18); color: #c4b5fd; font-weight: 700; font-size: 0.74rem; }
+.mfg-sub { font-size: 0.68rem; color: #94a3b8; margin-top: 2px; }
+.mfg-nok { color: #fca5a5; }
+.mfg-oee-cell { display: flex; align-items: center; gap: 8px; }
+.mfg-oee-badge { font-weight: 700; font-size: 0.78rem; padding: 2px 8px; border-radius: 100px; }
+.mfg-apq { font-size: 0.66rem; color: #64748b; font-variant-numeric: tabular-nums; }
+.mfg-row-edit { color: #475569; text-align: center; }
+.mfg-table tbody tr:hover .mfg-row-edit { color: #e2e8f0; }
+.oee-good { color: #6ee7b7; } .mfg-oee-badge.oee-good { background: rgba(16,185,129,0.16); }
+.oee-mid  { color: #fcd34d; } .mfg-oee-badge.oee-mid  { background: rgba(245,158,11,0.16); }
+.oee-low  { color: #fca5a5; } .mfg-oee-badge.oee-low  { background: rgba(239,68,68,0.16); }
+
+/* prestoje + OEE pracovísk */
+.mfg-dt-row, .mfg-wco-row { margin-bottom: 11px; }
+.mfg-dt-top, .mfg-wco-top { display: flex; justify-content: space-between; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 5px; }
+.mfg-dt-top b, .mfg-wco-top b { color: #f0f9ff; font-variant-numeric: tabular-nums; }
+.mfg-dt-track { height: 7px; border-radius: 5px; background: rgba(255,255,255,0.07); overflow: hidden; }
+.mfg-dt-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #f59e0b, #ef4444); }
+.mfg-wco-fill { height: 100%; border-radius: 5px; background: #10b981; }
+.mfg-wco-fill.oee-mid { background: #f59e0b; } .mfg-wco-fill.oee-low { background: #ef4444; }
+.mfg-empty-sm { font-size: 0.8rem; color: #64748b; padding: 8px 0; }
+
+/* OEE náhľad v modale výkazu */
+.mfg-oee-preview { margin: 4px 0 8px; }
+.mfg-prev-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.mfg-prev-cell { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 9px; padding: 8px; text-align: center; }
+.mfg-prev-cell span { display: block; font-size: 0.64rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
+.mfg-prev-cell b { font-size: 1.05rem; color: #e2e8f0; font-family: var(--font-title); }
+.mfg-prev-oee { border-color: rgba(16,185,129,0.4); }
+.mfg-prev-oee.oee-mid { border-color: rgba(245,158,11,0.4); } .mfg-prev-oee.oee-low { border-color: rgba(239,68,68,0.4); }
+
+@media (max-width: 900px) { .mfg-grid { grid-template-columns: 1fr; } }
+
+/* ── Normované operácie / technologické postupy ── */
+.modal-lg { max-width: 900px; }
+.mfg-rt-layout { display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start; }
+.mfg-rt-list { display: flex; flex-direction: column; gap: 8px; }
+.rt-item { text-align: left; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid transparent; border-radius: 11px; padding: 11px 13px; cursor: pointer; font-family: inherit; color: #cbd5e1; display: flex; flex-direction: column; gap: 3px; transition: border-color .14s, background .14s; }
+.rt-item:hover { background: rgba(255,255,255,0.07); }
+.rt-item.active { border-left-color: #00d4ff; background: rgba(0,212,255,0.08); }
+.rt-item-name { font-weight: 700; font-size: 0.88rem; color: #f1f5f9; }
+.rt-item-meta { font-size: 0.72rem; color: #94a3b8; }
+
+.mfg-rt-detail { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09); border-radius: 14px; padding: 16px; min-width: 0; }
+.rt-detail-hdr { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.rt-detail-title { font-family: var(--font-title); font-size: 1.15rem; font-weight: 700; color: #f0f9ff; }
+.rt-detail-sub { font-size: 0.78rem; color: #94a3b8; margin-top: 2px; }
+
+.rt-ops-table-wrap { overflow-x: auto; border-radius: 10px; }
+.rt-ops-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.rt-ops-table th { text-align: left; padding: 8px 10px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.03em; color: #94a3b8; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.rt-ops-table td { padding: 7px 10px; border-bottom: 1px solid rgba(0,0,0,0.06); vertical-align: middle; }
+.rt-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rt-strong { font-weight: 700; }
+.rt-code { font-family: 'Courier New', monospace; font-size: 0.76rem; white-space: nowrap; }
+/* Detail na tmavej mfg stránke */
+.rt-view th { border-bottom-color: rgba(255,255,255,0.12); }
+.rt-view td { color: #dbe4f0; border-bottom-color: rgba(255,255,255,0.06); }
+.rt-view tbody tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+.rt-view .rt-code { color: #93c5fd; }
+.rt-view .rt-strong { color: #f0f9ff; }
+.rt-mach { color: #fcd34d; white-space: nowrap; }
+.rt-opnote { color: #94a3b8; font-size: 0.76rem; }
+.rt-ops-foot { margin-top: 10px; font-size: 0.85rem; color: #cbd5e1; }
+.rt-ops-foot strong { color: #f0f9ff; }
+
+.rt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+.rt-sub-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 13px; }
+.rt-sub-h { font-size: 0.85rem; font-weight: 700; color: #e8f0fb; margin-bottom: 11px; }
+.rt-line-row { margin-bottom: 10px; }
+.rt-line-top { display: flex; justify-content: space-between; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 4px; gap: 8px; }
+.rt-line-top b { color: #f0f9ff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rt-line-track { height: 7px; border-radius: 5px; background: rgba(255,255,255,0.07); overflow: hidden; }
+.rt-line-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg,#00d4ff,#6366f1); }
+.rt-line-sub { font-size: 0.68rem; color: #64748b; margin-top: 3px; }
+
+.rt-calc-input { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.rt-calc-input label { font-size: 0.72rem; color: #94a3b8; }
+.rt-calc-input input { width: 140px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e2e8f0; border-radius: 7px; padding: 7px 9px; font-family: var(--font); }
+.rt-calc-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.rt-calc-table th { text-align: left; font-size: 0.66rem; text-transform: uppercase; color: #94a3b8; padding: 5px 8px; }
+.rt-calc-table td { padding: 5px 8px; color: #dbe4f0; border-top: 1px solid rgba(255,255,255,0.06); }
+.rt-calc-table tfoot td { font-weight: 700; color: #f0f9ff; border-top: 1px solid rgba(255,255,255,0.15); }
+
+/* Editor operácií v modale (svetlé pozadie) */
+.rt-ops-hdr { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 6px; }
+.rt-ops-title { font-weight: 700; font-size: 0.9rem; color: var(--text); }
+.rt-in { width: 100%; min-width: 56px; padding: 5px 7px; border: 1px solid var(--border); border-radius: 6px; font-family: var(--font); font-size: 0.8rem; color: var(--text); background: #fff; outline: none; }
+.rt-in:focus { border-color: var(--border-focus); }
+.rt-in-xs { min-width: 38px; width: 46px; }
+.rt-in-sm { min-width: 88px; }
+.rt-in-num { width: 64px; min-width: 54px; text-align: right; }
+#rtModal .rt-ops-table th { color: var(--text-dim); border-bottom-color: var(--border); }
+#rtModal .rt-ops-table td { border-bottom-color: var(--border); padding: 5px 6px; }
+#rtModal .rt-strong { color: var(--text-bright); }
+@media (max-width: 1000px) { .mfg-rt-layout { grid-template-columns: 1fr; } .rt-grid { grid-template-columns: 1fr; } }
+
+/* =============================================================================
+   PODÚLOHY (checklist) + PREDAJ ANALYTIKA
+   ============================================================================= */
+/* Odznak počtu podúloh na kartách úloh */
+.task-subbadge { background: rgba(99,102,241,0.2); color: #c4b5fd; padding: 1px 8px; border-radius: 100px; font-weight: 600; }
+.task-subbadge.all { background: rgba(16,185,129,0.18); color: #6ee7b7; }
+
+/* Inline checklist v zozname úloh (tmavé pozadie) */
+.task-sub-inline { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; padding-top: 7px; border-top: 1px dashed rgba(255,255,255,0.08); }
+.task-sub-il { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: rgba(255,255,255,0.72); cursor: pointer; padding: 2px 0; }
+.task-sub-il input { accent-color: #00d4ff; cursor: pointer; width: 14px; height: 14px; flex-shrink: 0; }
+.task-sub-il.done span { text-decoration: line-through; color: rgba(255,255,255,0.4); }
+
+/* Editor podúloh v modale (svetlé pozadie) */
+.tk-sub-count { font-weight: 500; color: var(--text-dim); font-size: 0.78rem; }
+.tk-prog-hint { font-size: 0.68rem; color: var(--text-dim); margin-top: 4px; }
+.tk-sub-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.tk-sub-empty { font-size: 0.78rem; color: var(--text-xdim); padding: 4px 0; }
+.tk-sub-item { display: flex; align-items: center; gap: 8px; }
+.tk-sub-item.done .tk-sub-title { text-decoration: line-through; color: var(--text-xdim); }
+.tk-sub-check { width: 24px; height: 24px; flex-shrink: 0; border-radius: 6px; border: 1.5px solid var(--border); background: #fff; color: #fff; cursor: pointer; font-size: 0.78rem; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background .14s, border-color .14s; }
+.tk-sub-item.done .tk-sub-check { background: var(--success); border-color: var(--success); }
+.tk-sub-title { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px; font-family: var(--font); font-size: 0.84rem; color: var(--text); background: #fff; outline: none; }
+.tk-sub-title:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(8,145,178,0.1); }
+.tk-sub-del { background: none; border: none; color: var(--text-xdim); cursor: pointer; padding: 4px 7px; border-radius: 6px; flex-shrink: 0; font-size: 0.85rem; }
+.tk-sub-del:hover { color: var(--danger); background: rgba(239,68,68,0.1); }
+.tk-sub-add { display: flex; gap: 8px; }
+.tk-sub-add input { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px; font-family: var(--font); font-size: 0.84rem; color: var(--text); background: #fff; outline: none; }
+.tk-sub-add input:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(8,145,178,0.1); }
+
+/* Predaj — nástroje v hlavičke sekcie + stĺpec zisku */
+.mgmt-sales-tools { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+.an-bar.profit { background: #10b981; }
+.an-empty { font-size: 0.85rem; color: #94a3b8; padding: 10px; text-align: center; }
+
+/* =============================================================================
+   UI/UX POLISH — prístupnosť & jemné vylepšenia (WCAG-friendly)
+   ============================================================================= */
+/* Viditeľný focus ring LEN pri navigácii klávesnicou (myš ho neukáže) */
+:focus-visible {
+  outline: 2px solid var(--ui-accent, var(--border-focus, #0891b2));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+:focus:not(:focus-visible) { outline: none; }
+.nav-link:focus-visible,
+.asb-link:focus-visible,
+.ql-chip:focus-visible,
+.hdr-icon-btn:focus-visible { outline-offset: 3px; }
+
+/* Konzistentné zvýraznenie vybraného textu */
+::selection { background: rgba(8,145,178,0.22); }
+
+/* Jemné, tenké skrolovacie lišty v celej aplikácii (dedí sa do kontajnerov) */
+html { scrollbar-width: thin; scrollbar-color: rgba(120,130,150,0.45) transparent; }
+
+/* Rešpektuj systémové nastavenie „obmedziť pohyb" (vestibulárna citlivosť) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

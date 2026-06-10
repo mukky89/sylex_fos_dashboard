@@ -1,5 +1,11 @@
 const mongoose = require('mongoose');
 
+// Podúloha (checklist položka) — vnorená v úlohe
+const subtaskSchema = new mongoose.Schema({
+  title: { type: String, required: true, trim: true },
+  done:  { type: Boolean, default: false }
+}, { _id: true });
+
 const taskSchema = new mongoose.Schema({
   user:        { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   title:       { type: String, required: true, trim: true },
@@ -12,6 +18,7 @@ const taskSchema = new mongoose.Schema({
   order:       { type: Number, default: 0 },    // poradie (drag & drop)
   due:         { type: Date, default: null },
   priority:    { type: String, enum: ['low', 'normal', 'high'], default: 'normal' },
+  subtasks:    { type: [subtaskSchema], default: [] },   // podúlohy / checklist
   done:        { type: Boolean, default: false },
   doneAt:      { type: Date, default: null }
 }, { timestamps: true });

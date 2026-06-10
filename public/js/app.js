@@ -304,7 +304,7 @@ function _tourPlacePop(rect, pop) {
 // ══════════════════════════════════════════════════════════════════════════════
 //  UI LAYOUT — alternatívny sidebar (konfigurovateľný v Admin → Vzhľad)
 // ══════════════════════════════════════════════════════════════════════════════
-const SB_THEMES = ['dark', 'light', 'minimal', 'icon', 'gradient'];
+const SB_THEMES = ['dark', 'light', 'minimal', 'icon', 'gradient', 'aurora', 'sunset'];
 const UI_ACCENTS = {
   cyan:    { '--accent': '#0891b2', '--accent2': '#1d4ed8', '--border-focus': '#0891b2', '--ui-accent': '#06b6d4', '--ui-accent2': '#3b82f6' },
   indigo:  { '--accent': '#4f46e5', '--accent2': '#7c3aed', '--border-focus': '#4f46e5', '--ui-accent': '#6366f1', '--ui-accent2': '#8b5cf6' },
@@ -729,6 +729,7 @@ async function handleHash(hash) {
   if (hash === 'dev')     { _activatePage('dev');     loadDev(); return; }
   if (hash === 'util')    { _activatePage('util');    loadUtil(); return; }
   if (hash === 'prod')    { _activatePage('prod');    loadProd(); return; }
+  if (hash === 'mfg')     { _activatePage('mfg');     loadMfg(); return; }
   if (hash === 'tasks')   { _activatePage('tasks');   loadTasks(); return; }
   if (hash === 'crm')     { _activatePage('crm');     loadCrm(); return; }
   if (hash === 'mgmt')    { _activatePage('mgmt');    loadManagement(); return; }
@@ -765,6 +766,7 @@ function showPage(name) {
   if (name === 'dev')     loadDev();
   if (name === 'util')    loadUtil();
   if (name === 'prod')    loadProd();
+  if (name === 'mfg')     loadMfg();
   if (name === 'tasks')   loadTasks();
   if (name === 'crm')     loadCrm();
   if (name === 'mgmt')    loadManagement();
@@ -4185,6 +4187,7 @@ let tasksData = [];
 let taskFilter = 'open';
 let taskView = 'list';
 let _dragTaskId = null;
+let tkSubtasks = [];   // pracovná kópia podúloh v modale
 const TK_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#ef4444' } };
 const TK_STATUS = [{ key: 'todo', label: 'Čaká' }, { key: 'inprogress', label: 'Prebieha' }, { key: 'done', label: 'Hotové' }];
 function taskStatusOf(t) { return t.status || (t.done ? 'done' : 'todo'); }
@@ -4227,8 +4230,22 @@ function taskMetaHtml(t) {
   const od = taskOverdue(t);
   const parts = [`<span class="task-prio">${prio.l}</span>`];
   if (t.due) parts.push(`<span class="${od ? 'task-od' : ''}">📅 ${fmtDate(t.due)}${od ? ' — po termíne' : ''}</span>`);
+  if (t.subtasks && t.subtasks.length) {
+    const done = t.subtasks.filter(s => s.done).length;
+    parts.push(`<span class="task-subbadge ${done === t.subtasks.length ? 'all' : ''}" title="Podúlohy">☑ ${done}/${t.subtasks.length}</span>`);
+  }
   if (t.createdAt) parts.push(`<span class="task-created" title="Dátum pridania">➕ ${fmtDate(t.createdAt)}</span>`);
   return `<div class="task-meta">${parts.join('')}</div>`;
+}
+
+// Inline checklist podúloh (zoznamový pohľad) — klik prepína stav
+function taskSubInlineHtml(t) {
+  if (!t.subtasks || !t.subtasks.length) return '';
+  return `<div class="task-sub-inline" onclick="event.stopPropagation()">${t.subtasks.map(s => `
+    <label class="task-sub-il ${s.done ? 'done' : ''}">
+      <input type="checkbox" ${s.done ? 'checked' : ''} onclick="event.stopPropagation();toggleSubtaskInline('${t._id}','${s._id}')">
+      <span>${escHtml(s.title)}</span>
+    </label>`).join('')}</div>`;
 }
 
 function renderTasks() {
@@ -4268,9 +4285,10 @@ function renderTaskList() {
         <div class="task-title">${escHtml(t.title)}</div>
         ${taskChipsHtml(t)}
         ${taskMetaHtml(t)}
-        ${(t.progress || taskStatusOf(t) === 'inprogress') ? taskProgressHtml(t) : ''}
+        ${(t.progress || taskStatusOf(t) === 'inprogress' || (t.subtasks && t.subtasks.length)) ? taskProgressHtml(t) : ''}
         ${t.note ? `<div class="task-note">📝 ${escHtml(t.note)}</div>` : ''}
         ${t.description ? `<div class="task-desc">${escHtml(t.description)}</div>` : ''}
+        ${taskSubInlineHtml(t)}
       </div>
       <button class="admin-icon-btn danger" onclick="deleteTask('${t._id}')" title="Odstrániť">✕</button>`;
     el.appendChild(row);
@@ -4387,10 +4405,67 @@ function openTaskModal(t = null) {
   document.getElementById('tkProgressVal').textContent = prog;
   document.getElementById('tkDesc').value = e ? (t.description || '') : '';
   document.getElementById('tkNote').value = e ? (t.note || '') : '';
+  tkSubtasks = e && Array.isArray(t.subtasks) ? t.subtasks.map(s => ({ title: s.title, done: !!s.done })) : [];
+  renderSubtaskEditor();
   document.getElementById('tkDeleteBtn').style.display = e ? '' : 'none';
   document.getElementById('taskModal').classList.remove('hidden');
 }
 function closeTaskModal() { document.getElementById('taskModal').classList.add('hidden'); }
+
+// ── Podúlohy v modale ─────────────────────────────────────────────────────────
+function renderSubtaskEditor() {
+  const list = document.getElementById('tkSubList');
+  const cnt = document.getElementById('tkSubCount');
+  const hint = document.getElementById('tkProgHint');
+  const slider = document.getElementById('tkProgress');
+  if (!list) return;
+  if (!tkSubtasks.length) {
+    list.innerHTML = '<div class="tk-sub-empty">Žiadne podúlohy — pridaj checklist nižšie.</div>';
+  } else {
+    list.innerHTML = tkSubtasks.map((s, i) => `
+      <div class="tk-sub-item ${s.done ? 'done' : ''}">
+        <button type="button" class="tk-sub-check" onclick="toggleSubtaskEditor(${i})" title="Hotovo / nehotovo">${s.done ? '✓' : ''}</button>
+        <input type="text" class="tk-sub-title" value="${escHtml(s.title)}" oninput="updateSubtaskTitle(${i}, this.value)">
+        <button type="button" class="tk-sub-del" onclick="removeSubtask(${i})" title="Odstrániť">✕</button>
+      </div>`).join('');
+  }
+  const done = tkSubtasks.filter(s => s.done).length;
+  if (cnt) cnt.textContent = tkSubtasks.length ? `(${done}/${tkSubtasks.length} hotových)` : '';
+  // ak sú podúlohy, progres sa odvodzuje z nich → slider zamkni a ukáž odvodenú hodnotu
+  if (tkSubtasks.length) {
+    const p = Math.round(done / tkSubtasks.length * 100);
+    if (slider) { slider.value = p; slider.disabled = true; }
+    document.getElementById('tkProgressVal').textContent = p;
+    if (hint) hint.textContent = 'Progres sa počíta automaticky z podúloh';
+  } else {
+    if (slider) slider.disabled = false;
+    if (hint) hint.textContent = '';
+  }
+}
+function addSubtask() {
+  const inp = document.getElementById('tkSubInput');
+  const v = (inp.value || '').trim();
+  if (!v) return;
+  tkSubtasks.push({ title: v, done: false });
+  inp.value = ''; inp.focus();
+  renderSubtaskEditor();
+}
+function toggleSubtaskEditor(i) { if (tkSubtasks[i]) { tkSubtasks[i].done = !tkSubtasks[i].done; renderSubtaskEditor(); } }
+function updateSubtaskTitle(i, val) { if (tkSubtasks[i]) tkSubtasks[i].title = val; }
+function removeSubtask(i) { tkSubtasks.splice(i, 1); renderSubtaskEditor(); }
+
+// Prepnutie podúlohy priamo v zozname úloh (mimo modalu)
+async function toggleSubtaskInline(taskId, subId) {
+  const t = tasksData.find(x => x._id === taskId); if (!t) return;
+  const sub = (t.subtasks || []).find(s => s._id === subId); if (!sub) return;
+  sub.done = !sub.done;
+  const subtasks = t.subtasks.map(s => ({ title: s.title, done: !!s.done }));
+  try {
+    const r = await fetch('/api/tasks/' + taskId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtasks }) });
+    if (r.ok) { const upd = await r.json(); Object.assign(t, upd); }
+  } catch {}
+  renderTasks(); loadNotif();
+}
 async function saveTask() {
   const title = document.getElementById('tkTitle').value.trim();
   if (!title) { alert('Zadajte názov úlohy'); return; }
@@ -4402,7 +4477,8 @@ async function saveTask() {
     project: document.getElementById('tkProject').value.trim(),
     customer: document.getElementById('tkCustomer').value.trim(),
     note: document.getElementById('tkNote').value.trim(),
-    description: document.getElementById('tkDesc').value.trim()
+    description: document.getElementById('tkDesc').value.trim(),
+    subtasks: tkSubtasks.filter(s => (s.title || '').trim()).map(s => ({ title: s.title.trim(), done: !!s.done }))
   };
   const id = document.getElementById('tkId').value;
   try {
@@ -4950,6 +5026,492 @@ async function seedProdData() {
     if (!r.ok) { alert('Chyba: ' + (d.error || r.status)); return; }
     loadProd();
     setTimeout(() => alert('Hotovo — vytvorených ' + d.inserted + ' zákaziek.'), 200);
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  RIADENIE VÝROBY (MES / dielenská vrstva) — pracoviská · OEE · prestoje
+// ══════════════════════════════════════════════════════════════════════════════
+let mfgCenters = [];
+let mfgReports = [];
+let mfgSummary = null;
+
+const WC_STATUS_META = {
+  running:     { l: 'Beží',          c: '#10b981' },
+  setup:       { l: 'Pretypovanie',  c: '#8b5cf6' },
+  idle:        { l: 'Nečinné',       c: '#94a3b8' },
+  maintenance: { l: 'Údržba',        c: '#f59e0b' },
+  down:        { l: 'Porucha',       c: '#ef4444' }
+};
+const WC_KIND_META = { line: '🏭 Linka', machine: '⚙️ Stroj', assembly: '🔧 Montáž', manual: '✋ Ručné', inspection: '🔍 Kontrola' };
+const DT_REASON_META = {
+  breakdown: 'Porucha', setup: 'Nastavenie', material: 'Materiál', quality: 'Kvalita',
+  noOperator: 'Bez obsluhy', changeover: 'Pretypovanie', other: 'Iné'
+};
+const SHIFT_META = { R: 'Ranná', P: 'Poobedná', N: 'Nočná' };
+
+function mfgRange() { return parseInt(document.getElementById('mfgRange')?.value) || 7; }
+function oeeClass(v) { return v >= 85 ? 'oee-good' : v >= 60 ? 'oee-mid' : 'oee-low'; }
+function fmtMin(m) { m = Math.round(m || 0); if (m < 60) return m + ' min'; const h = Math.floor(m / 60); return h + ' h ' + (m % 60) + ' min'; }
+
+async function loadMfg() {
+  const days = mfgRange();
+  try {
+    const [c, r, s] = await Promise.all([
+      fetch('/api/manufacturing/workcenters').then(x => x.json()),
+      fetch('/api/manufacturing/reports?days=' + days).then(x => x.json()),
+      fetch('/api/manufacturing/summary?days=' + days).then(x => x.json())
+    ]);
+    mfgCenters = Array.isArray(c) ? c : [];
+    mfgReports = Array.isArray(r) ? r : [];
+    mfgSummary = s && !s.error ? s : null;
+  } catch { mfgCenters = []; mfgReports = []; mfgSummary = null; }
+  // datalist pracovísk do modalu výkazu
+  const dl = document.getElementById('srWcList');
+  if (dl) dl.innerHTML = mfgCenters.map(c => `<option value="${escHtml(c.name)}">`).join('');
+  renderMfgKpis();
+  renderMfgBoard();
+  renderMfgReports();
+  renderMfgDowntime();
+  renderMfgWcOee();
+  loadRoutings();
+}
+
+function renderMfgKpis() {
+  const el = document.getElementById('mfgKpis'); if (!el) return;
+  const s = mfgSummary;
+  if (!s) { el.innerHTML = '<div class="proc-empty" style="grid-column:1/-1">Žiadne dáta — pridaj pracovisko alebo vlož ukážkové dáta.</div>'; return; }
+  const card = (val, label, sub, cls) => `<div class="prod-kpi ${cls || ''}"><div class="prod-kpi-val">${val}</div><div class="prod-kpi-lbl">${label}</div>${sub ? `<div class="prod-kpi-sub">${sub}</div>` : ''}</div>`;
+  el.innerHTML =
+    card(s.oee + '%', 'OEE (celkové)', `D ${s.availability}% · V ${s.performance}% · K ${s.quality}%`, s.oee >= 85 ? 'pk-green' : s.oee >= 60 ? 'pk-cyan' : 'pk-red') +
+    card(s.running + '/' + s.centersTotal, 'Bežiace pracoviská', s.byStatus.down ? s.byStatus.down + ' v poruche' : 'bez porúch', s.byStatus.down ? 'pk-red' : 'pk-blue') +
+    card((s.goodToday + s.scrapToday), 'Výroba dnes (ks)', s.targetToday ? s.fulfillToday + '% cieľa' : '—', 'pk-blue') +
+    card(s.scrapRate + '%', 'Zmätkovitosť dnes', s.scrapToday + ' NOK ks', s.scrapRate > 5 ? 'pk-red' : '') +
+    card(fmtMin(s.downtimeToday), 'Prestoje dnes', s.downtimeByReason[0] ? DT_REASON_META[s.downtimeByReason[0].reason] : 'žiadne', s.downtimeToday ? 'pk-red' : '');
+}
+
+function renderMfgBoard() {
+  const el = document.getElementById('mfgBoard'); if (!el) return;
+  if (!mfgCenters.length) { el.innerHTML = '<div class="proc-empty">Žiadne pracoviská. Pridaj prvé tlačidlom „+ Pracovisko".</div>'; return; }
+  el.innerHTML = mfgCenters.map(c => {
+    const m = WC_STATUS_META[c.status] || WC_STATUS_META.idle;
+    const since = c.statusSince ? mfgSince(c.statusSince) : '';
+    const opts = Object.entries(WC_STATUS_META).map(([k, v]) => `<option value="${k}" ${k === c.status ? 'selected' : ''}>${v.l}</option>`).join('');
+    return `<div class="wc-card wc-status-${c.status}">
+      <div class="wc-top">
+        <div class="wc-name-wrap">
+          <span class="wc-name">${escHtml(c.name)}</span>
+          <span class="wc-meta">${escHtml(c.code || '')}${c.code ? ' · ' : ''}${WC_KIND_META[c.kind] || ''}</span>
+        </div>
+        <button class="wc-edit" onclick="openWcModal(mfgCenters.find(x=>x._id==='${c._id}'))" title="Upraviť">✎</button>
+      </div>
+      <div class="wc-status-row">
+        <span class="wc-dot wc-${c.status}"></span>
+        <select class="wc-status-sel" onchange="setWcStatus('${c._id}', this.value)">${opts}</select>
+        ${since ? `<span class="wc-since">${since}</span>` : ''}
+      </div>
+      <div class="wc-body">
+        ${c.currentOrder ? `<div class="wc-line"><span>Zákazka</span><b>${escHtml(c.currentOrder)}</b></div>` : ''}
+        ${c.operator ? `<div class="wc-line"><span>Operátor</span><b>${escHtml(c.operator)}</b></div>` : ''}
+        ${c.ratedCapacity ? `<div class="wc-line"><span>Kapacita</span><b>${c.ratedCapacity} ks/h</b></div>` : ''}
+        ${c.shiftTarget ? `<div class="wc-line"><span>Cieľ/zmena</span><b>${c.shiftTarget} ks</b></div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+function mfgSince(d) {
+  const mins = Math.round((Date.now() - new Date(d).getTime()) / 60000);
+  if (mins < 1) return 'teraz';
+  if (mins < 60) return mins + ' min';
+  const h = Math.floor(mins / 60); if (h < 24) return h + ' h';
+  return Math.floor(h / 24) + ' d';
+}
+
+async function setWcStatus(id, status) {
+  const c = mfgCenters.find(x => x._id === id); if (c) c.status = status;
+  try { await fetch('/api/manufacturing/workcenters/' + id + '/status', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }); } catch {}
+  loadMfg();
+}
+
+function renderMfgReports() {
+  const el = document.getElementById('mfgReports'); if (!el) return;
+  const q = (document.getElementById('mfgSearch')?.value || '').toLowerCase();
+  let items = mfgReports;
+  if (q) items = items.filter(r => [r.workCenter, r.product, r.orderNumber, r.operator].some(x => (x || '').toLowerCase().includes(q)));
+  if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne zmenové výkazy v zvolenom období.</div>'; return; }
+  el.innerHTML = `<table class="prod-table mfg-table"><thead><tr>
+    <th>Dátum</th><th>Zm.</th><th>Pracovisko</th><th>Dobré/NOK</th><th>Prestoj</th><th>OEE (D·V·K)</th><th></th>
+    </tr></thead><tbody>${items.map(r => {
+    const k = r.kpi || {};
+    return `<tr onclick="openSrModal(mfgReports.find(x=>x._id==='${r._id}'))" style="cursor:pointer">
+      <td>${fmtDate(r.date)}</td>
+      <td><span class="mfg-shift">${r.shift}</span></td>
+      <td><b>${escHtml(r.workCenter)}</b>${r.product ? `<div class="mfg-sub">${escHtml(r.product)}</div>` : ''}</td>
+      <td>${r.goodQty || 0}<span class="mfg-nok"> / ${r.scrapQty || 0}</span></td>
+      <td>${r.downtimeMinutes ? fmtMin(r.downtimeMinutes) + (r.downtimeReason && r.downtimeReason !== 'none' ? `<div class="mfg-sub">${DT_REASON_META[r.downtimeReason] || ''}</div>` : '') : '—'}</td>
+      <td><div class="mfg-oee-cell"><span class="mfg-oee-badge ${oeeClass(k.oee || 0)}">${k.oee || 0}%</span><span class="mfg-apq">${k.availability || 0}·${k.performance || 0}·${k.quality || 0}</span></div></td>
+      <td class="mfg-row-edit">✎</td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+function renderMfgDowntime() {
+  const el = document.getElementById('mfgDowntime'); if (!el) return;
+  const s = mfgSummary;
+  if (!s || !s.downtimeByReason.length) { el.innerHTML = '<div class="mfg-empty-sm">Bez evidovaných prestojov 🎉</div>'; return; }
+  const max = s.downtimeByReason[0].minutes || 1;
+  el.innerHTML = s.downtimeByReason.map(d => `
+    <div class="mfg-dt-row">
+      <div class="mfg-dt-top"><span>${DT_REASON_META[d.reason] || d.reason}</span><b>${fmtMin(d.minutes)}</b></div>
+      <div class="mfg-dt-track"><div class="mfg-dt-fill" style="width:${Math.round(d.minutes / max * 100)}%"></div></div>
+    </div>`).join('');
+}
+
+function renderMfgWcOee() {
+  const el = document.getElementById('mfgWcOee'); if (!el) return;
+  const s = mfgSummary;
+  if (!s || !s.centersOee.length) { el.innerHTML = '<div class="mfg-empty-sm">Zatiaľ bez výkazov.</div>'; return; }
+  el.innerHTML = s.centersOee.map(w => `
+    <div class="mfg-wco-row">
+      <div class="mfg-wco-top"><span>${escHtml(w.name)}</span><b class="${oeeClass(w.oee)}">${w.oee}%</b></div>
+      <div class="mfg-dt-track"><div class="mfg-wco-fill ${oeeClass(w.oee)}" style="width:${w.oee}%"></div></div>
+    </div>`).join('');
+}
+
+// ── Pracovisko: modal ──
+function openWcModal(wc = null) {
+  document.getElementById('wcModalTitle').textContent = wc ? 'Upraviť pracovisko' : 'Nové pracovisko';
+  document.getElementById('wcId').value = wc?._id || '';
+  document.getElementById('wcName').value = wc?.name || '';
+  document.getElementById('wcCode').value = wc?.code || '';
+  document.getElementById('wcKind').value = wc?.kind || 'line';
+  document.getElementById('wcStatus').value = wc?.status || 'idle';
+  document.getElementById('wcCapacity').value = wc?.ratedCapacity || '';
+  document.getElementById('wcTarget').value = wc?.shiftTarget || '';
+  document.getElementById('wcOrder').value = wc?.currentOrder || '';
+  document.getElementById('wcOperator').value = wc?.operator || '';
+  document.getElementById('wcLocation').value = wc?.location || '';
+  document.getElementById('wcNote').value = wc?.note || '';
+  document.getElementById('wcDeleteBtn').style.display = wc ? '' : 'none';
+  document.getElementById('wcModal').classList.remove('hidden');
+}
+function closeWcModal() { document.getElementById('wcModal').classList.add('hidden'); }
+async function saveWc() {
+  const id = document.getElementById('wcId').value;
+  const body = {
+    name: document.getElementById('wcName').value.trim(),
+    code: document.getElementById('wcCode').value.trim(),
+    kind: document.getElementById('wcKind').value,
+    status: document.getElementById('wcStatus').value,
+    ratedCapacity: document.getElementById('wcCapacity').value,
+    shiftTarget: document.getElementById('wcTarget').value,
+    currentOrder: document.getElementById('wcOrder').value.trim(),
+    operator: document.getElementById('wcOperator').value.trim(),
+    location: document.getElementById('wcLocation').value.trim(),
+    note: document.getElementById('wcNote').value.trim()
+  };
+  if (!body.name) { alert('Zadaj názov pracoviska.'); return; }
+  try {
+    const url = id ? '/api/manufacturing/workcenters/' + id : '/api/manufacturing/workcenters';
+    const r = await fetch(url, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const d = await r.json(); alert('Chyba: ' + (d.error || r.status)); return; }
+    closeWcModal(); loadMfg();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteWc(id) {
+  if (!id || !confirm('Odstrániť toto pracovisko?')) return;
+  try { await fetch('/api/manufacturing/workcenters/' + id, { method: 'DELETE' }); closeWcModal(); loadMfg(); }
+  catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+// ── Zmenový výkaz: modal ──
+function srToInputDate(d) { const x = d ? new Date(d) : new Date(); return x.toISOString().slice(0, 10); }
+function openSrModal(sr = null) {
+  document.getElementById('srModalTitle').textContent = sr ? 'Upraviť zmenový výkaz' : 'Nový zmenový výkaz';
+  document.getElementById('srId').value = sr?._id || '';
+  document.getElementById('srDate').value = srToInputDate(sr?.date);
+  document.getElementById('srShift').value = sr?.shift || 'R';
+  document.getElementById('srWorkCenter').value = sr?.workCenter || '';
+  document.getElementById('srOrder').value = sr?.orderNumber || '';
+  document.getElementById('srProduct').value = sr?.product || '';
+  document.getElementById('srPlanned').value = sr?.plannedMinutes ?? 480;
+  document.getElementById('srDowntime').value = sr?.downtimeMinutes ?? 0;
+  document.getElementById('srReason').value = sr?.downtimeReason || 'none';
+  document.getElementById('srGood').value = sr?.goodQty ?? 0;
+  document.getElementById('srScrap').value = sr?.scrapQty ?? 0;
+  document.getElementById('srIdealRate').value = sr?.idealRate ?? 0;
+  document.getElementById('srTarget').value = sr?.targetQty ?? 0;
+  document.getElementById('srOperator').value = sr?.operator || '';
+  document.getElementById('srNote').value = sr?.note || '';
+  document.getElementById('srDeleteBtn').style.display = sr ? '' : 'none';
+  srPreview();
+  document.getElementById('srModal').classList.remove('hidden');
+}
+function closeSrModal() { document.getElementById('srModal').classList.add('hidden'); }
+function srVal(id) { return Number(document.getElementById(id).value) || 0; }
+function srComputeOee() {
+  const planned = srVal('srPlanned'), downtime = Math.min(srVal('srDowntime'), planned);
+  const runtime = Math.max(0, planned - downtime);
+  const good = srVal('srGood'), scrap = srVal('srScrap'), total = good + scrap;
+  const ideal = srVal('srIdealRate'), target = srVal('srTarget');
+  const availability = planned > 0 ? runtime / planned : 0;
+  let performance;
+  if (ideal > 0 && runtime > 0) performance = total / (ideal * runtime / 60);
+  else if (target > 0) performance = total / target;
+  else performance = total > 0 ? 1 : 0;
+  performance = Math.max(0, Math.min(1, performance));
+  const quality = total > 0 ? good / total : 0;
+  const cl = v => Math.max(0, Math.min(100, Math.round(v * 100)));
+  return { a: cl(availability), p: cl(performance), q: cl(quality), oee: cl(availability * performance * quality) };
+}
+function srPreview() {
+  const el = document.getElementById('srPreviewBox'); if (!el) return;
+  const k = srComputeOee();
+  el.innerHTML = `<div class="mfg-prev-grid">
+    <div class="mfg-prev-cell"><span>Dostupnosť</span><b>${k.a}%</b></div>
+    <div class="mfg-prev-cell"><span>Výkon</span><b>${k.p}%</b></div>
+    <div class="mfg-prev-cell"><span>Kvalita</span><b>${k.q}%</b></div>
+    <div class="mfg-prev-cell mfg-prev-oee ${oeeClass(k.oee)}"><span>OEE</span><b>${k.oee}%</b></div>
+  </div>`;
+}
+async function saveSr() {
+  const id = document.getElementById('srId').value;
+  const body = {
+    date: document.getElementById('srDate').value || undefined,
+    shift: document.getElementById('srShift').value,
+    workCenter: document.getElementById('srWorkCenter').value.trim(),
+    orderNumber: document.getElementById('srOrder').value.trim(),
+    product: document.getElementById('srProduct').value.trim(),
+    plannedMinutes: srVal('srPlanned'), downtimeMinutes: srVal('srDowntime'),
+    downtimeReason: document.getElementById('srReason').value,
+    goodQty: srVal('srGood'), scrapQty: srVal('srScrap'),
+    idealRate: srVal('srIdealRate'), targetQty: srVal('srTarget'),
+    operator: document.getElementById('srOperator').value.trim(),
+    note: document.getElementById('srNote').value.trim()
+  };
+  if (!body.workCenter) { alert('Zadaj pracovisko.'); return; }
+  try {
+    const url = id ? '/api/manufacturing/reports/' + id : '/api/manufacturing/reports';
+    const r = await fetch(url, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const d = await r.json(); alert('Chyba: ' + (d.error || r.status)); return; }
+    closeSrModal(); loadMfg();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteSr(id) {
+  if (!id || !confirm('Odstrániť tento zmenový výkaz?')) return;
+  try { await fetch('/api/manufacturing/reports/' + id, { method: 'DELETE' }); closeSrModal(); loadMfg(); }
+  catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+async function seedMfgData() {
+  if (!confirm('Vygenerovať ukážkové pracoviská a zmenové výkazy? Nahradia sa len predošlé ukážkové dáta.')) return;
+  try {
+    const r = await fetch('/api/admin/seed-manufacturing', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) { alert('Chyba: ' + (d.error || r.status)); return; }
+    loadMfg();
+    setTimeout(() => alert(`Hotovo — ${d.centers} pracovísk a ${d.reports} výkazov.`), 200);
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  NORMOVANÉ OPERÁCIE — technologické postupy (t/ks · t/výrobok · linka)
+// ══════════════════════════════════════════════════════════════════════════════
+let mfgRoutings = [];
+let mfgRtSelectedId = null;
+let rtOps = [];        // pracovná kópia operácií v modale
+let mfgRtQty = 1;      // plánované množstvo pre kalkulačku kapacity
+
+// t/výrobok pre operáciu = t/ks × ks × (strojový čas ? 1 : prirážka)
+function opTimeJs(op, coeff) { return (Number(op.tPiece) || 0) * (Number(op.qty) || 1) * (op.machine ? 1 : (Number(coeff) || 1)); }
+function rtFmt(n) { return (Math.round((n || 0) * 1000) / 1000).toLocaleString('sk-SK', { maximumFractionDigits: 3 }); }
+function rtFmtH(min) { return (Math.round((min || 0) / 60 * 10) / 10).toLocaleString('sk-SK', { maximumFractionDigits: 1 }) + ' h'; }
+
+async function loadRoutings() {
+  try { mfgRoutings = await fetch('/api/manufacturing/routings').then(r => r.json()); if (!Array.isArray(mfgRoutings)) mfgRoutings = []; }
+  catch { mfgRoutings = []; }
+  if (!mfgRoutings.find(r => r._id === mfgRtSelectedId)) mfgRtSelectedId = mfgRoutings[0]?._id || null;
+  // datalist liniek do modalu (z pracovísk + existujúcich postupov)
+  const dl = document.getElementById('rtLineList');
+  if (dl) {
+    const lines = new Set(mfgCenters.map(c => c.name));
+    mfgRoutings.forEach(r => (r.operations || []).forEach(o => o.line && lines.add(o.line)));
+    dl.innerHTML = [...lines].map(l => `<option value="${escHtml(l)}">`).join('');
+  }
+  renderRtList();
+  renderRtDetail();
+}
+
+function renderRtList() {
+  const el = document.getElementById('mfgRtList'); if (!el) return;
+  if (!mfgRoutings.length) { el.innerHTML = '<div class="proc-empty" style="padding:14px">Žiadne postupy. Klikni na <strong>🎲 Ukážkový postup</strong> alebo <strong>+ Postup</strong>.</div>'; return; }
+  el.innerHTML = mfgRoutings.map(r => `
+    <button class="rt-item ${r._id === mfgRtSelectedId ? 'active' : ''}" onclick="selectRouting('${r._id}')">
+      <span class="rt-item-name">${escHtml(r.product)}</span>
+      <span class="rt-item-meta">${r.code ? escHtml(r.code) + ' · ' : ''}${r.totals.items} operácií · ${rtFmt(r.totals.totalMin)} min</span>
+    </button>`).join('');
+}
+function selectRouting(id) { mfgRtSelectedId = id; renderRtList(); renderRtDetail(); }
+
+function renderRtDetail() {
+  const el = document.getElementById('mfgRtDetail'); if (!el) return;
+  const r = mfgRoutings.find(x => x._id === mfgRtSelectedId);
+  if (!r) { el.innerHTML = '<div class="proc-empty" style="padding:24px">Vyber technologický postup vľavo.</div>'; return; }
+  const coeff = Number(r.coeff) || 1.1;
+
+  const rows = (r.operations || []).map(op => `
+    <tr>
+      <td>${escHtml(op.group || '')}</td>
+      <td class="rt-code">${escHtml(op.code || '')}</td>
+      <td>${escHtml(op.desc || '')}</td>
+      <td class="rt-num">${rtFmt(op.tPiece)}</td>
+      <td class="rt-num">${rtFmt(op.qty || 1)}</td>
+      <td class="rt-num rt-strong">${rtFmt(opTimeJs(op, coeff))}</td>
+      <td>${op.machine ? '<span class="rt-mach">⚙ ' + escHtml(op.line || 'Strojový čas') + '</span>' : escHtml(op.line || '')}</td>
+      <td class="rt-opnote">${escHtml(op.opNote || '')}</td>
+    </tr>`).join('');
+
+  // Rozloženie času podľa linky
+  const max = Math.max(...r.totals.byLine.map(l => l.min), 1);
+  const lineRows = r.totals.byLine.map(l => `
+    <div class="rt-line-row">
+      <div class="rt-line-top"><span>${escHtml(l.line)}</span><b>${rtFmt(l.min)} min · ${rtFmtH(l.min)}</b></div>
+      <div class="rt-line-track"><div class="rt-line-fill" style="width:${Math.round(l.min / max * 100)}%"></div></div>
+      <div class="rt-line-sub">${Math.round(l.min / r.totals.totalMin * 100)} % z celkového času</div>
+    </div>`).join('');
+
+  // Kalkulačka kapacity pre dávku
+  const qty = mfgRtQty > 0 ? mfgRtQty : 1;
+  const calcRows = r.totals.byLine.map(l => `
+    <tr><td>${escHtml(l.line)}</td><td class="rt-num">${rtFmtH(l.min * qty)}</td><td class="rt-num">${(l.min * qty / 480).toLocaleString('sk-SK', { maximumFractionDigits: 1 })}</td></tr>`).join('');
+
+  el.innerHTML = `
+    <div class="rt-detail-hdr">
+      <div>
+        <div class="rt-detail-title">${escHtml(r.product)}</div>
+        <div class="rt-detail-sub">${r.code ? escHtml(r.code) + ' · ' : ''}prirážka na ručné operácie ×${rtFmt(coeff)}</div>
+      </div>
+      <button class="btn-secondary btn-sm" onclick="openRtModal(mfgRoutings.find(x=>x._id==='${r._id}'))">✎ Upraviť</button>
+    </div>
+    <div class="rt-ops-table-wrap">
+      <table class="rt-ops-table rt-view">
+        <thead><tr><th>Č</th><th>Kód</th><th>Popis</th><th>t/ks</th><th>ks</th><th>t/výrobok</th><th>linka</th><th>Popis operácie</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div class="rt-ops-foot">Položiek: <strong>${r.totals.items}</strong> · <span>t/výrobok: <strong>${rtFmt(r.totals.totalMin)}</strong> min (${rtFmtH(r.totals.totalMin)})</span></div>
+
+    <div class="rt-grid">
+      <div class="rt-sub-card">
+        <h3 class="rt-sub-h">🏭 Rozloženie času podľa linky</h3>
+        ${lineRows}
+      </div>
+      <div class="rt-sub-card">
+        <h3 class="rt-sub-h">📦 Kapacita pre dávku</h3>
+        <div class="rt-calc-input">
+          <label>Plánované množstvo (ks)</label>
+          <input type="number" min="1" value="${qty}" oninput="mfgRtQty=Math.max(1,parseInt(this.value)||1);renderRtDetail()">
+        </div>
+        <table class="rt-calc-table">
+          <thead><tr><th>Linka</th><th>Čas</th><th>Zmien (8h)</th></tr></thead>
+          <tbody>${calcRows}</tbody>
+          <tfoot><tr><td>Spolu</td><td class="rt-num">${rtFmtH(r.totals.totalMin * qty)}</td><td class="rt-num">${(r.totals.totalMin * qty / 480).toLocaleString('sk-SK', { maximumFractionDigits: 1 })}</td></tr></tfoot>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ── Modal: editácia postupu ───────────────────────────────────────────────────
+function openRtModal(r = null) {
+  const e = r && typeof r === 'object';
+  document.getElementById('rtModalTitle').textContent = e ? 'Upraviť technologický postup' : 'Nový technologický postup';
+  document.getElementById('rtId').value = e ? r._id : '';
+  document.getElementById('rtProduct').value = e ? (r.product || '') : '';
+  document.getElementById('rtCode').value = e ? (r.code || '') : '';
+  document.getElementById('rtCoeff').value = e ? (r.coeff || 1.1) : 1.1;
+  document.getElementById('rtNote').value = e && r.note !== 'seed' ? (r.note || '') : '';
+  rtOps = e ? (r.operations || []).map(o => ({ group: o.group || '', code: o.code || '', desc: o.desc || '', tPiece: o.tPiece || 0, qty: o.qty || 1, line: o.line || '', machine: !!o.machine, opNote: o.opNote || '' }))
+            : [{ group: '', code: '', desc: '', tPiece: 0, qty: 1, line: '', machine: false, opNote: '' }];
+  document.getElementById('rtDeleteBtn').style.display = e ? '' : 'none';
+  renderRtOps();
+  document.getElementById('rtModal').classList.remove('hidden');
+}
+function closeRtModal() { document.getElementById('rtModal').classList.add('hidden'); }
+function rtCoeff() { return Number(document.getElementById('rtCoeff').value) || 1.1; }
+
+function renderRtOps() {
+  const body = document.getElementById('rtOpsBody'); if (!body) return;
+  const coeff = rtCoeff();
+  body.innerHTML = rtOps.map((op, i) => `
+    <tr>
+      <td><input class="rt-in rt-in-xs" value="${escHtml(op.group)}" oninput="updateRtOp(${i},'group',this.value)"></td>
+      <td><input class="rt-in rt-in-sm" value="${escHtml(op.code)}" oninput="updateRtOp(${i},'code',this.value)"></td>
+      <td><input class="rt-in" value="${escHtml(op.desc)}" oninput="updateRtOp(${i},'desc',this.value)"></td>
+      <td><input class="rt-in rt-in-num" type="number" step="0.001" value="${op.tPiece}" oninput="updateRtOp(${i},'tPiece',this.value)"></td>
+      <td><input class="rt-in rt-in-num" type="number" step="1" value="${op.qty}" oninput="updateRtOp(${i},'qty',this.value)"></td>
+      <td class="rt-num rt-strong" id="rtOpT-${i}">${rtFmt(opTimeJs(op, coeff))}</td>
+      <td><input class="rt-in rt-in-sm" list="rtLineList" value="${escHtml(op.line)}" oninput="updateRtOp(${i},'line',this.value)"></td>
+      <td style="text-align:center"><input type="checkbox" ${op.machine ? 'checked' : ''} onchange="updateRtOp(${i},'machine',this.checked)" title="Strojový čas — bez prirážky"></td>
+      <td><button type="button" class="tk-sub-del" onclick="removeRtOp(${i})" title="Odstrániť">✕</button></td>
+    </tr>`).join('');
+  refreshRtTotals();
+}
+function updateRtOp(i, field, val) {
+  if (!rtOps[i]) return;
+  if (field === 'machine') { rtOps[i].machine = !!val; }
+  else if (field === 'tPiece' || field === 'qty') { rtOps[i][field] = Number(val) || 0; }
+  else { rtOps[i][field] = val; }
+  // prepočítaj len dotknutý riadok + footer (bez re-renderu, nech sa nestratí fokus)
+  if (field === 'tPiece' || field === 'qty' || field === 'machine') {
+    const cell = document.getElementById('rtOpT-' + i);
+    if (cell) cell.textContent = rtFmt(opTimeJs(rtOps[i], rtCoeff()));
+    refreshRtTotals();
+  }
+}
+function refreshRtTotals() {
+  const coeff = rtCoeff();
+  const total = rtOps.reduce((s, op) => s + opTimeJs(op, coeff), 0);
+  const cnt = document.getElementById('rtOpsCount'); if (cnt) cnt.textContent = rtOps.length;
+  const tot = document.getElementById('rtOpsTotal'); if (tot) tot.textContent = rtFmt(total);
+}
+function addRtOp() {
+  const last = rtOps[rtOps.length - 1];
+  rtOps.push({ group: last?.group || '', code: '', desc: '', tPiece: 0, qty: 1, line: last?.line || '', machine: !!last?.machine, opNote: '' });
+  renderRtOps();
+}
+function removeRtOp(i) { rtOps.splice(i, 1); renderRtOps(); }
+
+async function saveRt() {
+  const product = document.getElementById('rtProduct').value.trim();
+  if (!product) { alert('Zadaj názov výrobku.'); return; }
+  const body = {
+    product, code: document.getElementById('rtCode').value.trim(),
+    coeff: rtCoeff(), note: document.getElementById('rtNote').value.trim(),
+    operations: rtOps.filter(o => (o.desc || '').trim() || (o.code || '').trim())
+  };
+  const id = document.getElementById('rtId').value;
+  try {
+    const r = await fetch(id ? '/api/manufacturing/routings/' + id : '/api/manufacturing/routings', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); alert('Chyba: ' + (d.error || r.status)); return; }
+    const saved = await r.json(); mfgRtSelectedId = saved._id || mfgRtSelectedId;
+    closeRtModal(); loadRoutings();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteRt(id) {
+  if (!id || !confirm('Odstrániť tento technologický postup?')) return;
+  try { await fetch('/api/manufacturing/routings/' + id, { method: 'DELETE' }); mfgRtSelectedId = null; closeRtModal(); loadRoutings(); }
+  catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+async function seedRoutingsData() {
+  if (!confirm('Načítať ukážkový technologický postup (DBFOS senzor — 20 normovaných operácií)?')) return;
+  try {
+    const r = await fetch('/api/admin/seed-routings', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) { alert('Chyba: ' + (d.error || r.status)); return; }
+    mfgRtSelectedId = null;
+    loadRoutings();
+    setTimeout(() => alert(`Hotovo — postup s ${d.operations} operáciami.`), 200);
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 
@@ -5547,6 +6109,7 @@ const IGS_LABELS = { sklad: 'Na sklade', predany: 'Predaný', zakaznik: 'U záka
 
 async function loadManagement() {
   await renderMgmtQuestions();
+  loadSalesAnalytics();
   let s = null;
   try { s = await fetch('/api/management/summary').then(r => r.json()); } catch {}
   if (!s || s.error) { document.getElementById('mgmtStats').innerHTML = '<div class="mgmt-empty">Prehľad sa nepodarilo načítať.</div>'; return; }
@@ -5751,6 +6314,121 @@ function renderMgmtAnalytics(s) {
   </div>`);
 
   el.innerHTML = cards.join('');
+}
+
+// ── Predaj · tržby · ziskovosť ────────────────────────────────────────────────
+const SALE_CAT_COLORS = { 'FBG senzory': '#00d4ff', 'Interrogátory': '#6366f1', 'Káble': '#10b981', 'Služby': '#f59e0b', 'Ostatné': '#64748b' };
+function eur(n) {
+  n = Math.round(n || 0);
+  if (Math.abs(n) >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1).replace('.', ',') + ' k€';
+  return n + ' €';
+}
+function eurFull(n) { return Math.round(n || 0).toLocaleString('sk-SK') + ' €'; }
+
+async function loadSalesAnalytics() {
+  const months = parseInt(document.getElementById('mgmtSalesRange')?.value) || 12;
+  let s = null;
+  try { s = await fetch('/api/management/sales?months=' + months).then(r => r.json()); } catch {}
+  const kpiEl = document.getElementById('mgmtSalesKpis');
+  const anEl = document.getElementById('mgmtSalesAnalytics');
+  if (!kpiEl || !anEl) return;
+  if (!s || s.error || !s.orders) {
+    kpiEl.innerHTML = '';
+    anEl.innerHTML = '<div class="an-card" style="grid-column:1/-1"><div class="an-empty">Žiadne predajné dáta za zvolené obdobie. Klikni na <strong>🎲 Ukážkové dáta</strong> pre demo.</div></div>';
+    return;
+  }
+
+  // KPI
+  const stat = (label, val, sub, cls) => `<div class="mgmt-stat ${cls || ''}"><div class="mgmt-stat-val">${val}</div><div class="mgmt-stat-lbl">${label}</div>${sub ? `<div class="mgmt-stat-sub">${sub}</div>` : ''}</div>`;
+  const gArrow = s.growth > 0 ? '▲' : s.growth < 0 ? '▼' : '▬';
+  kpiEl.innerHTML =
+    stat('Tržby', eur(s.revenue), s.months + ' mes. · ' + s.orders + ' predajov', 'st-cyan') +
+    stat('Zisk', eur(s.profit), 'po odpočítaní nákladov', 'st-green') +
+    stat('Marža', s.margin + '%', s.margin >= 45 ? 'výborná' : s.margin >= 30 ? 'dobrá' : 'nízka', s.margin >= 45 ? 'st-green' : s.margin >= 30 ? 'st-blue' : 'st-red') +
+    stat('Rast (m/m)', gArrow + ' ' + Math.abs(s.growth) + '%', 'oproti min. mesiacu', s.growth >= 0 ? 'st-green' : 'st-red') +
+    stat('Priem. predaj', eur(s.avgOrder), 'hodnota objednávky', 'st-blue');
+
+  const cards = [];
+
+  // 1) Mesačný trend tržieb + zisku (bars)
+  const mx = Math.max(...s.monthly.map(m => m.revenue), 1);
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">📈 Tržby & zisk po mesiacoch</span><span class="an-badge info">${s.months} mes.</span></div>
+    <div class="an-bars sales-bars">${s.monthly.map(m => {
+      const rh = Math.round(m.revenue / mx * 100);
+      const ph = Math.round(m.profit / mx * 100);
+      return `<div class="an-bar-col" title="${m.label}: tržby ${eurFull(m.revenue)} · zisk ${eurFull(m.profit)}">
+        <div class="an-bar-stack" style="flex-direction:row;align-items:flex-end;gap:2px;max-width:34px">
+          <div class="an-bar real" style="height:${rh}%;width:55%"></div>
+          <div class="an-bar profit" style="height:${ph}%;width:45%"></div>
+        </div><div class="an-bar-x">${m.label.slice(0, 2)}</div></div>`;
+    }).join('')}</div>
+    <div class="an-bars-legend"><span><i style="background:linear-gradient(180deg,#00d4ff,#6366f1)"></i> Tržby</span><span><i style="background:#10b981"></i> Zisk</span></div>
+  </div>`);
+
+  // 2) Celková marža — gauge
+  const mBadge = s.margin >= 45 ? 'ok' : s.margin >= 30 ? 'warn' : 'bad';
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">🎯 Zisková marža</span><span class="an-badge ${mBadge}">${s.margin}%</span></div>
+    <div class="an-gauge-wrap">
+      <div style="color:#e8f0fb">${_svgGauge(s.margin)}</div>
+      <div class="an-gauge-meta">
+        <div><span class="an-gauge-big">${s.margin}%</span></div>
+        <div class="an-gauge-lbl">zisk ${eur(s.profit)} z tržieb ${eur(s.revenue)}</div>
+        <div class="an-gauge-lbl">náklady ${eur(s.cost)}</div>
+      </div>
+    </div>
+    <div class="an-foot-note">Hrubá marža = zisk / tržby</div>
+  </div>`);
+
+  // 3) Tržby podľa kategórie — donut
+  const catSegs = s.byCategory.map(c => ({ v: c.revenue, c: SALE_CAT_COLORS[c.name] || '#64748b', l: c.name }));
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">🧩 Tržby podľa kategórie</span><span class="an-badge info">${eur(s.revenue)}</span></div>
+    <div class="an-donut-wrap">
+      <div style="color:#e8f0fb">${_svgDonut(catSegs.map(x => ({ v: x.v, c: x.c })))}</div>
+      <div class="an-legend">${catSegs.map(x => `<div class="an-leg-row"><span class="an-leg-dot" style="background:${x.c}"></span>${escHtml(x.l)}<span class="an-leg-val">${eur(x.v)}</span></div>`).join('')}</div>
+    </div>
+  </div>`);
+
+  // 4) Top zákazníci podľa tržieb (cap rows)
+  const cmax = Math.max(...s.byCustomer.map(c => c.revenue), 1);
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">🏢 Top zákazníci</span><span class="an-badge info">${s.byCustomer.length}</span></div>
+    ${s.byCustomer.map(c => `<div class="an-cap-row">
+      <div class="an-cap-top"><span class="an-cap-name">${escHtml(c.name)}</span><span class="an-cap-pct">${eur(c.revenue)}</span></div>
+      <div class="an-cap-track"><div class="an-cap-fill lo" style="width:${Math.round(c.revenue / cmax * 100)}%"></div></div>
+      <div class="an-cap-sub">zisk ${eur(c.profit)} · marža ${c.margin}% · ${c.orders} obj.</div>
+    </div>`).join('')}
+  </div>`);
+
+  // 5) Ziskovosť podľa produktu (cap rows, farba podľa marže)
+  const pmax = Math.max(...s.byProduct.map(p => p.revenue), 1);
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">📦 Ziskovosť produktov</span><span class="an-badge info">${s.byProduct.length}</span></div>
+    ${s.byProduct.slice(0, 8).map(p => {
+      const cls = p.margin >= 50 ? 'lo' : p.margin >= 30 ? 'mid' : 'hi';
+      return `<div class="an-cap-row">
+        <div class="an-cap-top"><span class="an-cap-name">${escHtml(p.name)}</span><span class="an-cap-pct">marža ${p.margin}%</span></div>
+        <div class="an-cap-track"><div class="an-cap-fill ${cls}" style="width:${Math.round(p.revenue / pmax * 100)}%"></div></div>
+        <div class="an-cap-sub">tržby ${eur(p.revenue)} · zisk ${eur(p.profit)} · ${p.qty} ks</div>
+      </div>`;
+    }).join('')}
+    <div class="an-foot-note">Zoradené podľa zisku · farba = výška marže</div>
+  </div>`);
+
+  anEl.innerHTML = cards.join('');
+}
+
+async function seedSalesData() {
+  if (!confirm('Vygenerovať ukážkové predajné dáta za 12 mesiacov? Nahradia sa len predošlé ukážkové dáta.')) return;
+  try {
+    const r = await fetch('/api/admin/seed-sales', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) { alert('Chyba: ' + (d.error || r.status)); return; }
+    loadSalesAnalytics();
+    setTimeout(() => alert('Hotovo — vytvorených ' + d.inserted + ' predajov.'), 200);
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 
 async function renderMgmtQuestions() {

@@ -152,5 +152,29 @@ module.exports = function(sensorCfg) {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  router.post('/seed-manufacturing', async (req, res) => {
+    try {
+      const { seedManufacturing } = require('../scripts/seedManufacturing');
+      const result = await seedManufacturing();
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  router.post('/seed-sales', async (req, res) => {
+    try {
+      const { seedSales } = require('../scripts/seedSales');
+      const result = await seedSales();
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  router.post('/seed-routings', async (req, res) => {
+    try {
+      const { seedRoutings } = require('../scripts/seedRoutings');
+      const result = await seedRoutings();
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   return router;
 };
