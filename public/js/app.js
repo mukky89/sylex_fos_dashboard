@@ -304,7 +304,7 @@ function _tourPlacePop(rect, pop) {
 // ══════════════════════════════════════════════════════════════════════════════
 //  UI LAYOUT — alternatívny sidebar (konfigurovateľný v Admin → Vzhľad)
 // ══════════════════════════════════════════════════════════════════════════════
-const SB_THEMES = ['dark', 'light', 'minimal', 'icon', 'gradient'];
+const SB_THEMES = ['dark', 'light', 'minimal', 'icon', 'gradient', 'aurora', 'sunset'];
 const UI_ACCENTS = {
   cyan:    { '--accent': '#0891b2', '--accent2': '#1d4ed8', '--border-focus': '#0891b2', '--ui-accent': '#06b6d4', '--ui-accent2': '#3b82f6' },
   indigo:  { '--accent': '#4f46e5', '--accent2': '#7c3aed', '--border-focus': '#4f46e5', '--ui-accent': '#6366f1', '--ui-accent2': '#8b5cf6' },

@@ -3067,6 +3067,38 @@ body.sbt-gradient .asb-link.active { background: rgba(255,255,255,0.2); color: #
 body.sbt-gradient .asb-foot { border-top-color: rgba(255,255,255,0.16); }
 body.sbt-gradient .asb-user-mail { opacity: 0.7; }
 
+/* ── Téma: AURORA (glassmorphism — matné sklo + farebná žiara) ── */
+body.sbt-aurora .app-sidebar {
+  background:
+    radial-gradient(150px 190px at 16% 5%, rgba(0,212,255,0.24), transparent 70%),
+    radial-gradient(190px 230px at 90% 24%, rgba(139,110,240,0.28), transparent 70%),
+    radial-gradient(210px 230px at 24% 97%, rgba(16,185,129,0.18), transparent 72%),
+    linear-gradient(180deg, rgba(13,20,48,0.90), rgba(18,15,42,0.92));
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  color: #d9e0f3; border-right: 1px solid rgba(255,255,255,0.10);
+}
+body.sbt-aurora .asb-brand { border-bottom-color: rgba(255,255,255,0.12); }
+body.sbt-aurora .asb-link { color: #b9c4e0; }
+body.sbt-aurora .asb-link:hover { background: rgba(255,255,255,0.08); color: #fff; }
+body.sbt-aurora .asb-link.active {
+  background: rgba(255,255,255,0.12); color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16), 0 4px 14px rgba(0,180,255,0.18);
+}
+body.sbt-aurora .asb-foot { border-top-color: rgba(255,255,255,0.12); }
+body.sbt-aurora .asb-user-mail { opacity: 0.6; }
+
+/* ── Téma: SUNSET (teplý gradient — západ slnka) ── */
+body.sbt-sunset .app-sidebar { background: linear-gradient(170deg, #f0506e 0%, #f5734f 50%, #f9a13c 100%); color: #fff4ec; border-right: none; }
+body.sbt-sunset .asb-brand { border-bottom-color: rgba(255,255,255,0.20); }
+body.sbt-sunset .asb-logo { background: rgba(255,255,255,0.94); color: #f0506e; }
+body.sbt-sunset .asb-avatar { background: rgba(255,255,255,0.94); color: #f0506e; }
+body.sbt-sunset .asb-link { color: #ffe6db; }
+body.sbt-sunset .asb-link:hover { background: rgba(255,255,255,0.16); color: #fff; }
+body.sbt-sunset .asb-link.active { background: rgba(255,255,255,0.24); color: #fff; font-weight: 600; }
+body.sbt-sunset .asb-foot { border-top-color: rgba(255,255,255,0.20); }
+body.sbt-sunset .asb-user-mail { opacity: 0.75; }
+
 @media (max-width: 900px) {
   body.layout-sidebar .page { padding-left: 0; }
   body.layout-sidebar .app-sidebar { transform: translateX(-100%); transition: transform .22s; }
@@ -3122,6 +3154,8 @@ body.sbt-gradient .asb-user-mail { opacity: 0.7; }
 .apt-minimal { background: #fbfcfe; } .apt-minimal i { background: #e2e8f0; } .apt-minimal i:first-child { background: #10b981; }
 .apt-icon { background: #0d1430; align-items: center; } .apt-icon i { width: 18px; height: 18px; border-radius: 5px; }
 .apt-gradient { background: linear-gradient(170deg,#6d4ed6,#8b6ef0); } .apt-gradient i { background: rgba(255,255,255,0.35); } .apt-gradient i:first-child { background: rgba(255,255,255,0.85); }
+.apt-aurora { background: radial-gradient(60% 50% at 80% 20%, rgba(139,110,240,0.7), transparent 70%), radial-gradient(50% 50% at 15% 10%, rgba(0,212,255,0.55), transparent 70%), linear-gradient(170deg,#0d1430,#1b1340); } .apt-aurora i { background: rgba(255,255,255,0.32); } .apt-aurora i:first-child { background: rgba(120,220,255,0.9); }
+.apt-sunset { background: linear-gradient(170deg,#f0506e,#f5734f 55%,#f9a13c); } .apt-sunset i { background: rgba(255,255,255,0.42); } .apt-sunset i:first-child { background: rgba(255,255,255,0.92); }
 .apt-name { font-size: 0.78rem; font-weight: 600; }
 
 /* =============================================================================
@@ -3577,3 +3611,34 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .pg-sugg li { font-size: 0.78rem; padding: 7px 10px; }
 .pg-sugg-more { background: transparent !important; border-left: none !important; color: #94a3b8 !important; font-style: italic; padding-left: 2px !important; }
 .pg-findings li { font-size: 0.78rem; }
+
+/* =============================================================================
+   UI/UX POLISH — prístupnosť & jemné vylepšenia (WCAG-friendly)
+   ============================================================================= */
+/* Viditeľný focus ring LEN pri navigácii klávesnicou (myš ho neukáže) */
+:focus-visible {
+  outline: 2px solid var(--ui-accent, var(--border-focus, #0891b2));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+:focus:not(:focus-visible) { outline: none; }
+.nav-link:focus-visible,
+.asb-link:focus-visible,
+.ql-chip:focus-visible,
+.hdr-icon-btn:focus-visible { outline-offset: 3px; }
+
+/* Konzistentné zvýraznenie vybraného textu */
+::selection { background: rgba(8,145,178,0.22); }
+
+/* Jemné, tenké skrolovacie lišty v celej aplikácii (dedí sa do kontajnerov) */
+html { scrollbar-width: thin; scrollbar-color: rgba(120,130,150,0.45) transparent; }
+
+/* Rešpektuj systémové nastavenie „obmedziť pohyb" (vestibulárna citlivosť) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
