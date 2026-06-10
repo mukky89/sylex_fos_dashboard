@@ -5575,6 +5575,33 @@ async function loadMfgSchedule() {
   try { mfgOrders = await fetch('/api/production').then(r => r.json()); if (!Array.isArray(mfgOrders)) mfgOrders = []; }
   catch { mfgOrders = []; }
   renderMfgGantt();
+  renderMfgShipped();
+}
+
+// Zoznam expedovaných zákaziek + objednávok
+function renderMfgShipped() {
+  const el = document.getElementById('mfgShippedList'); if (!el) return;
+  const cnt = document.getElementById('mfgShippedCount');
+  const q = (document.getElementById('mfgShipSearch')?.value || '').toLowerCase();
+  let items = mfgOrders.filter(o => o.stage === 'shipped');
+  const totalQty = items.reduce((s, o) => s + (o.qtyPlanned || 0), 0);
+  if (cnt) cnt.textContent = items.length ? `${items.length} zákaziek · ${totalQty} ks` : '';
+  if (q) items = items.filter(o => [o.number, o.salesOrder, o.product, o.customer].some(x => (x || '').toLowerCase().includes(q)));
+  items.sort((a, b) => (b.due ? +new Date(b.due) : 0) - (a.due ? +new Date(a.due) : 0));
+  if (!items.length) {
+    el.innerHTML = `<div class="proc-empty" style="margin:6px 0">${mfgOrders.some(o => o.stage === 'shipped') ? 'Nič nevyhovuje hľadaniu.' : 'Žiadne expedované zákazky.'}</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="rt-ops-table-wrap"><table class="prod-table rt-view mfg-ship-table"><thead><tr>
+    <th>Zákazka</th><th>Objednávka</th><th>Produkt</th><th>Zákazník</th><th>Množstvo</th><th>Termín</th>
+    </tr></thead><tbody>${items.map(o => `<tr>
+      <td class="rt-code">${escHtml(o.number || '—')}</td>
+      <td>${escHtml(o.salesOrder || '—')}</td>
+      <td>${escHtml(o.product || '')}</td>
+      <td>${escHtml(o.customer || '—')}</td>
+      <td class="rt-num">${o.qtyPlanned || 0} ${escHtml(o.unit || 'ks')}</td>
+      <td>${o.due ? fmtDate(o.due) : '—'}</td>
+    </tr>`).join('')}</tbody></table></div>`;
 }
 
 function setMfgGanttSort(v) { mfgGanttSort = v; renderMfgGantt(); }

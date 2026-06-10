@@ -11,7 +11,8 @@ const PRODUCTS = [
 ];
 const CUSTOMERS = ['US CONEC', 'Optics11', 'Viaphoton', 'Corning', 'Huber+Suhner', 'Senko', 'II-VI', 'Fraunhofer IZM'];
 const LINES = ['Linka A — montáž', 'Linka B — lepenie', 'Pracovisko optika', 'Pracovisko kalibrácia', 'Expedícia'];
-const STAGES = ['plan', 'material', 'production', 'qc', 'done', 'shipped'];
+// Vážený výber fáz — viac aktívnych zákaziek (plnší Gantt), ale aj expedované do zoznamu
+const STAGES = ['plan', 'plan', 'material', 'material', 'production', 'production', 'production', 'qc', 'qc', 'done', 'shipped', 'shipped'];
 const PRIOS = ['low', 'normal', 'normal', 'high', 'urgent'];
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const ri = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
@@ -21,7 +22,7 @@ async function seedProduction() {
   const now = Date.now();
   const year = new Date().getFullYear();
   const docs = [];
-  const n = 16;
+  const n = 32;
   for (let i = 0; i < n; i++) {
     const stage = pick(STAGES);
     const qtyPlanned = ri(5, 200);

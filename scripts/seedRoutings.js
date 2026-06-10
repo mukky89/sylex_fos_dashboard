@@ -74,6 +74,64 @@ const ROUTINGS = [
       ['05', 'IG-060', 'Balenie a expedícia', 15, 1, 'Expedícia', false],
     ]
   },
+  {
+    product: 'Vlhkostný senzor H2', code: 'H2', coeff: 1.1, ops: [
+      ['02', 'H2-010', 'Rezanie a príprava', 0.9, 1, 'Linka A — montáž', false],
+      ['03', 'H2-020', 'Montáž senzorického elementu', 6, 1, 'Linka A — montáž', false],
+      ['03', 'H2-030', 'Lepenie membrány', 4, 1, 'Linka B — lepenie', false],
+      ['05', 'H2-040', 'Vytvrdzovanie 3h', 180, 1, 'Pec / vytvrdzovanie', true],
+      ['04', 'H2-050', 'Kalibrácia vlhkosti', 8, 1, 'Pracovisko kalibrácia', false],
+      ['05', 'H2-060', 'Balenie a expedícia', 2, 1, 'Expedícia', false],
+    ]
+  },
+  {
+    product: 'Tlakový senzor PT-01', code: 'PT-01', coeff: 1.1, ops: [
+      ['02', 'PT-010', 'Rezanie a príprava', 0.8, 1, 'Linka A — montáž', false],
+      ['03', 'PT-020', 'Montáž membrány', 7, 1, 'Linka A — montáž', false],
+      ['03', 'PT-030', 'Lepenie', 3, 1, 'Linka B — lepenie', false],
+      ['05', 'PT-040', 'Vytvrdzovanie 4h', 240, 1, 'Pec / vytvrdzovanie', true],
+      ['04', 'PT-050', 'Kalibrácia tlaku', 9, 1, 'Pracovisko kalibrácia', false],
+      ['04', 'PT-060', 'Výstupná kontrola', 2, 1, 'Pracovisko kalibrácia', false],
+      ['05', 'PT-070', 'Balenie a expedícia', 2, 1, 'Expedícia', false],
+    ]
+  },
+  {
+    product: 'Multiplexér MX-16', code: 'MX-16', coeff: 1.1, ops: [
+      ['03', 'MX-010', 'Montáž HW', 45, 1, 'Linka A — montáž', false],
+      ['03', 'MX-020', 'Osadenie optiky', 25, 1, 'Pracovisko optika', false],
+      ['04', 'MX-030', 'Test kanálov', 40, 1, 'Pracovisko kalibrácia', false],
+      ['04', 'MX-040', 'Výstupná kontrola', 15, 1, 'Pracovisko kalibrácia', false],
+      ['05', 'MX-050', 'Balenie a expedícia', 10, 1, 'Expedícia', false],
+    ]
+  },
+  {
+    product: 'Káblový teplomer CT-01', code: 'CT-01', coeff: 1.1, ops: [
+      ['02', 'CT-010', 'Rezanie kábla', 0.7, 1, 'Linka A — montáž', false],
+      ['03', 'CT-020', 'Montáž čidla', 5, 1, 'Linka A — montáž', false],
+      ['03', 'CT-030', 'Lepenie', 3, 1, 'Linka B — lepenie', false],
+      ['04', 'CT-040', 'Kalibrácia TEMP', 6, 1, 'Pracovisko kalibrácia', false],
+      ['05', 'CT-050', 'Balenie a expedícia', 1.5, 1, 'Expedícia', false],
+    ]
+  },
+  {
+    product: 'DTS sonda 100 m', code: 'DTS-100', coeff: 1.1, ops: [
+      ['02', 'DT-010', 'Príprava vlákna', 8, 1, 'Pracovisko optika', false],
+      ['03', 'DT-020', 'Navíjanie a fixácia', 30, 1, 'Linka B — lepenie', false],
+      ['04', 'DT-030', 'Konektorovanie', 4, 1, 'Pracovisko optika', false],
+      ['04', 'DT-040', 'Meranie útlmu', 6, 1, 'Pracovisko kalibrácia', false],
+      ['05', 'DT-050', 'Vytvrdzovanie 2h', 120, 1, 'Pec / vytvrdzovanie', true],
+      ['05', 'DT-060', 'Balenie a expedícia', 5, 1, 'Expedícia', false],
+    ]
+  },
+  {
+    product: 'Konektorový panel FC/APC', code: 'FCAPC', coeff: 1.1, ops: [
+      ['02', 'FP-010', 'Rezanie pigtailov', 0.6, 1, 'Linka A — montáž', false],
+      ['04', 'FP-020', 'Konektorovanie FC/APC', 3.5, 1, 'Pracovisko optika', false],
+      ['04', 'FP-030', 'Leštenie', 1.2, 1, 'Pracovisko optika', false],
+      ['04', 'FP-040', 'Meranie útlmu', 2, 1, 'Pracovisko kalibrácia', false],
+      ['05', 'FP-050', 'Balenie a expedícia', 1.5, 1, 'Expedícia', false],
+    ]
+  },
 ];
 
 async function seedRoutings() {
