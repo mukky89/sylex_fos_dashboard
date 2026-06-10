@@ -140,9 +140,9 @@ const TOUR_STEPS = [
     title: '📅 Kalendár + ✅ úlohy na úvode',
     desc: 'Vpravo na úvode máš najbližšie udalosti z kalendára a svoje aktívne úlohy — rýchle odškrtnutie aj preklik na detail.',
   },
-  { page: 'home', el: '.thermo-corner',
-    title: '🌡️ Live merania senzora',
-    desc: 'Aktuálna teplota a vlhkosť zo senzora T3511 v labe. Klik → graf histórie. Obnovuje sa automaticky.',
+  { page: 'home', el: '#hdrSensorBtn',
+    title: '🌡️ Senzory v labe',
+    desc: 'Teplota a vlhkosť zo senzora T3511 v labe. Klik → stránka Senzory s grafom histórie. Bodka ukazuje online/offline stav.',
   },
   { page: 'home', el: '.tour-fab',
     title: '❓ Pomoc kedykoľvek',
@@ -563,12 +563,15 @@ async function loadThermoData() {
       set('thermoValue',   t); set('sensorTempVal', t);
       set('humValue',      h); set('sensorHumVal',  h);
       ['thermoStatus','sensorStatus'].forEach(id => { set(id,'ONLINE'); cls(id,'thermo-status thermo-online'); });
+      cls('thermoDot', 'hdr-sensor-dot on');
     } else {
       ['thermoValue','humValue','sensorTempVal','sensorHumVal'].forEach(id => set(id,'--.-'));
       ['thermoStatus','sensorStatus'].forEach(id => { set(id,'OFFLINE'); cls(id,'thermo-status thermo-offline'); });
+      cls('thermoDot', 'hdr-sensor-dot off');
     }
   } catch {
     ['thermoStatus','sensorStatus'].forEach(id => { set(id,'OFFLINE'); cls(id,'thermo-status thermo-offline'); });
+    cls('thermoDot', 'hdr-sensor-dot off');
   }
 }
 // (loadThermoData sa spúšťa v startApp po prihlásení)
