@@ -1749,7 +1749,7 @@ body {
 .bot-send:hover { transform: scale(1.08); }
 
 @media (max-width: 768px) {
-  .bot-fab { right: 16px; bottom: 86px; }
+  .bot-fab { right: 16px; bottom: 120px; }   /* nad senzorom, aby sa neprekrývali */
   .bot-panel { right: 8px; left: 8px; bottom: 8px; width: auto; height: 70vh; max-height: 70vh; }
 }
 
@@ -2627,10 +2627,15 @@ body {
    LOGIN
    ============================================= */
 .login-overlay {
-  position: fixed; inset: 0; z-index: 500;
+  position: fixed; inset: 0; z-index: 1000;
   background: radial-gradient(1200px 600px at 50% -10%, #16203f, #0b1020);
   display: flex; align-items: center; justify-content: center; padding: 20px;
 }
+/* Kým nie je používateľ prihlásený, skry plávajúce prvky (Pomoc, chatbot, senzor) */
+body.logged-out .tour-fab,
+body.logged-out .bot-fab,
+body.logged-out .bot-panel,
+body.logged-out .thermo-corner { display: none !important; }
 .login-box {
   width: min(360px, 92vw); background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
