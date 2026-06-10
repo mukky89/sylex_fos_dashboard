@@ -1611,8 +1611,12 @@ body {
 /* =============================================
    FOS AI ASISTENT (vizuálny chat widget)
    ============================================= */
+.hdr-sensor-dot { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: #64748b; }
+.hdr-sensor-dot.on { background: #34d399; box-shadow: 0 0 5px #34d399; }
+.hdr-sensor-dot.off { background: #94a3b8; }
+
 .bot-fab {
-  position: fixed; right: 22px; bottom: 124px; z-index: 600;
+  position: fixed; right: 22px; bottom: 22px; z-index: 600;
   width: 54px; height: 54px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(140deg, #00d4ff 0%, #6366f1 100%);
@@ -1633,7 +1637,7 @@ body {
 }
 
 .bot-panel {
-  position: fixed; right: 22px; bottom: 124px; z-index: 601;
+  position: fixed; right: 22px; bottom: 22px; z-index: 601;
   width: 374px; max-width: calc(100vw - 32px); height: 540px; max-height: calc(100vh - 120px);
   display: flex; flex-direction: column;
   background: rgba(11,16,33,0.97);
@@ -1749,7 +1753,7 @@ body {
 .bot-send:hover { transform: scale(1.08); }
 
 @media (max-width: 768px) {
-  .bot-fab { right: 16px; bottom: 120px; }   /* nad senzorom, aby sa neprekrývali */
+  .bot-fab { right: 16px; bottom: 16px; }
   .bot-panel { right: 8px; left: 8px; bottom: 8px; width: auto; height: 70vh; max-height: 70vh; }
 }
 

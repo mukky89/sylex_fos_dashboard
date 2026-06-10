@@ -115,6 +115,10 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
           <span class="hdr-badge hidden" id="notifBadge">0</span>
         </button>
+        <button class="hdr-icon-btn" id="hdrSensorBtn" onclick="showPage('sensors')" title="Senzory — teplota &amp; vlhkosť v labe">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/></svg>
+          <span class="hdr-sensor-dot" id="thermoDot"></span>
+        </button>
         <div class="hdr-sep-v"></div>
         <div class="status-dot"></div>
         <span class="status-text">ONLINE</span>
@@ -381,26 +385,6 @@
 
     </div>
   </main>
-
-  <!-- Floating thermometer corner widget -->
-  <div class="thermo-corner">
-    <a href="http://10.88.5.184/" target="_blank" class="thermo-corner-link">
-      <div class="thermo-corner-row">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#67e8f9" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/></svg>
-        <span id="thermoValue">--.-</span><span class="tc-unit">°C</span>
-      </div>
-      <div class="thermo-corner-row">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg>
-        <span id="humValue">--.-</span><span class="tc-unit">%</span>
-      </div>
-    </a>
-    <div class="thermo-corner-foot">
-      <span id="thermoStatus" class="thermo-status thermo-offline">—</span>
-      <button class="tc-chart-btn" onclick="showPage('sensors')" title="Otvoriť Senzory">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      </button>
-    </div>
-  </div>
 
   <!-- ===== WIKI PAGE ===== -->
   <main id="page-wiki" class="page wiki-page">
