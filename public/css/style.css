@@ -3162,15 +3162,15 @@ body.sbt-sunset .asb-user-mail { opacity: 0.75; }
    MANAŽMENT — R&D & VÝROBNÉ ANALYTIKY (vizuálne)
    ============================================================================= */
 .mgmt-analytics-hdr { display: flex; align-items: baseline; gap: 12px; margin: 22px 0 12px; flex-wrap: wrap; }
-.mgmt-section-h { font-family: var(--font-title); font-size: 1.22rem; font-weight: 700; }
-.mgmt-section-note { font-size: 0.78rem; opacity: 0.55; }
+.mgmt-section-h { font-family: var(--font-title); font-size: 1.22rem; font-weight: 700; color: #f1f5f9; }
+.mgmt-section-note { font-size: 0.78rem; color: #94a3b8; }
 .mgmt-analytics { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
 .an-card {
-  background: var(--card-bg, rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 14px; padding: 16px 16px 14px; display: flex; flex-direction: column;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px; padding: 16px 16px 14px; display: flex; flex-direction: column; color: #cbd5e1;
 }
 .an-card-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
-.an-title { font-weight: 700; font-size: 0.95rem; }
+.an-title { font-weight: 700; font-size: 0.95rem; color: #f1f5f9; }
 .an-badge { font-size: 0.68rem; padding: 3px 9px; border-radius: 100px; font-weight: 600; }
 .an-badge.ok { background: rgba(16,185,129,0.15); color: #6ee7b7; }
 .an-badge.warn { background: rgba(245,158,11,0.16); color: #fcd34d; }
@@ -3180,7 +3180,7 @@ body.sbt-sunset .asb-user-mail { opacity: 0.75; }
 /* kapacitné riadky */
 .an-cap-row { margin-bottom: 11px; }
 .an-cap-top { display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 5px; }
-.an-cap-name { font-weight: 600; }
+.an-cap-name { font-weight: 600; color: #f1f5f9; }
 .an-cap-pct { opacity: 0.8; font-variant-numeric: tabular-nums; }
 .an-cap-track { height: 8px; border-radius: 5px; background: rgba(255,255,255,0.07); overflow: hidden; }
 .an-cap-fill { height: 100%; border-radius: 5px; transition: width .5s ease; }
@@ -3194,12 +3194,12 @@ body.sbt-sunset .asb-user-mail { opacity: 0.75; }
 .an-legend { display: flex; flex-direction: column; gap: 7px; flex: 1; }
 .an-leg-row { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
 .an-leg-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-.an-leg-val { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+.an-leg-val { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; color: #f1f5f9; }
 
 /* gauge */
 .an-gauge-wrap { display: flex; align-items: center; gap: 16px; }
 .an-gauge-meta { display: flex; flex-direction: column; gap: 4px; }
-.an-gauge-big { font-family: var(--font-title); font-size: 1.7rem; font-weight: 700; line-height: 1; }
+.an-gauge-big { font-family: var(--font-title); font-size: 1.7rem; font-weight: 700; line-height: 1; color: #f8fafc; }
 .an-gauge-lbl { font-size: 0.74rem; opacity: 0.6; }
 
 /* bars (velocity / kapacita po týždňoch) */
@@ -3696,6 +3696,41 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .mfg-prev-oee.oee-mid { border-color: rgba(245,158,11,0.4); } .mfg-prev-oee.oee-low { border-color: rgba(239,68,68,0.4); }
 
 @media (max-width: 900px) { .mfg-grid { grid-template-columns: 1fr; } }
+
+/* =============================================================================
+   PODÚLOHY (checklist) + PREDAJ ANALYTIKA
+   ============================================================================= */
+/* Odznak počtu podúloh na kartách úloh */
+.task-subbadge { background: rgba(99,102,241,0.2); color: #c4b5fd; padding: 1px 8px; border-radius: 100px; font-weight: 600; }
+.task-subbadge.all { background: rgba(16,185,129,0.18); color: #6ee7b7; }
+
+/* Inline checklist v zozname úloh (tmavé pozadie) */
+.task-sub-inline { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; padding-top: 7px; border-top: 1px dashed rgba(255,255,255,0.08); }
+.task-sub-il { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: rgba(255,255,255,0.72); cursor: pointer; padding: 2px 0; }
+.task-sub-il input { accent-color: #00d4ff; cursor: pointer; width: 14px; height: 14px; flex-shrink: 0; }
+.task-sub-il.done span { text-decoration: line-through; color: rgba(255,255,255,0.4); }
+
+/* Editor podúloh v modale (svetlé pozadie) */
+.tk-sub-count { font-weight: 500; color: var(--text-dim); font-size: 0.78rem; }
+.tk-prog-hint { font-size: 0.68rem; color: var(--text-dim); margin-top: 4px; }
+.tk-sub-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.tk-sub-empty { font-size: 0.78rem; color: var(--text-xdim); padding: 4px 0; }
+.tk-sub-item { display: flex; align-items: center; gap: 8px; }
+.tk-sub-item.done .tk-sub-title { text-decoration: line-through; color: var(--text-xdim); }
+.tk-sub-check { width: 24px; height: 24px; flex-shrink: 0; border-radius: 6px; border: 1.5px solid var(--border); background: #fff; color: #fff; cursor: pointer; font-size: 0.78rem; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background .14s, border-color .14s; }
+.tk-sub-item.done .tk-sub-check { background: var(--success); border-color: var(--success); }
+.tk-sub-title { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px; font-family: var(--font); font-size: 0.84rem; color: var(--text); background: #fff; outline: none; }
+.tk-sub-title:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(8,145,178,0.1); }
+.tk-sub-del { background: none; border: none; color: var(--text-xdim); cursor: pointer; padding: 4px 7px; border-radius: 6px; flex-shrink: 0; font-size: 0.85rem; }
+.tk-sub-del:hover { color: var(--danger); background: rgba(239,68,68,0.1); }
+.tk-sub-add { display: flex; gap: 8px; }
+.tk-sub-add input { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px; font-family: var(--font); font-size: 0.84rem; color: var(--text); background: #fff; outline: none; }
+.tk-sub-add input:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(8,145,178,0.1); }
+
+/* Predaj — nástroje v hlavičke sekcie + stĺpec zisku */
+.mgmt-sales-tools { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+.an-bar.profit { background: #10b981; }
+.an-empty { font-size: 0.85rem; color: #94a3b8; padding: 10px; text-align: center; }
 
 /* =============================================================================
    UI/UX POLISH — prístupnosť & jemné vylepšenia (WCAG-friendly)

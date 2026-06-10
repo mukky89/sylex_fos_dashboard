@@ -4187,6 +4187,7 @@ let tasksData = [];
 let taskFilter = 'open';
 let taskView = 'list';
 let _dragTaskId = null;
+let tkSubtasks = [];   // pracovná kópia podúloh v modale
 const TK_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#ef4444' } };
 const TK_STATUS = [{ key: 'todo', label: 'Čaká' }, { key: 'inprogress', label: 'Prebieha' }, { key: 'done', label: 'Hotové' }];
 function taskStatusOf(t) { return t.status || (t.done ? 'done' : 'todo'); }
@@ -4229,8 +4230,22 @@ function taskMetaHtml(t) {
   const od = taskOverdue(t);
   const parts = [`<span class="task-prio">${prio.l}</span>`];
   if (t.due) parts.push(`<span class="${od ? 'task-od' : ''}">📅 ${fmtDate(t.due)}${od ? ' — po termíne' : ''}</span>`);
+  if (t.subtasks && t.subtasks.length) {
+    const done = t.subtasks.filter(s => s.done).length;
+    parts.push(`<span class="task-subbadge ${done === t.subtasks.length ? 'all' : ''}" title="Podúlohy">☑ ${done}/${t.subtasks.length}</span>`);
+  }
   if (t.createdAt) parts.push(`<span class="task-created" title="Dátum pridania">➕ ${fmtDate(t.createdAt)}</span>`);
   return `<div class="task-meta">${parts.join('')}</div>`;
+}
+
+// Inline checklist podúloh (zoznamový pohľad) — klik prepína stav
+function taskSubInlineHtml(t) {
+  if (!t.subtasks || !t.subtasks.length) return '';
+  return `<div class="task-sub-inline" onclick="event.stopPropagation()">${t.subtasks.map(s => `
+    <label class="task-sub-il ${s.done ? 'done' : ''}">
+      <input type="checkbox" ${s.done ? 'checked' : ''} onclick="event.stopPropagation();toggleSubtaskInline('${t._id}','${s._id}')">
+      <span>${escHtml(s.title)}</span>
+    </label>`).join('')}</div>`;
 }
 
 function renderTasks() {
@@ -4270,9 +4285,10 @@ function renderTaskList() {
         <div class="task-title">${escHtml(t.title)}</div>
         ${taskChipsHtml(t)}
         ${taskMetaHtml(t)}
-        ${(t.progress || taskStatusOf(t) === 'inprogress') ? taskProgressHtml(t) : ''}
+        ${(t.progress || taskStatusOf(t) === 'inprogress' || (t.subtasks && t.subtasks.length)) ? taskProgressHtml(t) : ''}
         ${t.note ? `<div class="task-note">📝 ${escHtml(t.note)}</div>` : ''}
         ${t.description ? `<div class="task-desc">${escHtml(t.description)}</div>` : ''}
+        ${taskSubInlineHtml(t)}
       </div>
       <button class="admin-icon-btn danger" onclick="deleteTask('${t._id}')" title="Odstrániť">✕</button>`;
     el.appendChild(row);
@@ -4389,10 +4405,67 @@ function openTaskModal(t = null) {
   document.getElementById('tkProgressVal').textContent = prog;
   document.getElementById('tkDesc').value = e ? (t.description || '') : '';
   document.getElementById('tkNote').value = e ? (t.note || '') : '';
+  tkSubtasks = e && Array.isArray(t.subtasks) ? t.subtasks.map(s => ({ title: s.title, done: !!s.done })) : [];
+  renderSubtaskEditor();
   document.getElementById('tkDeleteBtn').style.display = e ? '' : 'none';
   document.getElementById('taskModal').classList.remove('hidden');
 }
 function closeTaskModal() { document.getElementById('taskModal').classList.add('hidden'); }
+
+// ── Podúlohy v modale ─────────────────────────────────────────────────────────
+function renderSubtaskEditor() {
+  const list = document.getElementById('tkSubList');
+  const cnt = document.getElementById('tkSubCount');
+  const hint = document.getElementById('tkProgHint');
+  const slider = document.getElementById('tkProgress');
+  if (!list) return;
+  if (!tkSubtasks.length) {
+    list.innerHTML = '<div class="tk-sub-empty">Žiadne podúlohy — pridaj checklist nižšie.</div>';
+  } else {
+    list.innerHTML = tkSubtasks.map((s, i) => `
+      <div class="tk-sub-item ${s.done ? 'done' : ''}">
+        <button type="button" class="tk-sub-check" onclick="toggleSubtaskEditor(${i})" title="Hotovo / nehotovo">${s.done ? '✓' : ''}</button>
+        <input type="text" class="tk-sub-title" value="${escHtml(s.title)}" oninput="updateSubtaskTitle(${i}, this.value)">
+        <button type="button" class="tk-sub-del" onclick="removeSubtask(${i})" title="Odstrániť">✕</button>
+      </div>`).join('');
+  }
+  const done = tkSubtasks.filter(s => s.done).length;
+  if (cnt) cnt.textContent = tkSubtasks.length ? `(${done}/${tkSubtasks.length} hotových)` : '';
+  // ak sú podúlohy, progres sa odvodzuje z nich → slider zamkni a ukáž odvodenú hodnotu
+  if (tkSubtasks.length) {
+    const p = Math.round(done / tkSubtasks.length * 100);
+    if (slider) { slider.value = p; slider.disabled = true; }
+    document.getElementById('tkProgressVal').textContent = p;
+    if (hint) hint.textContent = 'Progres sa počíta automaticky z podúloh';
+  } else {
+    if (slider) slider.disabled = false;
+    if (hint) hint.textContent = '';
+  }
+}
+function addSubtask() {
+  const inp = document.getElementById('tkSubInput');
+  const v = (inp.value || '').trim();
+  if (!v) return;
+  tkSubtasks.push({ title: v, done: false });
+  inp.value = ''; inp.focus();
+  renderSubtaskEditor();
+}
+function toggleSubtaskEditor(i) { if (tkSubtasks[i]) { tkSubtasks[i].done = !tkSubtasks[i].done; renderSubtaskEditor(); } }
+function updateSubtaskTitle(i, val) { if (tkSubtasks[i]) tkSubtasks[i].title = val; }
+function removeSubtask(i) { tkSubtasks.splice(i, 1); renderSubtaskEditor(); }
+
+// Prepnutie podúlohy priamo v zozname úloh (mimo modalu)
+async function toggleSubtaskInline(taskId, subId) {
+  const t = tasksData.find(x => x._id === taskId); if (!t) return;
+  const sub = (t.subtasks || []).find(s => s._id === subId); if (!sub) return;
+  sub.done = !sub.done;
+  const subtasks = t.subtasks.map(s => ({ title: s.title, done: !!s.done }));
+  try {
+    const r = await fetch('/api/tasks/' + taskId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtasks }) });
+    if (r.ok) { const upd = await r.json(); Object.assign(t, upd); }
+  } catch {}
+  renderTasks(); loadNotif();
+}
 async function saveTask() {
   const title = document.getElementById('tkTitle').value.trim();
   if (!title) { alert('Zadajte názov úlohy'); return; }
@@ -4404,7 +4477,8 @@ async function saveTask() {
     project: document.getElementById('tkProject').value.trim(),
     customer: document.getElementById('tkCustomer').value.trim(),
     note: document.getElementById('tkNote').value.trim(),
-    description: document.getElementById('tkDesc').value.trim()
+    description: document.getElementById('tkDesc').value.trim(),
+    subtasks: tkSubtasks.filter(s => (s.title || '').trim()).map(s => ({ title: s.title.trim(), done: !!s.done }))
   };
   const id = document.getElementById('tkId').value;
   try {
@@ -5833,6 +5907,7 @@ const IGS_LABELS = { sklad: 'Na sklade', predany: 'Predaný', zakaznik: 'U záka
 
 async function loadManagement() {
   await renderMgmtQuestions();
+  loadSalesAnalytics();
   let s = null;
   try { s = await fetch('/api/management/summary').then(r => r.json()); } catch {}
   if (!s || s.error) { document.getElementById('mgmtStats').innerHTML = '<div class="mgmt-empty">Prehľad sa nepodarilo načítať.</div>'; return; }
@@ -6037,6 +6112,121 @@ function renderMgmtAnalytics(s) {
   </div>`);
 
   el.innerHTML = cards.join('');
+}
+
+// ── Predaj · tržby · ziskovosť ────────────────────────────────────────────────
+const SALE_CAT_COLORS = { 'FBG senzory': '#00d4ff', 'Interrogátory': '#6366f1', 'Káble': '#10b981', 'Služby': '#f59e0b', 'Ostatné': '#64748b' };
+function eur(n) {
+  n = Math.round(n || 0);
+  if (Math.abs(n) >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1).replace('.', ',') + ' k€';
+  return n + ' €';
+}
+function eurFull(n) { return Math.round(n || 0).toLocaleString('sk-SK') + ' €'; }
+
+async function loadSalesAnalytics() {
+  const months = parseInt(document.getElementById('mgmtSalesRange')?.value) || 12;
+  let s = null;
+  try { s = await fetch('/api/management/sales?months=' + months).then(r => r.json()); } catch {}
+  const kpiEl = document.getElementById('mgmtSalesKpis');
+  const anEl = document.getElementById('mgmtSalesAnalytics');
+  if (!kpiEl || !anEl) return;
+  if (!s || s.error || !s.orders) {
+    kpiEl.innerHTML = '';
+    anEl.innerHTML = '<div class="an-card" style="grid-column:1/-1"><div class="an-empty">Žiadne predajné dáta za zvolené obdobie. Klikni na <strong>🎲 Ukážkové dáta</strong> pre demo.</div></div>';
+    return;
+  }
+
+  // KPI
+  const stat = (label, val, sub, cls) => `<div class="mgmt-stat ${cls || ''}"><div class="mgmt-stat-val">${val}</div><div class="mgmt-stat-lbl">${label}</div>${sub ? `<div class="mgmt-stat-sub">${sub}</div>` : ''}</div>`;
+  const gArrow = s.growth > 0 ? '▲' : s.growth < 0 ? '▼' : '▬';
+  kpiEl.innerHTML =
+    stat('Tržby', eur(s.revenue), s.months + ' mes. · ' + s.orders + ' predajov', 'st-cyan') +
+    stat('Zisk', eur(s.profit), 'po odpočítaní nákladov', 'st-green') +
+    stat('Marža', s.margin + '%', s.margin >= 45 ? 'výborná' : s.margin >= 30 ? 'dobrá' : 'nízka', s.margin >= 45 ? 'st-green' : s.margin >= 30 ? 'st-blue' : 'st-red') +
+    stat('Rast (m/m)', gArrow + ' ' + Math.abs(s.growth) + '%', 'oproti min. mesiacu', s.growth >= 0 ? 'st-green' : 'st-red') +
+    stat('Priem. predaj', eur(s.avgOrder), 'hodnota objednávky', 'st-blue');
+
+  const cards = [];
+
+  // 1) Mesačný trend tržieb + zisku (bars)
+  const mx = Math.max(...s.monthly.map(m => m.revenue), 1);
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">📈 Tržby & zisk po mesiacoch</span><span class="an-badge info">${s.months} mes.</span></div>
+    <div class="an-bars sales-bars">${s.monthly.map(m => {
+      const rh = Math.round(m.revenue / mx * 100);
+      const ph = Math.round(m.profit / mx * 100);
+      return `<div class="an-bar-col" title="${m.label}: tržby ${eurFull(m.revenue)} · zisk ${eurFull(m.profit)}">
+        <div class="an-bar-stack" style="flex-direction:row;align-items:flex-end;gap:2px;max-width:34px">
+          <div class="an-bar real" style="height:${rh}%;width:55%"></div>
+          <div class="an-bar profit" style="height:${ph}%;width:45%"></div>
+        </div><div class="an-bar-x">${m.label.slice(0, 2)}</div></div>`;
+    }).join('')}</div>
+    <div class="an-bars-legend"><span><i style="background:linear-gradient(180deg,#00d4ff,#6366f1)"></i> Tržby</span><span><i style="background:#10b981"></i> Zisk</span></div>
+  </div>`);
+
+  // 2) Celková marža — gauge
+  const mBadge = s.margin >= 45 ? 'ok' : s.margin >= 30 ? 'warn' : 'bad';
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">🎯 Zisková marža</span><span class="an-badge ${mBadge}">${s.margin}%</span></div>
+    <div class="an-gauge-wrap">
+      <div style="color:#e8f0fb">${_svgGauge(s.margin)}</div>
+      <div class="an-gauge-meta">
+        <div><span class="an-gauge-big">${s.margin}%</span></div>
+        <div class="an-gauge-lbl">zisk ${eur(s.profit)} z tržieb ${eur(s.revenue)}</div>
+        <div class="an-gauge-lbl">náklady ${eur(s.cost)}</div>
+      </div>
+    </div>
+    <div class="an-foot-note">Hrubá marža = zisk / tržby</div>
+  </div>`);
+
+  // 3) Tržby podľa kategórie — donut
+  const catSegs = s.byCategory.map(c => ({ v: c.revenue, c: SALE_CAT_COLORS[c.name] || '#64748b', l: c.name }));
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">🧩 Tržby podľa kategórie</span><span class="an-badge info">${eur(s.revenue)}</span></div>
+    <div class="an-donut-wrap">
+      <div style="color:#e8f0fb">${_svgDonut(catSegs.map(x => ({ v: x.v, c: x.c })))}</div>
+      <div class="an-legend">${catSegs.map(x => `<div class="an-leg-row"><span class="an-leg-dot" style="background:${x.c}"></span>${escHtml(x.l)}<span class="an-leg-val">${eur(x.v)}</span></div>`).join('')}</div>
+    </div>
+  </div>`);
+
+  // 4) Top zákazníci podľa tržieb (cap rows)
+  const cmax = Math.max(...s.byCustomer.map(c => c.revenue), 1);
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">🏢 Top zákazníci</span><span class="an-badge info">${s.byCustomer.length}</span></div>
+    ${s.byCustomer.map(c => `<div class="an-cap-row">
+      <div class="an-cap-top"><span class="an-cap-name">${escHtml(c.name)}</span><span class="an-cap-pct">${eur(c.revenue)}</span></div>
+      <div class="an-cap-track"><div class="an-cap-fill lo" style="width:${Math.round(c.revenue / cmax * 100)}%"></div></div>
+      <div class="an-cap-sub">zisk ${eur(c.profit)} · marža ${c.margin}% · ${c.orders} obj.</div>
+    </div>`).join('')}
+  </div>`);
+
+  // 5) Ziskovosť podľa produktu (cap rows, farba podľa marže)
+  const pmax = Math.max(...s.byProduct.map(p => p.revenue), 1);
+  cards.push(`<div class="an-card">
+    <div class="an-card-hdr"><span class="an-title">📦 Ziskovosť produktov</span><span class="an-badge info">${s.byProduct.length}</span></div>
+    ${s.byProduct.slice(0, 8).map(p => {
+      const cls = p.margin >= 50 ? 'lo' : p.margin >= 30 ? 'mid' : 'hi';
+      return `<div class="an-cap-row">
+        <div class="an-cap-top"><span class="an-cap-name">${escHtml(p.name)}</span><span class="an-cap-pct">marža ${p.margin}%</span></div>
+        <div class="an-cap-track"><div class="an-cap-fill ${cls}" style="width:${Math.round(p.revenue / pmax * 100)}%"></div></div>
+        <div class="an-cap-sub">tržby ${eur(p.revenue)} · zisk ${eur(p.profit)} · ${p.qty} ks</div>
+      </div>`;
+    }).join('')}
+    <div class="an-foot-note">Zoradené podľa zisku · farba = výška marže</div>
+  </div>`);
+
+  anEl.innerHTML = cards.join('');
+}
+
+async function seedSalesData() {
+  if (!confirm('Vygenerovať ukážkové predajné dáta za 12 mesiacov? Nahradia sa len predošlé ukážkové dáta.')) return;
+  try {
+    const r = await fetch('/api/admin/seed-sales', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) { alert('Chyba: ' + (d.error || r.status)); return; }
+    loadSalesAnalytics();
+    setTimeout(() => alert('Hotovo — vytvorených ' + d.inserted + ' predajov.'), 200);
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 
 async function renderMgmtQuestions() {

@@ -1555,8 +1555,20 @@
           <div class="form-group">
             <label>Progres — <span id="tkProgressVal">0</span> %</label>
             <input type="range" id="tkProgress" min="0" max="100" step="5" value="0" oninput="document.getElementById('tkProgressVal').textContent=this.value">
+            <div class="tk-prog-hint" id="tkProgHint"></div>
           </div>
         </div>
+
+        <!-- Podúlohy (checklist) -->
+        <div class="form-group">
+          <label>Podúlohy <span id="tkSubCount" class="tk-sub-count"></span></label>
+          <div id="tkSubList" class="tk-sub-list"></div>
+          <div class="tk-sub-add">
+            <input type="text" id="tkSubInput" placeholder="Nová podúloha — Enter pridá" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtask();}">
+            <button type="button" class="btn-secondary btn-sm" onclick="addSubtask()">+ Pridať</button>
+          </div>
+        </div>
+
         <div class="form-group"><label>Popis</label><textarea id="tkDesc" rows="2"></textarea></div>
         <div class="form-group"><label>Poznámka</label><textarea id="tkNote" rows="2" placeholder="Krátka poznámka k úlohe"></textarea></div>
       </div>
@@ -2059,6 +2071,22 @@
         <span class="mgmt-section-note">Vizuálny prehľad pre riadenie tímu a výrobných kapacít</span>
       </div>
       <div id="mgmtAnalytics" class="mgmt-analytics"></div>
+
+      <!-- ===== PREDAJ · TRŽBY · ZISKOVOSŤ ===== -->
+      <div class="mgmt-analytics-hdr">
+        <h2 class="mgmt-section-h">💰 Predaj, tržby &amp; ziskovosť</h2>
+        <span class="mgmt-section-note">Tržby, zisk, marža a najsilnejší zákazníci a produkty</span>
+        <div class="mgmt-sales-tools">
+          <select id="mgmtSalesRange" class="util-select" onchange="loadSalesAnalytics()">
+            <option value="6">Posledných 6 mesiacov</option>
+            <option value="12" selected>12 mesiacov</option>
+            <option value="24">24 mesiacov</option>
+          </select>
+          <button class="btn-secondary btn-sm" onclick="seedSalesData()" title="Vygenerovať ukážkové predaje">🎲 Ukážkové dáta</button>
+        </div>
+      </div>
+      <div id="mgmtSalesKpis" class="mgmt-stats"></div>
+      <div id="mgmtSalesAnalytics" class="mgmt-analytics"></div>
 
       <div class="mgmt-grid">
         <div class="mgmt-card">
