@@ -5075,6 +5075,7 @@ async function loadMfg() {
   renderMfgDowntime();
   renderMfgWcOee();
   loadRoutings();
+  loadMfgSchedule();
 }
 
 function renderMfgKpis() {
@@ -5340,6 +5341,7 @@ async function loadRoutings() {
   }
   renderRtList();
   renderRtDetail();
+  renderMfgGantt();   // postupy ovplyvňujú rozvrh
 }
 
 function renderRtList() {
@@ -5511,8 +5513,205 @@ async function seedRoutingsData() {
     if (!r.ok) { alert('Chyba: ' + (d.error || r.status)); return; }
     mfgRtSelectedId = null;
     loadRoutings();
-    setTimeout(() => alert(`Hotovo — postup s ${d.operations} operáciami.`), 200);
+    setTimeout(() => alert(`Hotovo — ${d.routings} postupov, ${d.operations} operácií.`), 200);
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  ROZVRH VÝROBY — operačný Gantt (pracoviská × operácie z tech. postupov)
+//  Spája technológie (pracoviská/linky) a procesy (normované operácie zákaziek)
+// ══════════════════════════════════════════════════════════════════════════════
+let mfgOrders = [];
+let mfgGanttDayW = 64;          // px/deň (zoom)
+let mfgGanttSel = null;         // vybraná zákazka (zvýraznenie toku)
+let mfgGanttSort = 'priority';
+const MFG_ORDER_COLORS = ['#00d4ff', '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#14b8a6', '#f43f5e', '#3b82f6', '#eab308', '#8b5cf6', '#22c55e'];
+
+function _normStr(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
+function mfgMatchRouting(product) {
+  const t = _normStr(product); if (!t) return null;
+  let r = mfgRoutings.find(x => _normStr(x.product) === t);
+  if (!r) r = mfgRoutings.find(x => { const p = _normStr(x.product); return p && (p.includes(t) || t.includes(p)); });
+  return r || null;
+}
+// minúty operácie pre celú dávku: ručné = t/výrobok × množstvo, strojové = fixne (1 beh)
+function mfgOpBatchMin(op, coeff, orderQty) {
+  const per = opTimeJs(op, coeff);
+  return op.machine ? per : per * Math.max(1, orderQty);
+}
+function fmtDur(min) {
+  min = Math.round(min);
+  if (min < 60) return min + ' min';
+  const h = Math.floor(min / 60), m = min % 60;
+  if (h < 24) return h + ' h' + (m ? ' ' + m + ' min' : '');
+  const d = Math.floor(h / 24);
+  return d + ' d' + (h % 24 ? ' ' + (h % 24) + ' h' : '');
+}
+
+async function loadMfgSchedule() {
+  try { mfgOrders = await fetch('/api/production').then(r => r.json()); if (!Array.isArray(mfgOrders)) mfgOrders = []; }
+  catch { mfgOrders = []; }
+  renderMfgGantt();
+}
+
+function setMfgGanttSort(v) { mfgGanttSort = v; renderMfgGantt(); }
+function mfgGanttZoom(dir) { mfgGanttDayW = Math.max(26, Math.min(160, mfgGanttDayW + dir * 18)); renderMfgGantt(); }
+function mfgGanttSelect(id) { mfgGanttSel = (mfgGanttSel === id ? null : id); renderMfgGantt(); }
+
+function buildMfgSchedule() {
+  const active = mfgOrders.filter(o => !['done', 'shipped'].includes(o.stage));
+  const prioRank = { urgent: 0, high: 1, normal: 2, low: 3 };
+  const inf = Number.MAX_SAFE_INTEGER;
+  const sorted = active.slice().sort((a, b) => {
+    if (mfgGanttSort === 'due') return (a.due ? +new Date(a.due) : inf) - (b.due ? +new Date(b.due) : inf);
+    if (mfgGanttSort === 'number') return String(a.number || '').localeCompare(String(b.number || ''));
+    return (prioRank[a.priority] ?? 2) - (prioRank[b.priority] ?? 2) || ((a.due ? +new Date(a.due) : inf) - (b.due ? +new Date(b.due) : inf));
+  });
+  const base = Date.now();
+  const wcAvail = {};
+  const bars = [], unscheduled = [], orderColor = {};
+  let ci = 0;
+  sorted.forEach(o => {
+    const routing = mfgMatchRouting(o.product);
+    if (!routing || !(routing.operations || []).length) { unscheduled.push(o); return; }
+    const color = MFG_ORDER_COLORS[ci++ % MFG_ORDER_COLORS.length]; orderColor[o._id] = color;
+    const coeff = Number(routing.coeff) || 1.1;
+    const qty = o.qtyPlanned || 1;
+    const ops = routing.operations.slice().sort((a, b) => String(a.group || '').localeCompare(String(b.group || '')));
+    let ready = o.start ? Math.max(base, +new Date(o.start)) : base;
+    ops.forEach((op, idx) => {
+      const line = op.line || '— nepriradené —';
+      const dur = mfgOpBatchMin(op, coeff, qty) * 60000;
+      const start = Math.max(ready, wcAvail[line] || base);
+      const end = start + dur;
+      wcAvail[line] = end; ready = end;
+      bars.push({ orderId: o._id, number: o.number, product: o.product, customer: o.customer, qty, color, seq: idx + 1, total: ops.length, code: op.code, desc: op.desc, line, machine: op.machine, start, end, durMin: dur / 60000, due: o.due, priority: o.priority });
+    });
+  });
+  // záťaž liniek
+  const lineLoad = {};
+  bars.forEach(b => { lineLoad[b.line] = (lineLoad[b.line] || 0) + b.durMin; });
+  return { bars, unscheduled, orderColor, sorted, lineLoad };
+}
+
+function renderMfgGantt() {
+  const chart = document.getElementById('mfgGanttChart'); if (!chart) return;
+  const info = document.getElementById('mfgGanttInfo');
+  const legendEl = document.getElementById('mfgGanttLegend');
+  const unEl = document.getElementById('mfgGanttUnsched');
+  const flowEl = document.getElementById('mfgGanttFlow');
+  document.getElementById('mfgGanttSort').value = mfgGanttSort;
+
+  const sched = buildMfgSchedule();
+
+  // Nenaplánované zákazky (bez postupu)
+  if (unEl) {
+    unEl.innerHTML = sched.unscheduled.length
+      ? `<div class="mfg-gantt-warn">⚠ Bez technologického postupu (${sched.unscheduled.length}): ${sched.unscheduled.slice(0, 8).map(o => escHtml(o.product)).join(', ')}${sched.unscheduled.length > 8 ? '…' : ''} — pridaj postup pre tieto výrobky nižšie.</div>`
+      : '';
+  }
+
+  if (!sched.bars.length) {
+    chart.innerHTML = '<div class="proc-empty" style="margin:20px">Žiadne naplánovateľné operácie. Potrebné sú <strong>aktívne výrobné zákazky</strong> (Plánovanie výroby) a <strong>technologický postup</strong> pre daný výrobok.</div>';
+    if (info) info.innerHTML = ''; if (legendEl) legendEl.innerHTML = ''; if (flowEl) flowEl.classList.add('hidden');
+    chart.style.minWidth = '';
+    return;
+  }
+
+  // Časové okno
+  const dayMs = 864e5;
+  const t0 = Math.min(...sched.bars.map(b => b.start), Date.now());
+  const t1 = Math.max(...sched.bars.map(b => b.end));
+  const startDay = new Date(t0); startDay.setHours(0, 0, 0, 0);
+  const ws = startDay.getTime();
+  let days = Math.max(1, Math.min(90, Math.ceil((t1 - ws) / dayMs)));
+  const winMs = days * dayMs;
+
+  // Linky (riadky) = pracoviská v poradí + ďalšie linky z operácií; len tie s operáciami
+  const order = [];
+  mfgCenters.forEach(c => { if (!order.includes(c.name)) order.push(c.name); });
+  sched.bars.forEach(b => { if (!order.includes(b.line)) order.push(b.line); });
+  const lines = order.filter(l => sched.bars.some(b => b.line === l));
+  const maxLoad = Math.max(...Object.values(sched.lineLoad), 1);
+
+  // Hlavička dní
+  let head = '<div class="ug-corner">Pracovisko / linka</div><div class="ug-days">';
+  for (let i = 0; i < days; i++) {
+    const d = new Date(ws + i * dayMs); const wd = d.getDay(); const we = (wd === 0 || wd === 6);
+    head += `<div class="ug-day${we ? ' ug-weekend' : ''}" style="left:${i / days * 100}%;width:${100 / days}%">
+      <span class="ug-day-wd">${['Ne', 'Po', 'Ut', 'St', 'Št', 'Pi', 'So'][wd]}</span>
+      <span class="ug-day-d">${d.getDate()}.${d.getMonth() + 1}.</span></div>`;
+  }
+  head += '</div>';
+
+  // Riadky
+  let rows = '';
+  lines.forEach(line => {
+    let grid = '';
+    for (let i = 0; i < days; i++) { const we = [0, 6].includes(new Date(ws + i * dayMs).getDay()); grid += `<div class="ug-cell${we ? ' ug-weekend' : ''}" style="left:${i / days * 100}%;width:${100 / days}%"></div>`; }
+    const lineBars = sched.bars.filter(b => b.line === line);
+    let bars = '';
+    lineBars.forEach(b => {
+      const s = Math.max(b.start, ws), e = Math.min(b.end, ws + winMs); if (e <= s) return;
+      const left = (s - ws) / winMs * 100, width = (e - s) / winMs * 100;
+      const dim = mfgGanttSel && mfgGanttSel !== b.orderId;
+      const tip = `${b.number || ''} · ${b.product} (${b.qty} ks)\n${b.seq}/${b.total} ${b.code ? b.code + ' — ' : ''}${b.desc}\n${b.line}${b.machine ? ' ⚙ strojový čas' : ''}\n${fmtDateTime(b.start)} → ${fmtDateTime(b.end)} (${fmtDur(b.durMin)})`;
+      bars += `<div class="ug-bar mfg-opbar${b.machine ? ' mfg-opbar-mach' : ''}${dim ? ' mfg-opbar-dim' : ''}" style="left:${left}%;width:${Math.max(width, 0.8)}%;top:5px;background:${b.color}"
+        title="${escHtml(tip)}" onclick="event.stopPropagation(); mfgGanttSelect('${b.orderId}')">
+        <span class="mfg-opbar-seq">${b.seq}</span><span class="ug-bar-lbl">${escHtml(b.desc)}</span></div>`;
+    });
+    const load = sched.lineLoad[line] || 0;
+    const isWc = mfgCenters.some(c => c.name === line);
+    rows += `<div class="ug-row mfg-gantt-row">
+      <div class="ug-eq mfg-lane" title="Záťaž: ${fmtDur(load)}">
+        <span class="mfg-lane-bar"><span class="mfg-lane-fill" style="height:${Math.round(load / maxLoad * 100)}%"></span></span>
+        <div class="ug-eq-txt"><span class="ug-eq-name">${escHtml(line)}${isWc ? '' : ' <span class="mfg-lane-ext">ext</span>'}</span><span class="ug-eq-code">${fmtDur(load)}</span></div>
+      </div>
+      <div class="ug-track">${grid}${bars}</div>
+    </div>`;
+  });
+
+  // Čiara "teraz"
+  const now = Date.now(); let nowLine = '';
+  if (now >= ws && now <= ws + winMs) nowLine = `<div class="ug-now" style="left:calc(190px + (100% - 190px) * ${(now - ws) / winMs})"></div>`;
+
+  chart.innerHTML = `<div class="ug-head">${head}</div><div class="ug-body" onclick="if(mfgGanttSel){mfgGanttSel=null;renderMfgGantt();}">${rows}</div>${nowLine}`;
+  chart.style.minWidth = (190 + days * mfgGanttDayW) + 'px';
+
+  // Info riadok
+  const totalMin = sched.bars.reduce((s, b) => s + b.durMin, 0);
+  const bottleneck = Object.entries(sched.lineLoad).sort((a, b) => b[1] - a[1])[0];
+  if (info) info.innerHTML =
+    `<span class="mfg-gi"><b>${sched.sorted.length - sched.unscheduled.length}</b> zákaziek</span>
+     <span class="mfg-gi"><b>${sched.bars.length}</b> operácií</span>
+     <span class="mfg-gi">Horizont: <b>${fmtDate(startDay)} → ${fmtDate(new Date(t1))}</b></span>
+     <span class="mfg-gi">Σ práce: <b>${fmtDur(totalMin)}</b></span>
+     ${bottleneck ? `<span class="mfg-gi mfg-gi-bn">Úzke miesto: <b>${escHtml(bottleneck[0])}</b> (${fmtDur(bottleneck[1])})</span>` : ''}`;
+
+  // Legenda zákaziek
+  if (legendEl) {
+    const seen = new Set();
+    const items = sched.bars.filter(b => { if (seen.has(b.orderId)) return false; seen.add(b.orderId); return true; });
+    legendEl.innerHTML = items.map(b => `
+      <button class="mfg-leg-chip ${mfgGanttSel === b.orderId ? 'active' : ''}" onclick="mfgGanttSelect('${b.orderId}')">
+        <span class="mfg-leg-dot" style="background:${b.color}"></span>${escHtml(b.number || b.product)} <span class="mfg-leg-prod">${escHtml(b.product)}</span>
+      </button>`).join('');
+  }
+
+  // Tok vybranej zákazky (procesná postupnosť cez pracoviská)
+  if (flowEl) {
+    if (!mfgGanttSel) { flowEl.classList.add('hidden'); flowEl.innerHTML = ''; }
+    else {
+      const chain = sched.bars.filter(b => b.orderId === mfgGanttSel).sort((a, b) => a.start - b.start);
+      if (!chain.length) { flowEl.classList.add('hidden'); }
+      else {
+        const o = chain[0];
+        flowEl.classList.remove('hidden');
+        flowEl.innerHTML = `<div class="mfg-flow-hdr"><span class="mfg-leg-dot" style="background:${o.color}"></span><b>${escHtml(o.number || '')}</b> · ${escHtml(o.product)} · ${o.qty} ks <span class="mfg-flow-tot">tok: ${fmtDur(chain.reduce((s, b) => s + b.durMin, 0))}</span></div>
+        <div class="mfg-flow-chain">${chain.map((b, i) => `<span class="mfg-flow-step${b.machine ? ' mach' : ''}"><span class="mfg-flow-line">${escHtml(b.line)}</span><span class="mfg-flow-op">${b.seq}. ${escHtml(b.desc)}</span><span class="mfg-flow-dur">${fmtDur(b.durMin)}</span></span>${i < chain.length - 1 ? '<span class="mfg-flow-arr">→</span>' : ''}`).join('')}</div>`;
+      }
+    }
+  }
 }
 
 // ── Gantt rozvrh výroby + AI analýza/optimalizácia (vizuálne) ──────────────────

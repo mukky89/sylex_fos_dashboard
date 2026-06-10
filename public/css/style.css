@@ -3761,6 +3761,48 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 #rtModal .rt-strong { color: var(--text-bright); }
 @media (max-width: 1000px) { .mfg-rt-layout { grid-template-columns: 1fr; } .rt-grid { grid-template-columns: 1fr; } }
 
+/* ── Rozvrh výroby — operačný Gantt (pracoviská × operácie) ── */
+.mfg-gantt-tools { display: flex; align-items: center; gap: 6px; }
+.mfg-gantt-info { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 4px 0 10px; }
+.mfg-gi { font-size: 0.78rem; color: #94a3b8; }
+.mfg-gi b { color: #e8f0fb; font-variant-numeric: tabular-nums; }
+.mfg-gi-bn b { color: #fcd34d; }
+
+.mfg-gantt .ug-corner, .mfg-gantt .ug-eq { width: 190px; }
+.mfg-gantt-row { height: 34px; }
+.mfg-lane { gap: 9px; }
+.mfg-lane-bar { width: 7px; height: 24px; border-radius: 3px; background: rgba(255,255,255,0.08); flex-shrink: 0; display: flex; align-items: flex-end; overflow: hidden; }
+.mfg-lane-fill { width: 100%; background: linear-gradient(180deg,#00d4ff,#6366f1); border-radius: 3px; }
+.mfg-lane-ext { font-size: 0.58rem; color: #64748b; border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; padding: 0 3px; }
+
+.mfg-opbar { border-left: none; }
+.mfg-opbar-seq { font-size: 0.6rem; font-weight: 700; background: rgba(0,0,0,0.32); color: #fff; border-radius: 3px; padding: 0 3px; margin: 0 2px 0 4px; flex-shrink: 0; line-height: 1.4; }
+.mfg-opbar-mach::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(45deg, rgba(0,0,0,0.24) 0 5px, transparent 5px 10px); pointer-events: none; }
+.mfg-opbar-dim { opacity: 0.26; }
+
+.mfg-gantt-legend { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+.mfg-leg-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 100px; padding: 4px 11px; font-size: 0.74rem; color: #cbd5e1; cursor: pointer; font-family: inherit; transition: border-color .14s, background .14s; }
+.mfg-leg-chip:hover { background: rgba(255,255,255,0.08); }
+.mfg-leg-chip.active { border-color: #00d4ff; background: rgba(0,212,255,0.1); color: #f1f5f9; }
+.mfg-leg-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.mfg-leg-prod { color: #64748b; }
+
+.mfg-gantt-unsched { margin-top: 8px; }
+.mfg-gantt-warn { font-size: 0.78rem; color: #fcd34d; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); border-radius: 9px; padding: 8px 12px; }
+
+.mfg-gantt-flow { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+.mfg-flow-hdr { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #e8f0fb; margin-bottom: 10px; flex-wrap: wrap; }
+.mfg-flow-tot { margin-left: auto; font-size: 0.76rem; color: #94a3b8; }
+.mfg-flow-chain { display: flex; align-items: stretch; gap: 4px; flex-wrap: wrap; }
+.mfg-flow-step { display: flex; flex-direction: column; gap: 2px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 9px; padding: 7px 10px; min-width: 110px; }
+.mfg-flow-step.mach { border-color: rgba(252,211,77,0.35); background: rgba(252,211,77,0.06); }
+.mfg-flow-line { font-size: 0.66rem; color: #67e8f9; text-transform: uppercase; letter-spacing: 0.03em; }
+.mfg-flow-op { font-size: 0.78rem; color: #e8f0fb; }
+.mfg-flow-dur { font-size: 0.68rem; color: #94a3b8; font-variant-numeric: tabular-nums; }
+.mfg-flow-arr { align-self: center; color: #475569; font-size: 1rem; }
+
+@media (max-width: 720px) { .mfg-gantt .ug-corner, .mfg-gantt .ug-eq { width: 130px; } }
+
 /* =============================================================================
    PODÚLOHY (checklist) + PREDAJ ANALYTIKA
    ============================================================================= */
