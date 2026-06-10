@@ -5525,7 +5525,30 @@ let mfgOrders = [];
 let mfgGanttDayW = 64;          // px/deň (zoom)
 let mfgGanttSel = null;         // vybraná zákazka (zvýraznenie toku)
 let mfgGanttSort = 'priority';
+let mfgGanttMode = 'process';   // 'process' (operácie × čas) | 'resource' (pracoviská × čas)
+let mfgGanttOrderId = null;     // vybraná zákazka/postup pre procesný pohľad
 const MFG_ORDER_COLORS = ['#00d4ff', '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#14b8a6', '#f43f5e', '#3b82f6', '#eab308', '#8b5cf6', '#22c55e'];
+
+function setMfgGanttMode(m) { mfgGanttMode = m; renderMfgGantt(); }
+function setMfgGanttOrder(id) { mfgGanttOrderId = id; renderMfgGantt(); }
+
+// Adaptívna časová os — zarovnané okno + delenia (hodiny/dni podľa rozsahu)
+function mfgAxisTicks(t0, t1) {
+  const H = 36e5, D = 864e5;
+  const span = Math.max(t1 - t0, H);
+  let step, fmt;
+  if (span <= 10 * H) { step = H; fmt = d => `${d.getHours()}:00`; }
+  else if (span <= 2 * D) { step = 3 * H; fmt = d => `${d.getDate()}.${d.getMonth() + 1}. ${d.getHours()}h`; }
+  else { step = D; fmt = d => `${d.getDate()}.${d.getMonth() + 1}.`; }
+  const d0 = new Date(t0);
+  if (step >= D) d0.setHours(0, 0, 0, 0);
+  else { d0.setMinutes(0, 0, 0); if (step === 3 * H) d0.setHours(Math.floor(d0.getHours() / 3) * 3); }
+  const ws = d0.getTime();
+  const winMs = Math.ceil((t1 - ws) / step) * step || step;
+  const ticks = [];
+  for (let t = ws; t <= ws + winMs + 1; t += step) ticks.push({ t, left: (t - ws) / winMs * 100, label: fmt(new Date(t)) });
+  return { ws, winMs, step, stepPct: step / winMs * 100, ticks };
+}
 
 function _normStr(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
 function mfgMatchRouting(product) {
@@ -5594,13 +5617,23 @@ function buildMfgSchedule() {
   return { bars, unscheduled, orderColor, sorted, lineLoad };
 }
 
+// Dispečer — prepína procesný (operácie × čas) a zdrojový (pracoviská × čas) pohľad
 function renderMfgGantt() {
+  document.querySelectorAll('[data-gmode]').forEach(b => b.classList.toggle('active', b.dataset.gmode === mfgGanttMode));
+  const sortSel = document.getElementById('mfgGanttSort'); const ordSel = document.getElementById('mfgGanttOrder');
+  if (sortSel) { sortSel.value = mfgGanttSort; sortSel.style.display = mfgGanttMode === 'resource' ? '' : 'none'; }
+  if (ordSel) ordSel.style.display = mfgGanttMode === 'process' ? '' : 'none';
+  if (mfgGanttMode === 'process') renderMfgGanttProcess();
+  else renderMfgGanttResource();
+}
+
+function renderMfgGanttResource() {
   const chart = document.getElementById('mfgGanttChart'); if (!chart) return;
+  chart.className = 'util-gantt mfg-gantt';
   const info = document.getElementById('mfgGanttInfo');
   const legendEl = document.getElementById('mfgGanttLegend');
   const unEl = document.getElementById('mfgGanttUnsched');
   const flowEl = document.getElementById('mfgGanttFlow');
-  document.getElementById('mfgGanttSort').value = mfgGanttSort;
 
   const sched = buildMfgSchedule();
 
@@ -5711,6 +5744,104 @@ function renderMfgGantt() {
         <div class="mfg-flow-chain">${chain.map((b, i) => `<span class="mfg-flow-step${b.machine ? ' mach' : ''}"><span class="mfg-flow-line">${escHtml(b.line)}</span><span class="mfg-flow-op">${b.seq}. ${escHtml(b.desc)}</span><span class="mfg-flow-dur">${fmtDur(b.durMin)}</span></span>${i < chain.length - 1 ? '<span class="mfg-flow-arr">→</span>' : ''}`).join('')}</div>`;
       }
     }
+  }
+}
+
+// ── Procesný Gantt: os Y = operácie (procesy), os X = čas; operácie nadväzujú ──
+function renderMfgGanttProcess() {
+  const chart = document.getElementById('mfgGanttChart'); if (!chart) return;
+  chart.className = 'util-gantt mfg-gantt mfg-gantt-process';
+  const info = document.getElementById('mfgGanttInfo');
+  const legendEl = document.getElementById('mfgGanttLegend');
+  const unEl = document.getElementById('mfgGanttUnsched');
+  const flowEl = document.getElementById('mfgGanttFlow');
+  if (flowEl) { flowEl.classList.add('hidden'); flowEl.innerHTML = ''; }
+
+  // Zoznam vybrateľných položiek: aktívne zákazky s postupom, inak postupy (qty=1)
+  const active = mfgOrders.filter(o => !['done', 'shipped'].includes(o.stage));
+  let list = [];
+  active.forEach(o => { const r = mfgMatchRouting(o.product); if (r && (r.operations || []).length) list.push({ id: 'o:' + o._id, label: `${o.number || ''} · ${o.product} (${o.qtyPlanned || 1} ks)`, order: o, routing: r }); });
+  let viaRouting = false;
+  if (!list.length) {
+    viaRouting = true;
+    list = mfgRoutings.filter(r => (r.operations || []).length).map(r => ({ id: 'r:' + r._id, label: `${r.product} (postup · 1 ks)`, order: null, routing: r }));
+  }
+  if (unEl) unEl.innerHTML = '';
+
+  if (!list.length) {
+    chart.innerHTML = '<div class="proc-empty" style="margin:20px">Žiadna zákazka ani postup na zobrazenie. Pridaj <strong>technologický postup</strong> a aktívnu <strong>výrobnú zákazku</strong>.</div>';
+    if (info) info.innerHTML = ''; if (legendEl) legendEl.innerHTML = '';
+    chart.style.minWidth = ''; return;
+  }
+  const ordSel = document.getElementById('mfgGanttOrder');
+  if (!list.find(x => x.id === mfgGanttOrderId)) mfgGanttOrderId = list[0].id;
+  if (ordSel) ordSel.innerHTML = list.map(x => `<option value="${x.id}" ${x.id === mfgGanttOrderId ? 'selected' : ''}>${escHtml(x.label)}</option>`).join('');
+  const chosen = list.find(x => x.id === mfgGanttOrderId);
+
+  // Sekvenčný rozvrh operácií (každá nadväzuje na predošlú — finish-to-start)
+  const routing = chosen.routing, o = chosen.order;
+  const coeff = Number(routing.coeff) || 1.1;
+  const qty = o ? (o.qtyPlanned || 1) : 1;
+  const ops = routing.operations.slice().sort((a, b) => String(a.group || '').localeCompare(String(b.group || '')));
+  const base = (o && o.start) ? +new Date(o.start) : Date.now();
+  let prev = base; const rows = [];
+  ops.forEach((op, i) => { const dur = mfgOpBatchMin(op, coeff, qty) * 60000; const s = prev; const e = s + dur; prev = e; rows.push({ ...op, seq: i + 1, start: s, end: e, durMin: dur / 60000 }); });
+  const t0 = base, t1 = rows.length ? rows[rows.length - 1].end : base + 36e5;
+
+  const ax = mfgAxisTicks(t0, t1);
+  const ws = ax.ws, winMs = ax.winMs;
+
+  // Farby podľa linky (technológie)
+  const lineColors = {}; let ci = 0;
+  rows.forEach(r => { const l = r.line || '—'; if (!(l in lineColors)) lineColors[l] = MFG_ORDER_COLORS[ci++ % MFG_ORDER_COLORS.length]; });
+
+  // Hlavička časovej osi
+  let head = '<div class="ug-corner">Operácia / proces</div><div class="ug-days">';
+  ax.ticks.forEach(tk => { head += `<div class="ug-day" style="left:${tk.left}%;width:${ax.stepPct}%"><span class="ug-day-d">${tk.label}</span></div>`; });
+  head += '</div>';
+
+  // Mriežka (zdieľaná pre všetky riadky)
+  let grid = '';
+  ax.ticks.forEach(tk => { grid += `<div class="ug-cell" style="left:${tk.left}%;width:${ax.stepPct}%"></div>`; });
+
+  // Riadky = operácie
+  let body = '';
+  rows.forEach((r, i) => {
+    const left = (r.start - ws) / winMs * 100, width = (r.end - r.start) / winMs * 100;
+    const col = lineColors[r.line || '—'];
+    const link = i > 0 ? `<div class="mfg-plink" style="left:${left}%"></div>` : '';
+    const tip = `${r.seq}. ${r.code ? r.code + ' — ' : ''}${r.desc}\n${r.line || ''}${r.machine ? ' ⚙ strojový čas' : ''}\n${fmtDateTime(r.start)} → ${fmtDateTime(r.end)} (${fmtDur(r.durMin)})`;
+    body += `<div class="ug-row mfg-prow">
+      <div class="ug-eq mfg-plabel" title="${escHtml(r.desc)}">
+        <span class="mfg-pseq">${r.seq}</span>
+        <div class="ug-eq-txt"><span class="ug-eq-name">${escHtml(r.desc)}</span><span class="ug-eq-code"><span class="mfg-pline" style="background:${col}"></span>${escHtml(r.line || '—')}${r.machine ? ' · ⚙' : ''}</span></div>
+      </div>
+      <div class="ug-track">${grid}${link}<div class="ug-bar mfg-pbar${r.machine ? ' mfg-opbar-mach' : ''}" style="left:${left}%;width:${Math.max(width, 0.6)}%;top:4px;background:${col}" title="${escHtml(tip)}"><span class="ug-bar-lbl">${fmtDur(r.durMin)}</span></div></div>
+    </div>`;
+  });
+
+  const now = Date.now(); let nowLine = '';
+  if (now >= ws && now <= ws + winMs) nowLine = `<div class="ug-now" style="left:calc(220px + (100% - 220px) * ${(now - ws) / winMs})"></div>`;
+
+  chart.innerHTML = `<div class="ug-head">${head}</div><div class="ug-body">${body}</div>${nowLine}`;
+  const cols = ax.ticks.length;
+  chart.style.minWidth = (220 + cols * (ax.step >= 864e5 ? mfgGanttDayW : 54)) + 'px';
+
+  // Info
+  const work = rows.reduce((s, r) => s + r.durMin, 0);
+  const lead = (t1 - t0) / 60000;
+  if (info) info.innerHTML =
+    `<span class="mfg-gi"><b>${escHtml((o && o.number) ? o.number : routing.product)}</b>${o ? ' · ' + escHtml(o.product) : ' · postup'}</span>
+     <span class="mfg-gi">Množstvo: <b>${qty} ks</b></span>
+     <span class="mfg-gi"><b>${rows.length}</b> operácií</span>
+     <span class="mfg-gi">Priebežný čas: <b>${fmtDur(lead)}</b></span>
+     <span class="mfg-gi">Σ práce: <b>${fmtDur(work)}</b></span>
+     ${viaRouting ? '<span class="mfg-gi mfg-gi-bn">bez zákazky — postup (1 ks)</span>' : ''}`;
+
+  // Legenda = technológie (linky/pracoviská)
+  if (legendEl) {
+    legendEl.innerHTML = Object.entries(lineColors).map(([line, c]) =>
+      `<span class="mfg-leg-chip"><span class="mfg-leg-dot" style="background:${c}"></span>${escHtml(line)}</span>`).join('');
   }
 }
 

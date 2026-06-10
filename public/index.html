@@ -1871,6 +1871,11 @@
       <div class="mfg-section-hdr" style="margin-top:24px">
         <h2 class="prod-lines-title">🗓️ Rozvrh výroby — operácie × pracoviská</h2>
         <div class="mfg-gantt-tools">
+          <div class="tasks-viewtoggle">
+            <button class="tasks-view active" data-gmode="process" onclick="setMfgGanttMode('process')">⛓ Procesy</button>
+            <button class="tasks-view" data-gmode="resource" onclick="setMfgGanttMode('resource')">🏭 Pracoviská</button>
+          </div>
+          <select id="mfgGanttOrder" class="util-select" onchange="setMfgGanttOrder(this.value)" title="Zákazka / výrobok"></select>
           <select id="mfgGanttSort" class="util-select" onchange="setMfgGanttSort(this.value)">
             <option value="priority">Zoradiť podľa priority</option>
             <option value="due">Podľa termínu</option>
