@@ -3816,6 +3816,13 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .mfg-plink::after { content: '▾'; position: absolute; bottom: -7px; left: -5px; font-size: 9px; color: rgba(255,255,255,0.55); }
 @media (max-width: 720px) { .mfg-gantt-process .ug-corner, .mfg-gantt-process .ug-eq { width: 150px; } }
 
+/* ── Zoznam expedovaných zákaziek a objednávok ── */
+.mfg-ship-tools { display: flex; align-items: center; gap: 12px; }
+.mfg-ship-count { font-size: 0.78rem; color: #94a3b8; white-space: nowrap; }
+.mfg-shipped { margin-top: 4px; }
+.mfg-ship-table { width: 100%; }
+.mfg-ship-table td { font-size: 0.82rem; }
+
 /* =============================================================================
    PODÚLOHY (checklist) + PREDAJ ANALYTIKA
    ============================================================================= */
