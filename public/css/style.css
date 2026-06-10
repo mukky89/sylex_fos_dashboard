@@ -2980,6 +2980,9 @@ body.layout-sidebar .page { padding-left: var(--appsb-w); transition: padding-le
 body.layout-sidebar .thermo-corner,
 body.layout-sidebar .bot-fab,
 body.layout-sidebar .bot-panel { /* ostávajú vpravo dole */ }
+/* „Pomoc" (tour-fab) je vľavo dole — v sidebar layoute by prekrývala pätičku
+   sidebaru (meno/avatar), preto ju posunieme napravo od sidebaru */
+body.layout-sidebar .tour-fab { left: calc(var(--appsb-w) + 16px); }
 
 .asb-brand {
   display: flex; align-items: center; gap: 11px;
@@ -3108,6 +3111,7 @@ body.sbt-sunset .asb-user-mail { opacity: 0.75; }
   body.layout-sidebar .page { padding-left: 0; }
   body.layout-sidebar .app-sidebar { transform: translateX(-100%); transition: transform .22s; }
   body.layout-sidebar .nav { display: flex; }
+  body.layout-sidebar .tour-fab { left: 16px; }   /* sidebar je skrytý → Pomoc späť doľava */
 }
 
 /* =============================================================================
