@@ -737,6 +737,7 @@ async function handleHash(hash) {
   if (hash === 'crm')     { _activatePage('crm');     loadCrm(); return; }
   if (hash === 'mgmt')    { _activatePage('mgmt');    loadManagement(); return; }
   if (hash === 'admin')   { _activatePage('admin');   switchAdminTab('links'); return; }
+  if (hash === 'changelog') { _activatePage('changelog'); renderChangelog(); return; }
   if (hash === 'wiki') { _activatePage('wiki'); await loadWiki(); return; }
   if (hash.startsWith('wiki/cat/')) {
     const catId = hash.slice('wiki/cat/'.length);
@@ -774,6 +775,7 @@ function showPage(name) {
   if (name === 'crm')     loadCrm();
   if (name === 'mgmt')    loadManagement();
   if (name === 'admin')   switchAdminTab('links');
+  if (name === 'changelog') renderChangelog();
 }
 
 // ==============================
@@ -4165,6 +4167,72 @@ async function loadAppVersion() {
     const commit = v.commit && v.commit !== 'unknown' ? v.commit.slice(0, 7) : 'local';
     el.title = `Verzia ${v.version} · commit ${commit} · env ${v.env} · DB ${v.dbState}`;
   } catch { el.textContent = ''; }
+}
+
+// ==============================
+// CHANGELOG (história zmien)
+// ==============================
+const CHANGELOG = [
+  { v: '1.34.3', date: '10. 6. 2026', tag: 'fix', items: [
+    'Senzor (teplota/vlhkosť) presunutý z plávajúceho rohového widgetu do nenápadného tlačidla v hlavičke (ikonka teplomera + online/offline bodka). Klik otvorí stránku Senzory s grafom.',
+    'Chatbot vrátený do pravého dolného rohu — už sa neprekrýva so senzorom.',
+  ] },
+  { v: '1.34.2', date: '10. 6. 2026', tag: 'fix', items: [
+    'Tlačidlo „Pomoc" sa už neprekrýva s pätičkou bočného panela (sidebar layout); na mobile sa vracia doľava.',
+  ] },
+  { v: '1.34.1', date: '10. 6. 2026', tag: 'fix', items: [
+    'Na prihlasovacej obrazovke sa skryjú plávajúce prvky (Pomoc, chatbot, senzor), ktoré predtým prekrývali login.',
+  ] },
+  { v: '1.34.0', date: '10. 6. 2026', tag: 'feat', items: [
+    'Operačný Gantt sa naplní dátami — technologické postupy pridané pre všetky výrobky.',
+    'Viac výrobných zákaziek a viac aktívnych v rozvrhu výroby.',
+    'Nový zoznam „Expedované zákazky a objednávky" s vyhľadávaním a súčtami.',
+  ] },
+  { v: '1.33.0', date: '10. 6. 2026', tag: 'feat', items: [
+    'Procesný Gantt: os Y = operácie (procesy), os X = čas; operácie nadväzujú na seba (finish-to-start) so spojnicami závislostí.',
+    'Prepínač pohľadov Procesy / Pracoviská; adaptívna časová os (hodiny / dni).',
+  ] },
+  { v: '1.32.0', date: '10. 6. 2026', tag: 'feat', items: [
+    'Operačný Gantt „rozvrh operácií × pracoviská" — spája technológie a procesy: konečná kapacita pracovísk, farby a tok zákazky, identifikácia úzkeho miesta.',
+  ] },
+  { v: '1.31.0', date: '10. 6. 2026', tag: 'major', items: [
+    'Nový modul Riadenie výroby (MES): dielenská tabuľa so živým stavom pracovísk, OEE, prestoje, zmätkovitosť, zmenové výkazy.',
+    'Normované operácie / technologické postupy (t/ks, t/výrobok, linka) + kalkulačka kapacity pre dávku.',
+    'Manažment: predaj, tržby a ziskovosť — KPI a grafy (marža, mesačný trend, top zákazníci a produkty).',
+    'Úlohy: podúlohy (checklist) s automatickým prepočtom progresu.',
+    'Vzhľad: nové vizuálne témy sidebaru Aurora a Sunset; vylepšenia prístupnosti (focus-visible, redukcia pohybu).',
+    'Oprava: tmavý text na tmavom pozadí v manažment analytikách.',
+  ] },
+  { v: '1.30.0', date: 'skôr', tag: 'base', items: [
+    'Východisková verzia: WIKI, Kalendár, Postupy, Návody, FBG, Vývoj, Vyťaženie technológií, Plánovanie výroby, Úlohy, CRM, Manažment, Admin.',
+  ] },
+];
+const CL_TAG = {
+  major: { l: 'Veľká aktualizácia', c: '#10b981' },
+  feat:  { l: 'Novinka', c: '#00d4ff' },
+  fix:   { l: 'Oprava', c: '#f59e0b' },
+  ui:    { l: 'Vzhľad', c: '#8b5cf6' },
+  base:  { l: 'Základ', c: '#64748b' },
+};
+function renderChangelog() {
+  const el = document.getElementById('changelogList'); if (!el) return;
+  const cur = document.getElementById('clCurrentVer');
+  if (cur) cur.textContent = 'v' + (CHANGELOG[0]?.v || '');
+  el.innerHTML = CHANGELOG.map((e, i) => {
+    const t = CL_TAG[e.tag] || CL_TAG.feat;
+    return `<div class="cl-entry${i === 0 ? ' cl-latest' : ''}">
+      <div class="cl-side"><span class="cl-dot" style="background:${t.c}"></span>${i < CHANGELOG.length - 1 ? '<span class="cl-line"></span>' : ''}</div>
+      <div class="cl-body">
+        <div class="cl-head">
+          <span class="cl-ver">v${e.v}</span>
+          <span class="cl-tag" style="background:${t.c}22;color:${t.c};border:1px solid ${t.c}55">${t.l}</span>
+          ${i === 0 ? '<span class="cl-now">aktuálna</span>' : ''}
+          <span class="cl-date">${e.date}</span>
+        </div>
+        <ul class="cl-items">${e.items.map(x => `<li>${escHtml(x)}</li>`).join('')}</ul>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ==============================
