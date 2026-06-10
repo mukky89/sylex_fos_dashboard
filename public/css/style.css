@@ -3836,6 +3836,27 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .mfg-ship-table { width: 100%; }
 .mfg-ship-table td { font-size: 0.82rem; }
 
+/* ── Changelog (časová os zmien) ── */
+.changelog-page { background: var(--hdr-bg); }
+.changelog-inner { max-width: 880px; margin: 0 auto; padding: 28px 24px 60px; }
+#clCurrentVer { color: #67e8f9; font-weight: 700; }
+.changelog-list { margin-top: 8px; }
+.cl-entry { display: flex; gap: 14px; }
+.cl-side { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 16px; }
+.cl-dot { width: 14px; height: 14px; border-radius: 50%; margin-top: 4px; box-shadow: 0 0 0 4px rgba(255,255,255,0.04); }
+.cl-line { flex: 1; width: 2px; background: rgba(255,255,255,0.1); margin: 4px 0; }
+.cl-body { flex: 1; min-width: 0; padding-bottom: 22px; }
+.cl-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.cl-ver { font-family: var(--font-title); font-size: 1.15rem; font-weight: 800; color: #f0f9ff; }
+.cl-tag { font-size: 0.68rem; font-weight: 700; padding: 2px 9px; border-radius: 100px; }
+.cl-now { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6ee7b7; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.35); padding: 2px 8px; border-radius: 100px; }
+.cl-date { font-size: 0.76rem; color: #94a3b8; margin-left: auto; }
+.cl-items { list-style: none; display: flex; flex-direction: column; gap: 6px; padding: 0; }
+.cl-items li { position: relative; padding-left: 18px; font-size: 0.86rem; color: #cbd5e1; line-height: 1.5; }
+.cl-items li::before { content: '▸'; position: absolute; left: 2px; top: 0; color: #67e8f9; }
+.cl-entry.cl-latest .cl-body { background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.18); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; }
+@media (max-width: 600px) { .cl-date { margin-left: 0; } }
+
 /* =============================================================================
    PODÚLOHY (checklist) + PREDAJ ANALYTIKA
    ============================================================================= */
