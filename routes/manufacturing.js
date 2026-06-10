@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const WorkCenter = require('../models/WorkCenter');
 const ShiftReport = require('../models/ShiftReport');
+const Routing = require('../models/Routing');
 
 const WC_STATUS = ['running', 'setup', 'idle', 'maintenance', 'down'];
 const DT_REASONS = ['none', 'breakdown', 'setup', 'material', 'quality', 'noOperator', 'changeover', 'other'];
@@ -115,6 +116,76 @@ router.put('/reports/:id', async (req, res) => {
 
 router.delete('/reports/:id', async (req, res) => {
   try { await ShiftReport.findByIdAndDelete(req.params.id); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ════════════════════════ NORMOVANÉ OPERÁCIE / TECHNOLOGICKÉ POSTUPY ════════════════════════
+function normalizeOps(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(o => ({
+    group: String(o.group || '').trim(),
+    code: String(o.code || '').trim(),
+    desc: String(o.desc || '').trim(),
+    tPiece: num(o.tPiece),
+    qty: num(o.qty) || 1,
+    line: String(o.line || '').trim(),
+    machine: !!o.machine,
+    opNote: String(o.opNote || '').trim()
+  })).filter(o => o.desc || o.code);
+}
+// t/výrobok pre operáciu = t/ks × ks × (strojový čas ? 1 : coeff)
+function opTime(op, coeff) { return num(op.tPiece) * (num(op.qty) || 1) * (op.machine ? 1 : (coeff || 1)); }
+function routingTotals(r) {
+  const coeff = num(r.coeff) || 1.1;
+  let total = 0; const byLine = {};
+  (r.operations || []).forEach(op => {
+    const t = opTime(op, coeff);
+    total += t;
+    const k = op.line || '— nepriradené —';
+    byLine[k] = (byLine[k] || 0) + t;
+  });
+  return {
+    items: (r.operations || []).length,
+    totalMin: Math.round(total * 1000) / 1000,
+    byLine: Object.entries(byLine).map(([line, min]) => ({ line, min: Math.round(min * 1000) / 1000 })).sort((a, b) => b.min - a.min)
+  };
+}
+function withTotals(doc) { const o = doc.toObject ? doc.toObject() : doc; return { ...o, totals: routingTotals(o) }; }
+
+router.get('/routings', async (req, res) => {
+  try {
+    const docs = await Routing.find().sort({ product: 1, createdAt: 1 });
+    res.json(docs.map(withTotals));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/routings', async (req, res) => {
+  try {
+    const data = {
+      product: req.body.product, code: req.body.code || '',
+      coeff: num(req.body.coeff) || 1.1,
+      operations: normalizeOps(req.body.operations),
+      note: req.body.note || ''
+    };
+    res.status(201).json(withTotals(await Routing.create(data)));
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+router.put('/routings/:id', async (req, res) => {
+  try {
+    const r = await Routing.findById(req.params.id);
+    if (!r) return res.status(404).json({ error: 'Not found' });
+    ['product', 'code', 'note'].forEach(k => { if (req.body[k] !== undefined) r[k] = req.body[k]; });
+    if (req.body.coeff !== undefined) r.coeff = num(req.body.coeff) || 1.1;
+    if (req.body.active !== undefined) r.active = !!req.body.active;
+    if (req.body.operations !== undefined) r.operations = normalizeOps(req.body.operations);
+    await r.save();
+    res.json(withTotals(r));
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+router.delete('/routings/:id', async (req, res) => {
+  try { await Routing.findByIdAndDelete(req.params.id); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 

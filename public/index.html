@@ -1887,6 +1887,19 @@
           <div id="mfgWcOee" class="mfg-wc-oee"></div>
         </div>
       </div>
+
+      <!-- Normované operácie / Technologické postupy -->
+      <div class="mfg-section-hdr" style="margin-top:26px">
+        <h2 class="prod-lines-title">📐 Normované operácie — technologické postupy</h2>
+        <div class="mfg-legend" style="gap:8px">
+          <button class="btn-secondary btn-sm" onclick="seedRoutingsData()" title="Načítať ukážkový postup z tabuľky Technológia">🎲 Ukážkový postup</button>
+          <button class="btn-primary btn-sm" onclick="openRtModal()">+ Postup</button>
+        </div>
+      </div>
+      <div class="mfg-rt-layout">
+        <div class="mfg-rt-list" id="mfgRtList"></div>
+        <div class="mfg-rt-detail" id="mfgRtDetail"></div>
+      </div>
     </div>
   </main>
 
@@ -1971,6 +1984,40 @@
         <button class="btn-delete" id="srDeleteBtn" onclick="deleteSr(document.getElementById('srId').value)" style="display:none">Odstrániť</button>
         <button class="btn-secondary" onclick="closeSrModal()">Zrušiť</button>
         <button class="btn-primary" onclick="saveSr()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ROUTING (technologický postup) MODAL ===== -->
+  <div id="rtModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeRtModal()"></div>
+    <div class="modal-box modal-lg">
+      <div class="modal-header"><h2 id="rtModalTitle">Nový technologický postup</h2><button class="modal-close" onclick="closeRtModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="rtId">
+        <div class="form-row">
+          <div class="form-group"><label>Výrobok *</label><input type="text" id="rtProduct" placeholder="napr. DBFOS senzor (STRAIN/TEMP)"></div>
+          <div class="form-group"><label>Kód výrobku</label><input type="text" id="rtCode" placeholder="1-23-DBFOS"></div>
+          <div class="form-group" style="max-width:150px"><label>Prirážka (ruč.)</label><input type="number" id="rtCoeff" step="0.01" min="1" value="1.1" oninput="renderRtOps()"></div>
+        </div>
+        <div class="rt-ops-hdr">
+          <span class="rt-ops-title">Operácie</span>
+          <button type="button" class="btn-secondary btn-sm" onclick="addRtOp()">+ Operácia</button>
+        </div>
+        <div class="rt-ops-table-wrap">
+          <table class="rt-ops-table">
+            <thead><tr><th>Č</th><th>Kód</th><th>Popis</th><th>t/ks</th><th>ks</th><th>t/výr.</th><th>linka</th><th title="Strojový čas — bez prirážky">⚙</th><th></th></tr></thead>
+            <tbody id="rtOpsBody"></tbody>
+          </table>
+        </div>
+        <div class="rt-ops-foot">Položiek: <strong id="rtOpsCount">0</strong> · <span>t/výrobok: <strong id="rtOpsTotal">0</strong> min</span></div>
+        <datalist id="rtLineList"></datalist>
+        <div class="form-group" style="margin-top:12px"><label>Poznámka</label><textarea id="rtNote" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="rtDeleteBtn" onclick="deleteRt(document.getElementById('rtId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeRtModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveRt()">Uložiť</button>
       </div>
     </div>
   </div>

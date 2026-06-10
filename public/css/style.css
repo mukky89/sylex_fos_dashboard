@@ -3697,6 +3697,70 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 
 @media (max-width: 900px) { .mfg-grid { grid-template-columns: 1fr; } }
 
+/* ── Normované operácie / technologické postupy ── */
+.modal-lg { max-width: 900px; }
+.mfg-rt-layout { display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start; }
+.mfg-rt-list { display: flex; flex-direction: column; gap: 8px; }
+.rt-item { text-align: left; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid transparent; border-radius: 11px; padding: 11px 13px; cursor: pointer; font-family: inherit; color: #cbd5e1; display: flex; flex-direction: column; gap: 3px; transition: border-color .14s, background .14s; }
+.rt-item:hover { background: rgba(255,255,255,0.07); }
+.rt-item.active { border-left-color: #00d4ff; background: rgba(0,212,255,0.08); }
+.rt-item-name { font-weight: 700; font-size: 0.88rem; color: #f1f5f9; }
+.rt-item-meta { font-size: 0.72rem; color: #94a3b8; }
+
+.mfg-rt-detail { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09); border-radius: 14px; padding: 16px; min-width: 0; }
+.rt-detail-hdr { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.rt-detail-title { font-family: var(--font-title); font-size: 1.15rem; font-weight: 700; color: #f0f9ff; }
+.rt-detail-sub { font-size: 0.78rem; color: #94a3b8; margin-top: 2px; }
+
+.rt-ops-table-wrap { overflow-x: auto; border-radius: 10px; }
+.rt-ops-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.rt-ops-table th { text-align: left; padding: 8px 10px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.03em; color: #94a3b8; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.rt-ops-table td { padding: 7px 10px; border-bottom: 1px solid rgba(0,0,0,0.06); vertical-align: middle; }
+.rt-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rt-strong { font-weight: 700; }
+.rt-code { font-family: 'Courier New', monospace; font-size: 0.76rem; white-space: nowrap; }
+/* Detail na tmavej mfg stránke */
+.rt-view th { border-bottom-color: rgba(255,255,255,0.12); }
+.rt-view td { color: #dbe4f0; border-bottom-color: rgba(255,255,255,0.06); }
+.rt-view tbody tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+.rt-view .rt-code { color: #93c5fd; }
+.rt-view .rt-strong { color: #f0f9ff; }
+.rt-mach { color: #fcd34d; white-space: nowrap; }
+.rt-opnote { color: #94a3b8; font-size: 0.76rem; }
+.rt-ops-foot { margin-top: 10px; font-size: 0.85rem; color: #cbd5e1; }
+.rt-ops-foot strong { color: #f0f9ff; }
+
+.rt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+.rt-sub-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 13px; }
+.rt-sub-h { font-size: 0.85rem; font-weight: 700; color: #e8f0fb; margin-bottom: 11px; }
+.rt-line-row { margin-bottom: 10px; }
+.rt-line-top { display: flex; justify-content: space-between; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 4px; gap: 8px; }
+.rt-line-top b { color: #f0f9ff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rt-line-track { height: 7px; border-radius: 5px; background: rgba(255,255,255,0.07); overflow: hidden; }
+.rt-line-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg,#00d4ff,#6366f1); }
+.rt-line-sub { font-size: 0.68rem; color: #64748b; margin-top: 3px; }
+
+.rt-calc-input { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.rt-calc-input label { font-size: 0.72rem; color: #94a3b8; }
+.rt-calc-input input { width: 140px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e2e8f0; border-radius: 7px; padding: 7px 9px; font-family: var(--font); }
+.rt-calc-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.rt-calc-table th { text-align: left; font-size: 0.66rem; text-transform: uppercase; color: #94a3b8; padding: 5px 8px; }
+.rt-calc-table td { padding: 5px 8px; color: #dbe4f0; border-top: 1px solid rgba(255,255,255,0.06); }
+.rt-calc-table tfoot td { font-weight: 700; color: #f0f9ff; border-top: 1px solid rgba(255,255,255,0.15); }
+
+/* Editor operácií v modale (svetlé pozadie) */
+.rt-ops-hdr { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 6px; }
+.rt-ops-title { font-weight: 700; font-size: 0.9rem; color: var(--text); }
+.rt-in { width: 100%; min-width: 56px; padding: 5px 7px; border: 1px solid var(--border); border-radius: 6px; font-family: var(--font); font-size: 0.8rem; color: var(--text); background: #fff; outline: none; }
+.rt-in:focus { border-color: var(--border-focus); }
+.rt-in-xs { min-width: 38px; width: 46px; }
+.rt-in-sm { min-width: 88px; }
+.rt-in-num { width: 64px; min-width: 54px; text-align: right; }
+#rtModal .rt-ops-table th { color: var(--text-dim); border-bottom-color: var(--border); }
+#rtModal .rt-ops-table td { border-bottom-color: var(--border); padding: 5px 6px; }
+#rtModal .rt-strong { color: var(--text-bright); }
+@media (max-width: 1000px) { .mfg-rt-layout { grid-template-columns: 1fr; } .rt-grid { grid-template-columns: 1fr; } }
+
 /* =============================================================================
    PODÚLOHY (checklist) + PREDAJ ANALYTIKA
    ============================================================================= */

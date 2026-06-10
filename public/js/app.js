@@ -5074,6 +5074,7 @@ async function loadMfg() {
   renderMfgReports();
   renderMfgDowntime();
   renderMfgWcOee();
+  loadRoutings();
 }
 
 function renderMfgKpis() {
@@ -5310,6 +5311,207 @@ async function seedMfgData() {
     if (!r.ok) { alert('Chyba: ' + (d.error || r.status)); return; }
     loadMfg();
     setTimeout(() => alert(`Hotovo — ${d.centers} pracovísk a ${d.reports} výkazov.`), 200);
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  NORMOVANÉ OPERÁCIE — technologické postupy (t/ks · t/výrobok · linka)
+// ══════════════════════════════════════════════════════════════════════════════
+let mfgRoutings = [];
+let mfgRtSelectedId = null;
+let rtOps = [];        // pracovná kópia operácií v modale
+let mfgRtQty = 1;      // plánované množstvo pre kalkulačku kapacity
+
+// t/výrobok pre operáciu = t/ks × ks × (strojový čas ? 1 : prirážka)
+function opTimeJs(op, coeff) { return (Number(op.tPiece) || 0) * (Number(op.qty) || 1) * (op.machine ? 1 : (Number(coeff) || 1)); }
+function rtFmt(n) { return (Math.round((n || 0) * 1000) / 1000).toLocaleString('sk-SK', { maximumFractionDigits: 3 }); }
+function rtFmtH(min) { return (Math.round((min || 0) / 60 * 10) / 10).toLocaleString('sk-SK', { maximumFractionDigits: 1 }) + ' h'; }
+
+async function loadRoutings() {
+  try { mfgRoutings = await fetch('/api/manufacturing/routings').then(r => r.json()); if (!Array.isArray(mfgRoutings)) mfgRoutings = []; }
+  catch { mfgRoutings = []; }
+  if (!mfgRoutings.find(r => r._id === mfgRtSelectedId)) mfgRtSelectedId = mfgRoutings[0]?._id || null;
+  // datalist liniek do modalu (z pracovísk + existujúcich postupov)
+  const dl = document.getElementById('rtLineList');
+  if (dl) {
+    const lines = new Set(mfgCenters.map(c => c.name));
+    mfgRoutings.forEach(r => (r.operations || []).forEach(o => o.line && lines.add(o.line)));
+    dl.innerHTML = [...lines].map(l => `<option value="${escHtml(l)}">`).join('');
+  }
+  renderRtList();
+  renderRtDetail();
+}
+
+function renderRtList() {
+  const el = document.getElementById('mfgRtList'); if (!el) return;
+  if (!mfgRoutings.length) { el.innerHTML = '<div class="proc-empty" style="padding:14px">Žiadne postupy. Klikni na <strong>🎲 Ukážkový postup</strong> alebo <strong>+ Postup</strong>.</div>'; return; }
+  el.innerHTML = mfgRoutings.map(r => `
+    <button class="rt-item ${r._id === mfgRtSelectedId ? 'active' : ''}" onclick="selectRouting('${r._id}')">
+      <span class="rt-item-name">${escHtml(r.product)}</span>
+      <span class="rt-item-meta">${r.code ? escHtml(r.code) + ' · ' : ''}${r.totals.items} operácií · ${rtFmt(r.totals.totalMin)} min</span>
+    </button>`).join('');
+}
+function selectRouting(id) { mfgRtSelectedId = id; renderRtList(); renderRtDetail(); }
+
+function renderRtDetail() {
+  const el = document.getElementById('mfgRtDetail'); if (!el) return;
+  const r = mfgRoutings.find(x => x._id === mfgRtSelectedId);
+  if (!r) { el.innerHTML = '<div class="proc-empty" style="padding:24px">Vyber technologický postup vľavo.</div>'; return; }
+  const coeff = Number(r.coeff) || 1.1;
+
+  const rows = (r.operations || []).map(op => `
+    <tr>
+      <td>${escHtml(op.group || '')}</td>
+      <td class="rt-code">${escHtml(op.code || '')}</td>
+      <td>${escHtml(op.desc || '')}</td>
+      <td class="rt-num">${rtFmt(op.tPiece)}</td>
+      <td class="rt-num">${rtFmt(op.qty || 1)}</td>
+      <td class="rt-num rt-strong">${rtFmt(opTimeJs(op, coeff))}</td>
+      <td>${op.machine ? '<span class="rt-mach">⚙ ' + escHtml(op.line || 'Strojový čas') + '</span>' : escHtml(op.line || '')}</td>
+      <td class="rt-opnote">${escHtml(op.opNote || '')}</td>
+    </tr>`).join('');
+
+  // Rozloženie času podľa linky
+  const max = Math.max(...r.totals.byLine.map(l => l.min), 1);
+  const lineRows = r.totals.byLine.map(l => `
+    <div class="rt-line-row">
+      <div class="rt-line-top"><span>${escHtml(l.line)}</span><b>${rtFmt(l.min)} min · ${rtFmtH(l.min)}</b></div>
+      <div class="rt-line-track"><div class="rt-line-fill" style="width:${Math.round(l.min / max * 100)}%"></div></div>
+      <div class="rt-line-sub">${Math.round(l.min / r.totals.totalMin * 100)} % z celkového času</div>
+    </div>`).join('');
+
+  // Kalkulačka kapacity pre dávku
+  const qty = mfgRtQty > 0 ? mfgRtQty : 1;
+  const calcRows = r.totals.byLine.map(l => `
+    <tr><td>${escHtml(l.line)}</td><td class="rt-num">${rtFmtH(l.min * qty)}</td><td class="rt-num">${(l.min * qty / 480).toLocaleString('sk-SK', { maximumFractionDigits: 1 })}</td></tr>`).join('');
+
+  el.innerHTML = `
+    <div class="rt-detail-hdr">
+      <div>
+        <div class="rt-detail-title">${escHtml(r.product)}</div>
+        <div class="rt-detail-sub">${r.code ? escHtml(r.code) + ' · ' : ''}prirážka na ručné operácie ×${rtFmt(coeff)}</div>
+      </div>
+      <button class="btn-secondary btn-sm" onclick="openRtModal(mfgRoutings.find(x=>x._id==='${r._id}'))">✎ Upraviť</button>
+    </div>
+    <div class="rt-ops-table-wrap">
+      <table class="rt-ops-table rt-view">
+        <thead><tr><th>Č</th><th>Kód</th><th>Popis</th><th>t/ks</th><th>ks</th><th>t/výrobok</th><th>linka</th><th>Popis operácie</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div class="rt-ops-foot">Položiek: <strong>${r.totals.items}</strong> · <span>t/výrobok: <strong>${rtFmt(r.totals.totalMin)}</strong> min (${rtFmtH(r.totals.totalMin)})</span></div>
+
+    <div class="rt-grid">
+      <div class="rt-sub-card">
+        <h3 class="rt-sub-h">🏭 Rozloženie času podľa linky</h3>
+        ${lineRows}
+      </div>
+      <div class="rt-sub-card">
+        <h3 class="rt-sub-h">📦 Kapacita pre dávku</h3>
+        <div class="rt-calc-input">
+          <label>Plánované množstvo (ks)</label>
+          <input type="number" min="1" value="${qty}" oninput="mfgRtQty=Math.max(1,parseInt(this.value)||1);renderRtDetail()">
+        </div>
+        <table class="rt-calc-table">
+          <thead><tr><th>Linka</th><th>Čas</th><th>Zmien (8h)</th></tr></thead>
+          <tbody>${calcRows}</tbody>
+          <tfoot><tr><td>Spolu</td><td class="rt-num">${rtFmtH(r.totals.totalMin * qty)}</td><td class="rt-num">${(r.totals.totalMin * qty / 480).toLocaleString('sk-SK', { maximumFractionDigits: 1 })}</td></tr></tfoot>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ── Modal: editácia postupu ───────────────────────────────────────────────────
+function openRtModal(r = null) {
+  const e = r && typeof r === 'object';
+  document.getElementById('rtModalTitle').textContent = e ? 'Upraviť technologický postup' : 'Nový technologický postup';
+  document.getElementById('rtId').value = e ? r._id : '';
+  document.getElementById('rtProduct').value = e ? (r.product || '') : '';
+  document.getElementById('rtCode').value = e ? (r.code || '') : '';
+  document.getElementById('rtCoeff').value = e ? (r.coeff || 1.1) : 1.1;
+  document.getElementById('rtNote').value = e && r.note !== 'seed' ? (r.note || '') : '';
+  rtOps = e ? (r.operations || []).map(o => ({ group: o.group || '', code: o.code || '', desc: o.desc || '', tPiece: o.tPiece || 0, qty: o.qty || 1, line: o.line || '', machine: !!o.machine, opNote: o.opNote || '' }))
+            : [{ group: '', code: '', desc: '', tPiece: 0, qty: 1, line: '', machine: false, opNote: '' }];
+  document.getElementById('rtDeleteBtn').style.display = e ? '' : 'none';
+  renderRtOps();
+  document.getElementById('rtModal').classList.remove('hidden');
+}
+function closeRtModal() { document.getElementById('rtModal').classList.add('hidden'); }
+function rtCoeff() { return Number(document.getElementById('rtCoeff').value) || 1.1; }
+
+function renderRtOps() {
+  const body = document.getElementById('rtOpsBody'); if (!body) return;
+  const coeff = rtCoeff();
+  body.innerHTML = rtOps.map((op, i) => `
+    <tr>
+      <td><input class="rt-in rt-in-xs" value="${escHtml(op.group)}" oninput="updateRtOp(${i},'group',this.value)"></td>
+      <td><input class="rt-in rt-in-sm" value="${escHtml(op.code)}" oninput="updateRtOp(${i},'code',this.value)"></td>
+      <td><input class="rt-in" value="${escHtml(op.desc)}" oninput="updateRtOp(${i},'desc',this.value)"></td>
+      <td><input class="rt-in rt-in-num" type="number" step="0.001" value="${op.tPiece}" oninput="updateRtOp(${i},'tPiece',this.value)"></td>
+      <td><input class="rt-in rt-in-num" type="number" step="1" value="${op.qty}" oninput="updateRtOp(${i},'qty',this.value)"></td>
+      <td class="rt-num rt-strong" id="rtOpT-${i}">${rtFmt(opTimeJs(op, coeff))}</td>
+      <td><input class="rt-in rt-in-sm" list="rtLineList" value="${escHtml(op.line)}" oninput="updateRtOp(${i},'line',this.value)"></td>
+      <td style="text-align:center"><input type="checkbox" ${op.machine ? 'checked' : ''} onchange="updateRtOp(${i},'machine',this.checked)" title="Strojový čas — bez prirážky"></td>
+      <td><button type="button" class="tk-sub-del" onclick="removeRtOp(${i})" title="Odstrániť">✕</button></td>
+    </tr>`).join('');
+  refreshRtTotals();
+}
+function updateRtOp(i, field, val) {
+  if (!rtOps[i]) return;
+  if (field === 'machine') { rtOps[i].machine = !!val; }
+  else if (field === 'tPiece' || field === 'qty') { rtOps[i][field] = Number(val) || 0; }
+  else { rtOps[i][field] = val; }
+  // prepočítaj len dotknutý riadok + footer (bez re-renderu, nech sa nestratí fokus)
+  if (field === 'tPiece' || field === 'qty' || field === 'machine') {
+    const cell = document.getElementById('rtOpT-' + i);
+    if (cell) cell.textContent = rtFmt(opTimeJs(rtOps[i], rtCoeff()));
+    refreshRtTotals();
+  }
+}
+function refreshRtTotals() {
+  const coeff = rtCoeff();
+  const total = rtOps.reduce((s, op) => s + opTimeJs(op, coeff), 0);
+  const cnt = document.getElementById('rtOpsCount'); if (cnt) cnt.textContent = rtOps.length;
+  const tot = document.getElementById('rtOpsTotal'); if (tot) tot.textContent = rtFmt(total);
+}
+function addRtOp() {
+  const last = rtOps[rtOps.length - 1];
+  rtOps.push({ group: last?.group || '', code: '', desc: '', tPiece: 0, qty: 1, line: last?.line || '', machine: !!last?.machine, opNote: '' });
+  renderRtOps();
+}
+function removeRtOp(i) { rtOps.splice(i, 1); renderRtOps(); }
+
+async function saveRt() {
+  const product = document.getElementById('rtProduct').value.trim();
+  if (!product) { alert('Zadaj názov výrobku.'); return; }
+  const body = {
+    product, code: document.getElementById('rtCode').value.trim(),
+    coeff: rtCoeff(), note: document.getElementById('rtNote').value.trim(),
+    operations: rtOps.filter(o => (o.desc || '').trim() || (o.code || '').trim())
+  };
+  const id = document.getElementById('rtId').value;
+  try {
+    const r = await fetch(id ? '/api/manufacturing/routings/' + id : '/api/manufacturing/routings', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); alert('Chyba: ' + (d.error || r.status)); return; }
+    const saved = await r.json(); mfgRtSelectedId = saved._id || mfgRtSelectedId;
+    closeRtModal(); loadRoutings();
+  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function deleteRt(id) {
+  if (!id || !confirm('Odstrániť tento technologický postup?')) return;
+  try { await fetch('/api/manufacturing/routings/' + id, { method: 'DELETE' }); mfgRtSelectedId = null; closeRtModal(); loadRoutings(); }
+  catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+async function seedRoutingsData() {
+  if (!confirm('Načítať ukážkový technologický postup (DBFOS senzor — 20 normovaných operácií)?')) return;
+  try {
+    const r = await fetch('/api/admin/seed-routings', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) { alert('Chyba: ' + (d.error || r.status)); return; }
+    mfgRtSelectedId = null;
+    loadRoutings();
+    setTimeout(() => alert(`Hotovo — postup s ${d.operations} operáciami.`), 200);
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 
