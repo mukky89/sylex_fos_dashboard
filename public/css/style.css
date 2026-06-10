@@ -2968,7 +2968,7 @@ body.logged-out .thermo-corner { display: none !important; }
 /* =============================================================================
    ALTERNATÍVNY SIDEBAR (Admin → Vzhľad) + témy
    ============================================================================= */
-:root { --appsb-w: 248px; }
+:root { --appsb-w: 264px; }
 .app-sidebar { display: none; }
 
 /* Zapnutý sidebar layout */

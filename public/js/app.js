@@ -4173,6 +4173,13 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.35.1', date: '10. 6. 2026', tag: 'ui', items: [
+    'Bočné menu (sidebar) zobrazuje plné názvy modulov namiesto skratiek (napr. „Vyťaženie technológií", „Plánovanie výroby", „Riadenie výroby", „Pracovné postupy", „Administrácia").',
+    'Bočný panel mierne rozšírený, aby sa dlhé názvy zmestili.',
+  ] },
+  { v: '1.35.0', date: '10. 6. 2026', tag: 'feat', items: [
+    'Nová stránka Changelog v menu — história všetkých zmien; verzia v hlavičke je klikateľná.',
+  ] },
   { v: '1.34.3', date: '10. 6. 2026', tag: 'fix', items: [
     'Senzor (teplota/vlhkosť) presunutý z plávajúceho rohového widgetu do nenápadného tlačidla v hlavičke (ikonka teplomera + online/offline bodka). Klik otvorí stránku Senzory s grafom.',
     'Chatbot vrátený do pravého dolného rohu — už sa neprekrýva so senzorom.',
