@@ -1867,6 +1867,26 @@
       </div>
       <div id="mfgBoard" class="mfg-board"></div>
 
+      <!-- Gantt: rozvrh operácií × pracoviská (technológie ↔ procesy) -->
+      <div class="mfg-section-hdr" style="margin-top:24px">
+        <h2 class="prod-lines-title">🗓️ Rozvrh výroby — operácie × pracoviská</h2>
+        <div class="mfg-gantt-tools">
+          <select id="mfgGanttSort" class="util-select" onchange="setMfgGanttSort(this.value)">
+            <option value="priority">Zoradiť podľa priority</option>
+            <option value="due">Podľa termínu</option>
+            <option value="number">Podľa čísla zákazky</option>
+          </select>
+          <button class="cal-nav-btn" onclick="mfgGanttZoom(-1)" title="Oddialiť">−</button>
+          <button class="cal-nav-btn" onclick="mfgGanttZoom(1)" title="Priblížiť">+</button>
+          <button class="btn-secondary btn-sm" onclick="loadMfgSchedule()" title="Prepočítať rozvrh">↻</button>
+        </div>
+      </div>
+      <div id="mfgGanttInfo" class="mfg-gantt-info"></div>
+      <div id="mfgGanttFlow" class="mfg-gantt-flow hidden"></div>
+      <div class="util-gantt-wrap"><div id="mfgGanttChart" class="util-gantt mfg-gantt"></div></div>
+      <div id="mfgGanttLegend" class="mfg-gantt-legend"></div>
+      <div id="mfgGanttUnsched" class="mfg-gantt-unsched"></div>
+
       <!-- Spodný riadok: zmenové výkazy + prestoje -->
       <div class="mfg-grid">
         <div class="mfg-card mfg-reports-card">
