@@ -27,8 +27,8 @@ function handleAuthExpired() {
   localStorage.removeItem('fos_token');
   showLogin();
 }
-function showLogin() { document.getElementById('loginOverlay')?.classList.remove('hidden'); }
-function hideLogin() { document.getElementById('loginOverlay')?.classList.add('hidden'); }
+function showLogin() { document.getElementById('loginOverlay')?.classList.remove('hidden'); document.body.classList.add('logged-out'); }
+function hideLogin() { document.getElementById('loginOverlay')?.classList.add('hidden'); document.body.classList.remove('logged-out'); }
 function showLoginError(msg) {
   const el = document.getElementById('loginError');
   if (el) { el.textContent = msg; el.classList.remove('hidden'); }
