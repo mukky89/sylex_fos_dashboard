@@ -3803,6 +3803,19 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 
 @media (max-width: 720px) { .mfg-gantt .ug-corner, .mfg-gantt .ug-eq { width: 130px; } }
 
+/* ── Procesný Gantt: os Y = operácie, os X = čas (nadväznosť) ── */
+.mfg-gantt-process .ug-corner, .mfg-gantt-process .ug-eq { width: 220px; }
+.mfg-prow { height: 32px; }
+.mfg-plabel { gap: 9px; }
+.mfg-pseq { width: 22px; height: 22px; border-radius: 6px; background: rgba(99,102,241,0.22); color: #c4b5fd; font-weight: 700; font-size: 0.74rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.mfg-plabel .ug-eq-name { font-size: 0.78rem; }
+.mfg-pline { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+.mfg-pbar { box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+/* spojnica nadväznosti — operácia začína tam, kde predošlá skončila (finish-to-start) */
+.mfg-plink { position: absolute; top: -14px; height: 18px; width: 0; border-left: 2px dashed rgba(255,255,255,0.45); z-index: 1; pointer-events: none; }
+.mfg-plink::after { content: '▾'; position: absolute; bottom: -7px; left: -5px; font-size: 9px; color: rgba(255,255,255,0.55); }
+@media (max-width: 720px) { .mfg-gantt-process .ug-corner, .mfg-gantt-process .ug-eq { width: 150px; } }
+
 /* =============================================================================
    PODÚLOHY (checklist) + PREDAJ ANALYTIKA
    ============================================================================= */
