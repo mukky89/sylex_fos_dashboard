@@ -448,6 +448,9 @@
       <!-- Main content -->
       <div class="wiki-main">
 
+        <!-- Breadcrumbs -->
+        <div id="wikiCrumbs" class="wiki-crumbs hidden"></div>
+
         <!-- KB Home / Welcome -->
         <div id="wikiWelcome" class="wiki-home">
           <div class="wh-toolbar">
@@ -2767,6 +2770,21 @@
       <button onclick="botSend()" class="bot-send" title="Odoslať">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
+    </div>
+  </div>
+
+  <!-- ===== ŠTÝLOVANÝ CONFIRM ===== -->
+  <div id="confirmModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="_confirmDone(false)"></div>
+    <div class="modal-box modal-confirm">
+      <div class="confirm-body">
+        <div class="confirm-ico" id="confirmIco">?</div>
+        <p class="confirm-msg" id="confirmMsg"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="confirmCancel" onclick="_confirmDone(false)">Zrušiť</button>
+        <button class="btn-primary" id="confirmOk" onclick="_confirmDone(true)">Potvrdiť</button>
+      </div>
     </div>
   </div>
 
