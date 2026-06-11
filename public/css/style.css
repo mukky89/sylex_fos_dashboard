@@ -3013,6 +3013,15 @@ body.layout-sidebar .tour-fab { left: calc(var(--appsb-w) + 16px); }
 }
 .asb-ico { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 20px; }
 .asb-lbl { overflow: hidden; text-overflow: ellipsis; }
+/* Kategórie v sidebari — nadpis + oddeľovacia čiara */
+.asb-group {
+  font-size: 0.63rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em;
+  padding: 13px 12px 5px; margin-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.34); white-space: nowrap; overflow: hidden;
+}
+body.sbt-light .asb-group, body.sbt-minimal .asb-group { color: #94a3b8; border-top-color: #e9edf3; }
+body.sbt-icon .asb-group { font-size: 0; padding: 10px 0 0; margin: 4px 14px 0; }
 
 .asb-foot { padding: 12px; border-top: 1px solid rgba(255,255,255,0.06); }
 .asb-user { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 11px; }
