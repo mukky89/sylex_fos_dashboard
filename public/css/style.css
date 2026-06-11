@@ -2973,6 +2973,8 @@ body.logged-out .thermo-corner { display: none !important; }
 
 /* Zapnutý sidebar layout */
 body.layout-sidebar .nav { display: none; }
+/* .nav (margin-left:auto) je skrytý → header-right treba zarovnať doprava sám */
+body.layout-sidebar .header-right { margin-left: auto; }
 body.layout-sidebar .app-sidebar {
   display: flex; flex-direction: column;
   position: fixed; top: var(--header-h); left: 0; bottom: 0;
@@ -3015,12 +3017,13 @@ body.layout-sidebar .tour-fab { left: calc(var(--appsb-w) + 16px); }
 .asb-lbl { overflow: hidden; text-overflow: ellipsis; }
 /* Kategórie v sidebari — nadpis + oddeľovacia čiara */
 .asb-group {
-  font-size: 0.63rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em;
-  padding: 13px 12px 5px; margin-top: 4px;
-  border-top: 1px solid rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.34); white-space: nowrap; overflow: hidden;
+  font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em;
+  padding: 14px 12px 6px; margin-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.6); white-space: nowrap; overflow: hidden;
 }
-body.sbt-light .asb-group, body.sbt-minimal .asb-group { color: #94a3b8; border-top-color: #e9edf3; }
+body.sbt-light .asb-group, body.sbt-minimal .asb-group { color: #64748b; border-top-color: #e5e7eb; }
+body.sbt-gradient .asb-group, body.sbt-aurora .asb-group, body.sbt-sunset .asb-group { color: rgba(255,255,255,0.82); border-top-color: rgba(255,255,255,0.22); }
 body.sbt-icon .asb-group { font-size: 0; padding: 10px 0 0; margin: 4px 14px 0; }
 
 .asb-foot { padding: 12px; border-top: 1px solid rgba(255,255,255,0.06); }

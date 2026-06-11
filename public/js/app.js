@@ -4172,6 +4172,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.35.3', date: '10. 6. 2026', tag: 'fix', items: [
+    'Lepšia čitateľnosť nadpisov kategórií v sidebari (vyšší kontrast, prispôsobené pre všetky témy).',
+    'V sidebar layoute sú verzia a odhlásenie opäť zarovnané úplne doprava.',
+  ] },
   { v: '1.35.2', date: '10. 6. 2026', tag: 'ui', items: [
     'Bočné menu rozdelené do kategórií s oddeľovacími čiarami (Znalosti · Výroba · Organizácia · Vedenie & systém).',
     'Hlavička sprehľadnená — odstránený indikátor „ONLINE"; verzia aplikácie a odhlásenie presunuté úplne doprava.',
