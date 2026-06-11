@@ -58,8 +58,7 @@ function logout() {
 function renderUserChip() {
   const el = document.getElementById('hdrUser');
   if (!el || !CURRENT_USER) return;
-  el.innerHTML = `<span class="hdr-user-name" title="${escHtml(CURRENT_USER.username)}${CURRENT_USER.role === 'admin' ? ' · admin' : ''}">👤 ${escHtml(CURRENT_USER.name || CURRENT_USER.username)}</span>
-    <button class="hdr-icon-btn" onclick="logout()" title="Odhlásiť sa"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>`;
+  el.innerHTML = `<span class="hdr-user-name" title="${escHtml(CURRENT_USER.username)}${CURRENT_USER.role === 'admin' ? ' · admin' : ''}">👤 ${escHtml(CURRENT_USER.name || CURRENT_USER.username)}</span>`;
 }
 function tokenQS() { return AUTH_TOKEN ? ('?token=' + encodeURIComponent(AUTH_TOKEN)) : ''; }
 
@@ -4173,6 +4172,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.35.2', date: '10. 6. 2026', tag: 'ui', items: [
+    'Bočné menu rozdelené do kategórií s oddeľovacími čiarami (Znalosti · Výroba · Organizácia · Vedenie & systém).',
+    'Hlavička sprehľadnená — odstránený indikátor „ONLINE"; verzia aplikácie a odhlásenie presunuté úplne doprava.',
+  ] },
   { v: '1.35.1', date: '10. 6. 2026', tag: 'ui', items: [
     'Bočné menu (sidebar) zobrazuje plné názvy modulov namiesto skratiek (napr. „Vyťaženie technológií", „Plánovanie výroby", „Riadenie výroby", „Pracovné postupy", „Administrácia").',
     'Bočný panel mierne rozšírený, aby sa dlhé názvy zmestili.',
