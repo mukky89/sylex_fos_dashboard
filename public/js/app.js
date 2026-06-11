@@ -4172,9 +4172,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
-  { v: '1.35.3', date: '10. 6. 2026', tag: 'fix', items: [
-    'Lepšia čitateľnosť nadpisov kategórií v sidebari (vyšší kontrast, prispôsobené pre všetky témy).',
-    'V sidebar layoute sú verzia a odhlásenie opäť zarovnané úplne doprava.',
+  { v: '1.35.4', date: '10. 6. 2026', tag: 'fix', items: [
+    'Nadpisy kategórií v sidebari sa zobrazujú v plnej výške (už nie sú orezané zvrchu) a s lepším kontrastom.',
+    'V sidebar layoute sú verzia a odhlásenie zarovnané úplne doprava.',
   ] },
   { v: '1.35.2', date: '10. 6. 2026', tag: 'ui', items: [
     'Bočné menu rozdelené do kategórií s oddeľovacími čiarami (Znalosti · Výroba · Organizácia · Vedenie & systém).',
