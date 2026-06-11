@@ -808,7 +808,21 @@ function showWikiHome() {
   const homeBtn = document.getElementById('swnHome');
   if (homeBtn) homeBtn.classList.add('active');
   setHash('wiki');
+  renderWikiCrumbs(null);
   renderWikiHome();
+}
+
+// WIKI breadcrumbs — items: [{label, act?}], posledná = aktuálna (bez odkazu)
+function renderWikiCrumbs(items) {
+  const el = document.getElementById('wikiCrumbs'); if (!el) return;
+  if (!items || !items.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.classList.remove('hidden');
+  el.innerHTML = items.map((it, i) => {
+    const sep = i > 0 ? '<span class="crumb-sep">›</span>' : '';
+    return i === items.length - 1
+      ? `${sep}<span class="crumb-cur">${escHtml(it.label)}</span>`
+      : `${sep}<a onclick="${it.act || ''}">${escHtml(it.label)}</a>`;
+  }).join('');
 }
 
 function renderWikiHome() {
@@ -918,6 +932,7 @@ function showCategoryView(catId) {
   document.getElementById('cvIcon').textContent  = cat ? (cat.icon || '📁') : '📄';
   document.getElementById('cvTitle').textContent = cat ? cat.name : 'Nezaradené';
   document.getElementById('cvCount').textContent = `${prods.length} ${pluralSk(prods.length)}`;
+  renderWikiCrumbs([{ label: 'WIKI', act: 'showWikiHome()' }, { label: cat ? cat.name : 'Nezaradené' }]);
 
   const listEl = document.getElementById('cvArticles');
   listEl.innerHTML = '';
@@ -1279,13 +1294,18 @@ function renderProductDetail(p) {
   document.getElementById('categoryView').classList.add('hidden');
   document.getElementById('productDetail').classList.remove('hidden');
 
-  // Breadcrumb
+  // Breadcrumb (interný v detaile + globálny nad obsahom)
   const bcCatEl = document.getElementById('pdBcCat');
+  const catObj = p.category ? categories.find(c => c._id === (p.category._id || p.category)) : null;
   if (bcCatEl) {
-    const catObj = p.category ? categories.find(c => c._id === (p.category._id || p.category)) : null;
     bcCatEl.textContent = catObj ? catObj.name : (p.category?.name || '');
     bcCatEl.dataset.catId = p.category?._id || p.category || '';
   }
+  renderWikiCrumbs([
+    { label: 'WIKI', act: 'showWikiHome()' },
+    { label: catObj ? catObj.name : 'Nezaradené', act: `showCategoryView(${catObj ? `'${catObj._id}'` : 'null'})` },
+    { label: p.name }
+  ]);
 
   // Title & desc
   document.getElementById('detailName').textContent = p.name;
@@ -1353,7 +1373,7 @@ function editCurrentProduct() {
 
 async function deleteCurrentProduct() {
   if (!currentProductId) return;
-  if (!confirm('Naozaj odstrániť tento záznam?')) return;
+  if (!await uiConfirm('Naozaj odstrániť tento záznam?')) return;
   try {
     await fetch(`/api/products/${currentProductId}`, { method: 'DELETE' });
     currentProductId = null; currentProduct = null;
@@ -1554,6 +1574,72 @@ function escHtml(str) {
   return String(str || '')
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  UX: Toast notifikácie + štýlovaný confirm (nahrádza natívne alert/confirm)
+// ══════════════════════════════════════════════════════════════════════════════
+function toast(msg, type = 'info', ms = 3400) {
+  let c = document.getElementById('toastWrap');
+  if (!c) { c = document.createElement('div'); c.id = 'toastWrap'; c.className = 'toast-wrap'; document.body.appendChild(c); }
+  const t = document.createElement('div');
+  t.className = 'toast toast-' + type;
+  const ico = type === 'error' ? '✕' : type === 'success' ? '✓' : type === 'warn' ? '⚠' : 'ℹ';
+  t.innerHTML = `<span class="toast-ico">${ico}</span><span class="toast-msg"></span><button class="toast-x" title="Zavrieť">✕</button>`;
+  t.querySelector('.toast-msg').textContent = String(msg == null ? '' : msg);
+  const close = () => { t.classList.add('toast-out'); setTimeout(() => t.remove(), 220); };
+  t.querySelector('.toast-x').onclick = close;
+  c.appendChild(t);
+  if (ms) setTimeout(close, ms);
+  return t;
+}
+// Natívny alert → toast (heuristika typu podľa textu)
+window.alert = function (m) {
+  const s = String(m == null ? '' : m);
+  const err = /chyb|zlyhal|neplatn|nepodaril|nemož|nemoz|error|fail/i.test(s);
+  const ok  = /hotovo|uložen|ulozen|úspe|uspe|vytvoren|odoslan|pridan|aktualizovan|✓/i.test(s);
+  toast(s, err ? 'error' : ok ? 'success' : 'info', err ? 5200 : 3400);
+};
+
+let _confirmResolve = null;
+function uiConfirm(message, opts = {}) {
+  return new Promise(resolve => {
+    _confirmResolve = resolve;
+    const m = document.getElementById('confirmModal');
+    if (!m) { resolve(window.confirm ? true : true); return; }
+    document.getElementById('confirmMsg').textContent = String(message || 'Naozaj pokračovať?');
+    const ok = document.getElementById('confirmOk'), cancel = document.getElementById('confirmCancel');
+    const danger = opts.danger !== undefined ? opts.danger : /odstrán|zmaz|vymaz|odstrani|vymaž|nevratn|delete|trvale/i.test(String(message));
+    ok.textContent = opts.okText || (danger ? 'Odstrániť' : 'Potvrdiť');
+    cancel.textContent = opts.cancelText || 'Zrušiť';
+    ok.className = danger ? 'btn-danger-solid' : 'btn-primary';
+    document.getElementById('confirmIco').textContent = danger ? '⚠' : '?';
+    document.getElementById('confirmIco').className = 'confirm-ico' + (danger ? ' danger' : '');
+    m.classList.remove('hidden');
+    setTimeout(() => ok.focus(), 40);
+  });
+}
+function _confirmDone(val) {
+  document.getElementById('confirmModal')?.classList.add('hidden');
+  if (_confirmResolve) { const r = _confirmResolve; _confirmResolve = null; r(val); }
+}
+
+// ── Stráženie neuložených zmien v modaloch ──
+const _modalSnap = {};
+function _modalState(modalId) {
+  const m = document.getElementById(modalId); if (!m) return '';
+  return [...m.querySelectorAll('input, textarea, select')].map(e => e.type === 'checkbox' ? (e.checked ? '1' : '0') : (e.value || '')).join('');
+}
+function modalSnapshot(modalId) { _modalSnap[modalId] = _modalState(modalId); }
+async function modalGuardClose(modalId) {
+  if (_modalSnap[modalId] != null && _modalState(modalId) !== _modalSnap[modalId]) {
+    const ok = await uiConfirm('Máte neuložené zmeny. Naozaj zavrieť bez uloženia?', { danger: false, okText: 'Zavrieť', cancelText: 'Pokračovať v úprave' });
+    if (!ok) return false;
+  }
+  delete _modalSnap[modalId];
+  document.getElementById(modalId)?.classList.add('hidden');
+  return true;
+}
+
 function fmtDate(iso) { return new Date(iso).toLocaleDateString('sk-SK'); }
 function fmtDateTime(iso) { return new Date(iso).toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
 function pluralSk(n) {
@@ -1932,7 +2018,7 @@ async function saveAnnouncement() {
 
 async function deleteAnnouncement(id) {
   if (!id) return;
-  if (!confirm('Naozaj odstrániť túto novinku?')) return;
+  if (!await uiConfirm('Naozaj odstrániť túto novinku?')) return;
   try {
     await fetch('/api/announcements/' + id, { method: 'DELETE' });
     loadAnnouncements();
@@ -2125,7 +2211,7 @@ async function saveEvent() {
 async function deleteEvent() {
   const id = document.getElementById('evId').value;
   if (!id) return;
-  if (!confirm('Naozaj odstrániť túto udalosť?')) return;
+  if (!await uiConfirm('Naozaj odstrániť túto udalosť?')) return;
   try {
     await fetch('/api/calendar/' + id, { method: 'DELETE' });
     closeEventModal();
@@ -2643,7 +2729,7 @@ async function saveProcedure() {
 
 async function deleteProcedure(id) {
   if (!id) return;
-  if (!confirm('Naozaj odstrániť tento postup?')) return;
+  if (!await uiConfirm('Naozaj odstrániť tento postup?')) return;
   try {
     await fetch('/api/procedures/' + id, { method: 'DELETE' });
     closeProcedureModal();
@@ -2894,7 +2980,7 @@ function viewGuideRevision(rev) {
 async function restoreGuideRevision(rev) {
   const id = document.getElementById('gdId').value;
   if (!id) return;
-  if (!confirm(`Obnoviť obsah z revízie r${rev} do editora? Aktuálne neuložené zmeny sa prepíšu (vytvorenie revízie ostáva zachované).`)) return;
+  if (!await uiConfirm(`Obnoviť obsah z revízie r${rev} do editora? Aktuálne neuložené zmeny sa prepíšu (vytvorenie revízie ostáva zachované).`)) return;
   try {
     const resp = await fetch(`/api/guides/${id}/restore/${rev}`, { method: 'POST' });
     if (!resp.ok) { alert('Obnova zlyhala'); return; }
@@ -2911,7 +2997,7 @@ async function restoreGuideRevision(rev) {
 
 async function deleteGuide(id) {
   if (!id) return;
-  if (!confirm('Naozaj odstrániť tento návod vrátane všetkých revízií?')) return;
+  if (!await uiConfirm('Naozaj odstrániť tento návod vrátane všetkých revízií?')) return;
   try {
     await fetch('/api/guides/' + id, { method: 'DELETE' });
     closeGuideModal();
@@ -3074,7 +3160,7 @@ async function saveLink() {
 }
 
 async function resetDefaultLinks() {
-  if (!confirm('Toto VYMAŽE všetky existujúce linky a nahradí ich predvolenými (DBFOS, ISYS, PEAKLOGGER, Dochádzka, Obedy, Obedy Fantozzi, SharePoint linky). Pokračovať?')) return;
+  if (!await uiConfirm('Toto VYMAŽE všetky existujúce linky a nahradí ich predvolenými (DBFOS, ISYS, PEAKLOGGER, Dochádzka, Obedy, Obedy Fantozzi, SharePoint linky). Pokračovať?')) return;
   try {
     const resp = await fetch('/api/admin/links/reset-defaults', { method: 'POST' });
     if (!resp.ok) {
@@ -3090,7 +3176,7 @@ async function resetDefaultLinks() {
 }
 
 async function deleteLink(id) {
-  if (!confirm('Naozaj odstrániť tento link?')) return;
+  if (!await uiConfirm('Naozaj odstrániť tento link?')) return;
   try {
     await fetch('/api/admin/links/' + id, { method: 'DELETE' });
     loadAdminLinks();
@@ -3167,7 +3253,7 @@ async function loadSensorStats() {
 }
 
 async function clearSensorHistory() {
-  if (!confirm('Naozaj vymazať celú históriu senzorov? Táto akcia je nevratná.')) return;
+  if (!await uiConfirm('Naozaj vymazať celú históriu senzorov? Táto akcia je nevratná.')) return;
   try {
     const r = await fetch('/api/admin/sensor/history', { method: 'DELETE' });
     const d = await r.json();
@@ -3177,7 +3263,7 @@ async function clearSensorHistory() {
 }
 
 async function seedSampleData() {
-  if (!confirm('Vložiť ukážkové dáta (Novinky, WIKI, Postupy)? Existujúce záznamy sa preskočia.')) return;
+  if (!await uiConfirm('Vložiť ukážkové dáta (Novinky, WIKI, Postupy)? Existujúce záznamy sa preskočia.')) return;
   const el = document.getElementById('seedResult');
   if (el) el.textContent = 'Vkladám…';
   try {
@@ -3579,8 +3665,36 @@ function renderNotif() {
 
 // Klávesové skratky + zatváranie hlavičkových popoverov
 document.addEventListener('keydown', (e) => {
+  // Štýlovaný confirm: Esc = zrušiť, Enter = potvrdiť
+  const cm = document.getElementById('confirmModal');
+  if (cm && !cm.classList.contains('hidden')) {
+    if (e.key === 'Escape') { e.preventDefault(); _confirmDone(false); return; }
+    if (e.key === 'Enter')  { e.preventDefault(); _confirmDone(true); return; }
+  }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openCmdPalette(); }
   if (e.key === 'Escape') { closeCmdPalette(); closeHdrPopovers(); }
+});
+
+// ── Generický sortovač tabuliek (klik na hlavičku) — funguje na ľubovoľnej .sortable ──
+document.addEventListener('click', (e) => {
+  const th = e.target.closest('table.sortable th[data-sortable]');
+  if (!th) return;
+  const table = th.closest('table'), tbody = table.tBodies[0]; if (!tbody) return;
+  const idx = [...th.parentElement.children].indexOf(th);
+  const asc = !th.classList.contains('sort-asc');
+  table.querySelectorAll('th').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+  th.classList.add(asc ? 'sort-asc' : 'sort-desc');
+  const val = (row) => {
+    const cell = row.children[idx]; if (!cell) return '';
+    const raw = (cell.dataset.sort ?? cell.textContent).trim();
+    const num = parseFloat(raw.replace(/\s/g, '').replace(',', '.').replace(/[^0-9.\-]/g, ''));
+    return { raw, num: isNaN(num) ? null : num };
+  };
+  [...tbody.rows].sort((a, b) => {
+    const va = val(a), vb = val(b);
+    if (va.num !== null && vb.num !== null) return asc ? va.num - vb.num : vb.num - va.num;
+    return asc ? va.raw.localeCompare(vb.raw, 'sk') : vb.raw.localeCompare(va.raw, 'sk');
+  }).forEach(r => tbody.appendChild(r));
 });
 document.addEventListener('click', () => closeHdrPopovers());
 
@@ -3665,7 +3779,7 @@ async function saveSensorType() {
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteSensorType(id) {
-  if (!id || !confirm('Odstrániť typ senzora?')) return;
+  if (!id || !await uiConfirm('Odstrániť typ senzora?')) return;
   try { await fetch('/api/sensor-types/' + id, { method: 'DELETE' }); closeSensorTypeModal(); loadFbgTools(); } catch { alert('Chyba'); }
 }
 
@@ -3878,7 +3992,7 @@ async function saveProject() {
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteProject(id) {
-  if (!id || !confirm('Naozaj odstrániť projekt?')) return;
+  if (!id || !await uiConfirm('Naozaj odstrániť projekt?')) return;
   try { await fetch('/api/projects/' + id, { method: 'DELETE' }); closeProjectModal(); loadProjects(); } catch { alert('Chyba'); }
 }
 
@@ -3971,7 +4085,7 @@ async function saveTest() {
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteTest(id) {
-  if (!id || !confirm('Naozaj odstrániť protokol?')) return;
+  if (!id || !await uiConfirm('Naozaj odstrániť protokol?')) return;
   try { await fetch('/api/tests/' + id, { method: 'DELETE' }); closeTestModal(); loadTests(); } catch { alert('Chyba'); }
 }
 
@@ -4058,7 +4172,7 @@ async function saveInstrument() {
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteInstrument(id) {
-  if (!id || !confirm('Naozaj odstrániť prístroj?')) return;
+  if (!id || !await uiConfirm('Naozaj odstrániť prístroj?')) return;
   try { await fetch('/api/instruments/' + id, { method: 'DELETE' }); closeInstrumentModal(); loadInstruments(); loadNotif(); } catch { alert('Chyba'); }
 }
 
@@ -4150,7 +4264,7 @@ async function savePrototype() {
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deletePrototype(id) {
-  if (!id || !confirm('Naozaj odstrániť prototyp?')) return;
+  if (!id || !await uiConfirm('Naozaj odstrániť prototyp?')) return;
   try { await fetch('/api/prototypes/' + id, { method: 'DELETE' }); closePrototypeModal(); loadPrototypes(); } catch { alert('Chyba'); }
 }
 
@@ -4172,6 +4286,13 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.36.0', date: '10. 6. 2026', tag: 'feat', items: [
+    'Toast notifikácie — namiesto vyskakovacích okien sa hlášky zobrazujú elegantne v rohu (zelená/červená podľa typu).',
+    'Štýlované potvrdzovacie dialógy (Esc = zrušiť, Enter = potvrdiť) namiesto sivých okien prehliadača.',
+    'Tabuľky (zmenové výkazy, expedované zákazky) sa dajú triediť klikom na hlavičku a hlavička ostáva pri skrolovaní.',
+    'Drobková navigácia (breadcrumbs) vo WIKI — WIKI › Kategória › Článok.',
+    'Upozornenie na neuložené zmeny pri zatváraní formulárov (úloha, zákazka, postup).',
+  ] },
   { v: '1.35.4', date: '10. 6. 2026', tag: 'fix', items: [
     'Nadpisy kategórií v sidebari sa zobrazujú v plnej výške (už nie sú orezané zvrchu) a s lepším kontrastom.',
     'V sidebar layoute sú verzia a odhlásenie zarovnané úplne doprava.',
@@ -4494,8 +4615,9 @@ function openTaskModal(t = null) {
   renderSubtaskEditor();
   document.getElementById('tkDeleteBtn').style.display = e ? '' : 'none';
   document.getElementById('taskModal').classList.remove('hidden');
+  modalSnapshot('taskModal');
 }
-function closeTaskModal() { document.getElementById('taskModal').classList.add('hidden'); }
+function closeTaskModal() { modalGuardClose('taskModal'); }
 
 // ── Podúlohy v modale ─────────────────────────────────────────────────────────
 function renderSubtaskEditor() {
@@ -4569,12 +4691,12 @@ async function saveTask() {
   try {
     const resp = await fetch(id ? '/api/tasks/' + id : '/api/tasks', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!resp.ok) { const er = await resp.json().catch(() => ({})); alert('Chyba: ' + (er.error || resp.status)); return; }
-    closeTaskModal(); loadTasks(); loadNotif();
+    modalSnapshot('taskModal'); closeTaskModal(); loadTasks(); loadNotif();
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteTask(id) {
-  if (!id || !confirm('Naozaj odstrániť úlohu?')) return;
-  try { await fetch('/api/tasks/' + id, { method: 'DELETE' }); closeTaskModal(); loadTasks(); loadNotif(); }
+  if (!id || !await uiConfirm('Naozaj odstrániť úlohu?')) return;
+  try { await fetch('/api/tasks/' + id, { method: 'DELETE' }); modalSnapshot('taskModal'); closeTaskModal(); loadTasks(); loadNotif(); }
   catch { alert('Chyba'); }
 }
 
@@ -4614,7 +4736,7 @@ async function loadUtil() {
   renderUtil();
 }
 async function seedUtilData() {
-  if (!confirm('Vygenerovať náhodné ukážkové rezervácie na najbližší mesiac?\nNahradia sa len predošlé ukážkové dáta — reálne rezervácie ostanú.')) return;
+  if (!await uiConfirm('Vygenerovať náhodné ukážkové rezervácie na najbližší mesiac?\nNahradia sa len predošlé ukážkové dáta — reálne rezervácie ostanú.')) return;
   try {
     const r = await fetch('/api/admin/seed-bookings', { method: 'POST' });
     const d = await r.json();
@@ -4806,7 +4928,7 @@ async function saveBooking() {
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteBooking(id) {
-  if (!id || !confirm('Odstrániť túto rezerváciu?')) return;
+  if (!id || !await uiConfirm('Odstrániť túto rezerváciu?')) return;
   try { await fetch('/api/bookings/' + id, { method: 'DELETE' }); closeBookingModal(); loadUtil(); }
   catch { alert('Chyba'); }
 }
@@ -4853,7 +4975,7 @@ async function saveEquipment() {
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteEquipment(id) {
-  if (!confirm('Odstrániť zariadenie? Súvisiace rezervácie ostanú, ale nebudú sa zobrazovať.')) return;
+  if (!await uiConfirm('Odstrániť zariadenie? Súvisiace rezervácie ostanú, ale nebudú sa zobrazovať.')) return;
   try {
     await fetch('/api/equipment/' + id, { method: 'DELETE' });
     utilEquipment = utilEquipment.filter(e => e._id !== id);
@@ -5070,8 +5192,9 @@ function openProdModal(o = null) {
   set('poNote', e ? (o.note || '') : '');
   document.getElementById('poDeleteBtn').style.display = e ? '' : 'none';
   document.getElementById('prodModal').classList.remove('hidden');
+  modalSnapshot('prodModal');
 }
-function closeProdModal() { document.getElementById('prodModal').classList.add('hidden'); }
+function closeProdModal() { modalGuardClose('prodModal'); }
 async function saveProd() {
   const body = {
     number: document.getElementById('poNumber').value.trim(),
@@ -5095,16 +5218,16 @@ async function saveProd() {
   try {
     const r = await fetch(id ? '/api/production/' + id : '/api/production', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
-    closeProdModal(); loadProd();
+    modalSnapshot('prodModal'); closeProdModal(); loadProd();
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteProd(id) {
-  if (!id || !confirm('Odstrániť túto výrobnú zákazku?')) return;
-  try { await fetch('/api/production/' + id, { method: 'DELETE' }); closeProdModal(); loadProd(); }
+  if (!id || !await uiConfirm('Odstrániť túto výrobnú zákazku?')) return;
+  try { await fetch('/api/production/' + id, { method: 'DELETE' }); modalSnapshot('prodModal'); closeProdModal(); loadProd(); }
   catch { alert('Chyba'); }
 }
 async function seedProdData() {
-  if (!confirm('Vygenerovať ukážkové výrobné zákazky? Nahradia sa len predošlé ukážkové dáta.')) return;
+  if (!await uiConfirm('Vygenerovať ukážkové výrobné zákazky? Nahradia sa len predošlé ukážkové dáta.')) return;
   try {
     const r = await fetch('/api/admin/seed-production', { method: 'POST' });
     const d = await r.json();
@@ -5225,12 +5348,12 @@ function renderMfgReports() {
   let items = mfgReports;
   if (q) items = items.filter(r => [r.workCenter, r.product, r.orderNumber, r.operator].some(x => (x || '').toLowerCase().includes(q)));
   if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne zmenové výkazy v zvolenom období.</div>'; return; }
-  el.innerHTML = `<table class="prod-table mfg-table"><thead><tr>
-    <th>Dátum</th><th>Zm.</th><th>Pracovisko</th><th>Dobré/NOK</th><th>Prestoj</th><th>OEE (D·V·K)</th><th></th>
+  el.innerHTML = `<table class="prod-table mfg-table sortable"><thead><tr>
+    <th data-sortable>Dátum</th><th data-sortable>Zm.</th><th data-sortable>Pracovisko</th><th data-sortable>Dobré/NOK</th><th data-sortable>Prestoj</th><th data-sortable>OEE (D·V·K)</th><th></th>
     </tr></thead><tbody>${items.map(r => {
     const k = r.kpi || {};
     return `<tr onclick="openSrModal(mfgReports.find(x=>x._id==='${r._id}'))" style="cursor:pointer">
-      <td>${fmtDate(r.date)}</td>
+      <td data-sort="${new Date(r.date).getTime()}">${fmtDate(r.date)}</td>
       <td><span class="mfg-shift">${r.shift}</span></td>
       <td><b>${escHtml(r.workCenter)}</b>${r.product ? `<div class="mfg-sub">${escHtml(r.product)}</div>` : ''}</td>
       <td>${r.goodQty || 0}<span class="mfg-nok"> / ${r.scrapQty || 0}</span></td>
@@ -5305,7 +5428,7 @@ async function saveWc() {
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteWc(id) {
-  if (!id || !confirm('Odstrániť toto pracovisko?')) return;
+  if (!id || !await uiConfirm('Odstrániť toto pracovisko?')) return;
   try { await fetch('/api/manufacturing/workcenters/' + id, { method: 'DELETE' }); closeWcModal(); loadMfg(); }
   catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
@@ -5384,13 +5507,13 @@ async function saveSr() {
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteSr(id) {
-  if (!id || !confirm('Odstrániť tento zmenový výkaz?')) return;
+  if (!id || !await uiConfirm('Odstrániť tento zmenový výkaz?')) return;
   try { await fetch('/api/manufacturing/reports/' + id, { method: 'DELETE' }); closeSrModal(); loadMfg(); }
   catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 
 async function seedMfgData() {
-  if (!confirm('Vygenerovať ukážkové pracoviská a zmenové výkazy? Nahradia sa len predošlé ukážkové dáta.')) return;
+  if (!await uiConfirm('Vygenerovať ukážkové pracoviská a zmenové výkazy? Nahradia sa len predošlé ukážkové dáta.')) return;
   try {
     const r = await fetch('/api/admin/seed-manufacturing', { method: 'POST' });
     const d = await r.json();
@@ -5522,8 +5645,9 @@ function openRtModal(r = null) {
   document.getElementById('rtDeleteBtn').style.display = e ? '' : 'none';
   renderRtOps();
   document.getElementById('rtModal').classList.remove('hidden');
+  modalSnapshot('rtModal');
 }
-function closeRtModal() { document.getElementById('rtModal').classList.add('hidden'); }
+function closeRtModal() { modalGuardClose('rtModal'); }
 function rtCoeff() { return Number(document.getElementById('rtCoeff').value) || 1.1; }
 
 function renderRtOps() {
@@ -5581,17 +5705,17 @@ async function saveRt() {
     const r = await fetch(id ? '/api/manufacturing/routings/' + id : '/api/manufacturing/routings', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!r.ok) { const d = await r.json().catch(() => ({})); alert('Chyba: ' + (d.error || r.status)); return; }
     const saved = await r.json(); mfgRtSelectedId = saved._id || mfgRtSelectedId;
-    closeRtModal(); loadRoutings();
+    modalSnapshot('rtModal'); closeRtModal(); loadRoutings();
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteRt(id) {
-  if (!id || !confirm('Odstrániť tento technologický postup?')) return;
-  try { await fetch('/api/manufacturing/routings/' + id, { method: 'DELETE' }); mfgRtSelectedId = null; closeRtModal(); loadRoutings(); }
+  if (!id || !await uiConfirm('Odstrániť tento technologický postup?')) return;
+  try { await fetch('/api/manufacturing/routings/' + id, { method: 'DELETE' }); mfgRtSelectedId = null; modalSnapshot('rtModal'); closeRtModal(); loadRoutings(); }
   catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 
 async function seedRoutingsData() {
-  if (!confirm('Načítať ukážkový technologický postup (DBFOS senzor — 20 normovaných operácií)?')) return;
+  if (!await uiConfirm('Načítať ukážkový technologický postup (DBFOS senzor — 20 normovaných operácií)?')) return;
   try {
     const r = await fetch('/api/admin/seed-routings', { method: 'POST' });
     const d = await r.json();
@@ -5677,15 +5801,15 @@ function renderMfgShipped() {
     el.innerHTML = `<div class="proc-empty" style="margin:6px 0">${mfgOrders.some(o => o.stage === 'shipped') ? 'Nič nevyhovuje hľadaniu.' : 'Žiadne expedované zákazky.'}</div>`;
     return;
   }
-  el.innerHTML = `<div class="rt-ops-table-wrap"><table class="prod-table rt-view mfg-ship-table"><thead><tr>
-    <th>Zákazka</th><th>Objednávka</th><th>Produkt</th><th>Zákazník</th><th>Množstvo</th><th>Termín</th>
+  el.innerHTML = `<div class="rt-ops-table-wrap"><table class="prod-table rt-view mfg-ship-table sortable"><thead><tr>
+    <th data-sortable>Zákazka</th><th data-sortable>Objednávka</th><th data-sortable>Produkt</th><th data-sortable>Zákazník</th><th data-sortable>Množstvo</th><th data-sortable>Termín</th>
     </tr></thead><tbody>${items.map(o => `<tr>
       <td class="rt-code">${escHtml(o.number || '—')}</td>
       <td>${escHtml(o.salesOrder || '—')}</td>
       <td>${escHtml(o.product || '')}</td>
       <td>${escHtml(o.customer || '—')}</td>
-      <td class="rt-num">${o.qtyPlanned || 0} ${escHtml(o.unit || 'ks')}</td>
-      <td>${o.due ? fmtDate(o.due) : '—'}</td>
+      <td class="rt-num" data-sort="${o.qtyPlanned || 0}">${o.qtyPlanned || 0} ${escHtml(o.unit || 'ks')}</td>
+      <td data-sort="${o.due ? new Date(o.due).getTime() : 0}">${o.due ? fmtDate(o.due) : '—'}</td>
     </tr>`).join('')}</tbody></table></div>`;
 }
 
@@ -6203,7 +6327,7 @@ async function saveUser() {
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteUser(id) {
-  if (!id || !confirm('Naozaj odstrániť používateľa?')) return;
+  if (!id || !await uiConfirm('Naozaj odstrániť používateľa?')) return;
   try {
     const r = await fetch('/api/users/' + id, { method: 'DELETE' });
     if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
@@ -6306,7 +6430,7 @@ async function saveInterrogator() {
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteInterrogator(id) {
-  if (!id || !confirm('Naozaj odstrániť tento interrogátor z evidencie?')) return;
+  if (!id || !await uiConfirm('Naozaj odstrániť tento interrogátor z evidencie?')) return;
   try { await fetch('/api/interrogators/' + id, { method: 'DELETE' }); closeInterrogatorModal(); loadInterrogators(); } catch { alert('Chyba'); }
 }
 
@@ -6389,7 +6513,7 @@ async function saveOwner() {
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteOwner(id) {
-  if (!id || !confirm('Odstrániť záznam vlastníctva?')) return;
+  if (!id || !await uiConfirm('Odstrániť záznam vlastníctva?')) return;
   try { await fetch('/api/owners/' + id, { method: 'DELETE' }); closeOwnerModal(); loadOwners(); } catch { alert('Chyba'); }
 }
 
@@ -6539,7 +6663,7 @@ async function saveDatasheet() {
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteDatasheet(id) {
-  if (!id || !confirm('Naozaj odstrániť datasheet?')) return;
+  if (!id || !await uiConfirm('Naozaj odstrániť datasheet?')) return;
   try { await fetch('/api/datasheets/' + id, { method: 'DELETE' }); closeDatasheetModal(); loadDatasheets(); } catch { alert('Chyba'); }
 }
 
@@ -6863,7 +6987,7 @@ async function loadSalesAnalytics() {
 }
 
 async function seedSalesData() {
-  if (!confirm('Vygenerovať ukážkové predajné dáta za 12 mesiacov? Nahradia sa len predošlé ukážkové dáta.')) return;
+  if (!await uiConfirm('Vygenerovať ukážkové predajné dáta za 12 mesiacov? Nahradia sa len predošlé ukážkové dáta.')) return;
   try {
     const r = await fetch('/api/admin/seed-sales', { method: 'POST' });
     const d = await r.json();
@@ -6912,7 +7036,7 @@ async function answerQuestion(id, current) {
   } catch { alert('Chyba'); }
 }
 async function deleteQuestion(id) {
-  if (!confirm('Odstrániť otázku?')) return;
+  if (!await uiConfirm('Odstrániť otázku?')) return;
   try { await fetch('/api/questions/' + id, { method: 'DELETE' }); renderMgmtQuestions(); } catch { alert('Chyba'); }
 }
 
@@ -7091,7 +7215,7 @@ async function saveContact() {
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteContact(id) {
-  if (!id || !confirm('Naozaj odstrániť kontakt? (emaily ostanú ako nezaradené)')) return;
+  if (!id || !await uiConfirm('Naozaj odstrániť kontakt? (emaily ostanú ako nezaradené)')) return;
   try { await fetch('/api/crm/contacts/' + id, { method: 'DELETE' }); closeContactModal(); crmSelected = null; loadCrm(); } catch { alert('Chyba'); }
 }
 
@@ -7131,7 +7255,7 @@ async function saveCrmEmail() {
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
 }
 async function deleteCrmEmail(id) {
-  if (!id || !confirm('Odstrániť email?')) return;
+  if (!id || !await uiConfirm('Odstrániť email?')) return;
   try { await fetch('/api/crm/emails/' + id, { method: 'DELETE' }); closeCrmEmailModal(); await loadCrmEmails(); renderCrmEmails(); } catch { alert('Chyba'); }
 }
 
