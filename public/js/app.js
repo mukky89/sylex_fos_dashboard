@@ -2037,6 +2037,10 @@ let calYear  = new Date().getFullYear();
 let calMonth = new Date().getMonth(); // 0-11
 let calEvents = [];
 let calExternal = [];   // udalosti z napojených ICS feedov (Outlook) — len na čítanie
+let calView = 'month';  // 'month' | 'week' | 'day'
+let calRef  = new Date(); // referenčný dátum (kotva pohľadu)
+let calPersonFilter = ''; // filter podľa osoby / zdroja
+let calZoom = 46;         // px / hodina v týždennom a dennom pohľade
 
 // Date -> 'YYYY-MM-DD' (local components)
 function calYmd(d) {
@@ -2046,11 +2050,23 @@ function calYmd(d) {
   return `${y}-${m}-${day}`;
 }
 
+// Rozsah [from,to] pre aktuálny pohľad
+function calRange() {
+  if (calView === 'week') {
+    const offset = (calRef.getDay() + 6) % 7;
+    const mon = new Date(calRef.getFullYear(), calRef.getMonth(), calRef.getDate() - offset);
+    return [mon, new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6)];
+  }
+  if (calView === 'day') return [new Date(calRef.getFullYear(), calRef.getMonth(), calRef.getDate()),
+                                  new Date(calRef.getFullYear(), calRef.getMonth(), calRef.getDate())];
+  // month (s presahom susedných mesiacov)
+  return [new Date(calRef.getFullYear(), calRef.getMonth() - 1, 1),
+          new Date(calRef.getFullYear(), calRef.getMonth() + 2, 0)];
+}
+
 async function loadCalendar() {
-  // Range covers the visible grid (incl. spillover days from adjacent months)
-  const first = new Date(calYear, calMonth, 1);
-  const from  = new Date(calYear, calMonth - 1, 1);
-  const to    = new Date(calYear, calMonth + 2, 0);
+  calYear = calRef.getFullYear(); calMonth = calRef.getMonth();
+  const [from, to] = calRange();
   try {
     const [ev, ext] = await Promise.all([
       fetch(`/api/calendar?from=${calYmd(from)}&to=${calYmd(to)}`).then(r => r.json()),
@@ -2066,7 +2082,7 @@ async function loadCalendar() {
 function calBuildDayMap() {
   const map = {};
   const add = (key, ev) => { (map[key] = map[key] || []).push(ev); };
-  calEvents.concat(calExternal).forEach(ev => {
+  calEvents.concat(calExternal).filter(calVisible).forEach(ev => {
     const startKey = String(ev.date).slice(0, 10);
     const endKey   = ev.endDate ? String(ev.endDate).slice(0, 10) : startKey;
     let cur = new Date(startKey + 'T12:00:00');
@@ -2079,59 +2095,129 @@ function calBuildDayMap() {
   return map;
 }
 
-function renderCalendar() {
-  const grid = document.getElementById('calGrid');
-  const label = document.getElementById('calMonthLabel');
-  if (!grid) return;
-  if (label) label.textContent = `${CAL_MONTHS[calMonth]} ${calYear}`;
+// ── pomocné ──
+function calVisible(ev) { return !calPersonFilter || (ev.external ? ev.source : ev.person) === calPersonFilter; }
+function calIsMultiDay(ev) { return ev.endDate && String(ev.endDate).slice(0, 10) !== String(ev.date).slice(0, 10); }
+function parseHM(s) { const m = String(s || '').match(/^(\d{1,2}):(\d{2})/); return m ? (+m[1] * 60 + +m[2]) : null; }
+function calWeekDays() {
+  const offset = (calRef.getDay() + 6) % 7;
+  const mon = new Date(calRef.getFullYear(), calRef.getMonth(), calRef.getDate() - offset);
+  return Array.from({ length: 7 }, (_, i) => new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i));
+}
+function calEvChipHtml(ev) {
+  const t = ev.allDay ? '' : (ev.time ? `<span class="cal-ev-time">${escHtml(ev.time)}</span> ` : '');
+  if (ev.external) {
+    const idx = calExternal.indexOf(ev);
+    return `<div class="cal-ev cal-ev-ext" style="--ev-color:${escHtml(ev.color || '#7c3aed')}" data-ext="${idx}" title="${escHtml(ev.title)} · ${escHtml(ev.source || 'Outlook')} (len na čítanie)">📅 ${t}${escHtml(ev.title)}</div>`;
+  }
+  const who = ev.person ? ` · ${escHtml(ev.person)}` : '';
+  return `<div class="cal-ev" style="--ev-color:${escHtml(ev.color || '#00d4ff')}" data-id="${ev._id}" title="${escHtml(ev.title)}${who}">${t}${escHtml(ev.title)}${who}</div>`;
+}
+function calAttachEvClicks(root) {
+  root.querySelectorAll('.cal-ev').forEach(el => el.onclick = (e) => {
+    e.stopPropagation();
+    if (el.classList.contains('cal-ev-ext')) { const ev = calExternal[+el.dataset.ext]; if (ev) showExternalEvent(ev); return; }
+    const ev = calEvents.find(x => x._id === el.dataset.id); if (ev) openEventModal(ev);
+  });
+}
+function calFillPersonFilter() {
+  const sel = document.getElementById('calPerson'); if (!sel) return;
+  const persons = [...new Set(calEvents.map(e => (e.person || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'sk'));
+  const sources = [...new Set(calExternal.map(e => (e.source || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'sk'));
+  let html = '<option value="">👥 Všetci</option>';
+  if (persons.length) html += '<optgroup label="Osoby">' + persons.map(p => `<option value="${escHtml(p)}"${p === calPersonFilter ? ' selected' : ''}>${escHtml(p)}</option>`).join('') + '</optgroup>';
+  if (sources.length) html += '<optgroup label="Zdroje">' + sources.map(s => `<option value="${escHtml(s)}"${s === calPersonFilter ? ' selected' : ''}>📅 ${escHtml(s)}</option>`).join('') + '</optgroup>';
+  sel.innerHTML = html; sel.value = calPersonFilter;
+}
 
+function renderCalendar() {
+  const vp = document.getElementById('calViewport'); if (!vp) return;
+  document.querySelectorAll('[data-calview]').forEach(b => b.classList.toggle('active', b.dataset.calview === calView));
+  document.getElementById('calZoomCtl')?.classList.toggle('hidden', calView === 'month');
+  calFillPersonFilter();
+  if (calView === 'month') renderCalMonth(vp);
+  else renderCalTimeGrid(vp, calView === 'week' ? calWeekDays() : [new Date(calRef)]);
+}
+
+function renderCalMonth(vp) {
+  document.getElementById('calMonthLabel').textContent = `${CAL_MONTHS[calMonth]} ${calYear}`;
   const dayMap = calBuildDayMap();
   const todayKey = calYmd(new Date());
-
-  const firstOfMonth = new Date(calYear, calMonth, 1);
-  const offset = (firstOfMonth.getDay() + 6) % 7; // Monday-first
+  const offset = (new Date(calYear, calMonth, 1).getDay() + 6) % 7;
   const gridStart = new Date(calYear, calMonth, 1 - offset);
-
-  grid.innerHTML = '';
+  let cells = '';
   for (let i = 0; i < 42; i++) {
     const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
     const key = calYmd(d);
     const inMonth = d.getMonth() === calMonth;
-    const isWeekend = (d.getDay() === 0 || d.getDay() === 6);
-
-    const cell = document.createElement('div');
-    cell.className = 'cal-cell'
-      + (inMonth ? '' : ' cal-cell-out')
-      + (key === todayKey ? ' cal-cell-today' : '')
-      + (isWeekend ? ' cal-cell-weekend' : '');
-    cell.onclick = (e) => { if (e.target === cell || e.target.classList.contains('cal-cell-events')) openEventModal(null, key); };
-
-    const events = (dayMap[key] || []);
-    const evHtml = events.map(ev => {
-      const t = ev.allDay ? '' : (ev.time ? `<span class="cal-ev-time">${escHtml(ev.time)}</span> ` : '');
-      if (ev.external) {
-        const idx = calExternal.indexOf(ev);
-        return `<div class="cal-ev cal-ev-ext" style="--ev-color:${escHtml(ev.color || '#7c3aed')}" data-ext="${idx}" title="${escHtml(ev.title)} · ${escHtml(ev.source || 'Outlook')} (len na čítanie)">📅 ${t}${escHtml(ev.title)}</div>`;
-      }
-      const who = ev.person ? ` · ${escHtml(ev.person)}` : '';
-      return `<div class="cal-ev" style="--ev-color:${escHtml(ev.color || '#00d4ff')}" data-id="${ev._id}" title="${escHtml(ev.title)}${who}">${t}${escHtml(ev.title)}${who}</div>`;
-    }).join('');
-
-    cell.innerHTML = `
-      <div class="cal-cell-num">${d.getDate()}</div>
-      <div class="cal-cell-events">${evHtml}</div>`;
-    grid.appendChild(cell);
+    const we = (d.getDay() === 0 || d.getDay() === 6);
+    const evs = dayMap[key] || [];
+    const shown = evs.slice(0, 4);
+    const more = evs.length - shown.length;
+    cells += `<div class="cal-cell${inMonth ? '' : ' cal-cell-out'}${key === todayKey ? ' cal-cell-today' : ''}${we ? ' cal-cell-weekend' : ''}" data-day="${key}">
+      <div class="cal-cell-num" data-open-day="${key}" title="Otvoriť deň">${d.getDate()}</div>
+      <div class="cal-cell-events">${shown.map(calEvChipHtml).join('')}${more > 0 ? `<div class="cal-more" data-open-day="${key}">+${more} ďalšie</div>` : ''}</div>
+    </div>`;
   }
+  vp.innerHTML = `<div class="cal-weekdays"><div>Po</div><div>Ut</div><div>St</div><div>Št</div><div>Pi</div><div class="cal-weekend">So</div><div class="cal-weekend">Ne</div></div><div class="cal-grid">${cells}</div>`;
+  vp.querySelectorAll('[data-open-day]').forEach(el => el.onclick = (e) => { e.stopPropagation(); calOpenDay(el.dataset.openDay); });
+  vp.querySelectorAll('.cal-cell').forEach(cell => cell.onclick = (e) => { if (e.target === cell || e.target.classList.contains('cal-cell-events')) openEventModal(null, cell.dataset.day); });
+  calAttachEvClicks(vp);
+}
 
-  // Attach click handlers to events (edit)
-  grid.querySelectorAll('.cal-ev').forEach(el => {
-    el.onclick = (e) => {
-      e.stopPropagation();
-      if (el.classList.contains('cal-ev-ext')) { const ev = calExternal[+el.dataset.ext]; if (ev) showExternalEvent(ev); return; }
-      const ev = calEvents.find(x => x._id === el.dataset.id);
-      if (ev) openEventModal(ev);
-    };
+function calOpenDay(key) { const [y, m, da] = key.split('-').map(Number); calRef = new Date(y, m - 1, da); setCalView('day'); }
+
+// Rozvrhnutie prekrývajúcich sa udalostí do stĺpcov (lanes)
+function calEvEndMin(ev, s) { const e = parseHM(ev.endTime); return (e && e > s) ? Math.min(1440, e) : Math.min(1440, s + 60); }
+function calLayoutLanes(evs) {
+  const items = evs.map(ev => { const s = parseHM(ev.time) ?? 0; return { ev, s, e: calEvEndMin(ev, s) }; }).sort((a, b) => a.s - b.s || a.e - b.e);
+  let cluster = [], cEnd = -1;
+  const flush = () => { const lanes = []; cluster.forEach(it => { let l = lanes.findIndex(end => it.s >= end); if (l === -1) { l = lanes.length; lanes.push(it.e); } else lanes[l] = it.e; it.lane = l; }); const cols = lanes.length; cluster.forEach(it => it.cols = cols); };
+  items.forEach(it => { if (cluster.length && it.s >= cEnd) { flush(); cluster = []; cEnd = -1; } cluster.push(it); cEnd = Math.max(cEnd, it.e); });
+  if (cluster.length) flush();
+  return items;
+}
+
+function renderCalTimeGrid(vp, days) {
+  const lbl = document.getElementById('calMonthLabel');
+  if (calView === 'day') lbl.textContent = days[0].toLocaleDateString('sk-SK', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  else { const a = days[0], b = days[6]; lbl.textContent = `${a.getDate()}.${a.getMonth() + 1}. – ${b.getDate()}.${b.getMonth() + 1}. ${b.getFullYear()}`; }
+  const dayMap = calBuildDayMap();
+  const todayKey = calYmd(new Date());
+  const hourH = calZoom, HOURS = 24;
+  const WD = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
+
+  let head = '<div class="ctg-corner"></div>';
+  let allday = '<div class="ctg-corner ctg-allday-lbl">celý deň</div>';
+  let cols = '';
+  days.forEach(d => {
+    const key = calYmd(d), we = (d.getDay() === 0 || d.getDay() === 6), isToday = key === todayKey;
+    head += `<div class="ctg-dayhdr${isToday ? ' ctg-today' : ''}${we ? ' ctg-we' : ''}" data-open-day="${key}"><span class="ctg-dow">${WD[(d.getDay() + 6) % 7]}</span> <span class="ctg-dnum">${d.getDate()}.${d.getMonth() + 1}.</span></div>`;
+    const dayEvs = dayMap[key] || [];
+    allday += `<div class="ctg-allday-cell${we ? ' ctg-we' : ''}" data-newday="${key}">${dayEvs.filter(ev => ev.allDay || calIsMultiDay(ev)).map(calEvChipHtml).join('')}</div>`;
+    let lines = ''; for (let h = 0; h < HOURS; h++) lines += `<div class="ctg-line" style="top:${h * hourH}px"></div>`;
+    const laid = calLayoutLanes(dayEvs.filter(ev => !ev.allDay && !calIsMultiDay(ev) && ev.time));
+    const evhtml = laid.map(it => {
+      const top = it.s / 60 * hourH, height = Math.max(15, (it.e - it.s) / 60 * hourH - 2);
+      const w = 100 / it.cols, left = it.lane * w, ev = it.ev;
+      const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span> ${escHtml(ev.title)}`;
+      const cls = ev.external ? 'cal-ev cal-ev-ext ctg-ev' : 'cal-ev ctg-ev';
+      const ds = ev.external ? `data-ext="${calExternal.indexOf(ev)}"` : `data-id="${ev._id}"`;
+      return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ev.external ? '#7c3aed' : '#00d4ff'))};top:${top}px;height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${escHtml(ev.title)}">${inner}</div>`;
+    }).join('');
+    cols += `<div class="ctg-daycol${we ? ' ctg-we' : ''}${isToday ? ' ctg-today' : ''}" data-newday="${key}" style="height:${HOURS * hourH}px">${lines}${evhtml}</div>`;
   });
+  let gutter = ''; for (let h = 0; h < HOURS; h++) gutter += `<div class="ctg-hour" style="height:${hourH}px"><span>${String(h).padStart(2, '0')}:00</span></div>`;
+
+  vp.innerHTML = `<div class="ctg ctg-${calView}" style="--ctg-days:${days.length}">
+    <div class="ctg-head">${head}</div>
+    <div class="ctg-allday">${allday}</div>
+    <div class="ctg-body"><div class="ctg-gutter">${gutter}</div><div class="ctg-cols">${cols}</div></div>
+  </div>`;
+  calAttachEvClicks(vp);
+  vp.querySelectorAll('[data-open-day]').forEach(el => el.onclick = () => calOpenDay(el.dataset.openDay));
+  vp.querySelectorAll('[data-newday]').forEach(el => el.onclick = (e) => { if (e.target === el) openEventModal(null, el.dataset.newday); });
+  const body = vp.querySelector('.ctg-body'); if (body) body.scrollTop = Math.max(0, 7 * hourH - 8);
 }
 
 // Read-only zobrazenie externej (Outlook) udalosti
@@ -2199,19 +2285,16 @@ function exportCalendarExcel() {
   window.location.href = '/api/calendar/export.xlsx';
 }
 
-function calPrevMonth() {
-  calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
+function setCalView(v) { calView = v; loadCalendar(); }
+function calNav(dir) {
+  if (calView === 'month') calRef = new Date(calRef.getFullYear(), calRef.getMonth() + dir, 1);
+  else if (calView === 'week') calRef = new Date(calRef.getFullYear(), calRef.getMonth(), calRef.getDate() + 7 * dir);
+  else calRef = new Date(calRef.getFullYear(), calRef.getMonth(), calRef.getDate() + dir);
   loadCalendar();
 }
-function calNextMonth() {
-  calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
-  loadCalendar();
-}
-function calGoToday() {
-  const now = new Date();
-  calYear = now.getFullYear(); calMonth = now.getMonth();
-  loadCalendar();
-}
+function calGoToday() { calRef = new Date(); loadCalendar(); }
+function setCalPerson(v) { calPersonFilter = v; renderCalendar(); }
+function calZoomBy(d) { calZoom = Math.max(28, Math.min(96, calZoom + d * 12)); renderCalendar(); }
 
 // ── Event modal ─────────────────────────────────────────────────────────────
 function openEventModal(event = null, prefillDate = null) {
@@ -4356,6 +4439,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.39.0', date: '11. 6. 2026', tag: 'feat', items: [
+    'Kalendár má pohľady Mesiac / Týždeň / Deň s časovou mriežkou a tlačidlami zoom (± výška hodiny).',
+    'Filter podľa osoby a zdroja (Outlook) — zobrazí len vybrané udalosti.',
+    'Rozbalenie dňa — klik na číslo dňa alebo „+N ďalšie" otvorí denný pohľad; prekrývajúce sa udalosti sa rozložia vedľa seba.',
+  ] },
   { v: '1.38.0', date: '11. 6. 2026', tag: 'feat', items: [
     'Napojenie Outlook kalendára — cez tlačidlo „🔗 Outlook" vložíš publikovaný ICS odkaz a tvoje Outlook udalosti sa zobrazia v kalendári (len na čítanie, prerušovaný okraj).',
     'Podpora opakovaných udalostí a správny prepočet času (Európa/Bratislava); test pripojenia feedu.',
