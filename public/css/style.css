@@ -3982,3 +3982,12 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .wiki-crumbs a:hover { text-decoration: underline; }
 .wiki-crumbs .crumb-sep { opacity: 0.4; }
 .wiki-crumbs .crumb-cur { color: var(--text); font-weight: 600; }
+
+/* Zoskupenie úloh podľa projektu + zákazníka */
+.task-group { margin-bottom: 18px; }
+.task-group-hdr { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 4px 8px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 9px; }
+.task-group-name { font-weight: 700; font-size: 0.9rem; color: #e8f0fb; }
+.task-group-count { font-size: 0.72rem; color: #94a3b8; font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
+.task-group-body { display: flex; flex-direction: column; gap: 8px; }
+.task-grip-off { opacity: 0.22; cursor: default; }
+#taskGroupBtn.hidden { display: none; }
