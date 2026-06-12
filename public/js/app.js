@@ -725,6 +725,7 @@ async function handleHash(hash) {
   if (!hash || hash === 'home') { _activatePage('home'); loadHomeKB(); return; }
   if (hash === 'sensors') { _activatePage('sensors'); loadThermoData(); loadSensorChart(); return; }
   if (hash === 'fbg')     { _activatePage('fbg'); return; }
+  if (hash === 'bb')      { _activatePage('bb'); loadBb(); return; }
   if (hash === 'calendar') { _activatePage('calendar'); loadCalendar(); return; }
   if (hash === 'procedures') { _activatePage('procedures'); loadProcedures(); return; }
   if (hash === 'guides')  { _activatePage('guides');  loadGuides(); return; }
@@ -775,6 +776,7 @@ function showPage(name) {
   if (name === 'mgmt')    loadManagement();
   if (name === 'admin')   switchAdminTab('links');
   if (name === 'changelog') renderChangelog();
+  if (name === 'bb')      loadBb();
 }
 
 // ==============================
@@ -4439,6 +4441,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.40.0', date: '11. 6. 2026', tag: 'feat', items: [
+    'Nový modul Backbone — interaktívny editor optickej topológie (interrogátor · splittre · káble · senzory) s animovaným tokom svetla po vláknach.',
+    'Ťahanie uzlov myšou, pridávanie a prepájanie uzlov, úprava káblov (počet vlákien @ dĺžka), auto-rozloženie, export PNG, ukladanie.',
+    'Ukážková topológia CB OA77 / CB OA79 podľa reálnej schémy.',
+  ] },
   { v: '1.39.0', date: '11. 6. 2026', tag: 'feat', items: [
     'Kalendár má pohľady Mesiac / Týždeň / Deň s časovou mriežkou a tlačidlami zoom (± výška hodiny).',
     'Filter podľa osoby a zdroja (Outlook) — zobrazí len vybrané udalosti.',
@@ -7472,6 +7479,209 @@ async function saveCrmEmail() {
 async function deleteCrmEmail(id) {
   if (!id || !await uiConfirm('Odstrániť email?')) return;
   try { await fetch('/api/crm/emails/' + id, { method: 'DELETE' }); closeCrmEmailModal(); await loadCrmEmails(); renderCrmEmails(); } catch { alert('Chyba'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  BACKBONE EDITOR — optická topológia (interrogátor · splitter · káble · senzory)
+// ══════════════════════════════════════════════════════════════════════════════
+let bbList = [], bbDoc = null, bbSel = null, bbConnect = null, bbAnim = true, bbDrag = null, bbRenderReq = false;
+const BB_H = 40;
+const BB_TYPE_LABEL = { interrogator: 'Interrogátor', splitter: 'Splitter', patch: 'Prepojovacia', sensors: 'Senzory' };
+
+function bbNodeW(n) { return Math.max(n.type === 'interrogator' ? 150 : 120, (n.label || '').length * 7.4 + 26); }
+function bbNode(id) { return bbDoc && bbDoc.nodes.find(n => n.nid === id); }
+function bbUid(p) { return p + Math.random().toString(36).slice(2, 8); }
+
+async function loadBb() {
+  bbInitEvents();
+  try { bbList = await fetch('/api/backbones').then(r => r.json()); if (!Array.isArray(bbList)) bbList = []; } catch { bbList = []; }
+  const sel = document.getElementById('bbSelect');
+  if (sel) sel.innerHTML = bbList.map(b => `<option value="${b._id}">${escHtml(b.name)}</option>`).join('') || '<option value="">— žiadna topológia —</option>';
+  if (bbList.length) { const keep = bbDoc && bbList.find(b => b._id === bbDoc._id); await bbLoadOne((keep || bbList[0])._id); }
+  else { bbDoc = null; bbRender(); bbPanelRender(); }
+}
+async function bbLoadOne(id) {
+  if (!id) return;
+  try { bbDoc = await fetch('/api/backbones/' + id).then(r => r.json()); } catch { return; }
+  const sel = document.getElementById('bbSelect'); if (sel) sel.value = id;
+  bbSel = null; bbConnect = null; bbRender(); bbPanelRender();
+}
+async function bbNew() {
+  try {
+    const doc = await fetch('/api/backbones', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Nový backbone', nodes: [{ nid: bbUid('n'), type: 'interrogator', label: 'Interrogátor', x: 60, y: 80 }], links: [] }) }).then(r => r.json());
+    await loadBb(); await bbLoadOne(doc._id); toast('Nová topológia vytvorená.', 'success');
+  } catch (e) { toast('Chyba: ' + e.message, 'error'); }
+}
+async function seedBackboneData() {
+  if (!await uiConfirm('Načítať ukážkovú topológiu (CB OA77 / CB OA79)?')) return;
+  try {
+    const r = await fetch('/api/admin/seed-backbones', { method: 'POST' }); const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    bbDoc = null; await loadBb(); toast('Ukážka načítaná.', 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+
+// ── kreslenie ──
+function bbLinkPath(l) {
+  const a = bbNode(l.from), b = bbNode(l.to); if (!a || !b) return '';
+  const x1 = a.x + bbNodeW(a), y1 = a.y + BB_H / 2, x2 = b.x, y2 = b.y + BB_H / 2;
+  const mx = Math.max(x1 + 14, (x1 + x2) / 2);
+  return `M${x1},${y1} L${mx},${y1} L${mx},${y2} L${x2},${y2}`;
+}
+function bbRender() {
+  const svg = document.getElementById('bbSvg'); if (!svg) return;
+  if (!bbDoc) { svg.innerHTML = '<text x="40" y="60" class="bb-empty-txt">Žiadna topológia — klikni na „🎲 Ukážka" alebo „+ Nová".</text>'; svg.setAttribute('width', 600); svg.setAttribute('height', 200); svg.setAttribute('viewBox', '0 0 600 200'); return; }
+  let maxX = 400, maxY = 240;
+  bbDoc.nodes.forEach(n => { maxX = Math.max(maxX, n.x + bbNodeW(n) + 220); maxY = Math.max(maxY, n.y + BB_H + 50); });
+  svg.setAttribute('width', maxX); svg.setAttribute('height', maxY); svg.setAttribute('viewBox', `0 0 ${maxX} ${maxY}`);
+  let links = '', flows = '', labels = '';
+  bbDoc.links.forEach(l => {
+    const d = bbLinkPath(l); if (!d) return;
+    const sel = bbSel && bbSel.kind === 'link' && bbSel.id === l.lid;
+    links += `<path class="bb-link${sel ? ' sel' : ''}" data-lid="${l.lid}" d="${d}"/>`;
+    flows += `<path class="bb-flow" d="${d}"/>`;
+    const txt = l.label || (l.length > 0 ? `${l.fibers} f @ ${l.length}m` : '');
+    if (txt) { const a = bbNode(l.from), b = bbNode(l.to); const mx = Math.max(a.x + bbNodeW(a) + 14, (a.x + bbNodeW(a) + b.x) / 2); const my = (a.y + b.y) / 2 + BB_H / 2 - 6; labels += `<text class="bb-link-lbl" x="${mx}" y="${my}" text-anchor="middle">${escHtml(txt)}</text>`; }
+  });
+  let nodes = '';
+  bbDoc.nodes.forEach(n => {
+    const w = bbNodeW(n), sel = bbSel && bbSel.kind === 'node' && bbSel.id === n.nid, conn = bbConnect === n.nid;
+    nodes += `<g class="bb-node bb-${n.type}${sel ? ' sel' : ''}${conn ? ' conn' : ''}" data-nid="${n.nid}" transform="translate(${n.x},${n.y})">
+      <rect width="${w}" height="${BB_H}" rx="7"/>
+      <text x="${w / 2}" y="${BB_H / 2 + 1}" text-anchor="middle" dominant-baseline="central">${escHtml(n.label || '(uzol)')}</text>
+    </g>`;
+  });
+  svg.innerHTML = `<g>${links}</g><g class="bb-flows">${flows}</g><g>${labels}</g><g>${nodes}</g>`;
+}
+function bbScheduleRender() { if (bbRenderReq) return; bbRenderReq = true; requestAnimationFrame(() => { bbRenderReq = false; bbRender(); }); }
+
+// ── interakcia ──
+function bbInitEvents() {
+  const svg = document.getElementById('bbSvg'); if (!svg || svg._bbInit) return; svg._bbInit = true;
+  svg.addEventListener('pointerdown', bbPointerDown);
+  window.addEventListener('pointermove', bbPointerMove);
+  window.addEventListener('pointerup', bbPointerUp);
+}
+function bbClientToSvg(e) { const svg = document.getElementById('bbSvg'); const r = svg.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+function bbPointerDown(e) {
+  if (!bbDoc) return;
+  const ng = e.target.closest('.bb-node');
+  if (ng) { const n = bbNode(ng.dataset.nid); if (!n) return; const p = bbClientToSvg(e); bbDrag = { nid: n.nid, dx: p.x - n.x, dy: p.y - n.y, moved: false, sx: e.clientX, sy: e.clientY }; document.getElementById('bbCanvasWrap')?.classList.add('bb-dragging'); return; }
+  const lk = e.target.closest('.bb-link');
+  if (lk) { bbSelect('link', lk.dataset.lid); return; }
+  bbSelect(null);
+}
+function bbPointerMove(e) {
+  if (!bbDrag) return;
+  const p = bbClientToSvg(e), n = bbNode(bbDrag.nid); if (!n) return;
+  n.x = Math.max(0, Math.round(p.x - bbDrag.dx)); n.y = Math.max(0, Math.round(p.y - bbDrag.dy));
+  if (Math.abs(e.clientX - bbDrag.sx) + Math.abs(e.clientY - bbDrag.sy) > 3) bbDrag.moved = true;
+  bbScheduleRender();
+}
+function bbPointerUp() {
+  document.getElementById('bbCanvasWrap')?.classList.remove('bb-dragging');
+  if (!bbDrag) return;
+  if (!bbDrag.moved) {
+    if (bbConnect && bbConnect !== bbDrag.nid) { bbCreateLink(bbConnect, bbDrag.nid); bbConnect = null; }
+    else bbSelect('node', bbDrag.nid);
+  }
+  bbDrag = null; bbRender();
+}
+function bbSelect(kind, id) { bbSel = kind ? { kind, id } : null; if (kind !== 'node') bbConnect = null; bbRender(); bbPanelRender(); }
+
+function bbAddNode(type) {
+  if (!bbDoc) { toast('Najprv vytvor alebo načítaj topológiu.', 'warn'); return; }
+  const wrap = document.getElementById('bbCanvasWrap');
+  const x = (wrap?.scrollLeft || 0) + 60, y = (wrap?.scrollTop || 0) + 60;
+  const n = { nid: bbUid('n'), type, label: BB_TYPE_LABEL[type] || 'Uzol', x, y };
+  bbDoc.nodes.push(n); bbSelect('node', n.nid);
+}
+function bbCreateLink(from, to) {
+  if (from === to) return;
+  if (bbDoc.links.some(l => l.from === from && l.to === to)) { toast('Kábel už existuje.', 'warn'); return; }
+  const l = { lid: bbUid('k'), from, to, fibers: 4, length: 5, label: '' };
+  bbDoc.links.push(l); bbSelect('link', l.lid);
+}
+function bbStartConnect() { if (bbSel && bbSel.kind === 'node') { bbConnect = bbSel.id; toast('Klikni na cieľový uzol — vytvorí sa kábel.', 'info'); bbRender(); } }
+function bbUpdateNode(id, field, val) { const n = bbNode(id); if (!n) return; n[field] = field === 'label' ? val : val; bbScheduleRender(); }
+function bbUpdateLink(id, field, val) { const l = bbDoc.links.find(x => x.lid === id); if (!l) return; l[field] = (field === 'fibers' || field === 'length') ? (Number(val) || 0) : val; bbScheduleRender(); }
+function bbDeleteNode(id) { bbDoc.nodes = bbDoc.nodes.filter(n => n.nid !== id); bbDoc.links = bbDoc.links.filter(l => l.from !== id && l.to !== id); bbSelect(null); }
+function bbDeleteLink(id) { bbDoc.links = bbDoc.links.filter(l => l.lid !== id); bbSelect(null); }
+
+function bbPanelRender() {
+  const el = document.getElementById('bbPanel'); if (!el) return;
+  if (!bbDoc) { el.innerHTML = '<div class="bb-panel-empty">Žiadna topológia.</div>'; return; }
+  if (!bbSel) { el.innerHTML = `<div class="bb-panel-hd">Topológia</div>
+    <div class="form-group"><label>Názov</label><input type="text" value="${escHtml(bbDoc.name || '')}" oninput="bbDoc.name=this.value"></div>
+    <div class="bb-panel-stat">${bbDoc.nodes.length} uzlov · ${bbDoc.links.length} káblov</div>
+    <div class="bb-panel-empty">Klikni na uzol alebo kábel pre úpravu.</div>`; return; }
+  if (bbSel.kind === 'node') {
+    const n = bbNode(bbSel.id); if (!n) { el.innerHTML = ''; return; }
+    el.innerHTML = `<div class="bb-panel-hd">Uzol</div>
+      <div class="form-group"><label>Popis</label><input type="text" id="bbNodeLabel" value="${escHtml(n.label || '')}" oninput="bbUpdateNode('${n.nid}','label',this.value)"></div>
+      <div class="form-group"><label>Typ</label><select onchange="bbUpdateNode('${n.nid}','type',this.value);bbRender()">
+        ${Object.keys(BB_TYPE_LABEL).map(t => `<option value="${t}"${n.type === t ? ' selected' : ''}>${BB_TYPE_LABEL[t]}</option>`).join('')}
+      </select></div>
+      <button class="btn-secondary btn-sm bb-panel-btn" onclick="bbStartConnect()">🔗 Prepojiť z tohto uzla →</button>
+      <button class="btn-delete bb-panel-btn" onclick="bbDeleteNode('${n.nid}')">Odstrániť uzol</button>`;
+  } else {
+    const l = bbDoc.links.find(x => x.lid === bbSel.id); if (!l) { el.innerHTML = ''; return; }
+    const a = bbNode(l.from), b = bbNode(l.to);
+    el.innerHTML = `<div class="bb-panel-hd">Kábel</div>
+      <div class="bb-panel-stat">${escHtml(a ? a.label : '?')} → ${escHtml(b ? b.label : '?')}</div>
+      <div class="form-row">
+        <div class="form-group"><label>Vlákna</label><input type="number" min="0" value="${l.fibers}" oninput="bbUpdateLink('${l.lid}','fibers',this.value)"></div>
+        <div class="form-group"><label>Dĺžka (m)</label><input type="number" min="0" value="${l.length}" oninput="bbUpdateLink('${l.lid}','length',this.value)"></div>
+      </div>
+      <div class="form-group"><label>Vlastný popis (voliteľné)</label><input type="text" value="${escHtml(l.label || '')}" placeholder="napr. 4 f @ 5m" oninput="bbUpdateLink('${l.lid}','label',this.value)"></div>
+      <button class="btn-delete bb-panel-btn" onclick="bbDeleteLink('${l.lid}')">Odstrániť kábel</button>`;
+  }
+}
+
+function bbAutoLayout() {
+  if (!bbDoc) return;
+  const incoming = {}; bbDoc.links.forEach(l => incoming[l.to] = (incoming[l.to] || 0) + 1);
+  const children = {}; bbDoc.links.forEach(l => (children[l.from] = children[l.from] || []).push(l.to));
+  const depth = {}; const roots = bbDoc.nodes.filter(n => !incoming[n.nid]);
+  const q = roots.map(n => n.nid); roots.forEach(n => depth[n.nid] = 0);
+  let guard = 0;
+  while (q.length && guard++ < 5000) { const id = q.shift(); (children[id] || []).forEach(c => { if (depth[c] == null || depth[c] < depth[id] + 1) { depth[c] = depth[id] + 1; q.push(c); } }); }
+  const byDepth = {}; bbDoc.nodes.forEach(n => { const d = depth[n.nid] ?? 0; (byDepth[d] = byDepth[d] || []).push(n); });
+  let x = 40;
+  Object.keys(byDepth).map(Number).sort((a, b) => a - b).forEach(d => {
+    const arr = byDepth[d].sort((a, b) => a.y - b.y); let mw = 120;
+    arr.forEach((n, i) => { n.x = x; n.y = i * 58 + 40; mw = Math.max(mw, bbNodeW(n)); });
+    x += mw + 90;
+  });
+  bbRender(); toast('Rozložené.', 'success');
+}
+function bbToggleAnim() {
+  bbAnim = !bbAnim;
+  document.getElementById('bbCanvasWrap')?.classList.toggle('bb-anim', bbAnim);
+  const b = document.getElementById('bbAnimBtn'); if (b) b.textContent = bbAnim ? '⏸ Animácia' : '▶ Animácia';
+}
+async function bbSave() {
+  if (!bbDoc || !bbDoc._id) { toast('Najprv vytvor topológiu.', 'warn'); return; }
+  try {
+    const r = await fetch('/api/backbones/' + bbDoc._id, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: bbDoc.name, nodes: bbDoc.nodes, links: bbDoc.links }) });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    const sel = document.getElementById('bbSelect'); const idx = bbList.findIndex(b => b._id === bbDoc._id); if (idx >= 0) bbList[idx].name = bbDoc.name;
+    if (sel) { const cur = sel.value; sel.innerHTML = bbList.map(b => `<option value="${b._id}">${escHtml(b.name)}</option>`).join(''); sel.value = cur; }
+    toast('Topológia uložená.', 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+function bbExportPng() {
+  const svg = document.getElementById('bbSvg'); if (!svg || !bbDoc) return;
+  const xml = new XMLSerializer().serializeToString(svg);
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas'); c.width = svg.viewBox.baseVal.width; c.height = svg.viewBox.baseVal.height;
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0);
+    const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = (bbDoc.name || 'backbone') + '.png'; a.click();
+  };
+  img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
 }
 
 // Štart: over prihlásenie, potom spusti appku

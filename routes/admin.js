@@ -176,5 +176,13 @@ module.exports = function(sensorCfg) {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  router.post('/seed-backbones', async (req, res) => {
+    try {
+      const { seedBackbones } = require('../scripts/seedBackbones');
+      const result = await seedBackbones();
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   return router;
 };

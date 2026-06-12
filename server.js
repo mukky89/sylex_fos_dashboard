@@ -268,6 +268,7 @@ app.use('/api/equipment', require('./routes/equipment'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/production', require('./routes/production'));
 app.use('/api/manufacturing', require('./routes/manufacturing'));
+app.use('/api/backbones', require('./routes/backbones'));
 app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/projects', require('./routes/projects'));
 app.use('/api/tests', require('./routes/tests'));

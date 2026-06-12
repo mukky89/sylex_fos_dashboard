@@ -4047,3 +4047,58 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .ctg-ev { position: absolute; overflow: hidden; white-space: normal; font-size: 0.7rem; line-height: 1.18; padding: 2px 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 1; }
 .ctg-ev:hover { z-index: 2; }
 .ctg-ev-time { font-weight: 600; color: var(--ev-color); display: block; font-size: 0.64rem; }
+
+/* =============================================================================
+   BACKBONE EDITOR — optická topológia (interrogátor · splitter · káble · senzory)
+   ============================================================================= */
+.bb-inner { max-width: 1400px; margin: 0 auto; padding: 22px 22px 40px; }
+.bb-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.bb-topbar-left, .bb-topbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bb-title { font-family: var(--font-title); font-size: 1.35rem; font-weight: 800; color: var(--text-bright); }
+.bb-topbar #bbSelect { max-width: 220px; }
+.bb-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 10px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; }
+.bb-tool-label { font-size: 0.8rem; color: var(--text-dim); font-weight: 600; }
+.bb-add { font-family: var(--font); font-size: 0.8rem; font-weight: 600; padding: 6px 12px; border-radius: 7px; border: 1px solid; cursor: pointer; color: #fff; }
+.bb-add-interrogator { background: #2f6b22; border-color: #275a1c; }
+.bb-add-splitter { background: #4f9d3a; border-color: #438631; }
+.bb-add-patch { background: #6db33f; border-color: #5d9a35; }
+.bb-add-sensors { background: #fff; color: #2f6b22; border-color: #4f9d3a; }
+.bb-add:hover { filter: brightness(1.06); }
+.bb-hint { font-size: 0.74rem; color: var(--text-xdim); margin-left: auto; }
+
+.bb-editor { display: flex; gap: 14px; align-items: flex-start; }
+.bb-canvas-wrap { flex: 1; min-width: 0; background: #ffffff; border: 1px solid var(--border); border-radius: 12px; overflow: auto; max-height: 72vh; box-shadow: var(--shadow-sm); position: relative; }
+.bb-svg { display: block; }
+.bb-empty-txt { fill: #94a3b8; font-size: 15px; font-family: var(--font); }
+
+/* uzly */
+.bb-node { cursor: grab; }
+.bb-node:active { cursor: grabbing; }
+.bb-node rect { stroke: transparent; stroke-width: 2; transition: filter .12s; }
+.bb-node text { font-family: var(--font); font-size: 14px; font-weight: 600; pointer-events: none; }
+.bb-interrogator rect { fill: #2f6b22; } .bb-interrogator text { fill: #fff; }
+.bb-splitter rect { fill: #4f9d3a; } .bb-splitter text { fill: #fff; }
+.bb-patch rect { fill: #6db33f; } .bb-patch text { fill: #fff; }
+.bb-sensors rect { fill: #ffffff; stroke: #4f9d3a; } .bb-sensors text { fill: #1f2937; font-weight: 500; }
+.bb-node:hover rect { filter: brightness(1.05); }
+.bb-node.sel rect { stroke: #0891b2; stroke-width: 3; }
+.bb-node.conn rect { stroke: #f59e0b; stroke-width: 3; stroke-dasharray: 6 4; }
+
+/* káble */
+.bb-link { fill: none; stroke: #4f9d3a; stroke-width: 2.5; cursor: pointer; }
+.bb-link:hover { stroke: #3f8a2e; stroke-width: 3.5; }
+.bb-link.sel { stroke: #0891b2; stroke-width: 3.5; }
+.bb-link-lbl { fill: #334155; font-family: var(--font); font-size: 13px; }
+.bb-flows { display: none; pointer-events: none; }
+.bb-anim .bb-flows { display: block; }
+.bb-flow { fill: none; stroke: #b6f08a; stroke-width: 2.6; stroke-dasharray: 7 12; animation: bbFlow .8s linear infinite; }
+@keyframes bbFlow { to { stroke-dashoffset: -19; } }
+.bb-dragging .bb-flow { animation: none; }
+
+/* panel */
+.bb-panel { width: 270px; flex-shrink: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px; align-self: stretch; }
+.bb-panel-hd { font-family: var(--font-title); font-weight: 700; font-size: 1rem; color: var(--text-bright); margin-bottom: 10px; }
+.bb-panel-stat { font-size: 0.78rem; color: var(--text-dim); margin-bottom: 10px; }
+.bb-panel-empty { font-size: 0.82rem; color: var(--text-xdim); margin-top: 6px; }
+.bb-panel-btn { width: 100%; margin-top: 8px; }
+@media (max-width: 900px) { .bb-editor { flex-direction: column; } .bb-panel { width: 100%; } }
