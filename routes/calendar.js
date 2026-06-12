@@ -195,14 +195,14 @@ router.get('/external', async (req, res) => {
           const exKey = new Date(sd).toISOString().slice(0, 10);
           if (Object.keys(ex).some(d => new Date(ex[d] || d).toISOString().slice(0, 10) === exKey)) return;
           const endD = dur ? new Date(sd.getTime() + dur) : null;
-          let dateStr, timeStr, endStr;
+          let dateStr, timeStr, endStr, endTimeStr = '';
           if (allDay) {
             dateStr = new Date(sd).toISOString().slice(0, 10);
             endStr  = endD ? new Date(endD.getTime() - 864e5).toISOString().slice(0, 10) : null;  // ICS all-day DTEND je exkluzívny
             timeStr = '';
           } else {
             const sp = localParts(sd); dateStr = sp.ymd; timeStr = sp.hm;
-            endStr  = endD ? localParts(endD).ymd : null;
+            if (endD) { const ep = localParts(endD); endStr = ep.ymd; endTimeStr = ep.hm; } else endStr = null;
           }
           out.push({
             external: true, source: f.label || 'Outlook', color: f.color || '#7c3aed', type: 'outlook',
@@ -211,6 +211,7 @@ router.get('/external', async (req, res) => {
             endDate: endStr && endStr !== dateStr ? endStr : null,
             allDay,
             time: timeStr,
+            endTime: endTimeStr,
             note: [ev.location, (ev.description || '').replace(/\s+/g, ' ').trim()].filter(Boolean).join(' · ').slice(0, 300)
           });
         });

@@ -4008,3 +4008,42 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .ics-feed-label { flex: 1; font-size: 0.85rem; color: var(--text); word-break: break-word; }
 .ics-feed-del { background: none; border: none; color: var(--text-xdim); cursor: pointer; padding: 2px 6px; border-radius: 6px; font-size: 0.85rem; }
 .ics-feed-del:hover { color: var(--danger); background: rgba(239,68,68,0.1); }
+
+/* =============================================================================
+   KALENDÁR — pohľady Týždeň/Deň (časová mriežka), filter, zoom, rozbalenie
+   ============================================================================= */
+.cal-toolbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cal-toolbar-right #calPerson { max-width: 210px; }
+.cal-zoom { display: flex; gap: 3px; }
+.cal-zoom.hidden { display: none; }
+.cal-zoom .cal-nav-btn { width: 30px; height: 30px; font-size: 1.05rem; }
+.cal-cell-num[data-open-day] { cursor: pointer; }
+.cal-cell-num[data-open-day]:hover { color: #67e8f9; }
+.cal-more { font-size: 0.64rem; color: #94a3b8; cursor: pointer; padding: 1px 4px; border-radius: 4px; }
+.cal-more:hover { color: #67e8f9; background: rgba(255,255,255,0.05); }
+
+/* Časová mriežka (týždeň / deň) */
+.ctg { --gutter: 54px; }
+.ctg-head, .ctg-allday { display: grid; grid-template-columns: var(--gutter) repeat(var(--ctg-days), minmax(0,1fr)); }
+.ctg-head { border-bottom: 1px solid rgba(255,255,255,0.1); }
+.ctg-dayhdr { padding: 8px 4px; text-align: center; font-size: 0.78rem; color: #cbd5e1; border-left: 1px solid rgba(255,255,255,0.07); cursor: pointer; white-space: nowrap; }
+.ctg-dayhdr:hover { background: rgba(255,255,255,0.04); }
+.ctg-dayhdr.ctg-today { color: #67e8f9; }
+.ctg-dayhdr.ctg-we { background: rgba(255,255,255,0.02); }
+.ctg-dow { font-weight: 700; } .ctg-dnum { color: #94a3b8; font-size: 0.72rem; }
+.ctg-allday { border-bottom: 1px solid rgba(255,255,255,0.12); min-height: 26px; max-height: 110px; overflow-y: auto; }
+.ctg-allday-lbl { font-size: 0.6rem; color: #64748b; padding: 5px 5px 0; text-align: right; }
+.ctg-allday-cell { border-left: 1px solid rgba(255,255,255,0.07); padding: 3px; display: flex; flex-direction: column; gap: 2px; min-height: 24px; }
+.ctg-allday-cell.ctg-we { background: rgba(255,255,255,0.02); }
+.ctg-body { display: flex; max-height: 60vh; overflow-y: auto; position: relative; scrollbar-width: thin; }
+.ctg-gutter { width: var(--gutter); flex-shrink: 0; }
+.ctg-hour { position: relative; border-top: 1px solid rgba(255,255,255,0.06); }
+.ctg-hour span { position: absolute; top: -7px; right: 6px; font-size: 0.62rem; color: #64748b; }
+.ctg-cols { flex: 1; display: grid; grid-template-columns: repeat(var(--ctg-days), minmax(0,1fr)); }
+.ctg-daycol { position: relative; border-left: 1px solid rgba(255,255,255,0.08); }
+.ctg-daycol.ctg-we { background: rgba(255,255,255,0.015); }
+.ctg-daycol.ctg-today { background: rgba(0,212,255,0.035); }
+.ctg-line { position: absolute; left: 0; right: 0; border-top: 1px solid rgba(255,255,255,0.05); pointer-events: none; }
+.ctg-ev { position: absolute; overflow: hidden; white-space: normal; font-size: 0.7rem; line-height: 1.18; padding: 2px 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 1; }
+.ctg-ev:hover { z-index: 2; }
+.ctg-ev-time { font-weight: 600; color: var(--ev-color); display: block; font-size: 0.64rem; }

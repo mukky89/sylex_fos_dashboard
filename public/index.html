@@ -645,20 +645,26 @@
 
       <div class="cal-toolbar">
         <div class="cal-nav">
-          <button class="cal-nav-btn" onclick="calPrevMonth()" title="Predchádzajúci mesiac">‹</button>
+          <button class="cal-nav-btn" onclick="calNav(-1)" title="Späť">‹</button>
           <button class="cal-today-btn" onclick="calGoToday()">Dnes</button>
-          <button class="cal-nav-btn" onclick="calNextMonth()" title="Nasledujúci mesiac">›</button>
+          <button class="cal-nav-btn" onclick="calNav(1)" title="Ďalej">›</button>
         </div>
         <div class="cal-month-label" id="calMonthLabel">—</div>
+        <div class="cal-toolbar-right">
+          <select id="calPerson" class="util-select" onchange="setCalPerson(this.value)" title="Filter podľa osoby / zdroja"><option value="">👥 Všetci</option></select>
+          <div class="cal-zoom hidden" id="calZoomCtl">
+            <button class="cal-nav-btn" onclick="calZoomBy(-1)" title="Oddialiť">−</button>
+            <button class="cal-nav-btn" onclick="calZoomBy(1)" title="Priblížiť">+</button>
+          </div>
+          <div class="tasks-viewtoggle">
+            <button class="tasks-view active" data-calview="month" onclick="setCalView('month')">Mesiac</button>
+            <button class="tasks-view" data-calview="week" onclick="setCalView('week')">Týždeň</button>
+            <button class="tasks-view" data-calview="day" onclick="setCalView('day')">Deň</button>
+          </div>
+        </div>
       </div>
 
-      <div class="cal-grid-wrap">
-        <div class="cal-weekdays">
-          <div>Po</div><div>Ut</div><div>St</div><div>Št</div><div>Pi</div>
-          <div class="cal-weekend">So</div><div class="cal-weekend">Ne</div>
-        </div>
-        <div class="cal-grid" id="calGrid"></div>
-      </div>
+      <div class="cal-grid-wrap" id="calViewport"></div>
 
     </div>
   </main>
