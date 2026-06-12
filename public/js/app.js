@@ -4286,6 +4286,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.37.0', date: '11. 6. 2026', tag: 'feat', items: [
+    'Úlohy sa zoskupujú podľa projektu a zákazníka (prepínač „🗂️ Zoskupiť").',
+    'Projekt a zákazník majú combobox — ponúknu sa skôr použité názvy (datalist), nový názov sa zapamätá.',
+    'Podúlohy (checklist) sa zobrazujú priamo v úlohách na stránke — v zozname, v zoskupení aj na kanban kartách.',
+  ] },
   { v: '1.36.0', date: '10. 6. 2026', tag: 'feat', items: [
     'Toast notifikácie — namiesto vyskakovacích okien sa hlášky zobrazujú elegantne v rohu (zelená/červená podľa typu).',
     'Štýlované potvrdzovacie dialógy (Esc = zrušiť, Enter = potvrdiť) namiesto sivých okien prehliadača.',
@@ -4392,6 +4397,7 @@ function updateDateTime() {
 let tasksData = [];
 let taskFilter = 'open';
 let taskView = 'list';
+let taskGroup = true;   // zoskupiť podľa projektu + zákazníka
 let _dragTaskId = null;
 let tkSubtasks = [];   // pracovná kópia podúloh v modale
 const TK_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#ef4444' } };
@@ -4403,6 +4409,18 @@ async function loadTasks() {
   if (sub && CURRENT_USER) sub.textContent = 'Osobný zoznam úloh — ' + (CURRENT_USER.name || CURRENT_USER.username);
   try { tasksData = await fetch('/api/tasks').then(r => r.json()); if (!Array.isArray(tasksData)) tasksData = []; }
   catch { tasksData = []; }
+  fillTaskDatalists();
+  renderTasks();
+}
+// Combobox: ponuka projektov a zákazníkov z uložených úloh
+function fillTaskDatalists() {
+  const uniq = (key) => [...new Set(tasksData.map(t => (t[key] || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'sk'));
+  const pl = document.getElementById('tkProjectList'); if (pl) pl.innerHTML = uniq('project').map(x => `<option value="${escHtml(x)}">`).join('');
+  const cl = document.getElementById('tkCustomerList'); if (cl) cl.innerHTML = uniq('customer').map(x => `<option value="${escHtml(x)}">`).join('');
+}
+function toggleTaskGroup() {
+  taskGroup = !taskGroup;
+  document.getElementById('taskGroupBtn')?.classList.toggle('active', taskGroup);
   renderTasks();
 }
 function setTaskFilter(f) {
@@ -4414,6 +4432,7 @@ function setTaskView(v) {
   taskView = v;
   document.querySelectorAll('.tasks-view').forEach(b => b.classList.toggle('active', b.dataset.tview === v));
   document.querySelector('.tasks-filters')?.classList.toggle('hidden', v === 'kanban');
+  document.getElementById('taskGroupBtn')?.classList.toggle('hidden', v === 'kanban');
   document.querySelector('.tasks-inner')?.classList.toggle('tasks-wide', v === 'kanban');
   renderTasks();
 }
@@ -4467,25 +4486,11 @@ function renderTasks() {
   }
 }
 
-function renderTaskList() {
-  const el = document.getElementById('tasksList'); if (!el) return;
-  let items = tasksData.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
-  if (taskFilter === 'open') items = items.filter(t => !t.done);
-  else if (taskFilter === 'done') items = items.filter(t => t.done);
-  if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne úlohy v tomto filtri.</div>'; return; }
-  el.innerHTML = '';
-  items.forEach(t => {
-    const prio = TK_PRIO[t.priority] || TK_PRIO.normal;
-    const od = taskOverdue(t);
-    const row = document.createElement('div');
-    row.className = 'task-row' + (t.done ? ' task-done' : '') + (od ? ' task-overdue' : '');
-    row.style.setProperty('--prio', prio.c);
-    row.dataset.tid = t._id;
-    row.draggable = true;
-    row.addEventListener('dragstart', (e) => { _dragTaskId = t._id; row.classList.add('kanban-dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', t._id); } catch (_) {} });
-    row.addEventListener('dragend', () => { _dragTaskId = null; row.classList.remove('kanban-dragging'); });
-    row.innerHTML = `
-      <span class="task-grip" title="Potiahni na zmenu poradia">⠿</span>
+// Vnútro riadka úlohy (zdieľané pre plochý aj zoskupený pohľad)
+function taskRowClass(t) { return 'task-row' + (t.done ? ' task-done' : '') + (taskOverdue(t) ? ' task-overdue' : ''); }
+function taskRowInner(t, withGrip) {
+  return `
+      ${withGrip ? '<span class="task-grip" title="Potiahni na zmenu poradia">⠿</span>' : '<span class="task-grip task-grip-off">•</span>'}
       <button class="task-check" onclick="toggleTask('${t._id}', ${t.done ? 'false' : 'true'})" title="${t.done ? 'Označiť ako nehotové' : 'Označiť ako hotové'}">${t.done ? '✓' : ''}</button>
       <div class="task-body" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
         <div class="task-title">${escHtml(t.title)}</div>
@@ -4497,9 +4502,31 @@ function renderTaskList() {
         ${taskSubInlineHtml(t)}
       </div>
       <button class="admin-icon-btn danger" onclick="deleteTask('${t._id}')" title="Odstrániť">✕</button>`;
+}
+
+function renderTaskList() {
+  const el = document.getElementById('tasksList'); if (!el) return;
+  let items = tasksData.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+  if (taskFilter === 'open') items = items.filter(t => !t.done);
+  else if (taskFilter === 'done') items = items.filter(t => t.done);
+  el.ondragover = null; el.ondrop = null;
+  if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne úlohy v tomto filtri.</div>'; return; }
+
+  if (taskGroup) { renderTaskListGrouped(el, items); return; }
+
+  // plochý pohľad + drag&drop preusporiadanie
+  el.innerHTML = '';
+  items.forEach(t => {
+    const row = document.createElement('div');
+    row.className = taskRowClass(t);
+    row.style.setProperty('--prio', (TK_PRIO[t.priority] || TK_PRIO.normal).c);
+    row.dataset.tid = t._id;
+    row.draggable = true;
+    row.addEventListener('dragstart', (e) => { _dragTaskId = t._id; row.classList.add('kanban-dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', t._id); } catch (_) {} });
+    row.addEventListener('dragend', () => { _dragTaskId = null; row.classList.remove('kanban-dragging'); });
+    row.innerHTML = taskRowInner(t, true);
     el.appendChild(row);
   });
-  // DnD reorder v zozname
   el.ondragover = (e) => {
     if (!_dragTaskId) return; e.preventDefault();
     const after = getTaskDragAfter(el, e.clientY);
@@ -4507,6 +4534,31 @@ function renderTaskList() {
     if (after == null) el.appendChild(drag); else el.insertBefore(drag, after);
   };
   el.ondrop = (e) => { e.preventDefault(); persistTaskOrderFromDom(); };
+}
+
+// Zoskupenie úloh podľa projektu + zákazníka
+function renderTaskListGrouped(el, items) {
+  const groups = {};
+  items.forEach(t => {
+    const p = (t.project || '').trim(), c = (t.customer || '').trim();
+    const key = p + '' + c;
+    (groups[key] = groups[key] || { project: p, customer: c, items: [] }).items.push(t);
+  });
+  const arr = Object.values(groups).sort((a, b) => {
+    const ax = (a.project || a.customer) ? 0 : 1, bx = (b.project || b.customer) ? 0 : 1;
+    if (ax !== bx) return ax - bx;
+    return (a.project || '').localeCompare(b.project || '', 'sk') || (a.customer || '').localeCompare(b.customer || '', 'sk');
+  });
+  el.innerHTML = arr.map(g => {
+    const label = [g.project ? `🗂️ ${escHtml(g.project)}` : '', g.customer ? `🏢 ${escHtml(g.customer)}` : ''].filter(Boolean).join(' · ') || '📋 Bez projektu / zákazníka';
+    const open = g.items.filter(t => !t.done).length;
+    const rows = g.items.sort((a, b) => (a.order || 0) - (b.order || 0))
+      .map(t => `<div class="${taskRowClass(t)}" style="--prio:${(TK_PRIO[t.priority] || TK_PRIO.normal).c}" data-tid="${t._id}">${taskRowInner(t, false)}</div>`).join('');
+    return `<div class="task-group">
+      <div class="task-group-hdr"><span class="task-group-name">${label}</span><span class="task-group-count">${open} / ${g.items.length}</span></div>
+      <div class="task-group-body">${rows}</div>
+    </div>`;
+  }).join('');
 }
 
 function renderTaskKanban() {
@@ -4551,6 +4603,7 @@ function taskKanbanCard(t) {
     ${taskProgressHtml(t)}
     ${taskMetaHtml(t)}
     ${t.note ? `<div class="task-note">📝 ${escHtml(t.note)}</div>` : ''}
+    ${taskSubInlineHtml(t)}
     <div class="kanban-card-actions">
       <span class="task-prio" style="color:${prio.c}">${prio.l}</span>
       <button onclick="deleteTask('${t._id}')" title="Odstrániť">✕</button>

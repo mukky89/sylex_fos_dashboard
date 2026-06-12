@@ -1535,6 +1535,7 @@
           <button class="tasks-filter" data-tfilter="all" onclick="setTaskFilter('all')">Všetky</button>
           <button class="tasks-filter" data-tfilter="done" onclick="setTaskFilter('done')">Hotové</button>
         </div>
+        <button class="tasks-filter active" id="taskGroupBtn" onclick="toggleTaskGroup()" title="Zoskupiť úlohy podľa projektu a zákazníka">🗂️ Zoskupiť</button>
         <div class="tasks-viewtoggle">
           <button class="tasks-view active" data-tview="list" onclick="setTaskView('list')" title="Zoznam">☰ Zoznam</button>
           <button class="tasks-view" data-tview="kanban" onclick="setTaskView('kanban')" title="Kanban">▦ Kanban</button>
@@ -1554,8 +1555,8 @@
         <input type="hidden" id="tkId">
         <div class="form-group"><label>Názov *</label><input type="text" id="tkTitle" placeholder="Čo treba spraviť"></div>
         <div class="form-row">
-          <div class="form-group"><label>Projekt</label><input type="text" id="tkProject" placeholder="napr. FOS senzor X1"></div>
-          <div class="form-group"><label>Zákazník</label><input type="text" id="tkCustomer" placeholder="napr. US CONEC"></div>
+          <div class="form-group"><label>Projekt</label><input type="text" id="tkProject" list="tkProjectList" placeholder="napr. FOS senzor X1" autocomplete="off"><datalist id="tkProjectList"></datalist></div>
+          <div class="form-group"><label>Zákazník</label><input type="text" id="tkCustomer" list="tkCustomerList" placeholder="napr. US CONEC" autocomplete="off"><datalist id="tkCustomerList"></datalist></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Termín</label><input type="date" id="tkDue"></div>
