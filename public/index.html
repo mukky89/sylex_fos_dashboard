@@ -631,6 +631,7 @@
           <p class="cal-sub">Zdieľaný kalendár tímu · zápis manuálne</p>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-secondary" onclick="openIcsModal()" title="Napojiť Outlook / externý kalendár (publikovaný ICS)">🔗 Outlook</button>
           <button class="btn-word" onclick="exportCalendarExcel()" title="Export do Excelu">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             Excel
@@ -727,6 +728,38 @@
         <button class="btn-delete" id="evDeleteBtn" onclick="deleteEvent()" style="display:none">Odstrániť</button>
         <button class="btn-secondary" onclick="closeEventModal()">Zrušiť</button>
         <button class="btn-primary" onclick="saveEvent()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== OUTLOOK / ICS FEED MODAL ===== -->
+  <div id="icsModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeIcsModal()"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header"><h2>🔗 Napojiť Outlook kalendár</h2><button class="modal-close" onclick="closeIcsModal()">✕</button></div>
+      <div class="modal-body">
+        <div class="ics-help">
+          <strong>Ako získať odkaz z Outlooku:</strong>
+          <ol>
+            <li>Outlook na webe → <em>Nastavenia → Kalendár → Zdieľané kalendáre</em></li>
+            <li>V časti <em>Publikovať kalendár</em> vyber kalendár a oprávnenie</li>
+            <li>Klikni <em>Publikovať</em> a skopíruj <strong>ICS</strong> odkaz</li>
+            <li>Vlož ho sem nižšie</li>
+          </ol>
+          <p class="ics-note">Udalosti z Outlooku sa zobrazia v kalendári <strong>len na čítanie</strong> (aktualizácia ~5 min).</p>
+        </div>
+        <div class="form-group"><label>ICS odkaz *</label><input type="text" id="icsUrl" placeholder="https://outlook.office365.com/owa/calendar/.../calendar.ics"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Názov</label><input type="text" id="icsLabel" placeholder="napr. Môj Outlook"></div>
+          <div class="form-group" style="max-width:90px"><label>Farba</label><input type="color" id="icsColor" value="#7c3aed" style="width:100%;height:38px;padding:2px;cursor:pointer"></div>
+        </div>
+        <div id="icsTestMsg" class="ics-test"></div>
+        <div class="ics-feed-list" id="icsFeedList"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="testIcsFeed()">Otestovať</button>
+        <button class="btn-secondary" onclick="closeIcsModal()">Zavrieť</button>
+        <button class="btn-primary" onclick="saveIcsFeed()">+ Pridať</button>
       </div>
     </div>
   </div>

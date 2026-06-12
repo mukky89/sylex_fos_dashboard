@@ -2036,6 +2036,7 @@ const CAL_TYPE_LABELS = {
 let calYear  = new Date().getFullYear();
 let calMonth = new Date().getMonth(); // 0-11
 let calEvents = [];
+let calExternal = [];   // udalosti z napojených ICS feedov (Outlook) — len na čítanie
 
 // Date -> 'YYYY-MM-DD' (local components)
 function calYmd(d) {
@@ -2051,10 +2052,13 @@ async function loadCalendar() {
   const from  = new Date(calYear, calMonth - 1, 1);
   const to    = new Date(calYear, calMonth + 2, 0);
   try {
-    const r = await fetch(`/api/calendar?from=${calYmd(from)}&to=${calYmd(to)}`);
-    calEvents = await r.json();
-    if (!Array.isArray(calEvents)) calEvents = [];
-  } catch { calEvents = []; }
+    const [ev, ext] = await Promise.all([
+      fetch(`/api/calendar?from=${calYmd(from)}&to=${calYmd(to)}`).then(r => r.json()),
+      fetch(`/api/calendar/external?from=${calYmd(from)}&to=${calYmd(to)}`).then(r => r.json()).catch(() => [])
+    ]);
+    calEvents = Array.isArray(ev) ? ev : [];
+    calExternal = Array.isArray(ext) ? ext : [];
+  } catch { calEvents = []; calExternal = []; }
   renderCalendar();
 }
 
@@ -2062,7 +2066,7 @@ async function loadCalendar() {
 function calBuildDayMap() {
   const map = {};
   const add = (key, ev) => { (map[key] = map[key] || []).push(ev); };
-  calEvents.forEach(ev => {
+  calEvents.concat(calExternal).forEach(ev => {
     const startKey = String(ev.date).slice(0, 10);
     const endKey   = ev.endDate ? String(ev.endDate).slice(0, 10) : startKey;
     let cur = new Date(startKey + 'T12:00:00');
@@ -2105,6 +2109,10 @@ function renderCalendar() {
     const events = (dayMap[key] || []);
     const evHtml = events.map(ev => {
       const t = ev.allDay ? '' : (ev.time ? `<span class="cal-ev-time">${escHtml(ev.time)}</span> ` : '');
+      if (ev.external) {
+        const idx = calExternal.indexOf(ev);
+        return `<div class="cal-ev cal-ev-ext" style="--ev-color:${escHtml(ev.color || '#7c3aed')}" data-ext="${idx}" title="${escHtml(ev.title)} · ${escHtml(ev.source || 'Outlook')} (len na čítanie)">📅 ${t}${escHtml(ev.title)}</div>`;
+      }
       const who = ev.person ? ` · ${escHtml(ev.person)}` : '';
       return `<div class="cal-ev" style="--ev-color:${escHtml(ev.color || '#00d4ff')}" data-id="${ev._id}" title="${escHtml(ev.title)}${who}">${t}${escHtml(ev.title)}${who}</div>`;
     }).join('');
@@ -2119,10 +2127,72 @@ function renderCalendar() {
   grid.querySelectorAll('.cal-ev').forEach(el => {
     el.onclick = (e) => {
       e.stopPropagation();
+      if (el.classList.contains('cal-ev-ext')) { const ev = calExternal[+el.dataset.ext]; if (ev) showExternalEvent(ev); return; }
       const ev = calEvents.find(x => x._id === el.dataset.id);
       if (ev) openEventModal(ev);
     };
   });
+}
+
+// Read-only zobrazenie externej (Outlook) udalosti
+function showExternalEvent(ev) {
+  const sameDay = !ev.endDate || String(ev.endDate).slice(0, 10) === String(ev.date).slice(0, 10);
+  const d = fmtDate(ev.date) + (sameDay ? '' : ' – ' + fmtDate(ev.endDate));
+  const when = ev.allDay ? 'celodenná' : (ev.time || '');
+  toast(`📅 ${ev.title}\n${d}${when ? ' · ' + when : ''}${ev.note ? '\n' + ev.note : ''}\nZdroj: ${ev.source || 'Outlook'} · len na čítanie`, 'info', 7000);
+}
+
+// ── Správa ICS feedov (Outlook → dashboard) ──
+function openIcsModal() {
+  document.getElementById('icsUrl').value = '';
+  document.getElementById('icsLabel').value = '';
+  document.getElementById('icsColor').value = '#7c3aed';
+  document.getElementById('icsTestMsg').textContent = '';
+  loadIcsFeeds();
+  document.getElementById('icsModal').classList.remove('hidden');
+}
+function closeIcsModal() { document.getElementById('icsModal').classList.add('hidden'); }
+async function loadIcsFeeds() {
+  let feeds = [];
+  try { feeds = await fetch('/api/calendar/feeds').then(r => r.json()); } catch {}
+  const el = document.getElementById('icsFeedList'); if (!el) return;
+  if (!Array.isArray(feeds) || !feeds.length) { el.innerHTML = '<div class="ics-empty">Zatiaľ žiadny napojený kalendár.</div>'; return; }
+  el.innerHTML = '<div class="ics-feed-title">Napojené kalendáre</div>' + feeds.map(f => `
+    <div class="ics-feed">
+      <span class="ics-feed-dot" style="background:${escHtml(f.color || '#7c3aed')}"></span>
+      <span class="ics-feed-label">${escHtml(f.label || 'Outlook')}</span>
+      <button class="ics-feed-del" onclick="deleteIcsFeed('${f._id}')" title="Odpojiť">✕</button>
+    </div>`).join('');
+}
+async function testIcsFeed() {
+  const url = document.getElementById('icsUrl').value.trim();
+  const msg = document.getElementById('icsTestMsg');
+  if (!url) { msg.textContent = 'Zadaj ICS odkaz.'; msg.className = 'ics-test err'; return; }
+  msg.textContent = 'Testujem…'; msg.className = 'ics-test';
+  try {
+    const r = await fetch('/api/calendar/feeds/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'chyba');
+    msg.textContent = `✓ Funguje — našlo sa ${d.count} udalostí.`; msg.className = 'ics-test ok';
+  } catch (e) { msg.textContent = '✕ ' + e.message; msg.className = 'ics-test err'; }
+}
+async function saveIcsFeed() {
+  const url = document.getElementById('icsUrl').value.trim();
+  if (!url) { toast('Zadaj ICS odkaz.', 'error'); return; }
+  const body = { url, label: document.getElementById('icsLabel').value.trim() || 'Outlook', color: document.getElementById('icsColor').value };
+  try {
+    const r = await fetch('/api/calendar/feeds', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    document.getElementById('icsUrl').value = ''; document.getElementById('icsLabel').value = ''; document.getElementById('icsTestMsg').textContent = '';
+    toast('Kalendár napojený — udalosti sa načítajú.', 'success');
+    await loadIcsFeeds(); loadCalendar();
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+async function deleteIcsFeed(id) {
+  if (!await uiConfirm('Odpojiť tento kalendár?')) return;
+  try { await fetch('/api/calendar/feeds/' + id, { method: 'DELETE' }); await loadIcsFeeds(); loadCalendar(); toast('Odpojené.', 'success'); }
+  catch (e) { toast('Chyba: ' + e.message, 'error'); }
 }
 
 function exportCalendarExcel() {
@@ -4286,6 +4356,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.38.0', date: '11. 6. 2026', tag: 'feat', items: [
+    'Napojenie Outlook kalendára — cez tlačidlo „🔗 Outlook" vložíš publikovaný ICS odkaz a tvoje Outlook udalosti sa zobrazia v kalendári (len na čítanie, prerušovaný okraj).',
+    'Podpora opakovaných udalostí a správny prepočet času (Európa/Bratislava); test pripojenia feedu.',
+  ] },
   { v: '1.37.0', date: '11. 6. 2026', tag: 'feat', items: [
     'Úlohy sa zoskupujú podľa projektu a zákazníka (prepínač „🗂️ Zoskupiť").',
     'Projekt a zákazník majú combobox — ponúknu sa skôr použité názvy (datalist), nový názov sa zapamätá.',

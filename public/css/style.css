@@ -3991,3 +3991,20 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .task-group-body { display: flex; flex-direction: column; gap: 8px; }
 .task-grip-off { opacity: 0.22; cursor: default; }
 #taskGroupBtn.hidden { display: none; }
+
+/* Externé (Outlook) udalosti v kalendári + správa ICS feedov */
+.cal-ev-ext { border-left-style: dashed; font-style: italic; }
+.ics-help { background: var(--accent-light, #e0f2fe); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 0.82rem; color: var(--text); margin-bottom: 14px; }
+.ics-help ol { margin: 6px 0 0 18px; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.ics-help em { color: var(--accent2); font-style: normal; font-weight: 600; }
+.ics-note { margin-top: 8px; color: var(--text-dim); font-size: 0.78rem; }
+.ics-test { font-size: 0.8rem; margin: 6px 0 2px; min-height: 18px; }
+.ics-test.ok { color: var(--success); } .ics-test.err { color: var(--danger); }
+.ics-feed-list { margin-top: 10px; }
+.ics-feed-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 6px; }
+.ics-empty { font-size: 0.8rem; color: var(--text-xdim); }
+.ics-feed { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; }
+.ics-feed-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.ics-feed-label { flex: 1; font-size: 0.85rem; color: var(--text); word-break: break-word; }
+.ics-feed-del { background: none; border: none; color: var(--text-xdim); cursor: pointer; padding: 2px 6px; border-radius: 6px; font-size: 0.85rem; }
+.ics-feed-del:hover { color: var(--danger); background: rgba(239,68,68,0.1); }

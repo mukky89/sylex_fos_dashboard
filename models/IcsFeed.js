@@ -1,0 +1,11 @@
+const mongoose = require('mongoose');
+
+// Externý kalendárový ICS feed (napr. publikovaný Outlook kalendár) — len na čítanie
+const icsFeedSchema = new mongoose.Schema({
+  url:    { type: String, required: true, trim: true },        // publikovaný .ics odkaz
+  label:  { type: String, default: 'Outlook', trim: true },    // názov zdroja
+  color:  { type: String, default: '#7c3aed' },                // farba udalostí
+  active: { type: Boolean, default: true }
+}, { timestamps: true });
+
+module.exports = mongoose.model('IcsFeed', icsFeedSchema);

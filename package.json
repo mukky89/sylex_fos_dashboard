@@ -1,6 +1,6 @@
 {
   "name": "sylex-fos-dashboard",
-  "version": "1.37.0",
+  "version": "1.38.0",
   "description": "Sylex FOS Division Dashboard - Knowledge Base & ERP Links",
   "main": "server.js",
   "scripts": {
@@ -24,6 +24,7 @@
     "mongoose": "^8.0.3",
     "multer": "^1.4.5-lts.1",
     "node-html-parser": "^6.1.13",
+    "node-ical": "^0.26.1",
     "path": "^0.12.7"
   },
   "devDependencies": {
