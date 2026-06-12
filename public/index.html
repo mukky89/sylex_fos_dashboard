@@ -70,6 +70,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h3l2-7 4 14 2-7h3l2 4h2"/></svg>
           <span class="nav-lbl">FBG</span>
         </a>
+        <a class="nav-link" onclick="showPage('bb')" data-page="bb" title="Backbone — optická topológia">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 12h6M13 12l4-5M13 12l4 5"/></svg>
+          <span class="nav-lbl">Backbone</span>
+        </a>
         <a class="nav-link" onclick="showPage('dev')" data-page="dev" title="Vývoj výrobkov">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z"/></svg>
           <span class="nav-lbl">Vývoj</span>
@@ -180,6 +184,10 @@
       <a class="asb-link" data-page="fbg" onclick="showPage('fbg')" title="FBG vizualizácia">
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h3l2-7 4 14 2-7h3l2 4h2"/></svg></span>
         <span class="asb-lbl">FBG</span>
+      </a>
+      <a class="asb-link" data-page="bb" onclick="showPage('bb')" title="Backbone — optická topológia">
+        <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 12h6M13 12l4-5M13 12l4 5"/></svg></span>
+        <span class="asb-lbl">Backbone</span>
       </a>
 
       <div class="asb-group">Výroba</div>
@@ -411,6 +419,40 @@
         </div>
       </div>
       <div id="changelogList" class="changelog-list"></div>
+    </div>
+  </main>
+
+  <!-- ===== BACKBONE EDITOR ===== -->
+  <main id="page-bb" class="page bb-page">
+    <div class="bb-inner">
+      <div class="bb-topbar">
+        <div class="bb-topbar-left">
+          <h1 class="bb-title">🔌 Backbone — optická topológia</h1>
+          <select id="bbSelect" class="util-select" onchange="bbLoadOne(this.value)"></select>
+          <button class="btn-secondary btn-sm" onclick="bbNew()">+ Nová</button>
+        </div>
+        <div class="bb-topbar-right">
+          <button class="btn-secondary btn-sm" onclick="seedBackboneData()" title="Načítať ukážkovú topológiu (OA77/OA79)">🎲 Ukážka</button>
+          <button class="btn-secondary btn-sm" onclick="bbAutoLayout()" title="Automaticky rozložiť">⌗ Rozložiť</button>
+          <button class="btn-secondary btn-sm" id="bbAnimBtn" onclick="bbToggleAnim()">⏸ Animácia</button>
+          <button class="btn-secondary btn-sm" onclick="bbExportPng()" title="Export PNG">⬇ PNG</button>
+          <button class="btn-primary btn-sm" onclick="bbSave()">💾 Uložiť</button>
+        </div>
+      </div>
+      <div class="bb-toolbar">
+        <span class="bb-tool-label">Pridať uzol:</span>
+        <button class="bb-add bb-add-interrogator" onclick="bbAddNode('interrogator')">Interrogátor</button>
+        <button class="bb-add bb-add-splitter" onclick="bbAddNode('splitter')">Splitter</button>
+        <button class="bb-add bb-add-patch" onclick="bbAddNode('patch')">Prepojovacia</button>
+        <button class="bb-add bb-add-sensors" onclick="bbAddNode('sensors')">Senzory</button>
+        <span class="bb-hint">Ťahaj uzly myšou · klik = výber · káble spojíš tlačidlom „Prepojiť"</span>
+      </div>
+      <div class="bb-editor">
+        <div class="bb-canvas-wrap bb-anim" id="bbCanvasWrap">
+          <svg id="bbSvg" class="bb-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+        <div class="bb-panel" id="bbPanel"></div>
+      </div>
     </div>
   </main>
 
