@@ -4496,6 +4496,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.42.1', date: '13. 6. 2026', tag: 'ui', items: [
+    'Dnešný deň v kalendári je zvýraznený celým rámčekom v akcentovej farbe (nielen číslom).',
+  ] },
   { v: '1.42.0', date: '13. 6. 2026', tag: 'feat', items: [
     'Kalendár má textový filter (hľadanie podľa názvu, mena, zdroja).',
     'Každý záznam v kalendári ukazuje, koho je (osoba alebo zdroj kalendára) — dôležité pri viacerých napojených kalendároch.',
