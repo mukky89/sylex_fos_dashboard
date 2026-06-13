@@ -2115,15 +2115,31 @@ function calWeekDays() {
   return Array.from({ length: 7 }, (_, i) => new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i));
 }
 function calEvOwner(ev) { return ev.external ? (ev.source || 'Outlook') : (ev.person || ''); }
+// Zlúči rovnaké udalosti rôznych ľudí/zdrojov (rovnaký názov + dátum + čas) do jednej, so zoznamom vlastníkov
+function calMergeEvents(list) {
+  const groups = new Map();
+  list.forEach(ev => {
+    const key = [String(ev.title || '').trim().toLowerCase(), String(ev.date).slice(0, 10), String(ev.endDate || '').slice(0, 10), ev.time || '', ev.allDay ? 1 : 0].join('|');
+    let m = groups.get(key);
+    if (!m) { m = Object.assign({}, ev); m._ref = ev; m._owners = []; m._count = 0; groups.set(key, m); }
+    m._count++;
+    const own = calEvOwner(ev);
+    if (own && !m._owners.includes(own)) m._owners.push(own);
+  });
+  return [...groups.values()];
+}
 function calEvChipHtml(ev) {
-  const ext = ev.external;
+  const ref = ev._ref || ev;
+  const ext = ref.external;
   const allday = ev.allDay || calIsMultiDay(ev);
   const color = ev.color || (ext ? '#7c3aed' : '#00d4ff');
-  const dataAttr = ext ? `data-ext="${calExternal.indexOf(ev)}"` : `data-id="${ev._id}"`;
-  const cls = `cal-ev ${allday ? 'cal-ev-allday' : 'cal-ev-timed'}${ext ? ' cal-ev-ext' : ''}`;
-  const owner = calEvOwner(ev);
-  const ownerHtml = owner ? `<span class="cal-ev-owner">${ext ? '📅' : '👤'} ${escHtml(owner)}</span>` : '';
-  const tip = escHtml(ev.title) + (owner ? ' · ' + escHtml(owner) : '') + (ext ? ' (len na čítanie)' : '');
+  const dataAttr = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
+  const multi = ev._owners && ev._owners.length > 1;
+  const cls = `cal-ev ${allday ? 'cal-ev-allday' : 'cal-ev-timed'}${ext ? ' cal-ev-ext' : ''}${multi ? ' cal-ev-merged' : ''}`;
+  const owner = (ev._owners && ev._owners.length) ? ev._owners.join(', ') : calEvOwner(ev);
+  const icon = multi ? '👥' : (ext ? '📅' : '👤');
+  const ownerHtml = owner ? `<span class="cal-ev-owner">${icon} ${escHtml(owner)}</span>` : '';
+  const tip = escHtml(ev.title) + (owner ? '\n' + (multi ? 'Spoločné: ' : '') + escHtml(owner) : '') + (ext ? ' (len na čítanie)' : '');
   if (allday) {
     return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-txt">${escHtml(ev.title)}</span>${ownerHtml}</div>`;
   }
@@ -2191,8 +2207,8 @@ function renderCalMonth(vp) {
   const all = calEvents.concat(calExternal).filter(calVisible);
   const evKey = ev => String(ev.date).slice(0, 10);
   const evEndKey = ev => String(ev.endDate || ev.date).slice(0, 10);
-  const spanning = all.filter(ev => ev.allDay || calIsMultiDay(ev));
-  const timed = all.filter(ev => !(ev.allDay || calIsMultiDay(ev)) && ev.time).sort((a, b) => (parseHM(a.time) || 0) - (parseHM(b.time) || 0));
+  const spanning = calMergeEvents(all.filter(ev => ev.allDay || calIsMultiDay(ev)));
+  const timed = calMergeEvents(all.filter(ev => !(ev.allDay || calIsMultiDay(ev)) && ev.time)).sort((a, b) => (parseHM(a.time) || 0) - (parseHM(b.time) || 0));
   const timedByDay = {}; timed.forEach(ev => (timedByDay[evKey(ev)] = timedByDay[evKey(ev)] || []).push(ev));
   const MAXLANES = 4, LANE = 23, NUMH = 32;
 
@@ -2217,12 +2233,13 @@ function renderCalMonth(vp) {
     const laneCount = Math.min(lanes.length, MAXLANES);
 
     const bars = segs.filter(s => s.lane < MAXLANES).map(seg => {
-      const ev = seg.ev, ext = ev.external, color = ev.color || (ext ? '#7c3aed' : '#00d4ff');
+      const ev = seg.ev, ref = ev._ref || ev, ext = ref.external, color = ev.color || (ext ? '#7c3aed' : '#00d4ff');
       const left = seg.startCol / 7 * 100, width = (seg.endCol - seg.startCol + 1) / 7 * 100;
-      const data = ext ? `data-ext="${calExternal.indexOf(ev)}"` : `data-id="${ev._id}"`;
+      const data = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
       const cls = `cal-span${seg.contL ? ' cont-l' : ''}${seg.contR ? ' cont-r' : ''}`;
-      const own = calEvOwner(ev);
-      const ownTxt = own ? ` · ${ext ? '📅' : '👤'} ${escHtml(own)}` : '';
+      const multi = ev._owners && ev._owners.length > 1;
+      const own = (ev._owners && ev._owners.length) ? ev._owners.join(', ') : calEvOwner(ev);
+      const ownTxt = own ? ` · ${multi ? '👥' : (ext ? '📅' : '👤')} ${escHtml(own)}` : '';
       return `<div class="${cls}" ${data} style="--ev-color:${escHtml(color)};left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${seg.lane * LANE}px" title="${escHtml(ev.title)}${own ? ' · ' + escHtml(own) : ''}">${seg.contL ? '◂ ' : ''}${escHtml(ev.title)}${ownTxt}${seg.contR ? ' ▸' : ''}</div>`;
     }).join('');
 
@@ -2280,17 +2297,18 @@ function renderCalTimeGrid(vp, days) {
     head += `<div class="ctg-dayhdr${isToday ? ' ctg-today' : ''}${we ? ' ctg-we' : ''}${hol ? ' ctg-hol' : ''}" data-open-day="${key}" title="${hol ? 'Sviatok: ' + escHtml(hol) : ''}"><span class="ctg-dow">${WD[(d.getDay() + 6) % 7]}</span> <span class="ctg-dnum">${d.getDate()}.${d.getMonth() + 1}.</span></div>`;
     const dayEvs = dayMap[key] || [];
     const holHtml = hol ? `<div class="cal-holiday" title="Štátny sviatok: ${escHtml(hol)}">🇸🇰 ${escHtml(hol)}</div>` : '';
-    allday += `<div class="ctg-allday-cell${we ? ' ctg-we' : ''}" data-newday="${key}">${holHtml}${dayEvs.filter(ev => ev.allDay || calIsMultiDay(ev)).map(calEvChipHtml).join('')}</div>`;
+    allday += `<div class="ctg-allday-cell${we ? ' ctg-we' : ''}" data-newday="${key}">${holHtml}${calMergeEvents(dayEvs.filter(ev => ev.allDay || calIsMultiDay(ev))).map(calEvChipHtml).join('')}</div>`;
     let lines = ''; for (let h = 0; h < HOURS; h++) lines += `<div class="ctg-line" style="top:${h * hourH}px"></div>`;
-    const laid = calLayoutLanes(dayEvs.filter(ev => !ev.allDay && !calIsMultiDay(ev) && ev.time));
+    const laid = calLayoutLanes(calMergeEvents(dayEvs.filter(ev => !ev.allDay && !calIsMultiDay(ev) && ev.time)));
     const evhtml = laid.map(it => {
       const top = it.s / 60 * hourH, height = Math.max(15, (it.e - it.s) / 60 * hourH - 2);
-      const w = 100 / it.cols, left = it.lane * w, ev = it.ev;
-      const _own = calEvOwner(ev);
-      const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span> ${escHtml(ev.title)}${_own ? `<span class="ctg-ev-owner">${ev.external ? '📅' : '👤'} ${escHtml(_own)}</span>` : ''}`;
-      const cls = ev.external ? 'cal-ev cal-ev-ext ctg-ev' : 'cal-ev ctg-ev';
-      const ds = ev.external ? `data-ext="${calExternal.indexOf(ev)}"` : `data-id="${ev._id}"`;
-      return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ev.external ? '#7c3aed' : '#00d4ff'))};top:${top}px;height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${escHtml(ev.title)}">${inner}</div>`;
+      const w = 100 / it.cols, left = it.lane * w, ev = it.ev, ref = ev._ref || ev, ext = ref.external;
+      const multi = ev._owners && ev._owners.length > 1;
+      const _own = (ev._owners && ev._owners.length) ? ev._owners.join(', ') : calEvOwner(ev);
+      const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span> ${escHtml(ev.title)}${_own ? `<span class="ctg-ev-owner">${multi ? '👥' : (ext ? '📅' : '👤')} ${escHtml(_own)}</span>` : ''}`;
+      const cls = ext ? 'cal-ev cal-ev-ext ctg-ev' : 'cal-ev ctg-ev';
+      const ds = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
+      return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ext ? '#7c3aed' : '#00d4ff'))};top:${top}px;height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${escHtml(ev.title)}${_own ? ' · ' + escHtml(_own) : ''}">${inner}</div>`;
     }).join('');
     cols += `<div class="ctg-daycol${we ? ' ctg-we' : ''}${isToday ? ' ctg-today' : ''}" data-newday="${key}" style="height:${HOURS * hourH}px">${lines}${evhtml}</div>`;
   });
@@ -2382,6 +2400,7 @@ function calNav(dir) {
 function calGoToday() { calRef = new Date(); loadCalendar(); }
 function setCalPerson(v) { calPersonFilter = v; renderCalendar(); }
 function setCalText(v) { calTextFilter = v.trim(); renderCalendar(); }
+function calJumpDate(v) { if (!v) return; const [y, m, d] = v.split('-').map(Number); calRef = new Date(y, m - 1, d); setCalView('day'); }
 function calZoomBy(d) { calZoom = Math.max(28, Math.min(96, calZoom + d * 12)); renderCalendar(); }
 
 // ── Event modal ─────────────────────────────────────────────────────────────
@@ -4527,6 +4546,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.44.0', date: '13. 6. 2026', tag: 'feat', items: [
+    'Kalendár prepnutý na tmavý motív.',
+    'Vyhľadávanie podľa dátumu — výberom dátumu kalendár skočí na daný deň.',
+    'Rovnaké udalosti pre rôznych ľudí sa zlúčia do jedného záznamu so zoznamom mien (👥) — prehľadnejšie pri viacerých kalendároch.',
+  ] },
   { v: '1.43.0', date: '13. 6. 2026', tag: 'feat', items: [
     'Kalendár zobrazuje slovenské štátne sviatky (vrátane pohyblivých — Veľký piatok, Veľkonočný pondelok) výrazne červenou.',
   ] },
