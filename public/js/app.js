@@ -2138,7 +2138,7 @@ function calEvChipHtml(ev) {
   const cls = `cal-ev ${allday ? 'cal-ev-allday' : 'cal-ev-timed'}${ext ? ' cal-ev-ext' : ''}${multi ? ' cal-ev-merged' : ''}`;
   const owner = (ev._owners && ev._owners.length) ? ev._owners.join(', ') : calEvOwner(ev);
   const icon = multi ? '👥' : (ext ? '📅' : '👤');
-  const ownerHtml = owner ? `<span class="cal-ev-owner">${icon} ${escHtml(owner)}</span>` : '';
+  const ownerHtml = owner ? `<span class="cal-ev-owner"> · ${icon} ${escHtml(owner)}</span>` : '';
   const tip = escHtml(ev.title) + (owner ? '\n' + (multi ? 'Spoločné: ' : '') + escHtml(owner) : '') + (ext ? ' (len na čítanie)' : '');
   if (allday) {
     return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-txt">${escHtml(ev.title)}</span>${ownerHtml}</div>`;
@@ -2305,7 +2305,7 @@ function renderCalTimeGrid(vp, days) {
       const w = 100 / it.cols, left = it.lane * w, ev = it.ev, ref = ev._ref || ev, ext = ref.external;
       const multi = ev._owners && ev._owners.length > 1;
       const _own = (ev._owners && ev._owners.length) ? ev._owners.join(', ') : calEvOwner(ev);
-      const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span> ${escHtml(ev.title)}${_own ? `<span class="ctg-ev-owner">${multi ? '👥' : (ext ? '📅' : '👤')} ${escHtml(_own)}</span>` : ''}`;
+      const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span> ${escHtml(ev.title)}${_own ? `<span class="ctg-ev-owner"> · ${multi ? '👥' : (ext ? '📅' : '👤')} ${escHtml(_own)}</span>` : ''}`;
       const cls = ext ? 'cal-ev cal-ev-ext ctg-ev' : 'cal-ev ctg-ev';
       const ds = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
       return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ext ? '#7c3aed' : '#00d4ff'))};top:${top}px;height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${escHtml(ev.title)}${_own ? ' · ' + escHtml(_own) : ''}">${inner}</div>`;
@@ -4546,6 +4546,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.44.1', date: '13. 6. 2026', tag: 'ui', items: [
+    'Informácie v zázname kalendára zlúčené do jedného riadku (čas · názov · meno) — kompaktnejšie.',
+  ] },
   { v: '1.44.0', date: '13. 6. 2026', tag: 'feat', items: [
     'Kalendár prepnutý na tmavý motív.',
     'Vyhľadávanie podľa dátumu — výberom dátumu kalendár skočí na daný deň.',
