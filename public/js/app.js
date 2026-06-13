@@ -4481,6 +4481,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.41.1', date: '13. 6. 2026', tag: 'ui', items: [
+    'Názvy udalostí v kalendári sa už neorezávajú — zalomia sa na celý text (bunky sa podľa potreby zväčšia).',
+  ] },
   { v: '1.41.0', date: '13. 6. 2026', tag: 'ui', items: [
     'Kalendár má svetlý (Outlook-like) motív — čistejší a čitateľnejší.',
     'Viacdňové udalosti sa zobrazujú ako súvislý farebný pruh cez bunky (nie samostatne na každom dni), s naznačením pokračovania ◂ ▸.',
