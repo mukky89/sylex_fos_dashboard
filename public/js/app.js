@@ -2156,6 +2156,33 @@ function renderCalendar() {
   else renderCalTimeGrid(vp, calView === 'week' ? calWeekDays() : [new Date(calRef)]);
 }
 
+// ── Slovenské štátne sviatky a dni pracovného pokoja ──
+const _holCache = {};
+function calEaster(y) { // Meeus/Jones/Butcher
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4,
+    f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30,
+    i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451),
+    mo = Math.floor((h + l - 7 * m + 114) / 31), da = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(y, mo - 1, da);
+}
+function skHolidays(y) {
+  if (_holCache[y]) return _holCache[y];
+  const map = {};
+  const set = (mo, d, name) => { map[`${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`] = name; };
+  set(1, 1, 'Deň vzniku SR'); set(1, 6, 'Zjavenie Pána (Traja králi)');
+  set(5, 1, 'Sviatok práce'); set(5, 8, 'Deň víťazstva nad fašizmom');
+  set(7, 5, 'Sv. Cyril a Metod'); set(8, 29, 'Výročie SNP');
+  set(9, 1, 'Deň Ústavy SR'); set(9, 15, 'Sedembolestná Panna Mária');
+  set(11, 1, 'Sviatok všetkých svätých'); set(11, 17, 'Deň boja za slobodu a demokraciu');
+  set(12, 24, 'Štedrý deň'); set(12, 25, 'Prvý sviatok vianočný'); set(12, 26, 'Druhý sviatok vianočný');
+  const e = calEaster(y);
+  const gf = new Date(e); gf.setDate(e.getDate() - 2);
+  const em = new Date(e); em.setDate(e.getDate() + 1);
+  map[calYmd(gf)] = 'Veľký piatok'; map[calYmd(em)] = 'Veľkonočný pondelok';
+  _holCache[y] = map; return map;
+}
+function calHolidayName(key) { return skHolidays(+key.slice(0, 4))[key] || ''; }
+
 function renderCalMonth(vp) {
   document.getElementById('calMonthLabel').textContent = `${CAL_MONTHS[calMonth]} ${calYear}`;
   const todayKey = calYmd(new Date());
@@ -2207,9 +2234,11 @@ function renderCalMonth(vp) {
       const timedShown = dayTimed.slice(0, budget);
       const hiddenSpan = segs.filter(s => c >= s.startCol && c <= s.endCol && s.lane >= MAXLANES).length;
       const more = (dayTimed.length - timedShown.length) + hiddenSpan;
-      cellsHtml += `<div class="cal-cell${inMonth ? '' : ' cal-cell-out'}${key === todayKey ? ' cal-cell-today' : ''}${we ? ' cal-cell-weekend' : ''}" data-day="${key}">
+      const hol = calHolidayName(key);
+      const holHtml = hol ? `<div class="cal-holiday" title="Štátny sviatok: ${escHtml(hol)}">🇸🇰 ${escHtml(hol)}</div>` : '';
+      cellsHtml += `<div class="cal-cell${inMonth ? '' : ' cal-cell-out'}${key === todayKey ? ' cal-cell-today' : ''}${we ? ' cal-cell-weekend' : ''}${hol ? ' cal-cell-holiday' : ''}" data-day="${key}">
         <div class="cal-cell-num" data-open-day="${key}">${d.getDate()}</div>
-        <div class="cal-cell-events" style="padding-top:${laneCount * LANE}px">${timedShown.map(calEvChipHtml).join('')}${more > 0 ? `<div class="cal-more" data-open-day="${key}">+${more} ďalšie</div>` : ''}</div>
+        <div class="cal-cell-events" style="padding-top:${laneCount * LANE}px">${holHtml}${timedShown.map(calEvChipHtml).join('')}${more > 0 ? `<div class="cal-more" data-open-day="${key}">+${more} ďalšie</div>` : ''}</div>
       </div>`;
     }
     weeksHtml += `<div class="cal-week"><div class="cal-week-cells">${cellsHtml}</div><div class="cal-week-spans" style="top:${NUMH}px">${bars}</div></div>`;
@@ -2247,9 +2276,11 @@ function renderCalTimeGrid(vp, days) {
   let cols = '';
   days.forEach(d => {
     const key = calYmd(d), we = (d.getDay() === 0 || d.getDay() === 6), isToday = key === todayKey;
-    head += `<div class="ctg-dayhdr${isToday ? ' ctg-today' : ''}${we ? ' ctg-we' : ''}" data-open-day="${key}"><span class="ctg-dow">${WD[(d.getDay() + 6) % 7]}</span> <span class="ctg-dnum">${d.getDate()}.${d.getMonth() + 1}.</span></div>`;
+    const hol = calHolidayName(key);
+    head += `<div class="ctg-dayhdr${isToday ? ' ctg-today' : ''}${we ? ' ctg-we' : ''}${hol ? ' ctg-hol' : ''}" data-open-day="${key}" title="${hol ? 'Sviatok: ' + escHtml(hol) : ''}"><span class="ctg-dow">${WD[(d.getDay() + 6) % 7]}</span> <span class="ctg-dnum">${d.getDate()}.${d.getMonth() + 1}.</span></div>`;
     const dayEvs = dayMap[key] || [];
-    allday += `<div class="ctg-allday-cell${we ? ' ctg-we' : ''}" data-newday="${key}">${dayEvs.filter(ev => ev.allDay || calIsMultiDay(ev)).map(calEvChipHtml).join('')}</div>`;
+    const holHtml = hol ? `<div class="cal-holiday" title="Štátny sviatok: ${escHtml(hol)}">🇸🇰 ${escHtml(hol)}</div>` : '';
+    allday += `<div class="ctg-allday-cell${we ? ' ctg-we' : ''}" data-newday="${key}">${holHtml}${dayEvs.filter(ev => ev.allDay || calIsMultiDay(ev)).map(calEvChipHtml).join('')}</div>`;
     let lines = ''; for (let h = 0; h < HOURS; h++) lines += `<div class="ctg-line" style="top:${h * hourH}px"></div>`;
     const laid = calLayoutLanes(dayEvs.filter(ev => !ev.allDay && !calIsMultiDay(ev) && ev.time));
     const evhtml = laid.map(it => {
@@ -4496,6 +4527,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.43.0', date: '13. 6. 2026', tag: 'feat', items: [
+    'Kalendár zobrazuje slovenské štátne sviatky (vrátane pohyblivých — Veľký piatok, Veľkonočný pondelok) výrazne červenou.',
+  ] },
   { v: '1.42.1', date: '13. 6. 2026', tag: 'ui', items: [
     'Dnešný deň v kalendári je zvýraznený celým rámčekom v akcentovej farbe (nielen číslom).',
   ] },

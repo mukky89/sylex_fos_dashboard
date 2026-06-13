@@ -4201,3 +4201,7 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .calendar-page .cal-cell-today { background: rgba(8,145,178,0.09); box-shadow: inset 0 0 0 2px var(--accent); position: relative; z-index: 1; }
 .calendar-page .ctg-daycol.ctg-today { background: rgba(8,145,178,0.08); box-shadow: inset 0 0 0 2px var(--accent); }
 .calendar-page .ctg-dayhdr.ctg-today { background: rgba(8,145,178,0.1); box-shadow: inset 0 -2px 0 var(--accent); font-weight: 700; }
+
+/* Štátne sviatky v kalendári */
+.cal-holiday { font-size: 0.72rem; font-weight: 700; color: #dc2626; padding: 2px 6px; border-radius: 5px; background: rgba(220,38,38,0.1); white-space: normal; overflow-wrap: anywhere; }
+.calendar-page .ctg-dayhdr.ctg-hol .ctg-dow { color: #dc2626; }
