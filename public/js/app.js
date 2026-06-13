@@ -2120,9 +2120,9 @@ function calEvChipHtml(ev) {
   return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-dot"></span>${t}<span class="cal-ev-txt">${escHtml(ev.title)}</span></div>`;
 }
 function calAttachEvClicks(root) {
-  root.querySelectorAll('.cal-ev').forEach(el => el.onclick = (e) => {
+  root.querySelectorAll('.cal-ev, .cal-span').forEach(el => el.onclick = (e) => {
     e.stopPropagation();
-    if (el.classList.contains('cal-ev-ext')) { const ev = calExternal[+el.dataset.ext]; if (ev) showExternalEvent(ev); return; }
+    if (el.dataset.ext != null) { const ev = calExternal[+el.dataset.ext]; if (ev) showExternalEvent(ev); return; }
     const ev = calEvents.find(x => x._id === el.dataset.id); if (ev) openEventModal(ev);
   });
 }
@@ -2147,25 +2147,61 @@ function renderCalendar() {
 
 function renderCalMonth(vp) {
   document.getElementById('calMonthLabel').textContent = `${CAL_MONTHS[calMonth]} ${calYear}`;
-  const dayMap = calBuildDayMap();
   const todayKey = calYmd(new Date());
   const offset = (new Date(calYear, calMonth, 1).getDay() + 6) % 7;
   const gridStart = new Date(calYear, calMonth, 1 - offset);
-  let cells = '';
-  for (let i = 0; i < 42; i++) {
-    const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
-    const key = calYmd(d);
-    const inMonth = d.getMonth() === calMonth;
-    const we = (d.getDay() === 0 || d.getDay() === 6);
-    const evs = dayMap[key] || [];
-    const shown = evs.slice(0, 5);
-    const more = evs.length - shown.length;
-    cells += `<div class="cal-cell${inMonth ? '' : ' cal-cell-out'}${key === todayKey ? ' cal-cell-today' : ''}${we ? ' cal-cell-weekend' : ''}" data-day="${key}">
-      <div class="cal-cell-num" data-open-day="${key}" title="Otvoriť deň">${d.getDate()}</div>
-      <div class="cal-cell-events">${shown.map(calEvChipHtml).join('')}${more > 0 ? `<div class="cal-more" data-open-day="${key}">+${more} ďalšie</div>` : ''}</div>
-    </div>`;
+  const all = calEvents.concat(calExternal).filter(calVisible);
+  const evKey = ev => String(ev.date).slice(0, 10);
+  const evEndKey = ev => String(ev.endDate || ev.date).slice(0, 10);
+  const spanning = all.filter(ev => ev.allDay || calIsMultiDay(ev));
+  const timed = all.filter(ev => !(ev.allDay || calIsMultiDay(ev)) && ev.time).sort((a, b) => (parseHM(a.time) || 0) - (parseHM(b.time) || 0));
+  const timedByDay = {}; timed.forEach(ev => (timedByDay[evKey(ev)] = timedByDay[evKey(ev)] || []).push(ev));
+  const MAXLANES = 4, LANE = 23, NUMH = 32;
+
+  let weeksHtml = '';
+  for (let w = 0; w < 6; w++) {
+    const wkKeys = [], wkDates = [];
+    for (let c = 0; c < 7; c++) { const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + w * 7 + c); wkKeys.push(calYmd(d)); wkDates.push(d); }
+    const wStart = wkKeys[0], wEnd = wkKeys[6];
+    // spanning segmenty pre tento týždeň
+    const segs = [];
+    spanning.forEach(ev => {
+      const s = evKey(ev), e = evEndKey(ev);
+      if (e < wStart || s > wEnd) return;
+      let startCol = wkKeys.indexOf(s), endCol = wkKeys.indexOf(e);
+      const contL = startCol === -1; if (contL) startCol = 0;
+      const contR = endCol === -1; if (contR) endCol = 6;
+      segs.push({ ev, startCol, endCol, contL, contR });
+    });
+    segs.sort((a, b) => a.startCol - b.startCol || (b.endCol - b.startCol) - (a.endCol - a.startCol));
+    const lanes = [];
+    segs.forEach(seg => { let L = 0; for (; ;) { const occ = lanes[L] || []; if (occ.every(r => seg.endCol < r.s || seg.startCol > r.e)) { (lanes[L] = lanes[L] || []).push({ s: seg.startCol, e: seg.endCol }); seg.lane = L; break; } L++; } });
+    const laneCount = Math.min(lanes.length, MAXLANES);
+
+    const bars = segs.filter(s => s.lane < MAXLANES).map(seg => {
+      const ev = seg.ev, ext = ev.external, color = ev.color || (ext ? '#7c3aed' : '#00d4ff');
+      const left = seg.startCol / 7 * 100, width = (seg.endCol - seg.startCol + 1) / 7 * 100;
+      const data = ext ? `data-ext="${calExternal.indexOf(ev)}"` : `data-id="${ev._id}"`;
+      const cls = `cal-span${seg.contL ? ' cont-l' : ''}${seg.contR ? ' cont-r' : ''}`;
+      return `<div class="${cls}" ${data} style="--ev-color:${escHtml(color)};left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${seg.lane * LANE}px" title="${escHtml(ev.title)}">${seg.contL ? '◂ ' : ''}${escHtml(ev.title)}${seg.contR ? ' ▸' : ''}</div>`;
+    }).join('');
+
+    let cellsHtml = '';
+    for (let c = 0; c < 7; c++) {
+      const d = wkDates[c], key = wkKeys[c], inMonth = d.getMonth() === calMonth, we = (d.getDay() === 0 || d.getDay() === 6);
+      const dayTimed = timedByDay[key] || [];
+      const budget = Math.max(1, 5 - laneCount);
+      const timedShown = dayTimed.slice(0, budget);
+      const hiddenSpan = segs.filter(s => c >= s.startCol && c <= s.endCol && s.lane >= MAXLANES).length;
+      const more = (dayTimed.length - timedShown.length) + hiddenSpan;
+      cellsHtml += `<div class="cal-cell${inMonth ? '' : ' cal-cell-out'}${key === todayKey ? ' cal-cell-today' : ''}${we ? ' cal-cell-weekend' : ''}" data-day="${key}">
+        <div class="cal-cell-num" data-open-day="${key}">${d.getDate()}</div>
+        <div class="cal-cell-events" style="padding-top:${laneCount * LANE}px">${timedShown.map(calEvChipHtml).join('')}${more > 0 ? `<div class="cal-more" data-open-day="${key}">+${more} ďalšie</div>` : ''}</div>
+      </div>`;
+    }
+    weeksHtml += `<div class="cal-week"><div class="cal-week-cells">${cellsHtml}</div><div class="cal-week-spans" style="top:${NUMH}px">${bars}</div></div>`;
   }
-  vp.innerHTML = `<div class="cal-weekdays"><div>Po</div><div>Ut</div><div>St</div><div>Št</div><div>Pi</div><div class="cal-weekend">So</div><div class="cal-weekend">Ne</div></div><div class="cal-grid">${cells}</div>`;
+  vp.innerHTML = `<div class="cal-weekdays"><div>Po</div><div>Ut</div><div>St</div><div>Št</div><div>Pi</div><div class="cal-weekend">So</div><div class="cal-weekend">Ne</div></div><div class="cal-grid-weeks">${weeksHtml}</div>`;
   vp.querySelectorAll('[data-open-day]').forEach(el => el.onclick = (e) => { e.stopPropagation(); calOpenDay(el.dataset.openDay); });
   vp.querySelectorAll('.cal-cell').forEach(cell => cell.onclick = (e) => { if (e.target === cell || e.target.classList.contains('cal-cell-events')) openEventModal(null, cell.dataset.day); });
   calAttachEvClicks(vp);
@@ -4445,6 +4481,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.41.0', date: '13. 6. 2026', tag: 'ui', items: [
+    'Kalendár má svetlý (Outlook-like) motív — čistejší a čitateľnejší.',
+    'Viacdňové udalosti sa zobrazujú ako súvislý farebný pruh cez bunky (nie samostatne na každom dni), s naznačením pokračovania ◂ ▸.',
+  ] },
   { v: '1.40.1', date: '13. 6. 2026', tag: 'ui', items: [
     'Prepracovaný mesačný kalendár v štýle Outlooku — väčšie bunky, čitateľnejšie názvy udalostí.',
     'Celodenné udalosti ako plný farebný pruh, časové ako bodka + čas + názov; číslo dňa vľavo, dnešok zvýraznený, na bunku až 5 udalostí.',
