@@ -4550,6 +4550,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.44.2', date: '13. 6. 2026', tag: 'ui', items: [
+    'V zázname kalendára sa vlastník/kalendár zobrazuje len ako iniciálky (napr. Martin Múčka → MM); plné meno je v tooltipe.',
+  ] },
   { v: '1.44.1', date: '13. 6. 2026', tag: 'ui', items: [
     'Informácie v zázname kalendára zlúčené do jedného riadku (čas · názov · meno) — kompaktnejšie.',
   ] },
