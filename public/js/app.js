@@ -2115,6 +2115,7 @@ function calWeekDays() {
   return Array.from({ length: 7 }, (_, i) => new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i));
 }
 function calEvOwner(ev) { return ev.external ? (ev.source || 'Outlook') : (ev.person || ''); }
+function calInitials(name) { return String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 3).map(w => w[0].toUpperCase()).join('') || '?'; }
 // Zlúči rovnaké udalosti rôznych ľudí/zdrojov (rovnaký názov + dátum + čas) do jednej, so zoznamom vlastníkov
 function calMergeEvents(list) {
   const groups = new Map();
@@ -2136,10 +2137,11 @@ function calEvChipHtml(ev) {
   const dataAttr = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
   const multi = ev._owners && ev._owners.length > 1;
   const cls = `cal-ev ${allday ? 'cal-ev-allday' : 'cal-ev-timed'}${ext ? ' cal-ev-ext' : ''}${multi ? ' cal-ev-merged' : ''}`;
-  const owner = (ev._owners && ev._owners.length) ? ev._owners.join(', ') : calEvOwner(ev);
+  const ownerFull = (ev._owners && ev._owners.length) ? ev._owners.join(', ') : calEvOwner(ev);
+  const ownerDisp = (ev._owners && ev._owners.length) ? ev._owners.map(calInitials).join(', ') : calInitials(calEvOwner(ev));
   const icon = multi ? '👥' : (ext ? '📅' : '👤');
-  const ownerHtml = owner ? `<span class="cal-ev-owner"> · ${icon} ${escHtml(owner)}</span>` : '';
-  const tip = escHtml(ev.title) + (owner ? '\n' + (multi ? 'Spoločné: ' : '') + escHtml(owner) : '') + (ext ? ' (len na čítanie)' : '');
+  const ownerHtml = ownerFull ? `<span class="cal-ev-owner" title="${escHtml(ownerFull)}"> · ${icon} ${escHtml(ownerDisp)}</span>` : '';
+  const tip = escHtml(ev.title) + (ownerFull ? '\n' + (multi ? 'Spoločné: ' : '') + escHtml(ownerFull) : '') + (ext ? ' (len na čítanie)' : '');
   if (allday) {
     return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-txt">${escHtml(ev.title)}</span>${ownerHtml}</div>`;
   }
@@ -2239,7 +2241,8 @@ function renderCalMonth(vp) {
       const cls = `cal-span${seg.contL ? ' cont-l' : ''}${seg.contR ? ' cont-r' : ''}`;
       const multi = ev._owners && ev._owners.length > 1;
       const own = (ev._owners && ev._owners.length) ? ev._owners.join(', ') : calEvOwner(ev);
-      const ownTxt = own ? ` · ${multi ? '👥' : (ext ? '📅' : '👤')} ${escHtml(own)}` : '';
+      const ownDisp = (ev._owners && ev._owners.length) ? ev._owners.map(calInitials).join(', ') : calInitials(calEvOwner(ev));
+      const ownTxt = own ? ` · ${multi ? '👥' : (ext ? '📅' : '👤')} ${escHtml(ownDisp)}` : '';
       return `<div class="${cls}" ${data} style="--ev-color:${escHtml(color)};left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${seg.lane * LANE}px" title="${escHtml(ev.title)}${own ? ' · ' + escHtml(own) : ''}">${seg.contL ? '◂ ' : ''}${escHtml(ev.title)}${ownTxt}${seg.contR ? ' ▸' : ''}</div>`;
     }).join('');
 
@@ -2305,7 +2308,8 @@ function renderCalTimeGrid(vp, days) {
       const w = 100 / it.cols, left = it.lane * w, ev = it.ev, ref = ev._ref || ev, ext = ref.external;
       const multi = ev._owners && ev._owners.length > 1;
       const _own = (ev._owners && ev._owners.length) ? ev._owners.join(', ') : calEvOwner(ev);
-      const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span> ${escHtml(ev.title)}${_own ? `<span class="ctg-ev-owner"> · ${multi ? '👥' : (ext ? '📅' : '👤')} ${escHtml(_own)}</span>` : ''}`;
+      const _ownDisp = (ev._owners && ev._owners.length) ? ev._owners.map(calInitials).join(', ') : calInitials(calEvOwner(ev));
+      const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span> ${escHtml(ev.title)}${_own ? `<span class="ctg-ev-owner" title="${escHtml(_own)}"> · ${multi ? '👥' : (ext ? '📅' : '👤')} ${escHtml(_ownDisp)}</span>` : ''}`;
       const cls = ext ? 'cal-ev cal-ev-ext ctg-ev' : 'cal-ev ctg-ev';
       const ds = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
       return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ext ? '#7c3aed' : '#00d4ff'))};top:${top}px;height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${escHtml(ev.title)}${_own ? ' · ' + escHtml(_own) : ''}">${inner}</div>`;
