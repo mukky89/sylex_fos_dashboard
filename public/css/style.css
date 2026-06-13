@@ -4184,3 +4184,15 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .calendar-page .ctg-line { border-top: 1px solid #f0f2f6; }
 .calendar-page .ctg-ev { background: var(--ev-color); color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.2); }
 .calendar-page .ctg-ev .ctg-ev-time { color: rgba(255,255,255,0.92); }
+
+/* Kalendár — info „koho je" záznam + textový filter */
+.cal-ev-main { flex: 1; min-width: 0; }
+.cal-ev-owner { display: block; font-size: 0.68rem; color: #64748b; margin-top: 1px; overflow-wrap: anywhere; }
+.cal-ev-allday { flex-direction: column; align-items: flex-start; gap: 0; }
+.cal-ev-allday .cal-ev-owner { color: rgba(255,255,255,0.88); text-shadow: 0 1px 1px rgba(0,0,0,0.2); }
+.ctg-ev-owner { display: block; font-size: 0.62rem; opacity: 0.9; margin-top: 1px; }
+
+.cal-search { display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 10px; color: #94a3b8; }
+.cal-search input { border: none; outline: none; background: none; font-family: var(--font); font-size: 0.82rem; color: #334155; width: 150px; }
+.cal-search input::placeholder { color: #94a3b8; }
+@media (max-width: 720px) { .cal-search input { width: 110px; } }

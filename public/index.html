@@ -693,6 +693,10 @@
         </div>
         <div class="cal-month-label" id="calMonthLabel">—</div>
         <div class="cal-toolbar-right">
+          <div class="cal-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="calSearch" placeholder="Hľadať udalosť, meno…" oninput="setCalText(this.value)" autocomplete="off">
+          </div>
           <select id="calPerson" class="util-select" onchange="setCalPerson(this.value)" title="Filter podľa osoby / zdroja"><option value="">👥 Všetci</option></select>
           <div class="cal-zoom hidden" id="calZoomCtl">
             <button class="cal-nav-btn" onclick="calZoomBy(-1)" title="Oddialiť">−</button>
