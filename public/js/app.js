@@ -2107,13 +2107,17 @@ function calWeekDays() {
   return Array.from({ length: 7 }, (_, i) => new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i));
 }
 function calEvChipHtml(ev) {
-  const t = ev.allDay ? '' : (ev.time ? `<span class="cal-ev-time">${escHtml(ev.time)}</span> ` : '');
-  if (ev.external) {
-    const idx = calExternal.indexOf(ev);
-    return `<div class="cal-ev cal-ev-ext" style="--ev-color:${escHtml(ev.color || '#7c3aed')}" data-ext="${idx}" title="${escHtml(ev.title)} · ${escHtml(ev.source || 'Outlook')} (len na čítanie)">📅 ${t}${escHtml(ev.title)}</div>`;
+  const ext = ev.external;
+  const allday = ev.allDay || calIsMultiDay(ev);
+  const color = ev.color || (ext ? '#7c3aed' : '#00d4ff');
+  const dataAttr = ext ? `data-ext="${calExternal.indexOf(ev)}"` : `data-id="${ev._id}"`;
+  const cls = `cal-ev ${allday ? 'cal-ev-allday' : 'cal-ev-timed'}${ext ? ' cal-ev-ext' : ''}`;
+  const tip = escHtml(ev.title) + (ev.person ? ' · ' + escHtml(ev.person) : '') + (ext ? ' · ' + escHtml(ev.source || 'Outlook') + ' (len na čítanie)' : '');
+  if (allday) {
+    return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-txt">${escHtml(ev.title)}</span></div>`;
   }
-  const who = ev.person ? ` · ${escHtml(ev.person)}` : '';
-  return `<div class="cal-ev" style="--ev-color:${escHtml(ev.color || '#00d4ff')}" data-id="${ev._id}" title="${escHtml(ev.title)}${who}">${t}${escHtml(ev.title)}${who}</div>`;
+  const t = ev.time ? `<span class="cal-ev-time">${escHtml(ev.time)}</span>` : '';
+  return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-dot"></span>${t}<span class="cal-ev-txt">${escHtml(ev.title)}</span></div>`;
 }
 function calAttachEvClicks(root) {
   root.querySelectorAll('.cal-ev').forEach(el => el.onclick = (e) => {
@@ -2154,7 +2158,7 @@ function renderCalMonth(vp) {
     const inMonth = d.getMonth() === calMonth;
     const we = (d.getDay() === 0 || d.getDay() === 6);
     const evs = dayMap[key] || [];
-    const shown = evs.slice(0, 4);
+    const shown = evs.slice(0, 5);
     const more = evs.length - shown.length;
     cells += `<div class="cal-cell${inMonth ? '' : ' cal-cell-out'}${key === todayKey ? ' cal-cell-today' : ''}${we ? ' cal-cell-weekend' : ''}" data-day="${key}">
       <div class="cal-cell-num" data-open-day="${key}" title="Otvoriť deň">${d.getDate()}</div>
@@ -4441,6 +4445,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.40.1', date: '13. 6. 2026', tag: 'ui', items: [
+    'Prepracovaný mesačný kalendár v štýle Outlooku — väčšie bunky, čitateľnejšie názvy udalostí.',
+    'Celodenné udalosti ako plný farebný pruh, časové ako bodka + čas + názov; číslo dňa vľavo, dnešok zvýraznený, na bunku až 5 udalostí.',
+  ] },
   { v: '1.40.0', date: '11. 6. 2026', tag: 'feat', items: [
     'Nový modul Backbone — interaktívny editor optickej topológie (interrogátor · splittre · káble · senzory) s animovaným tokom svetla po vláknach.',
     'Ťahanie uzlov myšou, pridávanie a prepájanie uzlov, úprava káblov (počet vlákien @ dĺžka), auto-rozloženie, export PNG, ukladanie.',
