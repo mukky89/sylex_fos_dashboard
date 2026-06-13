@@ -2042,6 +2042,7 @@ let calExternal = [];   // udalosti z napojených ICS feedov (Outlook) — len n
 let calView = 'month';  // 'month' | 'week' | 'day'
 let calRef  = new Date(); // referenčný dátum (kotva pohľadu)
 let calPersonFilter = ''; // filter podľa osoby / zdroja
+let calTextFilter = '';   // textový filter
 let calZoom = 46;         // px / hodina v týždennom a dennom pohľade
 
 // Date -> 'YYYY-MM-DD' (local components)
@@ -2098,7 +2099,14 @@ function calBuildDayMap() {
 }
 
 // ── pomocné ──
-function calVisible(ev) { return !calPersonFilter || (ev.external ? ev.source : ev.person) === calPersonFilter; }
+function calVisible(ev) {
+  if (calPersonFilter && (ev.external ? ev.source : ev.person) !== calPersonFilter) return false;
+  if (calTextFilter) {
+    const hay = [ev.title, ev.person, ev.source, ev.note].filter(Boolean).join(' ').toLowerCase();
+    if (!hay.includes(calTextFilter.toLowerCase())) return false;
+  }
+  return true;
+}
 function calIsMultiDay(ev) { return ev.endDate && String(ev.endDate).slice(0, 10) !== String(ev.date).slice(0, 10); }
 function parseHM(s) { const m = String(s || '').match(/^(\d{1,2}):(\d{2})/); return m ? (+m[1] * 60 + +m[2]) : null; }
 function calWeekDays() {
@@ -2106,18 +2114,21 @@ function calWeekDays() {
   const mon = new Date(calRef.getFullYear(), calRef.getMonth(), calRef.getDate() - offset);
   return Array.from({ length: 7 }, (_, i) => new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i));
 }
+function calEvOwner(ev) { return ev.external ? (ev.source || 'Outlook') : (ev.person || ''); }
 function calEvChipHtml(ev) {
   const ext = ev.external;
   const allday = ev.allDay || calIsMultiDay(ev);
   const color = ev.color || (ext ? '#7c3aed' : '#00d4ff');
   const dataAttr = ext ? `data-ext="${calExternal.indexOf(ev)}"` : `data-id="${ev._id}"`;
   const cls = `cal-ev ${allday ? 'cal-ev-allday' : 'cal-ev-timed'}${ext ? ' cal-ev-ext' : ''}`;
-  const tip = escHtml(ev.title) + (ev.person ? ' · ' + escHtml(ev.person) : '') + (ext ? ' · ' + escHtml(ev.source || 'Outlook') + ' (len na čítanie)' : '');
+  const owner = calEvOwner(ev);
+  const ownerHtml = owner ? `<span class="cal-ev-owner">${ext ? '📅' : '👤'} ${escHtml(owner)}</span>` : '';
+  const tip = escHtml(ev.title) + (owner ? ' · ' + escHtml(owner) : '') + (ext ? ' (len na čítanie)' : '');
   if (allday) {
-    return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-txt">${escHtml(ev.title)}</span></div>`;
+    return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-txt">${escHtml(ev.title)}</span>${ownerHtml}</div>`;
   }
   const t = ev.time ? `<span class="cal-ev-time">${escHtml(ev.time)}</span>` : '';
-  return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-dot"></span>${t}<span class="cal-ev-txt">${escHtml(ev.title)}</span></div>`;
+  return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-dot"></span><span class="cal-ev-main">${t}<span class="cal-ev-txt">${escHtml(ev.title)}</span>${ownerHtml}</span></div>`;
 }
 function calAttachEvClicks(root) {
   root.querySelectorAll('.cal-ev, .cal-span').forEach(el => el.onclick = (e) => {
@@ -2183,7 +2194,9 @@ function renderCalMonth(vp) {
       const left = seg.startCol / 7 * 100, width = (seg.endCol - seg.startCol + 1) / 7 * 100;
       const data = ext ? `data-ext="${calExternal.indexOf(ev)}"` : `data-id="${ev._id}"`;
       const cls = `cal-span${seg.contL ? ' cont-l' : ''}${seg.contR ? ' cont-r' : ''}`;
-      return `<div class="${cls}" ${data} style="--ev-color:${escHtml(color)};left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${seg.lane * LANE}px" title="${escHtml(ev.title)}">${seg.contL ? '◂ ' : ''}${escHtml(ev.title)}${seg.contR ? ' ▸' : ''}</div>`;
+      const own = calEvOwner(ev);
+      const ownTxt = own ? ` · ${ext ? '📅' : '👤'} ${escHtml(own)}` : '';
+      return `<div class="${cls}" ${data} style="--ev-color:${escHtml(color)};left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${seg.lane * LANE}px" title="${escHtml(ev.title)}${own ? ' · ' + escHtml(own) : ''}">${seg.contL ? '◂ ' : ''}${escHtml(ev.title)}${ownTxt}${seg.contR ? ' ▸' : ''}</div>`;
     }).join('');
 
     let cellsHtml = '';
@@ -2242,7 +2255,8 @@ function renderCalTimeGrid(vp, days) {
     const evhtml = laid.map(it => {
       const top = it.s / 60 * hourH, height = Math.max(15, (it.e - it.s) / 60 * hourH - 2);
       const w = 100 / it.cols, left = it.lane * w, ev = it.ev;
-      const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span> ${escHtml(ev.title)}`;
+      const _own = calEvOwner(ev);
+      const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span> ${escHtml(ev.title)}${_own ? `<span class="ctg-ev-owner">${ev.external ? '📅' : '👤'} ${escHtml(_own)}</span>` : ''}`;
       const cls = ev.external ? 'cal-ev cal-ev-ext ctg-ev' : 'cal-ev ctg-ev';
       const ds = ev.external ? `data-ext="${calExternal.indexOf(ev)}"` : `data-id="${ev._id}"`;
       return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ev.external ? '#7c3aed' : '#00d4ff'))};top:${top}px;height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${escHtml(ev.title)}">${inner}</div>`;
@@ -2336,6 +2350,7 @@ function calNav(dir) {
 }
 function calGoToday() { calRef = new Date(); loadCalendar(); }
 function setCalPerson(v) { calPersonFilter = v; renderCalendar(); }
+function setCalText(v) { calTextFilter = v.trim(); renderCalendar(); }
 function calZoomBy(d) { calZoom = Math.max(28, Math.min(96, calZoom + d * 12)); renderCalendar(); }
 
 // ── Event modal ─────────────────────────────────────────────────────────────
@@ -4481,6 +4496,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.42.0', date: '13. 6. 2026', tag: 'feat', items: [
+    'Kalendár má textový filter (hľadanie podľa názvu, mena, zdroja).',
+    'Každý záznam v kalendári ukazuje, koho je (osoba alebo zdroj kalendára) — dôležité pri viacerých napojených kalendároch.',
+  ] },
   { v: '1.41.1', date: '13. 6. 2026', tag: 'ui', items: [
     'Názvy udalostí v kalendári sa už neorezávajú — zalomia sa na celý text (bunky sa podľa potreby zväčšia).',
   ] },
