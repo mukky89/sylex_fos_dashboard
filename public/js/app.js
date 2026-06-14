@@ -4642,7 +4642,7 @@ function pjBlankProject() {
     devStage: PJ_WORKFLOWS.development.stages[0].key,
     salesDone: [], devDone: [],
     priority: 'normal', owner: '', startDate: null, deadline: null,
-    deliverables: [], folder: '', tags: [], links: [], description: '', notes: ''
+    deliverables: [], folder: '', tags: [], links: [], comments: [], description: '', notes: ''
   };
 }
 // openProjectModal je zachované meno kvôli existujúcim onclickom — presmeruje na stránku
@@ -4660,7 +4660,7 @@ async function openProjectPage(arg) {
     pjPageData.salesDone = pjPageData.salesStage ? pjDoneSet(src, 'sales') : [];
     pjPageData.devDone = pjPageData.devStage ? pjDoneSet(src, 'development') : [];
   }
-  pjPageData.tags = pjPageData.tags || []; pjPageData.links = pjPageData.links || [];
+  pjPageData.tags = pjPageData.tags || []; pjPageData.links = pjPageData.links || []; pjPageData.comments = pjPageData.comments || [];
   setHash('project/' + (src ? src._id : 'new'));
   _activatePage('project');
   pjPageTests = [];
@@ -4694,10 +4694,13 @@ function renderProjectPage() {
           <div class="pjp-card-hd">⚙️ Procesy <span class="pjp-card-hint">klik na stupeň = označiť hotový (aj nepostupne)</span></div>
           <div id="pjPageFlows"></div>
         </div>
+        <div class="pjp-card pjp-com-card pjp-com-sales"><div class="pjp-card-hd">💬 Komentáre — Predaj</div><div id="pjCom-sales"></div></div>
+        <div class="pjp-card pjp-com-card pjp-com-dev"><div class="pjp-card-hd">💬 Komentáre — Vývoj</div><div id="pjCom-dev"></div></div>
         <div class="pjp-card" id="pjPageDelivCard">
           <div class="pjp-card-hd">📦 Štandardné výstupy <span id="pjDelivCount" class="pj-deliv-count"></span></div>
           <div class="pj-deliv" id="pjDelivList"></div>
         </div>
+        <div class="pjp-card pjp-com-card pjp-com-deliv"><div class="pjp-card-hd">💬 Komentáre — Výstupy</div><div id="pjCom-deliv"></div></div>
         <div class="pjp-card">
           <div class="pjp-card-hd">📝 Popis</div>
           <textarea class="pjp-textarea" rows="4" placeholder="Popis projektu…" oninput="pjPageData.description=this.value">${escHtml(d.description || '')}</textarea>
@@ -4732,6 +4735,39 @@ function renderProjectPage() {
   pjBuildDeliverables(d.deliverables || []);
   pjRenderLinks();
   pjRenderRelated();
+  ['sales', 'dev', 'deliv'].forEach(pjRenderComments);
+}
+function pjDateTime(d) {
+  try { return new Date(d).toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+  catch { return ''; }
+}
+function pjRenderComments(scope) {
+  const el = document.getElementById('pjCom-' + scope); if (!el) return;
+  const list = (pjPageData.comments || []).filter(c => c.scope === scope).sort((a, b) => new Date(b.at) - new Date(a.at));
+  const items = list.length ? list.map(c => `<div class="pjc-item">
+      <div class="pjc-meta"><span class="pjc-author">${escHtml(c.author || '—')}</span><span class="pjc-at">${pjDateTime(c.at)}</span>${c._id ? `<button class="pjc-del" title="Zmazať" onclick="pjDelComment('${scope}','${c._id}')">✕</button>` : ''}</div>
+      <div class="pjc-text">${escHtml(c.text)}</div></div>`).join('')
+    : '<div class="pjp-empty">Zatiaľ žiadne komentáre.</div>';
+  el.innerHTML = `<div class="pjc-list">${items}</div>
+    <div class="pjc-add"><input type="text" id="pjcIn-${scope}" placeholder="Pridať komentár / zmenu…" onkeydown="if(event.key==='Enter')pjAddComment('${scope}')"><button class="btn-secondary btn-sm" onclick="pjAddComment('${scope}')">Pridať</button></div>`;
+}
+async function pjAddComment(scope) {
+  const inp = document.getElementById('pjcIn-' + scope); const text = (inp && inp.value || '').trim(); if (!text) return;
+  if (pjPageIsNew) {
+    pjPageData.comments = pjPageData.comments || [];
+    pjPageData.comments.push({ scope, text, author: (CURRENT_USER && (CURRENT_USER.name || CURRENT_USER.username)) || '', at: new Date().toISOString() });
+    if (inp) inp.value = ''; pjRenderComments(scope); return;
+  }
+  try {
+    const r = await fetch('/api/projects/' + pjPageData._id + '/comments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scope, text }) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); toast('Chyba: ' + (e.error || r.status), 'error'); return; }
+    pjPageData.comments = await r.json(); if (inp) inp.value = ''; pjRenderComments(scope);
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+async function pjDelComment(scope, cid) {
+  if (pjPageIsNew) { pjPageData.comments = (pjPageData.comments || []).filter(c => c._id !== cid); pjRenderComments(scope); return; }
+  try { const r = await fetch('/api/projects/' + pjPageData._id + '/comments/' + cid, { method: 'DELETE' }); if (!r.ok) throw 0; pjPageData.comments = await r.json(); pjRenderComments(scope); }
+  catch { toast('Mazanie zlyhalo', 'error'); }
 }
 // klik na stupeň prepne jeho stav „hotový" (nepostupne)
 function pjPickStage(track, key) {
@@ -4810,6 +4846,7 @@ async function savePjPage() {
     deliverables: devOn ? (d.deliverables || []) : [],
     folder: (d.folder || '').trim(), tags: d.tags || [],
     links: (d.links || []).filter(l => (l.url || '').trim() || (l.label || '').trim()),
+    comments: d.comments || [],
     description: (d.description || '').trim(), notes: (d.notes || '').trim()
   };
   try {
@@ -5118,6 +5155,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.66.0', date: '14. 6. 2026', tag: 'feat', items: [
+    'Detail projektu: komentáre / záznamy zmien samostatne pre Predaj, Vývoj a Výstupy — s autorom a časom, okamžité uloženie a mazanie.',
+  ] },
   { v: '1.65.2', date: '14. 6. 2026', tag: 'ui', items: [
     'Workflow: zrušené označenie prvého/posledného stupňa; aktuálny (posledný dosiahnutý) stav je teraz zvýraznený pulzujúcim červeným neónom.',
   ] },

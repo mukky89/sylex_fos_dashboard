@@ -1,5 +1,13 @@
 const mongoose = require('mongoose');
 
+// Komentár / záznam zmeny ku konkrétnemu procesu (sales / dev / deliv)
+const projectCommentSchema = new mongoose.Schema({
+  scope:  { type: String, enum: ['sales', 'dev', 'deliv'], required: true },
+  text:   { type: String, required: true },
+  author: { type: String, default: '' },
+  at:     { type: Date, default: Date.now }
+}, { _id: true });
+
 const projectSchema = new mongoose.Schema({
   title:       { type: String, required: true, trim: true },
   code:        { type: String, default: '', trim: true },     // kód projektu
@@ -18,6 +26,7 @@ const projectSchema = new mongoose.Schema({
   folder:      { type: String, default: '' },                 // cesta/odkaz (napr. G:\Projekty\...)
   tags:        [String],
   links:       [{ label: String, url: String }],
+  comments:    { type: [projectCommentSchema], default: [] },  // komentáre/zmeny k procesom a výstupom
   notes:       { type: String, default: '' },
   active:      { type: Boolean, default: true }
 }, { timestamps: true });
