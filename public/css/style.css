@@ -2650,11 +2650,12 @@ body {
 .pj-track-hd input { width: 16px; height: 16px; accent-color: var(--accent); }
 .pj-flow { display: flex; flex-wrap: wrap; align-items: center; }
 .pj-flow-off { color: #94a3b8; font-size: 0.8rem; font-style: italic; }
-.pj-chev { position: relative; border: none; font-family: var(--font); font-size: 0.74rem; font-weight: 600; line-height: 1; white-space: nowrap; flex-shrink: 0; padding: 8px 14px 8px 24px; margin-left: -13px; color: #475569; background: #cbd5e1; cursor: pointer; clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 0 100%, 13px 50%); transition: filter .12s; }
-.pj-chev:first-child { margin-left: 0; padding-left: 14px; border-radius: 5px 0 0 5px; clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 0 100%); }
-.pj-chev.done { background: #3aa340; color: #fff; }
-.pj-chev.current { background: #16803a; color: #fff; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.4); }
-.pj-chev:hover { filter: brightness(1.08); }
+.pj-chev { position: relative; border: none; font-family: var(--font); font-size: 0.74rem; font-weight: 600; line-height: 1; white-space: nowrap; flex-shrink: 0; padding: 8px 15px 8px 25px; margin-left: -13px; color: #8da2c0; background: #283449; cursor: pointer; clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 0 100%, 13px 50%); transition: filter .12s, background .12s; }
+.pj-chev:first-child { margin-left: 0; padding-left: 15px; border-radius: 6px 0 0 6px; clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 0 100%); }
+.pj-chev:last-child { border-radius: 0 6px 6px 0; }
+.pj-chev.done { background: #2f9e3f; color: #fff; }
+.pj-chev.current { background: #3b475c; color: #fff; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35); }
+.pj-chev:hover { filter: brightness(1.12); }
 /* farebné odlíšenie procesov: predaj = modrá, vývoj = zelená */
 .pj-chev-sales.done { background: #2563eb; }
 .pj-chev-sales.current { background: #1e40af; }
@@ -2664,7 +2665,8 @@ body {
 .pj-chev-deliv.done { background: #0d9488; }
 .pj-deliv-flow { flex-wrap: wrap; gap: 4px 0; }
 .pj-deliv-cell { display: flex; align-items: center; gap: 10px; }
-.pj-deliv-cell .pj-deliv-flow { max-width: 340px; }
+/* v zozname: výstupy v jednom riadku (bez zalamovania) */
+.pj-deliv-cell .pj-deliv-flow { flex-wrap: nowrap; max-width: none; }
 .pj-chev-sm { font-size: 0.66rem; padding: 5px 10px 5px 18px; margin-left: -11px; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%); }
 .pj-chev-sm:first-child { padding-left: 10px; margin-left: 0; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%); }
 /* zoznam: kompaktné, needitovateľné chevrony v jednom riadku */
@@ -2690,9 +2692,12 @@ body {
 .pj-list-wrap { overflow-x: auto; }
 .pj-list-wrap td:first-child, .pj-list-wrap th:first-child { min-width: 175px; }
 .pj-list-wrap .prod-t-num { white-space: nowrap; }
-.pj-proc-stack { display: flex; flex-direction: column; gap: 7px; }
-.pj-proc-line { display: flex; align-items: center; gap: 7px; }
-.pj-proc-tag { font-size: 0.78rem; flex-shrink: 0; width: 16px; text-align: center; }
+.pj-proc-stack { display: flex; flex-direction: column; gap: 9px; padding: 4px 0; }
+.pj-proc-line { display: flex; align-items: center; gap: 10px; }
+.pj-proc-tag { flex-shrink: 0; width: 58px; text-align: right; font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.pj-proc-tag-sales { color: #60a5fa; }
+.pj-proc-tag-dev { color: #4ade80; }
+.pj-proc-tag-deliv { color: #2dd4bf; }
 .pj-col-hd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .pj-col-filter { font-family: var(--font); font-size: 0.72rem; font-weight: 600; color: #e2e8f0; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; padding: 3px 6px; cursor: pointer; max-width: 150px; text-transform: none; }
 .pj-col-filter:focus { outline: none; border-color: var(--accent); }
