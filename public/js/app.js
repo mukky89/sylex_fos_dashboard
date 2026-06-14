@@ -4642,6 +4642,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.45.1', date: '14. 6. 2026', tag: 'fix', items: [
+    'Rozbaľovacie zoznamy (combobox) majú tmavé pozadie a svetly text — predtym boli moznosti na bielom nečitateľné.',
+  ] },
   { v: '1.45.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Udalosti majú koncový čas (od–do) → presné trvanie v týždeň/deň pohľade.',
     'Opakované udalosti (denne/týždenne/mesačne/ročne, voliteľne „do dátumu").',
