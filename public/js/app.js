@@ -4608,14 +4608,11 @@ function pjToggleTrack(track) {
 function pjRenderPageFlows() {
   const el = document.getElementById('pjPageFlows'); if (!el) return;
   const s = pjPageData.salesStage, dev = pjPageData.devStage;
-  const chain = (s && dev) ? `<div class="pj-track pj-track-chain"><div class="pj-track-hd">🔗 Spojený životný cyklus (predaj → vývoj)</div>
-      <div class="pj-flow pj-flow-chain"><span class="pj-chain-lbl pj-chain-lbl-sales">Predaj</span>${pjChevron(PJ_WORKFLOWS.sales.stages, s, 'sales', 'pj-chev-sm')}<span class="pj-chain-arrow">→</span><span class="pj-chain-lbl pj-chain-lbl-dev">Vývoj</span>${pjChevron(PJ_WORKFLOWS.development.stages, dev, 'dev', 'pj-chev-sm')}</div></div>` : '';
   el.innerHTML = `
     <div class="pj-track pj-track-sales"><label class="pj-track-hd"><input type="checkbox" ${s ? 'checked' : ''} onchange="pjToggleTrack('sales')"> 💼 Predajný proces</label>
       <div class="pj-flow">${s ? pjChevron(PJ_WORKFLOWS.sales.stages, s, 'sales') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>
     <div class="pj-track pj-track-dev"><label class="pj-track-hd"><input type="checkbox" ${dev ? 'checked' : ''} onchange="pjToggleTrack('dev')"> 🛠 Vývojový proces</label>
-      <div class="pj-flow">${dev ? pjChevron(PJ_WORKFLOWS.development.stages, dev, 'dev') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>
-    ${chain}`;
+      <div class="pj-flow">${dev ? pjChevron(PJ_WORKFLOWS.development.stages, dev, 'dev') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>`;
   const card = document.getElementById('pjPageDelivCard'); if (card) card.style.display = dev ? '' : 'none';
 }
 function _pjCurrentDeliv() { return [...document.querySelectorAll('.pj-deliv-cb')].filter(c => c.checked).map(c => c.value); }
@@ -4971,6 +4968,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.58.1', date: '14. 6. 2026', tag: 'ui', items: [
+    'Detail projektu: odstránená sekcia „Spojený životný cyklus (predaj → vývoj)".',
+  ] },
   { v: '1.58.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Nový projekt má defaultne zapnutý predajný aj vývojový proces.',
     'Tlačidlo „🎲 Ukážkové dáta" v projektoch — vygeneruje nové testovacie projekty, každý s predajným aj vývojovým procesom a stavom výstupov.',
