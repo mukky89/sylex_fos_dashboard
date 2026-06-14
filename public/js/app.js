@@ -4297,8 +4297,20 @@ async function loadProjects() {
 function pjDelivMatch(p) {
   if (pjDelivFilter === 'all') return true;
   if (!pjActive(p, 'development')) return false;             // výstupy sa týkajú vývoja
-  const done = (p.deliverables || []).length, tot = PJ_DELIVERABLES.length;
-  return pjDelivFilter === 'done' ? done >= tot : done < tot;
+  const done = p.deliverables || [], tot = PJ_DELIVERABLES.length;
+  if (pjDelivFilter === 'complete') return done.length >= tot;
+  if (pjDelivFilter === 'incomplete') return done.length < tot;
+  if (pjDelivFilter.startsWith('done:')) return done.includes(pjDelivFilter.slice(5));
+  if (pjDelivFilter.startsWith('missing:')) return !done.includes(pjDelivFilter.slice(8));
+  return true;
+}
+function pjDelivFilterOpts() {
+  const opt = (v, l) => `<option value="${v}"${pjDelivFilter === v ? ' selected' : ''}>${l}</option>`;
+  const done = PJ_DELIVERABLES.map(d => opt('done:' + d.key, escHtml(d.short || d.label))).join('');
+  const miss = PJ_DELIVERABLES.map(d => opt('missing:' + d.key, escHtml(d.short || d.label))).join('');
+  return `<select class="pj-col-filter" onchange="pjSetDelivFilter(this.value)" onclick="event.stopPropagation()">
+    ${opt('all', '— všetky —')}${opt('complete', '✓ všetky hotové')}${opt('incomplete', '✗ niektorý chýba')}
+    <optgroup label="Má hotový výstup">${done}</optgroup><optgroup label="Chýba výstup">${miss}</optgroup></select>`;
 }
 function pjSetDelivFilter(v) { pjDelivFilter = v; renderProjects(); }
 function renderProjects() {
@@ -4306,7 +4318,6 @@ function renderProjects() {
   _segActive('pjViewSeg', { kanban: 0, list: 1, gantt: 2 }[pjView]);
   _segActive('pjWorkflowSeg', { development: 0, sales: 1 }[pjWorkflow]);
   const wfSeg = document.getElementById('pjWorkflowSeg'); if (wfSeg) wfSeg.style.display = pjView === 'list' ? 'none' : '';
-  const dfSel = document.getElementById('pjDelivFilterSel'); if (dfSel) { dfSel.style.display = pjView === 'list' ? '' : 'none'; dfSel.value = pjDelivFilter; }
   const q = (document.getElementById('projSearch')?.value || '').toLowerCase();
   const match = p => !q || (p.title || '').toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q) || (p.owner || '').toLowerCase().includes(q);
   host.style.gridTemplateColumns = '';
@@ -4394,7 +4405,7 @@ function renderPjList(host, items) {
     </tr>`;
   }).join('');
   host.innerHTML = `<div class="prod-list pj-list-wrap"><table class="prod-table">
-    <thead><tr><th>Projekt</th><th>💼 Predaj</th><th>🛠 Vývoj</th><th>Výstupy</th><th>Vlastník</th><th>Termín</th></tr></thead>
+    <thead><tr><th>Projekt</th><th>💼 Predaj</th><th>🛠 Vývoj</th><th><div class="pj-col-hd">Výstupy ${pjDelivFilterOpts()}</div></th><th>Vlastník</th><th>Termín</th></tr></thead>
     <tbody>${rows}</tbody></table></div>`;
 }
 // Výstupy v zozname — všetky checkboxy priamo v hlavnom zobrazení (zaškrtnuteľné)
@@ -4949,6 +4960,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.56.0', date: '14. 6. 2026', tag: 'feat', items: [
+    'Zoznam projektov: filter výstupov priamo v hlavičke stĺpca „Výstupy" — dá sa filtrovať podľa konkrétneho výstupu (má hotový / chýba) aj súhrnne (všetky hotové / niektorý chýba).',
+    'Lepšia čitateľnosť stĺpca Projekt (širší, názov sa nezalamuje na pol slova).',
+  ] },
   { v: '1.55.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Zoznam projektov: všetky štandardné výstupy sú zobrazené ako zaškrtávacie políčka priamo v hlavnom zobrazení — dajú sa odškrtnúť bez otvárania detailu (okamžité uloženie).',
   ] },
