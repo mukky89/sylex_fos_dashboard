@@ -1227,13 +1227,22 @@
       <!-- Projekty (board) -->
       <div class="admin-panel active" id="devTab-projects">
         <div class="dev-toolbar">
-          <div class="proc-search-wrap" style="margin:0;flex:1">
+          <div class="proc-search-wrap" style="margin:0;flex:1;min-width:160px">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="projSearch" placeholder="Hľadať projekt..." oninput="renderProjects()" autocomplete="off">
           </div>
+          <div class="pj-seg" id="pjWorkflowSeg">
+            <button class="active" onclick="pjSetWorkflow('development')">🛠 Vývoj</button>
+            <button onclick="pjSetWorkflow('sales')">💼 Predaj</button>
+          </div>
+          <div class="pj-seg" id="pjViewSeg">
+            <button class="active" onclick="pjSetView('kanban')">▤ Kanban</button>
+            <button onclick="pjSetView('list')">☰ Zoznam</button>
+            <button onclick="pjSetView('gantt')">📊 Gantt</button>
+          </div>
           <button class="btn-primary" onclick="openProjectModal()">+ Nový projekt</button>
         </div>
-        <div id="projectsBoard" class="kanban"></div>
+        <div id="projectsBoard"></div>
       </div>
 
       <!-- Testy -->
@@ -1535,19 +1544,26 @@
           <div class="form-group"><label>Kód</label><input type="text" id="pjCode" placeholder="napr. P-2026-01"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Fáza</label>
-            <select id="pjPhase">
-              <option value="koncept">Koncept</option><option value="prototyp">Prototyp</option>
-              <option value="testovanie">Testovanie</option><option value="vyroba">Výroba</option><option value="ukoncene">Ukončené</option>
+          <div class="form-group"><label>Workflow</label>
+            <select id="pjWorkflowSel" onchange="pjModalWorkflowChange()">
+              <option value="development">🛠 Vývoj</option><option value="sales">💼 Predaj</option>
             </select>
           </div>
+          <div class="form-group"><label>Fáza / stage</label><select id="pjPhase"></select></div>
+        </div>
+        <div class="form-row">
           <div class="form-group"><label>Priorita</label>
             <select id="pjPriority"><option value="low">Nízka</option><option value="normal" selected>Normálna</option><option value="high">Vysoká</option></select>
           </div>
+          <div class="form-group"><label>Zodpovedný</label><input type="text" id="pjOwner" placeholder="Meno"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Zodpovedný</label><input type="text" id="pjOwner" placeholder="Meno"></div>
+          <div class="form-group"><label>Začiatok</label><input type="date" id="pjStart"></div>
           <div class="form-group"><label>Termín (deadline)</label><input type="date" id="pjDeadline"></div>
+        </div>
+        <div class="form-group" id="pjDelivWrap">
+          <label>Štandardné výstupy (splnené úlohy) <span id="pjDelivCount" class="pj-deliv-count"></span></label>
+          <div class="pj-deliv" id="pjDelivList"></div>
         </div>
         <div class="form-group"><label>Priečinok / odkaz</label><input type="text" id="pjFolder" placeholder="G:\Projekty\..."></div>
         <div class="form-group"><label>Tagy (čiarkou)</label><input type="text" id="pjTags" placeholder="optika, senzor"></div>

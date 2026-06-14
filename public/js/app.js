@@ -4217,13 +4217,46 @@ function drawWdm(chans) {
   });
 }
 
-const PJ_PHASES = [
-  { key: 'koncept', label: 'Koncept' }, { key: 'prototyp', label: 'Prototyp' },
-  { key: 'testovanie', label: 'Testovanie' }, { key: 'vyroba', label: 'Výroba' }, { key: 'ukoncene', label: 'Ukončené' }
+// ── Vývoj výrobkov — projekty (workflow + 3 zobrazenia: kanban / zoznam / gantt) ──
+const PJ_WORKFLOWS = {
+  development: { label: 'Vývoj', stages: [
+    { key: 'koncept', label: 'Koncept', c: '#6366f1' },
+    { key: 'prototyp', label: 'Prototyp', c: '#06b6d4' },
+    { key: 'testovanie', label: 'Testovanie', c: '#fbbf24' },
+    { key: 'vyroba', label: 'Výroba', c: '#10b981' },
+    { key: 'ukoncene', label: 'Ukončené', c: '#64748b' }
+  ] },
+  sales: { label: 'Predaj', stages: [
+    { key: 'lead', label: 'Dopyt / Lead', c: '#6366f1' },
+    { key: 'kvalifikacia', label: 'Kvalifikácia', c: '#0ea5e9' },
+    { key: 'ponuka', label: 'Cenová ponuka', c: '#06b6d4' },
+    { key: 'vyjednavanie', label: 'Vyjednávanie', c: '#fbbf24' },
+    { key: 'objednavka', label: 'Objednávka', c: '#10b981' },
+    { key: 'uzavrete', label: 'Uzavreté', c: '#64748b' }
+  ] }
+};
+// Štandardné výstupy vývoja (vždy tento zoznam) — status splnených úloh projektu
+const PJ_DELIVERABLES = [
+  { key: 'boo', label: 'BOO' },
+  { key: 'bom', label: 'BOM' },
+  { key: 'datasheet_web', label: 'Datasheet web' },
+  { key: 'std_wavelength', label: 'Standard wavelength configuration' },
+  { key: 'test_protocol', label: 'Testovací protokol' },
+  { key: 'calibration', label: 'Kalibračné dáta' },
+  { key: 'routing', label: 'Technologický postup' },
+  { key: 'erp_card', label: 'ERP karta položky' },
+  { key: 'marketing', label: 'Marketingové materiály' }
 ];
 const PJ_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#ef4444' } };
 let projectsData = [];
 let _dragPid = null;
+let pjView = 'kanban', pjWorkflow = 'development';
+
+function pjStages(wf) { return (PJ_WORKFLOWS[wf || pjWorkflow] || PJ_WORKFLOWS.development).stages; }
+function pjStageInfo(p) { const st = pjStages(p.workflow || 'development'); return st.find(s => s.key === (p.phase || st[0].key)) || st[0]; }
+function _segActive(id, idx) { const seg = document.getElementById(id); if (!seg) return; [...seg.children].forEach((b, i) => b.classList.toggle('active', i === idx)); }
+function pjSetView(v) { pjView = v; _segActive('pjViewSeg', { kanban: 0, list: 1, gantt: 2 }[v]); renderProjects(); }
+function pjSetWorkflow(w) { pjWorkflow = w; _segActive('pjWorkflowSeg', { development: 0, sales: 1 }[w]); renderProjects(); }
 
 async function loadProjects() {
   try { projectsData = await fetch('/api/projects').then(r => r.json()); if (!Array.isArray(projectsData)) projectsData = []; }
@@ -4231,59 +4264,123 @@ async function loadProjects() {
   renderProjects();
 }
 function renderProjects() {
-  const board = document.getElementById('projectsBoard'); if (!board) return;
+  const host = document.getElementById('projectsBoard'); if (!host) return;
   const q = (document.getElementById('projSearch')?.value || '').toLowerCase();
-  const items = projectsData.filter(p => !q || (p.title || '').toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q) || (p.owner || '').toLowerCase().includes(q));
-  board.innerHTML = '';
-  PJ_PHASES.forEach((ph, idx) => {
+  const items = projectsData.filter(p =>
+    (p.workflow || 'development') === pjWorkflow &&
+    (!q || (p.title || '').toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q) || (p.owner || '').toLowerCase().includes(q)));
+  host.style.gridTemplateColumns = '';
+  if (pjView === 'list') { host.className = ''; renderPjList(host, items); }
+  else if (pjView === 'gantt') { host.className = ''; renderPjGantt(host, items); }
+  else { renderPjKanban(host, items); }
+}
+function renderPjKanban(host, items) {
+  const stages = pjStages();
+  host.className = 'kanban';
+  host.style.gridTemplateColumns = `repeat(${stages.length}, minmax(196px, 1fr))`;
+  host.innerHTML = '';
+  stages.forEach((ph, idx) => {
     const col = document.createElement('div');
-    col.className = 'kanban-col';
-    col.dataset.phase = ph.key;
-    const colItems = items.filter(p => (p.phase || 'koncept') === ph.key);
-    col.innerHTML = `<div class="kanban-col-hdr">${ph.label} <span class="kanban-count">${colItems.length}</span></div>`;
+    col.className = 'kanban-col'; col.dataset.phase = ph.key;
+    const colItems = items.filter(p => (p.phase || stages[0].key) === ph.key);
+    col.innerHTML = `<div class="kanban-col-hdr" style="border-bottom:2px solid ${ph.c}66">${ph.label} <span class="kanban-count">${colItems.length}</span></div>`;
     const body = document.createElement('div'); body.className = 'kanban-col-body';
-    // Drop zóna — celý stĺpec
     col.addEventListener('dragover', (e) => { if (_dragPid) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; col.classList.add('kanban-col-drop'); } });
     col.addEventListener('dragleave', (e) => { if (!col.contains(e.relatedTarget)) col.classList.remove('kanban-col-drop'); });
     col.addEventListener('drop', (e) => { e.preventDefault(); col.classList.remove('kanban-col-drop'); onKanbanDrop(ph.key); });
-    colItems.forEach(p => {
-      const prio = PJ_PRIO[p.priority] || PJ_PRIO.normal;
-      const dl = p.deadline ? new Date(p.deadline) : null;
-      const overdue = dl && dl < new Date() && ph.key !== 'ukoncene';
-      const card = document.createElement('div');
-      card.className = 'kanban-card';
-      card.style.setProperty('--prio', prio.c);
-      card.draggable = true;
-      card.dataset.pid = p._id;
-      card.addEventListener('dragstart', (e) => {
-        _dragPid = p._id; card.classList.add('kanban-dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        try { e.dataTransfer.setData('text/plain', p._id); } catch (_) {}
-      });
-      card.addEventListener('dragend', () => {
-        _dragPid = null; card.classList.remove('kanban-dragging');
-        document.querySelectorAll('.kanban-col-drop').forEach(c => c.classList.remove('kanban-col-drop'));
-      });
-      card.innerHTML = `
-        <div class="kanban-card-top" onclick="openProjectModal(projectsData.find(x=>x._id==='${p._id}'))">
-          <span class="kanban-card-title"><span class="kanban-grip" title="Potiahni na presun">⠿</span>${escHtml(p.title)}</span>
-          ${p.code ? `<span class="kanban-card-code">${escHtml(p.code)}</span>` : ''}
-        </div>
-        <div class="kanban-card-meta">
-          ${p.owner ? `<span>👤 ${escHtml(p.owner)}</span>` : ''}
-          ${dl ? `<span class="${overdue ? 'kanban-overdue' : ''}">📅 ${fmtDate(p.deadline)}</span>` : ''}
-          <span class="kanban-prio" title="Priorita">${prio.l}</span>
-        </div>
-        <div class="kanban-card-actions">
-          ${idx > 0 ? `<button onclick="moveProjectPhase('${p._id}',-1)" title="Späť">←</button>` : '<span></span>'}
-          ${p.folder ? `<button onclick="openFolderLink('${encodeURIComponent(p.folder)}')" title="Priečinok">📁</button>` : ''}
-          ${idx < PJ_PHASES.length - 1 ? `<button onclick="moveProjectPhase('${p._id}',1)" title="Ďalej">→</button>` : '<span></span>'}
-        </div>`;
-      body.appendChild(card);
-    });
-    col.appendChild(body);
-    board.appendChild(col);
+    colItems.forEach(p => body.appendChild(pjCard(p, idx, stages)));
+    col.appendChild(body); host.appendChild(col);
   });
+}
+function pjCard(p, idx, stages) {
+  const prio = PJ_PRIO[p.priority] || PJ_PRIO.normal;
+  const dl = p.deadline ? new Date(p.deadline) : null;
+  const overdue = dl && dl < new Date() && p.phase !== stages[stages.length - 1].key;
+  const card = document.createElement('div');
+  card.className = 'kanban-card'; card.style.setProperty('--prio', prio.c);
+  card.draggable = true; card.dataset.pid = p._id;
+  card.addEventListener('dragstart', (e) => { _dragPid = p._id; card.classList.add('kanban-dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', p._id); } catch (_) {} });
+  card.addEventListener('dragend', () => { _dragPid = null; card.classList.remove('kanban-dragging'); document.querySelectorAll('.kanban-col-drop').forEach(c => c.classList.remove('kanban-col-drop')); });
+  let deliv = '';
+  if ((p.workflow || 'development') === 'development') {
+    const done = (p.deliverables || []).length, tot = PJ_DELIVERABLES.length, pct = Math.round(done / tot * 100);
+    deliv = `<div class="pj-card-deliv" title="Štandardné výstupy: ${done}/${tot}"><div class="pj-card-deliv-bar"><div style="width:${pct}%"></div></div><span>${done}/${tot}</span></div>`;
+  }
+  card.innerHTML = `
+    <div class="kanban-card-top" onclick="openProjectModal(projectsData.find(x=>x._id==='${p._id}'))">
+      <span class="kanban-card-title"><span class="kanban-grip" title="Potiahni na presun">⠿</span>${escHtml(p.title)}</span>
+      ${p.code ? `<span class="kanban-card-code">${escHtml(p.code)}</span>` : ''}
+    </div>
+    <div class="kanban-card-meta">
+      ${p.owner ? `<span>👤 ${escHtml(p.owner)}</span>` : ''}
+      ${dl ? `<span class="${overdue ? 'kanban-overdue' : ''}">📅 ${fmtDate(p.deadline)}</span>` : ''}
+      <span class="kanban-prio" title="Priorita">${prio.l}</span>
+    </div>
+    ${deliv}
+    <div class="kanban-card-actions">
+      ${idx > 0 ? `<button onclick="moveProjectPhase('${p._id}',-1)" title="Späť">←</button>` : '<span></span>'}
+      ${p.folder ? `<button onclick="openFolderLink('${encodeURIComponent(p.folder)}')" title="Priečinok">📁</button>` : ''}
+      ${idx < stages.length - 1 ? `<button onclick="moveProjectPhase('${p._id}',1)" title="Ďalej">→</button>` : '<span></span>'}
+    </div>`;
+  return card;
+}
+function renderPjList(host, items) {
+  if (!items.length) { host.innerHTML = '<div class="dev-empty">Žiadne projekty v tomto workflow.</div>'; return; }
+  const devWf = pjWorkflow === 'development';
+  const lastKey = pjStages()[pjStages().length - 1].key;
+  const rows = items.map(p => {
+    const st = pjStageInfo(p), prio = PJ_PRIO[p.priority] || PJ_PRIO.normal;
+    const dl = p.deadline ? new Date(p.deadline) : null;
+    const overdue = dl && dl < new Date() && p.phase !== lastKey;
+    let delivCell = '';
+    if (devWf) { const done = (p.deliverables || []).length, tot = PJ_DELIVERABLES.length, pct = Math.round(done / tot * 100);
+      delivCell = `<td><div class="prod-t-bar"><div style="width:${pct}%"></div></div><span class="prod-t-qty">${done}/${tot}</span></td>`; }
+    return `<tr onclick="openProjectModal(projectsData.find(x=>x._id==='${p._id}'))">
+      <td><span class="prod-t-num">${escHtml(p.title)}</span>${p.code ? `<span class="prod-t-qty">${escHtml(p.code)}</span>` : ''}</td>
+      <td><span class="prod-stage-badge" style="background:${st.c}22;color:${st.c}">${st.label}</span></td>
+      <td>${escHtml(p.owner || '—')}</td>
+      <td><span class="prod-t-prio" style="color:${prio.c}">${prio.l}</span></td>
+      <td class="${overdue ? 'kanban-overdue' : ''}">${dl ? fmtDate(p.deadline) : '—'}</td>
+      ${devWf ? delivCell : ''}
+    </tr>`;
+  }).join('');
+  host.innerHTML = `<div class="prod-list"><table class="prod-table">
+    <thead><tr><th>Projekt</th><th>Stage</th><th>Vlastník</th><th>Priorita</th><th>Termín</th>${devWf ? '<th>Výstupy</th>' : ''}</tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+function renderPjGantt(host, items) {
+  if (!items.length) { host.innerHTML = '<div class="dev-empty">Žiadne projekty v tomto workflow.</div>'; return; }
+  const withDates = items.map(p => {
+    const start = p.startDate ? new Date(p.startDate) : (p.createdAt ? new Date(p.createdAt) : new Date());
+    let end = p.deadline ? new Date(p.deadline) : new Date(start.getTime() + 30 * 864e5);
+    if (end < start) end = new Date(start.getTime() + 7 * 864e5);
+    return { p, start, end };
+  });
+  let min = withDates[0].start, max = withDates[0].end;
+  withDates.forEach(d => { if (d.start < min) min = d.start; if (d.end > max) max = d.end; });
+  const mStart = new Date(min.getFullYear(), min.getMonth(), 1);
+  const mEnd = new Date(max.getFullYear(), max.getMonth() + 1, 1);
+  const months = [];
+  for (let d = new Date(mStart); d < mEnd; d.setMonth(d.getMonth() + 1)) months.push(new Date(d));
+  const COLW = 80, totalMs = mEnd - mStart, trackW = months.length * COLW;
+  const mNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Máj', 'Jún', 'Júl', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
+  const xOf = (date) => (date - mStart) / totalMs * trackW;
+  const head = months.map((d, i) => `<div class="ug-day" style="left:${i * COLW}px;width:${COLW}px"><span class="ug-day-wd">${d.getFullYear()}</span><span class="ug-day-d">${mNames[d.getMonth()]}</span></div>`).join('');
+  const now = new Date(), nowX = (now >= mStart && now < mEnd) ? xOf(now) : -1;
+  const rows = withDates.map(({ p, start, end }) => {
+    const st = pjStageInfo(p), left = xOf(start), w = Math.max(10, xOf(end) - left);
+    const cells = months.map((d, i) => `<div class="ug-cell" style="left:${i * COLW}px;width:${COLW}px"></div>`).join('');
+    return `<div class="ug-row">
+      <div class="ug-eq"><div class="ug-eq-txt"><span class="ug-eq-name">${escHtml(p.title)}</span><span class="ug-eq-code">${escHtml(p.code || st.label)}</span></div></div>
+      <div class="ug-track" style="width:${trackW}px">${cells}
+        <div class="ug-bar" style="left:${left}px;width:${w}px;background:${st.c}" onclick="openProjectModal(projectsData.find(x=>x._id==='${p._id}'))"><span class="ug-bar-lbl">${escHtml(p.title)} · ${st.label}</span></div>
+      </div></div>`;
+  }).join('');
+  host.innerHTML = `<div class="util-gantt-wrap"><div class="util-gantt" style="min-width:${180 + trackW}px">
+    <div class="ug-head"><div class="ug-corner">Projekt</div><div class="ug-days" style="width:${trackW}px">${head}</div></div>
+    ${rows}
+    ${nowX >= 0 ? `<div class="ug-now" style="left:${180 + nowX}px"></div>` : ''}
+  </div></div>`;
 }
 function openFolderLink(enc) {
   openServerFolder(decodeURIComponent(enc));
@@ -4300,16 +4397,16 @@ async function onKanbanDrop(phaseKey) {
   try {
     const r = await fetch('/api/projects/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phase: phaseKey }) });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-  } catch { p.phase = oldPhase; renderProjects(); alert('Presun zlyhal — skús znova.'); }
+  } catch { p.phase = oldPhase; renderProjects(); toast('Presun zlyhal — skús znova.', 'error'); }
 }
 async function moveProjectPhase(id, dir) {
   const p = projectsData.find(x => x._id === id); if (!p) return;
-  const i = PJ_PHASES.findIndex(x => x.key === (p.phase || 'koncept'));
-  const ni = i + dir; if (ni < 0 || ni >= PJ_PHASES.length) return;
-  try {
-    await fetch('/api/projects/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phase: PJ_PHASES[ni].key }) });
-    loadProjects();
-  } catch { alert('Chyba pri presune'); }
+  const stages = pjStages(p.workflow || 'development');
+  const i = stages.findIndex(x => x.key === (p.phase || stages[0].key));
+  const ni = i + dir; if (ni < 0 || ni >= stages.length) return;
+  p.phase = stages[ni].key; renderProjects();
+  try { await fetch('/api/projects/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phase: stages[ni].key }) }); }
+  catch { toast('Chyba pri presune', 'error'); loadProjects(); }
 }
 function openProjectModal(p = null) {
   const e = p && typeof p === 'object';
@@ -4317,25 +4414,54 @@ function openProjectModal(p = null) {
   document.getElementById('pjId').value = e ? p._id : '';
   document.getElementById('pjTitle').value = e ? (p.title || '') : '';
   document.getElementById('pjCode').value = e ? (p.code || '') : '';
-  document.getElementById('pjPhase').value = e ? (p.phase || 'koncept') : 'koncept';
+  const wf = e ? (p.workflow || 'development') : pjWorkflow;
+  document.getElementById('pjWorkflowSel').value = wf;
+  pjFillPhaseOptions(wf, e ? (p.phase || '') : '');
   document.getElementById('pjPriority').value = e ? (p.priority || 'normal') : 'normal';
   document.getElementById('pjOwner').value = e ? (p.owner || '') : '';
+  document.getElementById('pjStart').value = e && p.startDate ? String(p.startDate).slice(0, 10) : '';
   document.getElementById('pjDeadline').value = e && p.deadline ? String(p.deadline).slice(0, 10) : '';
+  pjRenderDeliverables(e ? (p.deliverables || []) : [], wf);
   document.getElementById('pjFolder').value = e ? (p.folder || '') : '';
   document.getElementById('pjTags').value = e ? (p.tags || []).join(', ') : '';
   document.getElementById('pjNotes').value = e ? (p.notes || '') : '';
   document.getElementById('pjDeleteBtn').style.display = e ? '' : 'none';
   document.getElementById('projectModal').classList.remove('hidden');
 }
+function pjFillPhaseOptions(wf, cur) {
+  const sel = document.getElementById('pjPhase'); const stages = pjStages(wf);
+  sel.innerHTML = stages.map(s => `<option value="${s.key}">${s.label}</option>`).join('');
+  sel.value = stages.some(s => s.key === cur) ? cur : stages[0].key;
+}
+function _pjCurrentDeliv() { return [...document.querySelectorAll('.pj-deliv-cb')].filter(c => c.checked).map(c => c.value); }
+function pjRenderDeliverables(done, wf) {
+  const wrap = document.getElementById('pjDelivWrap'), list = document.getElementById('pjDelivList');
+  if (wf !== 'development') { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  list.innerHTML = PJ_DELIVERABLES.map(d => `<label><input type="checkbox" class="pj-deliv-cb" value="${d.key}"${done.includes(d.key) ? ' checked' : ''} onchange="pjUpdateDelivCount()"> ${escHtml(d.label)}</label>`).join('');
+  pjUpdateDelivCount();
+}
+function pjUpdateDelivCount() {
+  const cbs = [...document.querySelectorAll('.pj-deliv-cb')], done = cbs.filter(c => c.checked).length;
+  const el = document.getElementById('pjDelivCount'); if (el) el.textContent = `${done}/${cbs.length} splnené`;
+}
+function pjModalWorkflowChange() {
+  const wf = document.getElementById('pjWorkflowSel').value;
+  pjFillPhaseOptions(wf, document.getElementById('pjPhase').value);
+  pjRenderDeliverables(_pjCurrentDeliv(), wf);
+}
 function closeProjectModal() { document.getElementById('projectModal').classList.add('hidden'); }
 async function saveProject() {
   const title = document.getElementById('pjTitle').value.trim();
-  if (!title) { alert('Zadajte názov projektu'); return; }
+  if (!title) { toast('Zadajte názov projektu', 'warn'); return; }
+  const wf = document.getElementById('pjWorkflowSel').value;
   const body = {
     title, code: document.getElementById('pjCode').value.trim(),
-    phase: document.getElementById('pjPhase').value, priority: document.getElementById('pjPriority').value,
+    workflow: wf, phase: document.getElementById('pjPhase').value, priority: document.getElementById('pjPriority').value,
     owner: document.getElementById('pjOwner').value.trim(),
+    startDate: document.getElementById('pjStart').value || null,
     deadline: document.getElementById('pjDeadline').value || null,
+    deliverables: wf === 'development' ? _pjCurrentDeliv() : [],
     folder: document.getElementById('pjFolder').value.trim(),
     tags: document.getElementById('pjTags').value.split(',').map(s => s.trim()).filter(Boolean),
     notes: document.getElementById('pjNotes').value.trim()
@@ -4343,9 +4469,9 @@ async function saveProject() {
   const id = document.getElementById('pjId').value;
   try {
     const resp = await fetch(id ? '/api/projects/' + id : '/api/projects', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (!resp.ok) { const er = await resp.json().catch(() => ({})); alert('Chyba: ' + (er.error || resp.status)); return; }
+    if (!resp.ok) { const er = await resp.json().catch(() => ({})); toast('Chyba: ' + (er.error || resp.status), 'error'); return; }
     closeProjectModal(); loadProjects();
-  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
 }
 async function deleteProject(id) {
   if (!id || !await uiConfirm('Naozaj odstrániť projekt?')) return;
@@ -4642,6 +4768,12 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.49.0', date: '14. 6. 2026', tag: 'feat', items: [
+    'Vývoj výrobkov → Projekty: prepínanie zobrazenia Kanban / Zoznam / Gantt.',
+    'Každý projekt má vlastný workflow — Vývoj (Koncept→Prototyp→Testovanie→Výroba→Ukončené) alebo Predaj (Dopyt→Kvalifikácia→Cenová ponuka→Vyjednávanie→Objednávka→Uzavreté).',
+    'Vývojové projekty majú status štandardných výstupov (vždy rovnaký zoznam): BOO, BOM, Datasheet web, Standard wavelength configuration, Testovací protokol, Kalibračné dáta, Technologický postup, ERP karta, Marketing — s priebehom na karte aj v zozname.',
+    'Gantt projektov po mesiacoch s farbou podľa stage a čiarou „dnes"; nové pole Začiatok pre časovú os.',
+  ] },
   { v: '1.48.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Backbone: klávesa Delete (alebo Backspace) zmaže vybraný komponent alebo kábel.',
     'Backbone: dvojklik na komponent alebo kábel = úprava popisu priamo na plátne (napr. „4 f @ 5m").',
