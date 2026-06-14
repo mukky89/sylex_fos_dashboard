@@ -4077,33 +4077,45 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .bb-hint { font-size: 0.74rem; color: var(--text-xdim); margin-left: auto; }
 
 .bb-editor { display: flex; gap: 14px; align-items: flex-start; }
-.bb-canvas-wrap { flex: 1; min-width: 0; background: #ffffff; border: 1px solid var(--border); border-radius: 12px; overflow: auto; max-height: 72vh; box-shadow: var(--shadow-sm); position: relative; }
+.bb-canvas-wrap { flex: 1; min-width: 0; background: #0d1420; background-image: radial-gradient(rgba(141,198,63,0.06) 1px, transparent 1px); background-size: 24px 24px; border: 1px solid #1c2738; border-radius: 12px; overflow: auto; max-height: 72vh; box-shadow: var(--shadow-sm); position: relative; }
 .bb-svg { display: block; }
-.bb-empty-txt { fill: #94a3b8; font-size: 15px; font-family: var(--font); }
+.bb-empty-txt { fill: #64748b; font-size: 15px; font-family: var(--font); }
 
-/* uzly */
+/* uzly — realistické zariadenia */
 .bb-node { cursor: grab; }
 .bb-node:active { cursor: grabbing; }
-.bb-node rect { stroke: transparent; stroke-width: 2; transition: filter .12s; }
-.bb-node text { font-family: var(--font); font-size: 14px; font-weight: 600; pointer-events: none; }
-.bb-interrogator rect { fill: #2f6b22; } .bb-interrogator text { fill: #fff; }
-.bb-splitter rect { fill: #4f9d3a; } .bb-splitter text { fill: #fff; }
-.bb-patch rect { fill: #6db33f; } .bb-patch text { fill: #fff; }
-.bb-sensors rect { fill: #ffffff; stroke: #4f9d3a; } .bb-sensors text { fill: #1f2937; font-weight: 500; }
-.bb-node:hover rect { filter: brightness(1.05); }
-.bb-node.sel rect { stroke: #0891b2; stroke-width: 3; }
-.bb-node.conn rect { stroke: #f59e0b; stroke-width: 3; stroke-dasharray: 6 4; }
+.bb-node text { pointer-events: none; }
+.bb-dev-body { stroke: rgba(0,0,0,0.45); stroke-width: 1; transition: filter .12s; }
+.bb-dev-face { fill: url(#bbFace); pointer-events: none; }
+.bb-dev-accent { fill: #8DC63F; }
+.bb-lcd { fill: #06140a; stroke: #1f4020; stroke-width: 1; }
+.bb-led { fill: #3a4150; }
+.bb-led.on { fill: #8DC63F; animation: bbLed 1.6s ease-in-out infinite; }
+@keyframes bbLed { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+.bb-fc { fill: #0c1118; stroke: #8DC63F; stroke-width: 1; }
+.bb-fc-i { fill: #8DC63F; }
+.bb-fan { stroke: rgba(255,255,255,0.55); stroke-width: 1.3; }
+.bb-box-lid { fill: rgba(255,255,255,0.05); stroke: rgba(0,0,0,0.35); stroke-width: 1; }
+.bb-screw { fill: rgba(255,255,255,0.28); }
+.bb-gland { fill: #0c1118; stroke: rgba(255,255,255,0.18); stroke-width: 1; }
+.bb-sensor-body { stroke: #8DC63F; stroke-width: 1.5; }
+.bb-grating { stroke: #8DC63F; stroke-width: 1.3; }
+.bb-tip { stroke: #5a8c12; stroke-width: 1; }
+.bb-node:hover .bb-dev-body, .bb-node:hover .bb-sensor-body { filter: brightness(1.12); }
+.bb-sel-ring { fill: none; stroke: #38bdf8; stroke-width: 2.5; }
+.bb-node.conn .bb-sel-ring { stroke: #f59e0b; stroke-dasharray: 6 4; }
 
 /* káble */
-.bb-link { fill: none; stroke: #4f9d3a; stroke-width: 2.5; cursor: pointer; }
-.bb-link:hover { stroke: #3f8a2e; stroke-width: 3.5; }
-.bb-link.sel { stroke: #0891b2; stroke-width: 3.5; }
-.bb-link-lbl { fill: #334155; font-family: var(--font); font-size: 13px; }
+.bb-link { fill: none; stroke: #355a2b; stroke-width: 2.5; cursor: pointer; }
+.bb-link:hover { stroke: #8DC63F; stroke-width: 3.5; }
+.bb-link.sel { stroke: #38bdf8; stroke-width: 3.5; }
+.bb-link-lbl { fill: #cbd5e1; font-family: var(--font); font-size: 13px; }
 .bb-flows { display: none; pointer-events: none; }
 .bb-anim .bb-flows { display: block; }
-.bb-flow { fill: none; stroke: #b6f08a; stroke-width: 2.6; stroke-dasharray: 7 12; animation: bbFlow .8s linear infinite; }
-@keyframes bbFlow { to { stroke-dashoffset: -19; } }
-.bb-dragging .bb-flow { animation: none; }
+.bb-flow { fill: none; stroke: rgba(141,198,63,0.45); stroke-width: 2; stroke-dasharray: 1 11; stroke-linecap: round; animation: bbFlow 1s linear infinite; }
+@keyframes bbFlow { to { stroke-dashoffset: -12; } }
+.bb-photon { fill: #c6ff8e; filter: url(#bbGlow); }
+.bb-dragging .bb-flow, .bb-dragging .bb-photon { animation: none; }
 
 /* panel */
 .bb-panel { width: 270px; flex-shrink: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px; align-self: stretch; }
@@ -4230,14 +4242,11 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 select option, select optgroup { background-color: #131c33; color: #e2e8f0; }
 .util-select, .cal-jump, select.util-select { color-scheme: dark; }
 
-/* Backbone — Sylex štýl: korálky (konektory/ochrany), senzorový hrot, porty */
-.bb-port { fill: rgba(255,255,255,0.55); }
-.bb-tip { stroke: #5a8c12; stroke-width: 1; }
+/* Backbone — Sylex štýl: korálky (konektory/ochrany) na kábli */
 .bb-bead { cursor: pointer; }
-.bb-bead rect { fill: #1c1c1c; stroke: #555; stroke-width: 1; }
-.bb-bead:hover rect { fill: #333; }
-.bb-bead-lbl { font-family: var(--font); font-size: 8.5px; font-weight: 700; fill: #475569; }
-.bb-flow { stroke: #8DC63F; }
+.bb-bead rect { fill: #161b22; stroke: #8DC63F; stroke-width: 1; }
+.bb-bead:hover rect { fill: #243018; }
+.bb-bead-lbl { font-family: var(--font); font-size: 8.5px; font-weight: 700; fill: #a8d977; }
 .bb-parts { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
 .bb-part-chip { display: inline-flex; align-items: center; gap: 5px; background: #1c1c1c; color: #fff; font-size: 0.72rem; font-weight: 600; padding: 3px 4px 3px 8px; border-radius: 5px; }
 .bb-part-chip button { background: none; border: none; color: rgba(255,255,255,0.6); cursor: pointer; font-size: 0.75rem; padding: 0 2px; }
