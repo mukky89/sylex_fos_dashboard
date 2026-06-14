@@ -2,8 +2,48 @@ const express = require('express');
 const router = express.Router();
 const ExcelJS = require('exceljs');
 const ical = require('node-ical');
+const crypto = require('crypto');
 const CalendarEvent = require('../models/CalendarEvent');
 const IcsFeed = require('../models/IcsFeed');
+const AppConfig = require('../models/AppConfig');
+
+// ── Expanzia opakovaných udalostí v okne [start,end] ──
+function _recurStep(d, freq, n) {
+  const x = new Date(d);
+  if (freq === 'daily') x.setDate(x.getDate() + n);
+  else if (freq === 'weekly') x.setDate(x.getDate() + 7 * n);
+  else if (freq === 'monthly') x.setMonth(x.getMonth() + n);
+  else if (freq === 'yearly') x.setFullYear(x.getFullYear() + n);
+  return x;
+}
+function expandRecur(ev, start, end) {
+  const out = [];
+  const base = new Date(ev.date);
+  const durMs = ev.endDate ? (new Date(ev.endDate) - base) : 0;
+  const until = ev.recurUntil ? new Date(ev.recurUntil) : end;
+  const dayMs = 864e5;
+  let i = 0;
+  if (base < start) {
+    if (ev.recurFreq === 'daily') i = Math.floor((start - base) / dayMs) - 1;
+    else if (ev.recurFreq === 'weekly') i = Math.floor((start - base) / (7 * dayMs)) - 1;
+    else if (ev.recurFreq === 'monthly') i = (start.getFullYear() - base.getFullYear()) * 12 + (start.getMonth() - base.getMonth()) - 1;
+    else if (ev.recurFreq === 'yearly') i = (start.getFullYear() - base.getFullYear()) - 1;
+    i = Math.max(0, i);
+  }
+  let guard = 0;
+  while (guard++ < 800) {
+    const occ = _recurStep(base, ev.recurFreq, i);
+    if (occ > end || occ > until) break;
+    const occEnd = durMs ? new Date(occ.getTime() + durMs) : null;
+    if ((occEnd || occ) >= start && occ <= end) {
+      const o = ev.toObject ? ev.toObject() : { ...ev };
+      o.date = occ; o.endDate = occEnd; o.recurring = true;
+      out.push(o);
+    }
+    i++;
+  }
+  return out;
+}
 
 const TYPE_LABELS = {
   event: 'Udalosť', meeting: 'Porada / Meeting', dovolenka: 'Dovolenka',
@@ -74,8 +114,14 @@ router.get('/', async (req, res) => {
         { date: { $lte: start }, endDate: { $gte: end } }
       ];
     }
-    const events = await CalendarEvent.find(filter).sort({ date: 1, time: 1 });
-    res.json(events);
+    const start = from ? new Date(from) : new Date('1970-01-01');
+    const end   = to   ? new Date(to)   : new Date('2999-12-31');
+    // Neopakované — podľa rozsahu; opakované — expandované do okna
+    const nonRecur = await CalendarEvent.find({ ...filter, recurFreq: { $in: ['none', null] } }).sort({ date: 1, time: 1 });
+    const recur = await CalendarEvent.find({ recurFreq: { $in: ['daily', 'weekly', 'monthly', 'yearly'] }, $or: [{ recurUntil: null }, { recurUntil: { $gte: start } }] });
+    const expanded = [];
+    recur.forEach(ev => expanded.push(...expandRecur(ev, start, end)));
+    res.json([...nonRecur.map(e => e.toObject()), ...expanded]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -219,6 +265,51 @@ router.get('/external', async (req, res) => {
     }
     res.json(out);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ════════════════════════ iCal EXPORT (dashboard → Outlook) ════════════════════════
+async function getFeedToken(create) {
+  let cfg = await AppConfig.findOne({ key: 'calendar.feedToken' });
+  if (!cfg && create) cfg = await AppConfig.create({ key: 'calendar.feedToken', value: crypto.randomBytes(16).toString('hex'), group: 'calendar', label: 'ICS feed token' });
+  return cfg ? cfg.value : null;
+}
+function icsEsc(s) { return String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
+function icsDate(d) { const p = n => String(n).padStart(2, '0'); const x = new Date(d); return `${x.getFullYear()}${p(x.getMonth() + 1)}${p(x.getDate())}`; }
+function icsDateTime(d, hm) { const [h, mi] = (hm || '00:00').split(':'); const x = new Date(d); return `${icsDate(x)}T${String(h).padStart(2, '0')}${String(mi || '00').padStart(2, '0')}00`; }
+
+// URL feedu pre používateľa (autentizované cez globálnu bránu)
+router.get('/feed-url', async (req, res) => {
+  try { res.json({ token: await getFeedToken(true) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Verejný .ics feed (token v query) — registrované ako výnimka z auth brány
+router.get('/feed.ics', async (req, res) => {
+  try {
+    const tok = await getFeedToken(false);
+    if (!tok || req.query.token !== tok) return res.status(403).send('Neplatný token');
+    const events = await CalendarEvent.find().lean();
+    const FREQ = { daily: 'DAILY', weekly: 'WEEKLY', monthly: 'MONTHLY', yearly: 'YEARLY' };
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Sylex//FOS Dashboard//SK', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:FOS Dashboard'];
+    const stamp = icsDateTime(new Date(), `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`);
+    events.forEach(e => {
+      lines.push('BEGIN:VEVENT', `UID:${e._id}@fosdashboard`, `DTSTAMP:${stamp}`);
+      if (e.allDay) {
+        const endD = e.endDate ? new Date(new Date(e.endDate).getTime() + 864e5) : new Date(new Date(e.date).getTime() + 864e5);
+        lines.push(`DTSTART;VALUE=DATE:${icsDate(e.date)}`, `DTEND;VALUE=DATE:${icsDate(endD)}`);
+      } else {
+        lines.push(`DTSTART:${icsDateTime(e.date, e.time)}`, `DTEND:${icsDateTime(e.endDate || e.date, e.endTime || e.time)}`);
+      }
+      lines.push(`SUMMARY:${icsEsc(e.title)}${e.person ? ' (' + icsEsc(e.person) + ')' : ''}`);
+      if (e.note) lines.push(`DESCRIPTION:${icsEsc(e.note)}`);
+      if (e.recurFreq && e.recurFreq !== 'none') lines.push(`RRULE:FREQ=${FREQ[e.recurFreq]}${e.recurUntil ? ';UNTIL=' + icsDate(e.recurUntil) + 'T235959Z' : ''}`);
+      lines.push('END:VEVENT');
+    });
+    lines.push('END:VCALENDAR');
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', 'inline; filename="fos-dashboard.ics"');
+    res.send(lines.join('\r\n'));
+  } catch (e) { res.status(500).send(e.message); }
 });
 
 module.exports = router;

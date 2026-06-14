@@ -254,7 +254,7 @@ app.get('/api/version', (req, res) => {
 // ── Guard: všetko ostatné pod /api vyžaduje prihlásenie ───────────────────────
 const { requireAuth } = require('./middleware/auth');
 app.use('/api', (req, res, next) => {
-  if (req.path === '/version' || req.path.startsWith('/auth')) return next();
+  if (req.path === '/version' || req.path.startsWith('/auth') || req.path === '/calendar/feed.ics') return next();
   return requireAuth(req, res, next);
 });
 

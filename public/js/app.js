@@ -436,6 +436,7 @@ function startApp() {
   loadAppVersion();
   loadNotif();
   setInterval(loadNotif, 120000);
+  calCheckReminders(); setInterval(calCheckReminders, 60000);
   updateDateTime();
   setInterval(updateDateTime, 1000);
   loadThermoData();
@@ -2043,6 +2044,9 @@ let calView = 'month';  // 'month' | 'week' | 'day'
 let calRef  = new Date(); // referenčný dátum (kotva pohľadu)
 let calPersonFilter = ''; // filter podľa osoby / zdroja
 let calTextFilter = '';   // textový filter
+let calTypeFilter = '';   // filter podľa typu
+let calBh = false;        // len pracovné hodiny (7–19) v týždeň/deň
+let _calRemind = new Set();// už zobrazené pripomienky
 let calZoom = 46;         // px / hodina v týždennom a dennom pohľade
 
 // Date -> 'YYYY-MM-DD' (local components)
@@ -2101,6 +2105,7 @@ function calBuildDayMap() {
 // ── pomocné ──
 function calVisible(ev) {
   if (calPersonFilter && (ev.external ? ev.source : ev.person) !== calPersonFilter) return false;
+  if (calTypeFilter) { const t = ev.external ? 'outlook' : (ev.type || 'event'); if (t !== calTypeFilter) return false; }
   if (calTextFilter) {
     const hay = [ev.title, ev.person, ev.source, ev.note].filter(Boolean).join(' ').toLowerCase();
     if (!hay.includes(calTextFilter.toLowerCase())) return false;
@@ -2169,6 +2174,8 @@ function renderCalendar() {
   const vp = document.getElementById('calViewport'); if (!vp) return;
   document.querySelectorAll('[data-calview]').forEach(b => b.classList.toggle('active', b.dataset.calview === calView));
   document.getElementById('calZoomCtl')?.classList.toggle('hidden', calView === 'month');
+  document.getElementById('calBhBtn')?.classList.toggle('hidden', calView === 'month');
+  const ty = document.getElementById('calType'); if (ty) ty.value = calTypeFilter;
   calFillPersonFilter();
   if (calView === 'month') renderCalMonth(vp);
   else renderCalTimeGrid(vp, calView === 'week' ? calWeekDays() : [new Date(calRef)]);
@@ -2257,6 +2264,7 @@ function renderCalMonth(vp) {
       const hol = calHolidayName(key);
       const holHtml = hol ? `<div class="cal-holiday" title="Štátny sviatok: ${escHtml(hol)}">🇸🇰 ${escHtml(hol)}</div>` : '';
       cellsHtml += `<div class="cal-cell${inMonth ? '' : ' cal-cell-out'}${key === todayKey ? ' cal-cell-today' : ''}${we ? ' cal-cell-weekend' : ''}${hol ? ' cal-cell-holiday' : ''}" data-day="${key}">
+        ${c === 0 ? `<span class="cal-wk" title="Číslo týždňa">T${calIsoWeek(d)}</span>` : ''}
         <div class="cal-cell-num" data-open-day="${key}">${d.getDate()}</div>
         <div class="cal-cell-events" style="padding-top:${laneCount * LANE}px">${holHtml}${timedShown.map(calEvChipHtml).join('')}${more > 0 ? `<div class="cal-more" data-open-day="${key}">+${more} ďalšie</div>` : ''}</div>
       </div>`;
@@ -2267,6 +2275,28 @@ function renderCalMonth(vp) {
   vp.querySelectorAll('[data-open-day]').forEach(el => el.onclick = (e) => { e.stopPropagation(); calOpenDay(el.dataset.openDay); });
   vp.querySelectorAll('.cal-cell').forEach(cell => cell.onclick = (e) => { if (e.target === cell || e.target.classList.contains('cal-cell-events')) openEventModal(null, cell.dataset.day); });
   calAttachEvClicks(vp);
+  // Drag & drop — presun internej udalosti na iný deň
+  vp.querySelectorAll('.cal-ev[data-id], .cal-span[data-id]').forEach(el => {
+    el.setAttribute('draggable', 'true');
+    el.addEventListener('dragstart', e => { e.dataTransfer.setData('text/cal', el.dataset.id); e.dataTransfer.effectAllowed = 'move'; el.classList.add('cal-dragging'); });
+    el.addEventListener('dragend', () => el.classList.remove('cal-dragging'));
+  });
+  vp.querySelectorAll('.cal-cell').forEach(cell => {
+    cell.addEventListener('dragover', e => { if ([...e.dataTransfer.types].includes('text/cal')) { e.preventDefault(); cell.classList.add('cal-cell-dragover'); } });
+    cell.addEventListener('dragleave', () => cell.classList.remove('cal-cell-dragover'));
+    cell.addEventListener('drop', e => { e.preventDefault(); cell.classList.remove('cal-cell-dragover'); const id = e.dataTransfer.getData('text/cal'); if (id) calMoveEvent(id, cell.dataset.day); });
+  });
+}
+async function calMoveEvent(id, newKey) {
+  const ev = calEvents.find(x => x._id === id); if (!ev) return;
+  if (ev.recurFreq && ev.recurFreq !== 'none') { toast('Opakovanú udalosť presuň cez úpravu.', 'warn'); return; }
+  const oldKey = String(ev.date).slice(0, 10); if (oldKey === newKey) return;
+  const delta = Math.round((new Date(newKey + 'T12:00') - new Date(oldKey + 'T12:00')) / 864e5);
+  const nd = new Date(ev.date); nd.setDate(nd.getDate() + delta);
+  const body = { date: calYmd(nd) };
+  if (ev.endDate) { const ned = new Date(ev.endDate); ned.setDate(ned.getDate() + delta); body.endDate = calYmd(ned); }
+  try { const r = await fetch('/api/calendar/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (r.ok) { toast('Udalosť presunutá.', 'success'); loadCalendar(); } else toast('Presun zlyhal.', 'error'); }
+  catch { toast('Sieťová chyba.', 'error'); }
 }
 
 function calOpenDay(key) { const [y, m, da] = key.split('-').map(Number); calRef = new Date(y, m - 1, da); setCalView('day'); }
@@ -2288,7 +2318,7 @@ function renderCalTimeGrid(vp, days) {
   else { const a = days[0], b = days[6]; lbl.textContent = `${a.getDate()}.${a.getMonth() + 1}. – ${b.getDate()}.${b.getMonth() + 1}. ${b.getFullYear()}`; }
   const dayMap = calBuildDayMap();
   const todayKey = calYmd(new Date());
-  const hourH = calZoom, HOURS = 24;
+  const hourH = calZoom, H0 = calBh ? 7 : 0, H1 = calBh ? 19 : 24, HN = H1 - H0;
   const WD = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
 
   let head = '<div class="ctg-corner"></div>';
@@ -2301,22 +2331,24 @@ function renderCalTimeGrid(vp, days) {
     const dayEvs = dayMap[key] || [];
     const holHtml = hol ? `<div class="cal-holiday" title="Štátny sviatok: ${escHtml(hol)}">🇸🇰 ${escHtml(hol)}</div>` : '';
     allday += `<div class="ctg-allday-cell${we ? ' ctg-we' : ''}" data-newday="${key}">${holHtml}${calMergeEvents(dayEvs.filter(ev => ev.allDay || calIsMultiDay(ev))).map(calEvChipHtml).join('')}</div>`;
-    let lines = ''; for (let h = 0; h < HOURS; h++) lines += `<div class="ctg-line" style="top:${h * hourH}px"></div>`;
+    let lines = ''; for (let h = H0; h < H1; h++) lines += `<div class="ctg-line" style="top:${(h - H0) * hourH}px"></div>`;
     const laid = calLayoutLanes(calMergeEvents(dayEvs.filter(ev => !ev.allDay && !calIsMultiDay(ev) && ev.time)));
     const evhtml = laid.map(it => {
-      const top = it.s / 60 * hourH, height = Math.max(15, (it.e - it.s) / 60 * hourH - 2);
+      if (it.e <= H0 * 60 || it.s >= H1 * 60) return '';
+      const top = Math.max(0, (it.s - H0 * 60) / 60 * hourH);
+      const height = Math.max(15, (Math.min(it.e, H1 * 60) - Math.max(it.s, H0 * 60)) / 60 * hourH - 2);
       const w = 100 / it.cols, left = it.lane * w, ev = it.ev, ref = ev._ref || ev, ext = ref.external;
-      const multi = ev._owners && ev._owners.length > 1;
+      const multi = ev._owners && ev._owners.length > 1, conflict = it.cols > 1;
       const _own = (ev._owners && ev._owners.length) ? ev._owners.join(', ') : calEvOwner(ev);
       const _ownDisp = (ev._owners && ev._owners.length) ? ev._owners.map(calInitials).join(', ') : calInitials(calEvOwner(ev));
       const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span> ${escHtml(ev.title)}${_own ? `<span class="ctg-ev-owner" title="${escHtml(_own)}"> · ${multi ? '👥' : (ext ? '📅' : '👤')} ${escHtml(_ownDisp)}</span>` : ''}`;
-      const cls = ext ? 'cal-ev cal-ev-ext ctg-ev' : 'cal-ev ctg-ev';
+      const cls = `cal-ev ctg-ev${ext ? ' cal-ev-ext' : ''}${conflict ? ' ctg-ev-conflict' : ''}`;
       const ds = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
-      return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ext ? '#7c3aed' : '#00d4ff'))};top:${top}px;height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${escHtml(ev.title)}${_own ? ' · ' + escHtml(_own) : ''}">${inner}</div>`;
+      return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ext ? '#7c3aed' : '#00d4ff'))};top:${top}px;height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${conflict ? '⚠ Prekryv · ' : ''}${escHtml(ev.title)}${_own ? ' · ' + escHtml(_own) : ''}">${conflict ? '<span class="ctg-conf">⚠</span>' : ''}${inner}</div>`;
     }).join('');
-    cols += `<div class="ctg-daycol${we ? ' ctg-we' : ''}${isToday ? ' ctg-today' : ''}" data-newday="${key}" style="height:${HOURS * hourH}px">${lines}${evhtml}</div>`;
+    cols += `<div class="ctg-daycol${we ? ' ctg-we' : ''}${isToday ? ' ctg-today' : ''}" data-newday="${key}" style="height:${HN * hourH}px">${lines}${evhtml}</div>`;
   });
-  let gutter = ''; for (let h = 0; h < HOURS; h++) gutter += `<div class="ctg-hour" style="height:${hourH}px"><span>${String(h).padStart(2, '0')}:00</span></div>`;
+  let gutter = ''; for (let h = H0; h < H1; h++) gutter += `<div class="ctg-hour" style="height:${hourH}px"><span>${String(h).padStart(2, '0')}:00</span></div>`;
 
   vp.innerHTML = `<div class="ctg ctg-${calView}" style="--ctg-days:${days.length}">
     <div class="ctg-head">${head}</div>
@@ -2326,7 +2358,7 @@ function renderCalTimeGrid(vp, days) {
   calAttachEvClicks(vp);
   vp.querySelectorAll('[data-open-day]').forEach(el => el.onclick = () => calOpenDay(el.dataset.openDay));
   vp.querySelectorAll('[data-newday]').forEach(el => el.onclick = (e) => { if (e.target === el) openEventModal(null, el.dataset.newday); });
-  const body = vp.querySelector('.ctg-body'); if (body) body.scrollTop = Math.max(0, 7 * hourH - 8);
+  const body = vp.querySelector('.ctg-body'); if (body) body.scrollTop = Math.max(0, (7 - H0) * hourH - 8);
 }
 
 // Read-only zobrazenie externej (Outlook) udalosti
@@ -2404,7 +2436,55 @@ function calNav(dir) {
 function calGoToday() { calRef = new Date(); loadCalendar(); }
 function setCalPerson(v) { calPersonFilter = v; renderCalendar(); }
 function setCalText(v) { calTextFilter = v.trim(); renderCalendar(); }
+function setCalType(v) { calTypeFilter = v; renderCalendar(); }
+function toggleCalBh() { calBh = !calBh; document.getElementById('calBhBtn')?.classList.toggle('active', calBh); renderCalendar(); }
 function calJumpDate(v) { if (!v) return; const [y, m, d] = v.split('-').map(Number); calRef = new Date(y, m - 1, d); setCalView('day'); }
+
+// ISO číslo týždňa
+function calIsoWeek(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = (t.getUTCDay() + 6) % 7; t.setUTCDate(t.getUTCDate() - day + 3);
+  const firstThu = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  const fday = (firstThu.getUTCDay() + 6) % 7; firstThu.setUTCDate(firstThu.getUTCDate() - fday + 3);
+  return 1 + Math.round((t - firstThu) / (7 * 864e5));
+}
+
+// Tlač
+function calPrint() { document.body.classList.add('printing-cal'); window.print(); setTimeout(() => document.body.classList.remove('printing-cal'), 600); }
+
+// iCal export (odber v Outlooku)
+async function openCalExportModal() {
+  try {
+    const d = await fetch('/api/calendar/feed-url').then(r => r.json());
+    document.getElementById('calExportUrl').value = location.origin + '/api/calendar/feed.ics?token=' + d.token;
+  } catch { document.getElementById('calExportUrl').value = ''; }
+  document.getElementById('calExportModal').classList.remove('hidden');
+}
+function calCopyExportUrl() {
+  const inp = document.getElementById('calExportUrl'); inp.select();
+  navigator.clipboard?.writeText(inp.value).then(() => toast('Odkaz skopírovaný.', 'success'), () => { try { document.execCommand('copy'); toast('Odkaz skopírovaný.', 'success'); } catch { toast('Skopíruj odkaz ručne.', 'info'); } });
+}
+
+// Pripomienky — kontroluje nadchádzajúce udalosti
+async function calCheckReminders() {
+  try {
+    const now = new Date();
+    const from = calYmd(now), to = calYmd(new Date(now.getTime() + 2 * 864e5));
+    const evs = await fetch(`/api/calendar?from=${from}&to=${to}`).then(r => r.json());
+    if (!Array.isArray(evs)) return;
+    evs.forEach(ev => {
+      if (!ev.reminderMin || ev.allDay || !ev.time) return;
+      const [h, mi] = ev.time.split(':').map(Number);
+      const start = new Date(ev.date); start.setHours(h, mi, 0, 0);
+      const diff = (start - now) / 60000;
+      const key = ev._id + '|' + calYmd(start);
+      if (diff > 0 && diff <= ev.reminderMin && !_calRemind.has(key)) {
+        _calRemind.add(key);
+        toast(`⏰ ${ev.title} o ${ev.time}${ev.person ? ' · ' + ev.person : ''}`, 'info', 9000);
+      }
+    });
+  } catch {}
+}
 function calZoomBy(d) { calZoom = Math.max(28, Math.min(96, calZoom + d * 12)); renderCalendar(); }
 
 // ── Event modal ─────────────────────────────────────────────────────────────
@@ -2418,11 +2498,15 @@ function openEventModal(event = null, prefillDate = null) {
   document.getElementById('evEndDate').value = isEdit && event.endDate ? String(event.endDate).slice(0, 10) : '';
   document.getElementById('evAllDay').checked = isEdit ? (event.allDay !== false) : true;
   document.getElementById('evTime').value    = isEdit ? (event.time || '') : '';
+  document.getElementById('evEndTime').value = isEdit ? (event.endTime || '') : '';
   document.getElementById('evType').value    = isEdit ? (event.type || 'event') : 'event';
   document.getElementById('evColor').value   = isEdit ? (event.color || '#00d4ff') : '#00d4ff';
   document.getElementById('evNote').value    = isEdit ? (event.note || '') : '';
+  document.getElementById('evRecur').value   = isEdit ? (event.recurFreq || 'none') : 'none';
+  document.getElementById('evRecurUntil').value = isEdit && event.recurUntil ? String(event.recurUntil).slice(0, 10) : '';
+  document.getElementById('evReminder').value = isEdit ? String(event.reminderMin || 0) : '0';
   document.getElementById('evDeleteBtn').style.display = isEdit ? '' : 'none';
-  toggleEventTime();
+  toggleEventTime(); toggleEventRecur();
   document.getElementById('eventModal').classList.remove('hidden');
 }
 
@@ -2433,6 +2517,10 @@ function closeEventModal() {
 function toggleEventTime() {
   const allDay = document.getElementById('evAllDay').checked;
   document.getElementById('evTimeWrap').style.display = allDay ? 'none' : '';
+  document.getElementById('evEndTimeWrap').style.display = allDay ? 'none' : '';
+}
+function toggleEventRecur() {
+  document.getElementById('evRecurUntilWrap').style.display = document.getElementById('evRecur').value === 'none' ? 'none' : '';
 }
 
 async function saveEvent() {
@@ -2452,9 +2540,13 @@ async function saveEvent() {
     endDate,
     allDay,
     time:    allDay ? '' : document.getElementById('evTime').value,
+    endTime: allDay ? '' : document.getElementById('evEndTime').value,
     type:    document.getElementById('evType').value,
     color:   document.getElementById('evColor').value,
-    note:    document.getElementById('evNote').value.trim()
+    note:    document.getElementById('evNote').value.trim(),
+    recurFreq:  document.getElementById('evRecur').value,
+    recurUntil: document.getElementById('evRecurUntil').value || null,
+    reminderMin: Number(document.getElementById('evReminder').value) || 0
   };
 
   const id = document.getElementById('evId').value;
@@ -4550,6 +4642,15 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.45.0', date: '14. 6. 2026', tag: 'feat', items: [
+    'Udalosti majú koncový čas (od–do) → presné trvanie v týždeň/deň pohľade.',
+    'Opakované udalosti (denne/týždenne/mesačne/ročne, voliteľne „do dátumu").',
+    'Pripomienky pred udalosťou (10 min – 1 deň) ako upozornenie v appke.',
+    'Filter podľa typu udalosti + čísla týždňov (ISO) v mesačnom pohľade.',
+    'Týždeň/deň: prepínač „pracovné hodiny" (7–19) a upozornenie na prekrývajúce sa udalosti.',
+    'Presun udalosti myšou (drag & drop) na iný deň v mesačnom pohľade.',
+    'iCal export — odkaz na odoberanie kalendára v Outlooku + tlač/PDF.',
+  ] },
   { v: '1.44.2', date: '13. 6. 2026', tag: 'ui', items: [
     'V zázname kalendára sa vlastník/kalendár zobrazuje len ako iniciálky (napr. Martin Múčka → MM); plné meno je v tooltipe.',
   ] },
