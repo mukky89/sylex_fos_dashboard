@@ -4642,6 +4642,12 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.46.0', date: '14. 6. 2026', tag: 'feat', items: [
+    'Backbone editor v štýle oficiálnej Sylex schémy „FBG monitoring system" — zelený branding, reálne komponenty.',
+    'Katalóg komponentov: S-line Scan/Switch/Splitter/Comp (interrogátory), WCB-01 prepojovacia skriňa, splitter, FBG senzory so zeleným hrotom.',
+    'Káble môžu mať inline komponenty („korálky") — konektory a ochrany WSP-01, WCP-01, FSP-01, LCP-03, WPA-01 — pridávajú sa v paneli kábla.',
+    'Uzly majú porty (konektory) a nový panel s výberom typu komponentu zoskupeným podľa kategórie.',
+  ] },
   { v: '1.45.1', date: '14. 6. 2026', tag: 'fix', items: [
     'Rozbaľovacie zoznamy (combobox) majú tmavé pozadie a svetly text — predtym boli moznosti na bielom nečitateľné.',
   ] },
@@ -7730,10 +7736,28 @@ async function deleteCrmEmail(id) {
 //  BACKBONE EDITOR — optická topológia (interrogátor · splitter · káble · senzory)
 // ══════════════════════════════════════════════════════════════════════════════
 let bbList = [], bbDoc = null, bbSel = null, bbConnect = null, bbAnim = true, bbDrag = null, bbRenderReq = false;
-const BB_H = 40;
-const BB_TYPE_LABEL = { interrogator: 'Interrogátor', splitter: 'Splitter', patch: 'Prepojovacia', sensors: 'Senzory' };
+// Katalóg komponentov (Sylex FBG monitoring system)
+const BB_TYPES = {
+  scan:      { label: 'S-line Scan 800',    grp: 'interr', fill: '#2f6b22', text: '#fff',     ports: 4,  w: 160, h: 46 },
+  switch:    { label: 'S-line Switch 1×16', grp: 'interr', fill: '#2f6b22', text: '#fff',     ports: 8,  w: 188, h: 46 },
+  splitter8: { label: 'S-line Splitter 1×8',grp: 'interr', fill: '#2f6b22', text: '#fff',     ports: 6,  w: 172, h: 46 },
+  comp:      { label: 'S-line Comp (PC)',    grp: 'interr', fill: '#3a4150', text: '#fff',     ports: 0,  w: 150, h: 46 },
+  interrogator:{ label: 'Interrogátor',      grp: 'interr', fill: '#2f6b22', text: '#fff',     ports: 4,  w: 150, h: 46 },
+  wcb:       { label: 'WCB-01 Connection box',grp: 'box',   fill: '#6aa017', text: '#fff',     ports: 0,  w: 184, h: 44 },
+  splitter:  { label: 'Splitter 1×4',        grp: 'box',    fill: '#8DC63F', text: '#1f2937',  ports: 0,  w: 130, h: 42 },
+  patch:     { label: 'Prepojovacia',        grp: 'box',    fill: '#8DC63F', text: '#1f2937',  ports: 0,  w: 130, h: 42 },
+  sensor:    { label: 'FBG senzor',          grp: 'sensor', fill: '#ffffff', text: '#1f2937', tip: '#8DC63F', ports: 0, w: 134, h: 36 },
+  sensors:   { label: 'Senzory',             grp: 'sensor', fill: '#ffffff', text: '#1f2937', tip: '#8DC63F', ports: 0, w: 150, h: 36 },
+};
+const BB_TYPE_LABEL = Object.fromEntries(Object.entries(BB_TYPES).map(([k, v]) => [k, v.label]));
+const BB_GROUPS = { interr: 'Interrogátor', box: 'Rozvádzač / splitter', sensor: 'Senzor' };
+// Inline komponenty na kábli (korálky)
+const BB_PARTS = { conn: 'Konektor', 'WSP-01': 'WSP-01', 'WCP-01': 'WCP-01', 'FSP-01': 'FSP-01', 'LCP-03': 'LCP-03', 'WPA-01': 'WPA-01' };
+const BB_PART_NAME = { conn: 'Konektor', 'WSP-01': 'WSP-01 splice protection', 'WCP-01': 'WCP-01 watertight conn.', 'FSP-01': 'FSP-01 fiber splice', 'LCP-03': 'LCP-03 pigtail', 'WPA-01': 'WPA-01 patchcord' };
 
-function bbNodeW(n) { return Math.max(n.type === 'interrogator' ? 150 : 120, (n.label || '').length * 7.4 + 26); }
+function bbTy(n) { return BB_TYPES[n.type] || BB_TYPES.splitter; }
+function bbNodeW(n) { return Math.max(bbTy(n).w, (n.label || '').length * 7.2 + 26); }
+function bbNodeH(n) { return bbTy(n).h || 42; }
 function bbNode(id) { return bbDoc && bbDoc.nodes.find(n => n.nid === id); }
 function bbUid(p) { return p + Math.random().toString(36).slice(2, 8); }
 
@@ -7768,36 +7792,53 @@ async function seedBackboneData() {
 }
 
 // ── kreslenie ──
-function bbLinkPath(l) {
-  const a = bbNode(l.from), b = bbNode(l.to); if (!a || !b) return '';
-  const x1 = a.x + bbNodeW(a), y1 = a.y + BB_H / 2, x2 = b.x, y2 = b.y + BB_H / 2;
-  const mx = Math.max(x1 + 14, (x1 + x2) / 2);
-  return `M${x1},${y1} L${mx},${y1} L${mx},${y2} L${x2},${y2}`;
+function bbLinkPts(l) {
+  const a = bbNode(l.from), b = bbNode(l.to); if (!a || !b) return null;
+  const x1 = a.x + bbNodeW(a), y1 = a.y + bbNodeH(a) / 2, x2 = b.x, y2 = b.y + bbNodeH(b) / 2;
+  const mx = Math.max(x1 + 16, (x1 + x2) / 2);
+  return [[x1, y1], [mx, y1], [mx, y2], [x2, y2]];
+}
+function bbPathD(pts) { return 'M' + pts.map(p => p[0] + ',' + p[1]).join(' L'); }
+function bbPolyPoint(pts, t) {
+  const segs = []; let total = 0;
+  for (let i = 1; i < pts.length; i++) { const len = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); segs.push({ a: pts[i - 1], b: pts[i], len }); total += len; }
+  let target = t * total;
+  for (let i = 0; i < segs.length; i++) { const s = segs[i]; if (target <= s.len || i === segs.length - 1) { const f = s.len ? Math.min(1, target / s.len) : 0; return [s.a[0] + (s.b[0] - s.a[0]) * f, s.a[1] + (s.b[1] - s.a[1]) * f]; } target -= s.len; }
+  return pts[pts.length - 1];
 }
 function bbRender() {
   const svg = document.getElementById('bbSvg'); if (!svg) return;
   if (!bbDoc) { svg.innerHTML = '<text x="40" y="60" class="bb-empty-txt">Žiadna topológia — klikni na „🎲 Ukážka" alebo „+ Nová".</text>'; svg.setAttribute('width', 600); svg.setAttribute('height', 200); svg.setAttribute('viewBox', '0 0 600 200'); return; }
   let maxX = 400, maxY = 240;
-  bbDoc.nodes.forEach(n => { maxX = Math.max(maxX, n.x + bbNodeW(n) + 220); maxY = Math.max(maxY, n.y + BB_H + 50); });
+  bbDoc.nodes.forEach(n => { maxX = Math.max(maxX, n.x + bbNodeW(n) + 250); maxY = Math.max(maxY, n.y + bbNodeH(n) + 60); });
   svg.setAttribute('width', maxX); svg.setAttribute('height', maxY); svg.setAttribute('viewBox', `0 0 ${maxX} ${maxY}`);
-  let links = '', flows = '', labels = '';
+  let links = '', flows = '', labels = '', beads = '';
   bbDoc.links.forEach(l => {
-    const d = bbLinkPath(l); if (!d) return;
+    const pts = bbLinkPts(l); if (!pts) return;
+    const d = bbPathD(pts);
     const sel = bbSel && bbSel.kind === 'link' && bbSel.id === l.lid;
     links += `<path class="bb-link${sel ? ' sel' : ''}" data-lid="${l.lid}" d="${d}"/>`;
     flows += `<path class="bb-flow" d="${d}"/>`;
     const txt = l.label || (l.length > 0 ? `${l.fibers} f @ ${l.length}m` : '');
-    if (txt) { const a = bbNode(l.from), b = bbNode(l.to); const mx = Math.max(a.x + bbNodeW(a) + 14, (a.x + bbNodeW(a) + b.x) / 2); const my = (a.y + b.y) / 2 + BB_H / 2 - 6; labels += `<text class="bb-link-lbl" x="${mx}" y="${my}" text-anchor="middle">${escHtml(txt)}</text>`; }
+    if (txt) { const mid = bbPolyPoint(pts, 0.5); labels += `<text class="bb-link-lbl" x="${mid[0]}" y="${mid[1] - 7}" text-anchor="middle">${escHtml(txt)}</text>`; }
+    (l.parts || []).forEach((p, i) => {
+      const t = 0.12 + (i + 0.5) / ((l.parts.length) + 0.5) * 0.72;
+      const pt = bbPolyPoint(pts, t);
+      beads += `<g class="bb-bead" data-lid="${l.lid}" transform="translate(${pt[0] - 8},${pt[1] - 5})"><rect width="16" height="10" rx="2.5"/><text x="8" y="-3" text-anchor="middle" class="bb-bead-lbl">${escHtml(BB_PARTS[p] || p)}</text></g>`;
+    });
   });
   let nodes = '';
   bbDoc.nodes.forEach(n => {
-    const w = bbNodeW(n), sel = bbSel && bbSel.kind === 'node' && bbSel.id === n.nid, conn = bbConnect === n.nid;
-    nodes += `<g class="bb-node bb-${n.type}${sel ? ' sel' : ''}${conn ? ' conn' : ''}" data-nid="${n.nid}" transform="translate(${n.x},${n.y})">
-      <rect width="${w}" height="${BB_H}" rx="7"/>
-      <text x="${w / 2}" y="${BB_H / 2 + 1}" text-anchor="middle" dominant-baseline="central">${escHtml(n.label || '(uzol)')}</text>
+    const ty = bbTy(n), w = bbNodeW(n), h = bbNodeH(n), sel = bbSel && bbSel.kind === 'node' && bbSel.id === n.nid, conn = bbConnect === n.nid;
+    let extra = '';
+    if (ty.tip) extra += `<rect class="bb-tip" x="-5" y="${h / 2 - 6}" width="9" height="12" rx="2" style="fill:${ty.tip}"/>`;
+    if (ty.ports) { const pn = Math.min(ty.ports, 9); for (let i = 0; i < pn; i++) { const cx = pn === 1 ? w / 2 : 16 + i * (w - 32) / (pn - 1); extra += `<circle class="bb-port" cx="${cx}" cy="${h - 7}" r="2.4"/>`; } }
+    nodes += `<g class="bb-node bb-${ty.grp}${sel ? ' sel' : ''}${conn ? ' conn' : ''}" data-nid="${n.nid}" transform="translate(${n.x},${n.y})">
+      <rect width="${w}" height="${h}" rx="7" style="fill:${ty.fill}"/>${extra}
+      <text x="${w / 2}" y="${ty.ports ? h / 2 - 3 : h / 2 + 1}" text-anchor="middle" dominant-baseline="central" style="fill:${ty.text}">${escHtml(n.label || '(uzol)')}</text>
     </g>`;
   });
-  svg.innerHTML = `<g>${links}</g><g class="bb-flows">${flows}</g><g>${labels}</g><g>${nodes}</g>`;
+  svg.innerHTML = `<g>${links}</g><g class="bb-flows">${flows}</g><g>${labels}</g><g class="bb-beads">${beads}</g><g>${nodes}</g>`;
 }
 function bbScheduleRender() { if (bbRenderReq) return; bbRenderReq = true; requestAnimationFrame(() => { bbRenderReq = false; bbRender(); }); }
 
@@ -7813,6 +7854,8 @@ function bbPointerDown(e) {
   if (!bbDoc) return;
   const ng = e.target.closest('.bb-node');
   if (ng) { const n = bbNode(ng.dataset.nid); if (!n) return; const p = bbClientToSvg(e); bbDrag = { nid: n.nid, dx: p.x - n.x, dy: p.y - n.y, moved: false, sx: e.clientX, sy: e.clientY }; document.getElementById('bbCanvasWrap')?.classList.add('bb-dragging'); return; }
+  const bd = e.target.closest('.bb-bead');
+  if (bd) { bbSelect('link', bd.dataset.lid); return; }
   const lk = e.target.closest('.bb-link');
   if (lk) { bbSelect('link', lk.dataset.lid); return; }
   bbSelect(null);
@@ -7863,16 +7906,20 @@ function bbPanelRender() {
     <div class="bb-panel-empty">Klikni na uzol alebo kábel pre úpravu.</div>`; return; }
   if (bbSel.kind === 'node') {
     const n = bbNode(bbSel.id); if (!n) { el.innerHTML = ''; return; }
-    el.innerHTML = `<div class="bb-panel-hd">Uzol</div>
+    const typeOpts = Object.keys(BB_GROUPS).map(g =>
+      `<optgroup label="${BB_GROUPS[g]}">` + Object.entries(BB_TYPES).filter(([, v]) => v.grp === g)
+        .map(([k, v]) => `<option value="${k}"${n.type === k ? ' selected' : ''}>${escHtml(v.label)}</option>`).join('') + `</optgroup>`).join('');
+    el.innerHTML = `<div class="bb-panel-hd">Komponent</div>
       <div class="form-group"><label>Popis</label><input type="text" id="bbNodeLabel" value="${escHtml(n.label || '')}" oninput="bbUpdateNode('${n.nid}','label',this.value)"></div>
-      <div class="form-group"><label>Typ</label><select onchange="bbUpdateNode('${n.nid}','type',this.value);bbRender()">
-        ${Object.keys(BB_TYPE_LABEL).map(t => `<option value="${t}"${n.type === t ? ' selected' : ''}>${BB_TYPE_LABEL[t]}</option>`).join('')}
-      </select></div>
-      <button class="btn-secondary btn-sm bb-panel-btn" onclick="bbStartConnect()">🔗 Prepojiť z tohto uzla →</button>
-      <button class="btn-delete bb-panel-btn" onclick="bbDeleteNode('${n.nid}')">Odstrániť uzol</button>`;
+      <div class="form-group"><label>Typ</label><select onchange="bbChangeType('${n.nid}',this.value)">${typeOpts}</select></div>
+      <button class="btn-secondary btn-sm bb-panel-btn" onclick="bbStartConnect()">🔗 Prepojiť z tohto komponentu →</button>
+      <button class="btn-delete bb-panel-btn" onclick="bbDeleteNode('${n.nid}')">Odstrániť</button>`;
   } else {
     const l = bbDoc.links.find(x => x.lid === bbSel.id); if (!l) { el.innerHTML = ''; return; }
     const a = bbNode(l.from), b = bbNode(l.to);
+    const partsHtml = (l.parts || []).length
+      ? (l.parts).map((p, i) => `<span class="bb-part-chip">${escHtml(BB_PARTS[p] || p)}<button onclick="bbPartDel('${l.lid}',${i})" title="Odstrániť">✕</button></span>`).join('')
+      : '<span class="bb-panel-empty">žiadne</span>';
     el.innerHTML = `<div class="bb-panel-hd">Kábel</div>
       <div class="bb-panel-stat">${escHtml(a ? a.label : '?')} → ${escHtml(b ? b.label : '?')}</div>
       <div class="form-row">
@@ -7880,9 +7927,16 @@ function bbPanelRender() {
         <div class="form-group"><label>Dĺžka (m)</label><input type="number" min="0" value="${l.length}" oninput="bbUpdateLink('${l.lid}','length',this.value)"></div>
       </div>
       <div class="form-group"><label>Vlastný popis (voliteľné)</label><input type="text" value="${escHtml(l.label || '')}" placeholder="napr. 4 f @ 5m" oninput="bbUpdateLink('${l.lid}','label',this.value)"></div>
+      <div class="form-group"><label>Komponenty na kábli (konektory, ochrany)</label>
+        <div class="bb-parts">${partsHtml}</div>
+        <div class="bb-part-add"><select id="bbPartSel">${Object.entries(BB_PART_NAME).map(([k, v]) => `<option value="${k}">${escHtml(v)}</option>`).join('')}</select><button class="btn-secondary btn-sm" onclick="bbPartAdd('${l.lid}')">+ Pridať</button></div>
+      </div>
       <button class="btn-delete bb-panel-btn" onclick="bbDeleteLink('${l.lid}')">Odstrániť kábel</button>`;
   }
 }
+function bbChangeType(id, val) { const n = bbNode(id); if (!n) return; n.type = val; if (!n.label || Object.values(BB_TYPE_LABEL).includes(n.label)) n.label = BB_TYPE_LABEL[val] || n.label; bbRender(); bbPanelRender(); }
+function bbPartAdd(lid) { const l = bbDoc.links.find(x => x.lid === lid); if (!l) return; const v = document.getElementById('bbPartSel')?.value; if (!v) return; (l.parts = l.parts || []).push(v); bbRender(); bbPanelRender(); }
+function bbPartDel(lid, i) { const l = bbDoc.links.find(x => x.lid === lid); if (!l || !l.parts) return; l.parts.splice(i, 1); bbRender(); bbPanelRender(); }
 
 function bbAutoLayout() {
   if (!bbDoc) return;

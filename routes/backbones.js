@@ -39,12 +39,13 @@ function sanitize(b) {
   if (b.name !== undefined) out.name = String(b.name || 'Backbone').trim() || 'Backbone';
   if (b.note !== undefined) out.note = String(b.note || '');
   if (Array.isArray(b.nodes)) out.nodes = b.nodes.map(n => ({
-    nid: String(n.nid), type: ['interrogator', 'splitter', 'patch', 'sensors'].includes(n.type) ? n.type : 'splitter',
+    nid: String(n.nid), type: String(n.type || 'splitter'),
     label: String(n.label || ''), x: Number(n.x) || 0, y: Number(n.y) || 0
   }));
   if (Array.isArray(b.links)) out.links = b.links.map(l => ({
     lid: String(l.lid), from: String(l.from), to: String(l.to),
-    fibers: Number(l.fibers) || 0, length: Number(l.length) || 0, label: String(l.label || '')
+    fibers: Number(l.fibers) || 0, length: Number(l.length) || 0, label: String(l.label || ''),
+    parts: Array.isArray(l.parts) ? l.parts.map(String) : []
   }));
   return out;
 }
