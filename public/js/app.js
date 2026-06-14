@@ -4642,6 +4642,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.47.0', date: '14. 6. 2026', tag: 'ui', items: [
+    'Backbone: komponenty vykreslené ako realistické zariadenia — S-line interrogátory s LCD displejom, stavovými LED a radom FC konektorov; WCB-01 ako skriňa s vekom, skrutkami a káblovými priechodkami; splitter s vejárovým rozbočením; FBG senzor ako kapsula s mriežkou a zeleným hrotom.',
+    'Tmavý (dark) režim plátna s jemnou bodkovou mriežkou — verný štýlu Sylex schémy.',
+    'Vylepšená animácia toku: po kábloch putujú svetelné impulzy (fotóny) so žiarou namiesto jednoduchej čiarkovanej čiary.',
+  ] },
   { v: '1.46.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Backbone editor v štýle oficiálnej Sylex schémy „FBG monitoring system" — zelený branding, reálne komponenty.',
     'Katalóg komponentov: S-line Scan/Switch/Splitter/Comp (interrogátory), WCB-01 prepojovacia skriňa, splitter, FBG senzory so zeleným hrotom.',
@@ -7738,16 +7743,16 @@ async function deleteCrmEmail(id) {
 let bbList = [], bbDoc = null, bbSel = null, bbConnect = null, bbAnim = true, bbDrag = null, bbRenderReq = false;
 // Katalóg komponentov (Sylex FBG monitoring system)
 const BB_TYPES = {
-  scan:      { label: 'S-line Scan 800',    grp: 'interr', fill: '#2f6b22', text: '#fff',     ports: 4,  w: 160, h: 46 },
-  switch:    { label: 'S-line Switch 1×16', grp: 'interr', fill: '#2f6b22', text: '#fff',     ports: 8,  w: 188, h: 46 },
-  splitter8: { label: 'S-line Splitter 1×8',grp: 'interr', fill: '#2f6b22', text: '#fff',     ports: 6,  w: 172, h: 46 },
-  comp:      { label: 'S-line Comp (PC)',    grp: 'interr', fill: '#3a4150', text: '#fff',     ports: 0,  w: 150, h: 46 },
-  interrogator:{ label: 'Interrogátor',      grp: 'interr', fill: '#2f6b22', text: '#fff',     ports: 4,  w: 150, h: 46 },
-  wcb:       { label: 'WCB-01 Connection box',grp: 'box',   fill: '#6aa017', text: '#fff',     ports: 0,  w: 184, h: 44 },
-  splitter:  { label: 'Splitter 1×4',        grp: 'box',    fill: '#8DC63F', text: '#1f2937',  ports: 0,  w: 130, h: 42 },
-  patch:     { label: 'Prepojovacia',        grp: 'box',    fill: '#8DC63F', text: '#1f2937',  ports: 0,  w: 130, h: 42 },
-  sensor:    { label: 'FBG senzor',          grp: 'sensor', fill: '#ffffff', text: '#1f2937', tip: '#8DC63F', ports: 0, w: 134, h: 36 },
-  sensors:   { label: 'Senzory',             grp: 'sensor', fill: '#ffffff', text: '#1f2937', tip: '#8DC63F', ports: 0, w: 150, h: 36 },
+  scan:      { label: 'S-line Scan 800',    grp: 'interr', fill: '#222a33', text: '#fff',     ports: 4,  w: 168, h: 58 },
+  switch:    { label: 'S-line Switch 1×16', grp: 'interr', fill: '#222a33', text: '#fff',     ports: 8,  w: 196, h: 58 },
+  splitter8: { label: 'S-line Splitter 1×8',grp: 'interr', fill: '#222a33', text: '#fff',     ports: 8,  w: 184, h: 58 },
+  comp:      { label: 'S-line Comp (PC)',    grp: 'interr', fill: '#2a313b', text: '#fff',     ports: 0,  w: 152, h: 58 },
+  interrogator:{ label: 'Interrogátor',      grp: 'interr', fill: '#222a33', text: '#fff',     ports: 4,  w: 160, h: 58 },
+  wcb:       { label: 'WCB-01 Connection box',grp: 'box',   fill: '#2c322a', text: '#fff',     ports: 0,  w: 186, h: 58 },
+  splitter:  { label: 'Splitter 1×4',        grp: 'box',    fill: '#2f6b22', text: '#fff',     ports: 4,  w: 138, h: 50 },
+  patch:     { label: 'Prepojovacia',        grp: 'box',    fill: '#2f6b22', text: '#fff',     ports: 2,  w: 134, h: 50 },
+  sensor:    { label: 'FBG senzor',          grp: 'sensor', fill: '#f4f6f3', text: '#14321a', tip: '#8DC63F', ports: 0, w: 138, h: 44 },
+  sensors:   { label: 'Senzory',             grp: 'sensor', fill: '#f4f6f3', text: '#14321a', tip: '#8DC63F', ports: 0, w: 156, h: 44 },
 };
 const BB_TYPE_LABEL = Object.fromEntries(Object.entries(BB_TYPES).map(([k, v]) => [k, v.label]));
 const BB_GROUPS = { interr: 'Interrogátor', box: 'Rozvádzač / splitter', sensor: 'Senzor' };
@@ -7799,6 +7804,64 @@ function bbLinkPts(l) {
   return [[x1, y1], [mx, y1], [mx, y2], [x2, y2]];
 }
 function bbPathD(pts) { return 'M' + pts.map(p => p[0] + ',' + p[1]).join(' L'); }
+function bbDefs() {
+  return `<defs>
+    <filter id="bbGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <linearGradient id="bbFace" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(255,255,255,0.14)"/><stop offset="0.5" stop-color="rgba(255,255,255,0.02)"/><stop offset="1" stop-color="rgba(0,0,0,0.22)"/></linearGradient>
+  </defs>`;
+}
+// Vykreslenie realistického zariadenia (podľa Sylex S-line / WCB / FBG)
+function bbNodeInner(n, ty, w, h) {
+  const lbl = escHtml(n.label || '(uzol)');
+  const T = (x, y, s, anchor) => `<text x="${x}" y="${y}" text-anchor="${anchor || 'middle'}" style="${s}">`;
+  if (ty.grp === 'interr') {
+    const isComp = n.type === 'comp';
+    const pn = Math.min(ty.ports || 0, 12);
+    let ports = '';
+    for (let i = 0; i < pn; i++) { const cx = 16 + i * (w - 32) / Math.max(1, pn - 1); ports += `<circle class="bb-fc" cx="${cx}" cy="${h - 10}" r="3.4"/><circle class="bb-fc-i" cx="${cx}" cy="${h - 10}" r="1.4"/>`; }
+    const screen = isComp
+      ? `<rect class="bb-lcd" x="13" y="9" width="${w - 26}" height="20" rx="2"/>${T(w / 2, 22, 'font-family:monospace;font-size:8px;fill:#7ee06a')}S-line Comp</text>`
+      : `<rect class="bb-lcd" x="13" y="9" width="58" height="16" rx="2"/>${T(42, 20, 'font-family:monospace;font-size:8px;fill:#7ee06a;letter-spacing:.4px')}S-line</text>`;
+    return `
+      <rect class="bb-dev-body" width="${w}" height="${h}" rx="6" style="fill:${ty.fill}"/>
+      <rect class="bb-dev-face" x="3" y="3" width="${w - 6}" height="${h - 6}" rx="4"/>
+      <rect class="bb-dev-accent" x="3" y="3" width="6" height="${h - 6}"/>
+      ${screen}
+      <circle class="bb-led on" cx="${w - 12}" cy="13" r="2.7"/>
+      <circle class="bb-led" cx="${w - 22}" cy="13" r="2.7"/>
+      ${T(w / 2 + 3, h / 2 + 6, `font-family:var(--font);font-size:12.5px;font-weight:700;fill:${ty.text}`)}${lbl}</text>
+      ${ports}`;
+  }
+  if (n.type === 'wcb') {
+    return `
+      <rect class="bb-dev-body" width="${w}" height="${h}" rx="6" style="fill:${ty.fill}"/>
+      <rect class="bb-box-lid" x="6" y="6" width="${w - 12}" height="${h - 12}" rx="3"/>
+      <circle class="bb-screw" cx="11" cy="11" r="1.6"/><circle class="bb-screw" cx="${w - 11}" cy="11" r="1.6"/>
+      <circle class="bb-screw" cx="11" cy="${h - 11}" r="1.6"/><circle class="bb-screw" cx="${w - 11}" cy="${h - 11}" r="1.6"/>
+      <rect class="bb-gland" x="-4" y="${h / 2 - 14}" width="8" height="8" rx="2"/><rect class="bb-gland" x="-4" y="${h / 2 + 6}" width="8" height="8" rx="2"/>
+      <rect class="bb-gland" x="${w - 4}" y="${h / 2 - 14}" width="8" height="8" rx="2"/><rect class="bb-gland" x="${w - 4}" y="${h / 2 + 6}" width="8" height="8" rx="2"/>
+      ${T(w / 2, h / 2 + 5, `font-family:var(--font);font-size:12.5px;font-weight:700;fill:${ty.text}`)}${lbl}</text>`;
+  }
+  if (ty.grp === 'box') {
+    const pn = Math.min(ty.ports || 4, 6);
+    let fan = '';
+    for (let i = 0; i < pn; i++) { const fy = 12 + i * (h - 24) / Math.max(1, pn - 1); fan += `<line class="bb-fan" x1="${w - 22}" y1="${h / 2}" x2="${w - 8}" y2="${fy}"/><circle class="bb-fc-i" cx="${w - 8}" cy="${fy}" r="1.8"/>`; }
+    return `
+      <rect class="bb-dev-body" width="${w}" height="${h}" rx="7" style="fill:${ty.fill}"/>
+      <rect class="bb-dev-face" x="3" y="3" width="${w - 6}" height="${h - 6}" rx="5"/>
+      <circle class="bb-fc-i" cx="10" cy="${h / 2}" r="2.2"/><line class="bb-fan" x1="10" y1="${h / 2}" x2="${w - 22}" y2="${h / 2}"/>
+      ${fan}
+      ${T(w / 2 - 6, h / 2 + 5, `font-family:var(--font);font-size:12px;font-weight:700;fill:${ty.text}`)}${lbl}</text>`;
+  }
+  // senzor — kapsula s FBG mriežkou a zeleným hrotom
+  let grating = '';
+  for (let i = 0; i < 5; i++) { const gx = 16 + i * 4; grating += `<line class="bb-grating" x1="${gx}" y1="${h / 2 - 6}" x2="${gx}" y2="${h / 2 + 6}"/>`; }
+  return `
+    <rect class="bb-sensor-body" width="${w}" height="${h}" rx="${h / 2}" style="fill:${ty.fill}"/>
+    <rect class="bb-tip" x="-5" y="${h / 2 - 6}" width="10" height="12" rx="2.5" style="fill:${ty.tip}"/>
+    ${grating}
+    ${T(w / 2 + 12, h / 2 + 4, `font-family:var(--font);font-size:11.5px;font-weight:700;fill:${ty.text}`, 'middle')}${lbl}</text>`;
+}
 function bbPolyPoint(pts, t) {
   const segs = []; let total = 0;
   for (let i = 1; i < pts.length; i++) { const len = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); segs.push({ a: pts[i - 1], b: pts[i], len }); total += len; }
@@ -7812,13 +7875,15 @@ function bbRender() {
   let maxX = 400, maxY = 240;
   bbDoc.nodes.forEach(n => { maxX = Math.max(maxX, n.x + bbNodeW(n) + 250); maxY = Math.max(maxY, n.y + bbNodeH(n) + 60); });
   svg.setAttribute('width', maxX); svg.setAttribute('height', maxY); svg.setAttribute('viewBox', `0 0 ${maxX} ${maxY}`);
-  let links = '', flows = '', labels = '', beads = '';
+  let links = '', flows = '', labels = '', beads = '', photons = '';
   bbDoc.links.forEach(l => {
     const pts = bbLinkPts(l); if (!pts) return;
     const d = bbPathD(pts);
     const sel = bbSel && bbSel.kind === 'link' && bbSel.id === l.lid;
     links += `<path class="bb-link${sel ? ' sel' : ''}" data-lid="${l.lid}" d="${d}"/>`;
     flows += `<path class="bb-flow" d="${d}"/>`;
+    photons += `<circle class="bb-photon" r="2.6"><animateMotion dur="2.4s" repeatCount="indefinite" path="${d}"/></circle>`
+            +  `<circle class="bb-photon" r="2.6"><animateMotion dur="2.4s" begin="1.2s" repeatCount="indefinite" path="${d}"/></circle>`;
     const txt = l.label || (l.length > 0 ? `${l.fibers} f @ ${l.length}m` : '');
     if (txt) { const mid = bbPolyPoint(pts, 0.5); labels += `<text class="bb-link-lbl" x="${mid[0]}" y="${mid[1] - 7}" text-anchor="middle">${escHtml(txt)}</text>`; }
     (l.parts || []).forEach((p, i) => {
@@ -7830,15 +7895,12 @@ function bbRender() {
   let nodes = '';
   bbDoc.nodes.forEach(n => {
     const ty = bbTy(n), w = bbNodeW(n), h = bbNodeH(n), sel = bbSel && bbSel.kind === 'node' && bbSel.id === n.nid, conn = bbConnect === n.nid;
-    let extra = '';
-    if (ty.tip) extra += `<rect class="bb-tip" x="-5" y="${h / 2 - 6}" width="9" height="12" rx="2" style="fill:${ty.tip}"/>`;
-    if (ty.ports) { const pn = Math.min(ty.ports, 9); for (let i = 0; i < pn; i++) { const cx = pn === 1 ? w / 2 : 16 + i * (w - 32) / (pn - 1); extra += `<circle class="bb-port" cx="${cx}" cy="${h - 7}" r="2.4"/>`; } }
+    const selRect = (sel || conn) ? `<rect class="bb-sel-ring" x="-3" y="-3" width="${w + 6}" height="${h + 6}" rx="9"/>` : '';
     nodes += `<g class="bb-node bb-${ty.grp}${sel ? ' sel' : ''}${conn ? ' conn' : ''}" data-nid="${n.nid}" transform="translate(${n.x},${n.y})">
-      <rect width="${w}" height="${h}" rx="7" style="fill:${ty.fill}"/>${extra}
-      <text x="${w / 2}" y="${ty.ports ? h / 2 - 3 : h / 2 + 1}" text-anchor="middle" dominant-baseline="central" style="fill:${ty.text}">${escHtml(n.label || '(uzol)')}</text>
+      ${selRect}${bbNodeInner(n, ty, w, h)}
     </g>`;
   });
-  svg.innerHTML = `<g>${links}</g><g class="bb-flows">${flows}</g><g>${labels}</g><g class="bb-beads">${beads}</g><g>${nodes}</g>`;
+  svg.innerHTML = `${bbDefs()}<g>${links}</g><g class="bb-flows">${flows}${photons}</g><g>${labels}</g><g class="bb-beads">${beads}</g><g>${nodes}</g>`;
 }
 function bbScheduleRender() { if (bbRenderReq) return; bbRenderReq = true; requestAnimationFrame(() => { bbRenderReq = false; bbRender(); }); }
 
