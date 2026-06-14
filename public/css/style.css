@@ -2669,9 +2669,8 @@ body {
 .pj-deliv-cell .pj-deliv-flow { flex-wrap: nowrap; max-width: none; }
 .pj-chev-sm { font-size: 0.66rem; padding: 5px 10px 5px 18px; margin-left: -11px; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%); }
 .pj-chev-sm:first-child { padding-left: 10px; margin-left: 0; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%); }
-/* zoznam: kompaktné, needitovateľné chevrony v jednom riadku */
+/* zoznam: kompaktné chevrony v jednom riadku (prepínateľné kliknutím) */
 .pj-flow-sm { gap: 0; flex-wrap: nowrap; }
-.pj-flow-sm .pj-chev { pointer-events: none; }
 /* spojený cyklus — jeden riadok s vodorovným scrollom (žiadne zalamovanie) */
 .pj-track-chain { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px 12px; }
 .pj-flow-chain { gap: 0; padding: 4px 0; flex-wrap: nowrap; overflow-x: auto; }

@@ -4367,13 +4367,31 @@ function pjDelivChevron(doneArr, onclickTpl, extraCls) {
   }).join('');
 }
 // Chevron flow (breadcrumb proces) — done / current / future; farba podľa tracku (sales/dev)
-function pjChevron(stages, doneArr, repKey, track, extraCls, readonly) {
+// onclickTpl(key) => reťazec do onclick; ak nie je → needitovateľné (span)
+function pjChevron(stages, doneArr, repKey, track, extraCls, onclickTpl) {
   return stages.map(s => {
     const cls = (doneArr || []).includes(s.key) ? 'done' : (s.key === repKey ? 'current' : 'future');
-    const tag = readonly ? 'span' : 'button';
-    const attr = readonly ? '' : ` type="button" onclick="pjPickStage('${track}','${s.key}')"`;
+    const tag = onclickTpl ? 'button' : 'span';
+    const attr = onclickTpl ? ` type="button" onclick="${onclickTpl(s.key)}"` : '';
     return `<${tag} class="pj-chev pj-chev-${track} ${cls} ${extraCls || ''}"${attr}>${escHtml(s.label)}</${tag}>`;
   }).join('');
+}
+// Prepnutie stupňa (hotový/nehotový) priamo zo zoznamu — okamžité uloženie
+async function pjToggleStageList(id, track, key) {
+  const p = projectsData.find(x => x._id === id); if (!p) return;
+  const wf = track === 'sales' ? 'sales' : 'development';
+  const done = pjDoneSet(p, wf).slice();
+  const i = done.indexOf(key); if (i >= 0) done.splice(i, 1); else done.push(key);
+  const rep = pjRepKey(wf, done, pjStageOf(p, wf));
+  const prev = { salesStage: p.salesStage, devStage: p.devStage, salesDone: p.salesDone, devDone: p.devDone, workflow: p.workflow, phase: p.phase };
+  const u = {};
+  if (wf === 'sales') { u.salesDone = done; u.salesStage = rep; } else { u.devDone = done; u.devStage = rep; }
+  const dev = wf === 'development' ? rep : pjDevStage(p);
+  const sales = wf === 'sales' ? rep : pjSalesStage(p);
+  u.workflow = dev ? 'development' : 'sales'; u.phase = dev || sales;
+  Object.assign(p, u); renderProjects();
+  try { const r = await fetch('/api/projects/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(u) }); if (!r.ok) throw 0; }
+  catch { Object.assign(p, prev); renderProjects(); toast('Uloženie zlyhalo', 'error'); }
 }
 function _segActive(id, idx) { const seg = document.getElementById(id); if (!seg) return; [...seg.children].forEach((b, i) => b.classList.toggle('active', i === idx)); }
 function pjSetView(v) { pjView = v; _segActive('pjViewSeg', { kanban: 0, list: 1, gantt: 2 }[v]); renderProjects(); }
@@ -4511,8 +4529,8 @@ function renderPjList(host, items) {
     const sDone = pjDoneSet(p, 'sales'), dDone = pjDoneSet(p, 'development');
     const dl = p.deadline ? new Date(p.deadline) : null;
     const overdue = dl && dl < new Date();
-    const salesChev = sales ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.sales.stages, sDone, pjRepKey('sales', sDone, sales), 'sales', null, true)}</div>` : '<span class="prod-t-qty">neaktívne</span>';
-    const devChev = dev ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.development.stages, dDone, pjRepKey('development', dDone, dev), 'dev', null, true)}</div>` : '<span class="prod-t-qty">neaktívne</span>';
+    const salesChev = sales ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.sales.stages, sDone, pjRepKey('sales', sDone, sales), 'sales', null, k => `event.stopPropagation();pjToggleStageList('${p._id}','sales','${k}')`)}</div>` : '<span class="prod-t-qty">neaktívne</span>';
+    const devChev = dev ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.development.stages, dDone, pjRepKey('development', dDone, dev), 'dev', null, k => `event.stopPropagation();pjToggleStageList('${p._id}','dev','${k}')`)}</div>` : '<span class="prod-t-qty">neaktívne</span>';
     const procStack = `<div class="pj-proc-stack">
       <div class="pj-proc-line"><span class="pj-proc-tag pj-proc-tag-sales">Predaj</span>${salesChev}</div>
       <div class="pj-proc-line"><span class="pj-proc-tag pj-proc-tag-dev">Vývoj</span>${devChev}</div>
@@ -4730,9 +4748,9 @@ function pjRenderPageFlows() {
   const sRep = pjRepKey('sales', sDone, pjPageData.salesStage), dRep = pjRepKey('development', dDone, pjPageData.devStage);
   el.innerHTML = `
     <div class="pj-track pj-track-sales"><label class="pj-track-hd"><input type="checkbox" ${sOn ? 'checked' : ''} onchange="pjToggleTrack('sales')"> 💼 Predajný proces</label>
-      <div class="pj-flow">${sOn ? pjChevron(PJ_WORKFLOWS.sales.stages, sDone, sRep, 'sales') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>
+      <div class="pj-flow">${sOn ? pjChevron(PJ_WORKFLOWS.sales.stages, sDone, sRep, 'sales', null, k => `pjPickStage('sales','${k}')`) : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>
     <div class="pj-track pj-track-dev"><label class="pj-track-hd"><input type="checkbox" ${dOn ? 'checked' : ''} onchange="pjToggleTrack('dev')"> 🛠 Vývojový proces</label>
-      <div class="pj-flow">${dOn ? pjChevron(PJ_WORKFLOWS.development.stages, dDone, dRep, 'dev') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>`;
+      <div class="pj-flow">${dOn ? pjChevron(PJ_WORKFLOWS.development.stages, dDone, dRep, 'dev', null, k => `pjPickStage('dev','${k}')`) : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>`;
   const card = document.getElementById('pjPageDelivCard'); if (card) card.style.display = dOn ? '' : 'none';
 }
 function pjBuildDeliverables(done) {
@@ -5096,6 +5114,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.64.0', date: '14. 6. 2026', tag: 'feat', items: [
+    'Workflow sa dá meniť priamo v zozname Vývoj výrobkov — klik na stupeň (predaj aj vývoj) ho označí/odznačí ako hotový, hneď sa uloží (nie len v detaile).',
+  ] },
   { v: '1.63.1', date: '14. 6. 2026', tag: 'ui', items: [
     'Workflow chevrony vrátené na predošlý (jednoduchší) dizajn.',
   ] },
