@@ -4930,6 +4930,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.53.1', date: '14. 6. 2026', tag: 'fix', items: [
+    'Chevron procesy: dlhé názvy stupňov (napr. „Cenová ponuka") sa už nezalamujú — opravený rozbitý tvar v zozname.',
+  ] },
   { v: '1.53.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Vývoj výrobkov: predvolené zobrazenie je teraz Zoznam.',
     'Zoznam ukazuje súčasne predajný aj vývojový proces (oba chevron toky) v jednom riadku.',
