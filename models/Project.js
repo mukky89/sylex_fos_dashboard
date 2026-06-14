@@ -6,8 +6,10 @@ const projectSchema = new mongoose.Schema({
   description: { type: String, default: '' },
   workflow:    { type: String, enum: ['development', 'sales'], default: 'development' }, // primárny track (legacy/analytika)
   phase:       { type: String, default: 'koncept' },           // primárny stage (legacy/analytika)
-  salesStage:  { type: String, default: '' },                  // aktuálny stage predajného procesu ('' = neaktívny)
-  devStage:    { type: String, default: '' },                  // aktuálny stage vývojového procesu ('' = neaktívny)
+  salesStage:  { type: String, default: '' },                  // primárny/reprezentatívny stage predaja ('' = neaktívny)
+  devStage:    { type: String, default: '' },                  // primárny/reprezentatívny stage vývoja ('' = neaktívny)
+  salesDone:   { type: [String], default: undefined },         // hotové stupne predaja (môžu byť nepostupné)
+  devDone:     { type: [String], default: undefined },         // hotové stupne vývoja (môžu byť nepostupné)
   owner:       { type: String, default: '', trim: true },     // zodpovedný
   priority:    { type: String, enum: ['low', 'normal', 'high'], default: 'normal' },
   startDate:   { type: Date,   default: null },               // začiatok (pre Gantt)

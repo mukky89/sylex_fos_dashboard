@@ -34,17 +34,28 @@ const DEFS = [
   ['Optický korelátor OC-01', 'P-2026-09', ['korelator', 'research']],
 ];
 
+// hotové stupne — niekedy postupne (prefix), inokedy nepostupne (náhodný podmnožinový výber)
+function doneStages(arr) {
+  if (Math.random() < 0.5) return arr.slice(0, ri(0, arr.length));      // postupný prefix
+  return arr.filter(() => Math.random() < 0.55);                         // nepostupné
+}
+function repOf(arr, done) {
+  let best = -1; done.forEach(k => { const i = arr.indexOf(k); if (i > best) best = i; });
+  return best >= 0 ? arr[best] : arr[0];
+}
+
 function build([title, code, tags]) {
-  const si = ri(0, SALES.length - 1);
-  const di = ri(0, DEV.length - 1);
+  const salesDone = doneStages(SALES);
+  const devDone = doneStages(DEV);
+  const salesStage = repOf(SALES, salesDone);
+  const devStage = repOf(DEV, devDone);
   // počet hotových výstupov rastie s pokrokom vo vývoji
-  const maxDeliv = Math.min(DELIV.length, Math.round((di + 1) / DEV.length * DELIV.length) + ri(-1, 1));
-  const n = Math.max(0, Math.min(DELIV.length, maxDeliv));
+  const di = DEV.indexOf(devStage);
+  const n = Math.max(0, Math.min(DELIV.length, Math.round((di + 1) / DEV.length * DELIV.length) + ri(-1, 1)));
   const deliverables = DELIV.slice(0, n);
-  const salesStage = SALES[si], devStage = DEV[di];
   return {
     title, code, tags,
-    salesStage, devStage,
+    salesStage, devStage, salesDone, devDone,
     workflow: 'development', phase: devStage,    // legacy/analytika
     owner: pick(OWNERS), priority: pick(PRIOS),
     startDate: dPlus(-ri(20, 120)),

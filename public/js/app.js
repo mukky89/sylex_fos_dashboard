@@ -4264,11 +4264,28 @@ function pjSalesStage(p) { if (p.salesStage) return p.salesStage; if (p.workflow
 function pjDevStage(p) { if (p.devStage) return p.devStage; if ((p.workflow || 'development') !== 'sales' && p.phase) return p.phase; return ''; }
 function pjStageOf(p, wf) { return (wf || pjWorkflow) === 'sales' ? pjSalesStage(p) : pjDevStage(p); }
 function pjActive(p, wf) { return !!pjStageOf(p, wf); }
-function pjStageInfo(p, wf) { wf = wf || pjWorkflow; const st = pjStages(wf), key = pjStageOf(p, wf); return st.find(s => s.key === key) || st[0]; }
-// Update objekt pre presun stage v danom tracku (drží aj legacy phase/workflow pre analytiku)
+// Hotové stupne tracku (môžu byť nepostupné). Legacy fallback: stupne po reprezentatívny vrátane.
+function pjDoneSet(p, wf) {
+  const field = wf === 'sales' ? p.salesDone : p.devDone;
+  if (Array.isArray(field)) return field;
+  const cur = pjStageOf(p, wf); if (!cur) return [];
+  const st = pjStages(wf), idx = st.findIndex(s => s.key === cur);
+  return idx < 0 ? [] : st.slice(0, idx + 1).map(s => s.key);
+}
+// Reprezentatívny stupeň = najďalší hotový; ak nič, prvý (alebo uložený) — pre kanban/zoznam
+function pjRepKey(wf, doneArr, fallbackStage) {
+  const st = pjStages(wf); let best = -1;
+  (doneArr || []).forEach(k => { const i = st.findIndex(s => s.key === k); if (i > best) best = i; });
+  return best >= 0 ? st[best].key : (fallbackStage || st[0].key);
+}
+function pjRepStage(p, wf) { return pjActive(p, wf) ? pjRepKey(wf, pjDoneSet(p, wf), pjStageOf(p, wf)) : ''; }
+function pjStageInfo(p, wf) { wf = wf || pjWorkflow; const st = pjStages(wf), key = pjRepStage(p, wf) || pjStageOf(p, wf); return st.find(s => s.key === key) || st[0]; }
+// Update objekt pre presun stage v danom tracku (kanban = sekvenčné naplnenie po cieľ)
 function pjStageUpdate(p, wf, key) {
+  const st = pjStages(wf), idx = st.findIndex(s => s.key === key);
+  const done = idx < 0 ? [] : st.slice(0, idx + 1).map(s => s.key);
   const u = {};
-  if (wf === 'sales') u.salesStage = key; else u.devStage = key;
+  if (wf === 'sales') { u.salesDone = done; u.salesStage = key; } else { u.devDone = done; u.devStage = key; }
   const dev = wf === 'development' ? key : pjDevStage(p);
   const sales = wf === 'sales' ? key : pjSalesStage(p);
   u.workflow = dev ? 'development' : 'sales';
@@ -4276,10 +4293,9 @@ function pjStageUpdate(p, wf, key) {
   return u;
 }
 // Chevron flow (breadcrumb proces) — done / current / future; farba podľa tracku (sales/dev)
-function pjChevron(stages, current, track, extraCls, readonly) {
-  const ci = stages.findIndex(s => s.key === current);
-  return stages.map((s, i) => {
-    const cls = i < ci ? 'done' : (i === ci ? 'current' : 'future');
+function pjChevron(stages, doneArr, repKey, track, extraCls, readonly) {
+  return stages.map(s => {
+    const cls = (doneArr || []).includes(s.key) ? 'done' : (s.key === repKey ? 'current' : 'future');
     const tag = readonly ? 'span' : 'button';
     const attr = readonly ? '' : ` type="button" onclick="pjPickStage('${track}','${s.key}')"`;
     return `<${tag} class="pj-chev pj-chev-${track} ${cls} ${extraCls || ''}"${attr}>${escHtml(s.label)}</${tag}>`;
@@ -4347,7 +4363,7 @@ function renderPjKanban(host, items) {
   stages.forEach((ph, idx) => {
     const col = document.createElement('div');
     col.className = 'kanban-col'; col.dataset.phase = ph.key;
-    const colItems = items.filter(p => pjStageOf(p, pjWorkflow) === ph.key);
+    const colItems = items.filter(p => pjRepStage(p, pjWorkflow) === ph.key);
     col.innerHTML = `<div class="kanban-col-hdr" style="border-bottom:2px solid ${ph.c}66">${ph.label} <span class="kanban-count">${colItems.length}</span></div>`;
     const body = document.createElement('div'); body.className = 'kanban-col-body';
     col.addEventListener('dragover', (e) => { if (_dragPid) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; col.classList.add('kanban-col-drop'); } });
@@ -4360,7 +4376,7 @@ function renderPjKanban(host, items) {
 function pjCard(p, idx, stages) {
   const prio = PJ_PRIO[p.priority] || PJ_PRIO.normal;
   const dl = p.deadline ? new Date(p.deadline) : null;
-  const overdue = dl && dl < new Date() && pjStageOf(p, pjWorkflow) !== stages[stages.length - 1].key;
+  const overdue = dl && dl < new Date() && pjRepStage(p, pjWorkflow) !== stages[stages.length - 1].key;
   const card = document.createElement('div');
   card.className = 'kanban-card'; card.style.setProperty('--prio', prio.c);
   card.draggable = true; card.dataset.pid = p._id;
@@ -4398,10 +4414,11 @@ function renderPjList(host, items) {
   if (!items.length) { host.innerHTML = '<div class="dev-empty">Žiadne projekty pre tento filter.</div>'; return; }
   const rows = items.map(p => {
     const sales = pjSalesStage(p), dev = pjDevStage(p);
+    const sDone = pjDoneSet(p, 'sales'), dDone = pjDoneSet(p, 'development');
     const dl = p.deadline ? new Date(p.deadline) : null;
     const overdue = dl && dl < new Date();
-    const salesChev = sales ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.sales.stages, sales, 'sales', null, true)}</div>` : '<span class="prod-t-qty">neaktívne</span>';
-    const devChev = dev ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.development.stages, dev, 'dev', null, true)}</div>` : '<span class="prod-t-qty">neaktívne</span>';
+    const salesChev = sales ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.sales.stages, sDone, pjRepKey('sales', sDone, sales), 'sales', null, true)}</div>` : '<span class="prod-t-qty">neaktívne</span>';
+    const devChev = dev ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.development.stages, dDone, pjRepKey('development', dDone, dev), 'dev', null, true)}</div>` : '<span class="prod-t-qty">neaktívne</span>';
     const procStack = `<div class="pj-proc-stack">
       <div class="pj-proc-line"><span class="pj-proc-tag" title="Predaj">💼</span>${salesChev}</div>
       <div class="pj-proc-line"><span class="pj-proc-tag" title="Vývoj">🛠</span>${devChev}</div>
@@ -4482,7 +4499,7 @@ function openFolderLink(enc) {
 // Presun kartičky drag&drop do iného stage aktuálneho tracku (optimistický update + PUT)
 async function pjSetStage(p, key) {
   const u = pjStageUpdate(p, pjWorkflow, key);
-  const prev = { salesStage: p.salesStage, devStage: p.devStage, workflow: p.workflow, phase: p.phase };
+  const prev = { salesStage: p.salesStage, devStage: p.devStage, salesDone: p.salesDone, devDone: p.devDone, workflow: p.workflow, phase: p.phase };
   Object.assign(p, u); renderProjects();
   try {
     const r = await fetch('/api/projects/' + p._id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(u) });
@@ -4493,13 +4510,13 @@ async function onKanbanDrop(stageKey) {
   const id = _dragPid; _dragPid = null;
   if (!id) return;
   const p = projectsData.find(x => x._id === id); if (!p) return;
-  if (pjStageOf(p, pjWorkflow) === stageKey) return;
+  if (pjRepStage(p, pjWorkflow) === stageKey) return;
   pjSetStage(p, stageKey);
 }
 function moveProjectPhase(id, dir) {
   const p = projectsData.find(x => x._id === id); if (!p) return;
   const stages = pjStages(pjWorkflow);
-  const i = stages.findIndex(x => x.key === pjStageOf(p, pjWorkflow));
+  const i = stages.findIndex(x => x.key === pjRepStage(p, pjWorkflow));
   const ni = i + dir; if (ni < 0 || ni >= stages.length) return;
   pjSetStage(p, stages[ni].key);
 }
@@ -4511,6 +4528,7 @@ function pjBlankProject() {
     title: '', code: '',
     salesStage: PJ_WORKFLOWS.sales.stages[0].key,
     devStage: PJ_WORKFLOWS.development.stages[0].key,
+    salesDone: [], devDone: [],
     priority: 'normal', owner: '', startDate: null, deadline: null,
     deliverables: [], folder: '', tags: [], links: [], description: '', notes: ''
   };
@@ -4523,8 +4541,12 @@ async function openProjectPage(arg) {
   else if (arg) src = projectsData.find(x => x._id === arg) || await fetch('/api/projects/' + arg).then(r => r.ok ? r.json() : null).catch(() => null);
   pjPageIsNew = !src;
   pjPageData = src ? JSON.parse(JSON.stringify(src)) : pjBlankProject();
-  // normalizuj dual-track z legacy
-  if (src) { pjPageData.salesStage = pjSalesStage(src); pjPageData.devStage = pjDevStage(src); }
+  // normalizuj dual-track + hotové stupne z legacy
+  if (src) {
+    pjPageData.salesStage = pjSalesStage(src); pjPageData.devStage = pjDevStage(src);
+    pjPageData.salesDone = pjPageData.salesStage ? pjDoneSet(src, 'sales') : [];
+    pjPageData.devDone = pjPageData.devStage ? pjDoneSet(src, 'development') : [];
+  }
   pjPageData.tags = pjPageData.tags || []; pjPageData.links = pjPageData.links || [];
   setHash('project/' + (src ? src._id : 'new'));
   _activatePage('project');
@@ -4556,7 +4578,7 @@ function renderProjectPage() {
     <div class="pjp-grid">
       <div class="pjp-main">
         <div class="pjp-card">
-          <div class="pjp-card-hd">⚙️ Procesy <span class="pjp-card-hint">predaj a vývoj môžu bežať súčasne</span></div>
+          <div class="pjp-card-hd">⚙️ Procesy <span class="pjp-card-hint">klik na stupeň = označiť hotový (aj nepostupne)</span></div>
           <div id="pjPageFlows"></div>
         </div>
         <div class="pjp-card" id="pjPageDelivCard">
@@ -4598,22 +4620,29 @@ function renderProjectPage() {
   pjRenderLinks();
   pjRenderRelated();
 }
-function pjPickStage(track, key) { if (track === 'sales') pjPageData.salesStage = key; else pjPageData.devStage = key; pjRenderPageFlows(); }
+// klik na stupeň prepne jeho stav „hotový" (nepostupne)
+function pjPickStage(track, key) {
+  const arr = track === 'sales' ? (pjPageData.salesDone || (pjPageData.salesDone = [])) : (pjPageData.devDone || (pjPageData.devDone = []));
+  const i = arr.indexOf(key); if (i >= 0) arr.splice(i, 1); else arr.push(key);
+  pjRenderPageFlows();
+}
 function pjToggleTrack(track) {
-  if (track === 'sales') pjPageData.salesStage = pjPageData.salesStage ? '' : PJ_WORKFLOWS.sales.stages[0].key;
-  else pjPageData.devStage = pjPageData.devStage ? '' : PJ_WORKFLOWS.development.stages[0].key;
+  if (track === 'sales') { const on = !pjPageData.salesStage; pjPageData.salesStage = on ? PJ_WORKFLOWS.sales.stages[0].key : ''; pjPageData.salesDone = []; }
+  else { const on = !pjPageData.devStage; pjPageData.devStage = on ? PJ_WORKFLOWS.development.stages[0].key : ''; pjPageData.devDone = []; }
   pjRenderPageFlows();
   const card = document.getElementById('pjPageDelivCard'); if (card) card.style.display = pjPageData.devStage ? '' : 'none';
 }
 function pjRenderPageFlows() {
   const el = document.getElementById('pjPageFlows'); if (!el) return;
-  const s = pjPageData.salesStage, dev = pjPageData.devStage;
+  const sOn = !!pjPageData.salesStage, dOn = !!pjPageData.devStage;
+  const sDone = pjPageData.salesDone || [], dDone = pjPageData.devDone || [];
+  const sRep = pjRepKey('sales', sDone, pjPageData.salesStage), dRep = pjRepKey('development', dDone, pjPageData.devStage);
   el.innerHTML = `
-    <div class="pj-track pj-track-sales"><label class="pj-track-hd"><input type="checkbox" ${s ? 'checked' : ''} onchange="pjToggleTrack('sales')"> 💼 Predajný proces</label>
-      <div class="pj-flow">${s ? pjChevron(PJ_WORKFLOWS.sales.stages, s, 'sales') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>
-    <div class="pj-track pj-track-dev"><label class="pj-track-hd"><input type="checkbox" ${dev ? 'checked' : ''} onchange="pjToggleTrack('dev')"> 🛠 Vývojový proces</label>
-      <div class="pj-flow">${dev ? pjChevron(PJ_WORKFLOWS.development.stages, dev, 'dev') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>`;
-  const card = document.getElementById('pjPageDelivCard'); if (card) card.style.display = dev ? '' : 'none';
+    <div class="pj-track pj-track-sales"><label class="pj-track-hd"><input type="checkbox" ${sOn ? 'checked' : ''} onchange="pjToggleTrack('sales')"> 💼 Predajný proces</label>
+      <div class="pj-flow">${sOn ? pjChevron(PJ_WORKFLOWS.sales.stages, sDone, sRep, 'sales') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>
+    <div class="pj-track pj-track-dev"><label class="pj-track-hd"><input type="checkbox" ${dOn ? 'checked' : ''} onchange="pjToggleTrack('dev')"> 🛠 Vývojový proces</label>
+      <div class="pj-flow">${dOn ? pjChevron(PJ_WORKFLOWS.development.stages, dDone, dRep, 'dev') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>`;
+  const card = document.getElementById('pjPageDelivCard'); if (card) card.style.display = dOn ? '' : 'none';
 }
 function _pjCurrentDeliv() { return [...document.querySelectorAll('.pj-deliv-cb')].filter(c => c.checked).map(c => c.value); }
 function pjBuildDeliverables(done) {
@@ -4650,14 +4679,17 @@ async function savePjPage() {
   const title = (d.title || '').trim();
   if (!title) { toast('Zadajte názov projektu', 'warn'); return; }
   if (!d.salesStage && !d.devStage) { toast('Zapni aspoň jeden proces — Predaj alebo Vývoj.', 'warn'); return; }
-  const dev = d.devStage || '';
+  const salesOn = !!d.salesStage, devOn = !!d.devStage;
+  const sDone = salesOn ? (d.salesDone || []) : [], dDone = devOn ? (d.devDone || []) : [];
+  const salesStage = salesOn ? pjRepKey('sales', sDone, d.salesStage) : '';
+  const dev = devOn ? pjRepKey('development', dDone, d.devStage) : '';
   const body = {
     title, code: (d.code || '').trim(),
-    salesStage: d.salesStage || '', devStage: dev,
-    workflow: dev ? 'development' : 'sales', phase: dev || d.salesStage,   // legacy/analytika
+    salesStage, devStage: dev, salesDone: sDone, devDone: dDone,
+    workflow: dev ? 'development' : 'sales', phase: dev || salesStage,   // legacy/analytika
     priority: d.priority || 'normal', owner: (d.owner || '').trim(),
     startDate: d.startDate || null, deadline: d.deadline || null,
-    deliverables: dev ? _pjCurrentDeliv() : [],
+    deliverables: devOn ? _pjCurrentDeliv() : [],
     folder: (d.folder || '').trim(), tags: d.tags || [],
     links: (d.links || []).filter(l => (l.url || '').trim() || (l.label || '').trim()),
     description: (d.description || '').trim(), notes: (d.notes || '').trim()
@@ -4968,6 +5000,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.59.0', date: '14. 6. 2026', tag: 'feat', items: [
+    'Workflow nemusí ísť postupne — klikom na ktorýkoľvek stupeň ho označíš ako hotový (aj nepostupne), opätovný klik ho odznačí.',
+    'Hotové stupne sa ukladajú samostatne pre predaj aj vývoj; pozícia na boarde sa odvodzuje od najďalšieho hotového stupňa.',
+  ] },
   { v: '1.58.1', date: '14. 6. 2026', tag: 'ui', items: [
     'Detail projektu: odstránená sekcia „Spojený životný cyklus (predaj → vývoj)".',
   ] },
