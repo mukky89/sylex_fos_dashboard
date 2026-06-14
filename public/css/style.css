@@ -4070,10 +4070,9 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .bb-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 10px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; }
 .bb-tool-label { font-size: 0.8rem; color: var(--text-dim); font-weight: 600; }
 .bb-add { font-family: var(--font); font-size: 0.8rem; font-weight: 600; padding: 6px 12px; border-radius: 7px; border: 1px solid; cursor: pointer; color: #fff; }
-.bb-add-interrogator { background: #2f6b22; border-color: #275a1c; }
-.bb-add-splitter { background: #4f9d3a; border-color: #438631; }
-.bb-add-patch { background: #6db33f; border-color: #5d9a35; }
-.bb-add-sensors { background: #fff; color: #2f6b22; border-color: #4f9d3a; }
+.bb-add-interr { background: #2f6b22; border-color: #275a1c; color: #fff; }
+.bb-add-box { background: #6aa017; border-color: #5a8c12; color: #fff; }
+.bb-add-sensor { background: #fff; color: #2f6b22; border-color: #8DC63F; }
 .bb-add:hover { filter: brightness(1.06); }
 .bb-hint { font-size: 0.74rem; color: var(--text-xdim); margin-left: auto; }
 
@@ -4230,3 +4229,18 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 /* Combobox (select) — tmavé rozbaľovacie menu so svetlým textom (čitateľné options) */
 select option, select optgroup { background-color: #131c33; color: #e2e8f0; }
 .util-select, .cal-jump, select.util-select { color-scheme: dark; }
+
+/* Backbone — Sylex štýl: korálky (konektory/ochrany), senzorový hrot, porty */
+.bb-port { fill: rgba(255,255,255,0.55); }
+.bb-tip { stroke: #5a8c12; stroke-width: 1; }
+.bb-bead { cursor: pointer; }
+.bb-bead rect { fill: #1c1c1c; stroke: #555; stroke-width: 1; }
+.bb-bead:hover rect { fill: #333; }
+.bb-bead-lbl { font-family: var(--font); font-size: 8.5px; font-weight: 700; fill: #475569; }
+.bb-flow { stroke: #8DC63F; }
+.bb-parts { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+.bb-part-chip { display: inline-flex; align-items: center; gap: 5px; background: #1c1c1c; color: #fff; font-size: 0.72rem; font-weight: 600; padding: 3px 4px 3px 8px; border-radius: 5px; }
+.bb-part-chip button { background: none; border: none; color: rgba(255,255,255,0.6); cursor: pointer; font-size: 0.75rem; padding: 0 2px; }
+.bb-part-chip button:hover { color: #fca5a5; }
+.bb-part-add { display: flex; gap: 6px; }
+.bb-part-add select { flex: 1; }

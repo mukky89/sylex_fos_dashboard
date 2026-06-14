@@ -440,12 +440,15 @@
         </div>
       </div>
       <div class="bb-toolbar">
-        <span class="bb-tool-label">Pridať uzol:</span>
-        <button class="bb-add bb-add-interrogator" onclick="bbAddNode('interrogator')">Interrogátor</button>
-        <button class="bb-add bb-add-splitter" onclick="bbAddNode('splitter')">Splitter</button>
-        <button class="bb-add bb-add-patch" onclick="bbAddNode('patch')">Prepojovacia</button>
-        <button class="bb-add bb-add-sensors" onclick="bbAddNode('sensors')">Senzory</button>
-        <span class="bb-hint">Ťahaj uzly myšou · klik = výber · káble spojíš tlačidlom „Prepojiť"</span>
+        <span class="bb-tool-label">Pridať:</span>
+        <button class="bb-add bb-add-sensor" onclick="bbAddNode('sensor')">FBG senzor</button>
+        <button class="bb-add bb-add-box" onclick="bbAddNode('splitter')">Splitter</button>
+        <button class="bb-add bb-add-box" onclick="bbAddNode('wcb')">WCB-01</button>
+        <button class="bb-add bb-add-interr" onclick="bbAddNode('scan')">S-line Scan</button>
+        <button class="bb-add bb-add-interr" onclick="bbAddNode('switch')">S-line Switch</button>
+        <button class="bb-add bb-add-interr" onclick="bbAddNode('splitter8')">S-line Splitter</button>
+        <button class="bb-add bb-add-interr" onclick="bbAddNode('comp')">S-line Comp</button>
+        <span class="bb-hint">Ťahaj komponenty · klik = výber · konektory/ochrany pridáš na vybraný kábel</span>
       </div>
       <div class="bb-editor">
         <div class="bb-canvas-wrap bb-anim" id="bbCanvasWrap">

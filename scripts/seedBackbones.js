@@ -36,17 +36,18 @@ function build(def) {
     sp.sensors.forEach((txt, li) => {
       const nid = `l${si}_${li}`;
       nodes.push({ nid, type: 'sensors', label: txt, x: COL_SENS, y });
-      links.push({ lid: 'k' + (lid++), from: sid, to: nid, fibers: 1, length: 0, label: '' });
+      links.push({ lid: 'k' + (lid++), from: sid, to: nid, fibers: 1, length: 0, label: '', parts: ['conn'] });
       y += SENS_H;
     });
     const splitterY = startY + (sp.sensors.length - 1) * SENS_H / 2;
     splitterYs.push(splitterY);
-    nodes.push({ nid: sid, type: 'splitter', label: sp.label, x: COL_SPLIT, y: splitterY });
-    links.push({ lid: 'k' + (lid++), from: 'root', to: sid, fibers: sp.fibers, length: sp.length, label: '' });
+    // prvý uzol = WCB-01 prepojovacia skriňa, ostatné splittre
+    nodes.push({ nid: sid, type: si === 0 ? 'wcb' : 'splitter', label: sp.label, x: COL_SPLIT, y: splitterY });
+    links.push({ lid: 'k' + (lid++), from: 'root', to: sid, fibers: sp.fibers, length: sp.length, label: '', parts: ['WCP-01'] });
     y += GROUP_GAP;
   });
   const rootY = (splitterYs[0] + splitterYs[splitterYs.length - 1]) / 2;
-  nodes.push({ nid: 'root', type: 'interrogator', label: def.name, x: COL_ROOT, y: rootY });
+  nodes.push({ nid: 'root', type: 'scan', label: def.name, x: COL_ROOT, y: rootY });
   return { name: def.name, nodes, links, note: 'seed' };
 }
 
