@@ -5096,8 +5096,8 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
-  { v: '1.63.0', date: '14. 6. 2026', tag: 'ui', items: [
-    'Futuristický dizajn workflow chevronov — neónové gradienty so žiarou, presklený lesk, pulzujúci aktuálny stupeň, tech typografia (predaj=modrá, vývoj=zelená, výstupy=tyrkysová).',
+  { v: '1.63.1', date: '14. 6. 2026', tag: 'ui', items: [
+    'Workflow chevrony vrátené na predošlý (jednoduchší) dizajn.',
   ] },
   { v: '1.62.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Admin → „Workflow projektov": editovateľné stupne predajného aj vývojového procesu a zoznam štandardných výstupov (názov + skratka).',
