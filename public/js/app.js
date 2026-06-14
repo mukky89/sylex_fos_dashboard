@@ -731,6 +731,12 @@ async function handleHash(hash) {
   if (hash === 'procedures') { _activatePage('procedures'); loadProcedures(); return; }
   if (hash === 'guides')  { _activatePage('guides');  loadGuides(); return; }
   if (hash === 'dev')     { _activatePage('dev');     loadDev(); return; }
+  if (hash.startsWith('project/')) {
+    const id = hash.slice('project/'.length);
+    if (id === 'new') { if (!projectsData.length) await loadProjectsData(); await openProjectPage(null); }
+    else { if (!projectsData.length) await loadProjectsData(); await openProjectPage(id); }
+    return;
+  }
   if (hash === 'util')    { _activatePage('util');    loadUtil(); return; }
   if (hash === 'prod')    { _activatePage('prod');    loadProd(); return; }
   if (hash === 'mfg')     { _activatePage('mfg');     loadMfg(); return; }
@@ -4440,51 +4446,124 @@ function moveProjectPhase(id, dir) {
   const ni = i + dir; if (ni < 0 || ni >= stages.length) return;
   pjSetStage(p, stages[ni].key);
 }
-// modálne stavy procesov (aktuálne zvolený stage v každom tracku)
-let _pjSales = '', _pjDev = '';
-function openProjectModal(p = null) {
-  const e = p && typeof p === 'object';
-  document.getElementById('pjModalTitle').textContent = e ? 'Upraviť projekt' : 'Nový projekt';
-  document.getElementById('pjId').value = e ? p._id : '';
-  document.getElementById('pjTitle').value = e ? (p.title || '') : '';
-  document.getElementById('pjCode').value = e ? (p.code || '') : '';
-  _pjSales = e ? pjSalesStage(p) : (pjWorkflow === 'sales' ? PJ_WORKFLOWS.sales.stages[0].key : '');
-  _pjDev = e ? pjDevStage(p) : (pjWorkflow === 'development' ? PJ_WORKFLOWS.development.stages[0].key : '');
-  document.getElementById('pjSalesOn').checked = !!_pjSales;
-  document.getElementById('pjDevOn').checked = !!_pjDev;
-  document.getElementById('pjPriority').value = e ? (p.priority || 'normal') : 'normal';
-  document.getElementById('pjOwner').value = e ? (p.owner || '') : '';
-  document.getElementById('pjStart').value = e && p.startDate ? String(p.startDate).slice(0, 10) : '';
-  document.getElementById('pjDeadline').value = e && p.deadline ? String(p.deadline).slice(0, 10) : '';
-  pjBuildDeliverables(e ? (p.deliverables || []) : []);
-  pjRenderModalFlows();
-  document.getElementById('pjFolder').value = e ? (p.folder || '') : '';
-  document.getElementById('pjTags').value = e ? (p.tags || []).join(', ') : '';
-  document.getElementById('pjNotes').value = e ? (p.notes || '') : '';
-  document.getElementById('pjDeleteBtn').style.display = e ? '' : 'none';
-  document.getElementById('projectModal').classList.remove('hidden');
+// ── Detail projektu = samostatná stránka (komplexný obsah) ──
+let pjPageData = null, pjPageIsNew = false, pjPageTests = [];
+function pjBlankProject() {
+  const dev = pjWorkflow !== 'sales';
+  return {
+    title: '', code: '',
+    salesStage: dev ? '' : PJ_WORKFLOWS.sales.stages[0].key,
+    devStage: dev ? PJ_WORKFLOWS.development.stages[0].key : '',
+    priority: 'normal', owner: '', startDate: null, deadline: null,
+    deliverables: [], folder: '', tags: [], links: [], description: '', notes: ''
+  };
 }
-function pjPickStage(track, key) { if (track === 'sales') _pjSales = key; else _pjDev = key; pjRenderModalFlows(); }
+// openProjectModal je zachované meno kvôli existujúcim onclickom — presmeruje na stránku
+function openProjectModal(p = null) { openProjectPage(p && typeof p === 'object' ? p : null); }
+async function openProjectPage(arg) {
+  let src = null;
+  if (arg && typeof arg === 'object') src = arg;
+  else if (arg) src = projectsData.find(x => x._id === arg) || await fetch('/api/projects/' + arg).then(r => r.ok ? r.json() : null).catch(() => null);
+  pjPageIsNew = !src;
+  pjPageData = src ? JSON.parse(JSON.stringify(src)) : pjBlankProject();
+  // normalizuj dual-track z legacy
+  if (src) { pjPageData.salesStage = pjSalesStage(src); pjPageData.devStage = pjDevStage(src); }
+  pjPageData.tags = pjPageData.tags || []; pjPageData.links = pjPageData.links || [];
+  setHash('project/' + (src ? src._id : 'new'));
+  _activatePage('project');
+  pjPageTests = [];
+  renderProjectPage();
+  if (src && src.title) { // súvisiace testovacie protokoly (best-effort)
+    try { const all = await fetch('/api/tests').then(r => r.json()); if (Array.isArray(all)) { pjPageTests = all.filter(t => (t.project || '').trim() && (t.project || '').toLowerCase() === src.title.toLowerCase()); if (pjPageTests.length) pjRenderRelated(); } } catch (_) {}
+  }
+}
+function backToProjects() { showPage('dev'); setTimeout(() => switchDevTab('projects'), 0); }
+const PJ_PRIO_OPTS = [['low', 'Nízka'], ['normal', 'Normálna'], ['high', 'Vysoká']];
+function renderProjectPage() {
+  const host = document.getElementById('pjPageInner'); if (!host || !pjPageData) return;
+  const d = pjPageData, dl = d.deadline ? new Date(d.deadline) : null;
+  const overdue = dl && dl < new Date();
+  const prioOpts = PJ_PRIO_OPTS.map(([v, l]) => `<option value="${v}"${d.priority === v ? ' selected' : ''}>${l}</option>`).join('');
+  host.innerHTML = `
+    <div class="pjp-top">
+      <button class="btn-secondary btn-sm" onclick="backToProjects()">← Späť na projekty</button>
+      <div class="pjp-top-actions">
+        ${pjPageIsNew ? '' : '<button class="btn-delete btn-sm" onclick="deleteProject(pjPageData._id)">Odstrániť</button>'}
+        <button class="btn-primary" onclick="savePjPage()">💾 Uložiť</button>
+      </div>
+    </div>
+    <div class="pjp-head">
+      <input class="pjp-title-input" type="text" placeholder="Názov projektu *" value="${escHtml(d.title || '')}" oninput="pjPageData.title=this.value">
+      <input class="pjp-code-input" type="text" placeholder="Kód (napr. P-2026-01)" value="${escHtml(d.code || '')}" oninput="pjPageData.code=this.value">
+    </div>
+    <div class="pjp-grid">
+      <div class="pjp-main">
+        <div class="pjp-card">
+          <div class="pjp-card-hd">⚙️ Procesy <span class="pjp-card-hint">predaj a vývoj môžu bežať súčasne</span></div>
+          <div id="pjPageFlows"></div>
+        </div>
+        <div class="pjp-card" id="pjPageDelivCard">
+          <div class="pjp-card-hd">📦 Štandardné výstupy <span id="pjDelivCount" class="pj-deliv-count"></span></div>
+          <div class="pj-deliv" id="pjDelivList"></div>
+        </div>
+        <div class="pjp-card">
+          <div class="pjp-card-hd">📝 Popis</div>
+          <textarea class="pjp-textarea" rows="4" placeholder="Popis projektu…" oninput="pjPageData.description=this.value">${escHtml(d.description || '')}</textarea>
+        </div>
+        <div class="pjp-card">
+          <div class="pjp-card-hd">🗒️ Poznámky</div>
+          <textarea class="pjp-textarea" rows="3" placeholder="Interné poznámky…" oninput="pjPageData.notes=this.value">${escHtml(d.notes || '')}</textarea>
+        </div>
+        <div class="pjp-card">
+          <div class="pjp-card-hd">🔗 Odkazy <button class="btn-secondary btn-sm" onclick="pjAddLink()">+ Pridať</button></div>
+          <div id="pjLinksList"></div>
+        </div>
+        <div class="pjp-card" id="pjRelatedCard" style="display:none">
+          <div class="pjp-card-hd">🧪 Súvisiace testovacie protokoly</div>
+          <div id="pjRelatedList"></div>
+        </div>
+      </div>
+      <aside class="pjp-aside">
+        <div class="pjp-card">
+          <div class="pjp-card-hd">📋 Detaily</div>
+          <div class="form-group"><label>Priorita</label><select onchange="pjPageData.priority=this.value">${prioOpts}</select></div>
+          <div class="form-group"><label>Zodpovedný</label><input type="text" value="${escHtml(d.owner || '')}" oninput="pjPageData.owner=this.value"></div>
+          <div class="form-group"><label>Začiatok</label><input type="date" value="${d.startDate ? String(d.startDate).slice(0, 10) : ''}" onchange="pjPageData.startDate=this.value||null"></div>
+          <div class="form-group"><label>Termín (deadline)</label><input type="date" value="${d.deadline ? String(d.deadline).slice(0, 10) : ''}" onchange="pjPageData.deadline=this.value||null"></div>
+          ${overdue ? '<div class="pjp-overdue">⚠️ Po termíne</div>' : ''}
+          <div class="form-group"><label>Priečinok / odkaz</label><input type="text" value="${escHtml(d.folder || '')}" placeholder="G:\\Projekty\\…" oninput="pjPageData.folder=this.value"></div>
+          <div class="form-group"><label>Tagy (čiarkou)</label><input type="text" value="${escHtml((d.tags || []).join(', '))}" oninput="pjPageData.tags=this.value.split(',').map(s=>s.trim()).filter(Boolean)"></div>
+        </div>
+      </aside>
+    </div>`;
+  pjRenderPageFlows();
+  pjBuildDeliverables(d.deliverables || []);
+  pjRenderLinks();
+  pjRenderRelated();
+}
+function pjPickStage(track, key) { if (track === 'sales') pjPageData.salesStage = key; else pjPageData.devStage = key; pjRenderPageFlows(); }
 function pjToggleTrack(track) {
-  if (track === 'sales') { _pjSales = document.getElementById('pjSalesOn').checked ? (_pjSales || PJ_WORKFLOWS.sales.stages[0].key) : ''; }
-  else { _pjDev = document.getElementById('pjDevOn').checked ? (_pjDev || PJ_WORKFLOWS.development.stages[0].key) : ''; }
-  pjRenderModalFlows();
+  if (track === 'sales') pjPageData.salesStage = pjPageData.salesStage ? '' : PJ_WORKFLOWS.sales.stages[0].key;
+  else pjPageData.devStage = pjPageData.devStage ? '' : PJ_WORKFLOWS.development.stages[0].key;
+  pjRenderPageFlows();
+  const card = document.getElementById('pjPageDelivCard'); if (card) card.style.display = pjPageData.devStage ? '' : 'none';
 }
-function pjRenderModalFlows() {
-  const salesOn = document.getElementById('pjSalesOn').checked, devOn = document.getElementById('pjDevOn').checked;
-  document.getElementById('pjSalesFlow').innerHTML = salesOn ? pjChevron(PJ_WORKFLOWS.sales.stages, _pjSales, 'sales') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>';
-  document.getElementById('pjDevFlow').innerHTML = devOn ? pjChevron(PJ_WORKFLOWS.development.stages, _pjDev, 'dev') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>';
-  const chainWrap = document.getElementById('pjChainWrap');
-  if (salesOn && devOn) {
-    chainWrap.style.display = '';
-    document.getElementById('pjChainFlow').innerHTML =
-      `<span class="pj-chain-lbl">Predaj</span>${pjChevron(PJ_WORKFLOWS.sales.stages, _pjSales, 'sales', 'pj-chev-sm')}<span class="pj-chain-arrow">→</span><span class="pj-chain-lbl">Vývoj</span>${pjChevron(PJ_WORKFLOWS.development.stages, _pjDev, 'dev', 'pj-chev-sm')}`;
-  } else chainWrap.style.display = 'none';
-  document.getElementById('pjDelivWrap').style.display = devOn ? '' : 'none';
+function pjRenderPageFlows() {
+  const el = document.getElementById('pjPageFlows'); if (!el) return;
+  const s = pjPageData.salesStage, dev = pjPageData.devStage;
+  const chain = (s && dev) ? `<div class="pj-track"><div class="pj-track-hd">🔗 Spojený životný cyklus (predaj → vývoj)</div>
+      <div class="pj-flow pj-flow-chain"><span class="pj-chain-lbl">Predaj</span>${pjChevron(PJ_WORKFLOWS.sales.stages, s, 'sales', 'pj-chev-sm')}<span class="pj-chain-arrow">→</span><span class="pj-chain-lbl">Vývoj</span>${pjChevron(PJ_WORKFLOWS.development.stages, dev, 'dev', 'pj-chev-sm')}</div></div>` : '';
+  el.innerHTML = `
+    <div class="pj-track"><label class="pj-track-hd"><input type="checkbox" ${s ? 'checked' : ''} onchange="pjToggleTrack('sales')"> 💼 Predajný proces</label>
+      <div class="pj-flow">${s ? pjChevron(PJ_WORKFLOWS.sales.stages, s, 'sales') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>
+    <div class="pj-track"><label class="pj-track-hd"><input type="checkbox" ${dev ? 'checked' : ''} onchange="pjToggleTrack('dev')"> 🛠 Vývojový proces</label>
+      <div class="pj-flow">${dev ? pjChevron(PJ_WORKFLOWS.development.stages, dev, 'dev') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>
+    ${chain}`;
+  const card = document.getElementById('pjPageDelivCard'); if (card) card.style.display = dev ? '' : 'none';
 }
 function _pjCurrentDeliv() { return [...document.querySelectorAll('.pj-deliv-cb')].filter(c => c.checked).map(c => c.value); }
 function pjBuildDeliverables(done) {
-  const list = document.getElementById('pjDelivList');
+  const list = document.getElementById('pjDelivList'); if (!list) return;
   list.innerHTML = PJ_DELIVERABLES.map(d => `<label><input type="checkbox" class="pj-deliv-cb" value="${d.key}"${done.includes(d.key) ? ' checked' : ''} onchange="pjUpdateDelivCount()"> ${escHtml(d.label)}</label>`).join('');
   pjUpdateDelivCount();
 }
@@ -4492,36 +4571,57 @@ function pjUpdateDelivCount() {
   const cbs = [...document.querySelectorAll('.pj-deliv-cb')], done = cbs.filter(c => c.checked).length;
   const el = document.getElementById('pjDelivCount'); if (el) el.textContent = `${done}/${cbs.length} splnené`;
 }
-function closeProjectModal() { document.getElementById('projectModal').classList.add('hidden'); }
-async function saveProject() {
-  const title = document.getElementById('pjTitle').value.trim();
+function pjAddLink() { pjPageData.links.push({ label: '', url: '' }); pjRenderLinks(); }
+function pjDelLink(i) { pjPageData.links.splice(i, 1); pjRenderLinks(); }
+function pjRenderLinks() {
+  const el = document.getElementById('pjLinksList'); if (!el) return;
+  if (!pjPageData.links.length) { el.innerHTML = '<div class="pjp-empty">Žiadne odkazy.</div>'; return; }
+  el.innerHTML = pjPageData.links.map((l, i) => `<div class="pjp-link-row">
+    <input type="text" placeholder="Popis" value="${escHtml(l.label || '')}" oninput="pjPageData.links[${i}].label=this.value">
+    <input type="text" placeholder="https://…" value="${escHtml(l.url || '')}" oninput="pjPageData.links[${i}].url=this.value">
+    <button class="btn-delete btn-sm" onclick="pjDelLink(${i})">✕</button></div>`).join('');
+}
+function pjRenderRelated() {
+  const card = document.getElementById('pjRelatedCard'), list = document.getElementById('pjRelatedList');
+  if (!card || !list) return;
+  if (!pjPageTests.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  list.innerHTML = pjPageTests.map(t => {
+    const r = TS_RESULT[t.result] || TS_RESULT.na;
+    return `<div class="pjp-rel-row" onclick="showPage('dev');setTimeout(()=>{switchDevTab('tests');},0)"><span>${escHtml(t.title)}</span><span class="proc-status ${r.c}">${r.l}</span></div>`;
+  }).join('');
+}
+async function savePjPage() {
+  const d = pjPageData; if (!d) return;
+  const title = (d.title || '').trim();
   if (!title) { toast('Zadajte názov projektu', 'warn'); return; }
-  const sales = document.getElementById('pjSalesOn').checked ? _pjSales : '';
-  const dev = document.getElementById('pjDevOn').checked ? _pjDev : '';
-  if (!sales && !dev) { toast('Zapni aspoň jeden proces — Predaj alebo Vývoj.', 'warn'); return; }
+  if (!d.salesStage && !d.devStage) { toast('Zapni aspoň jeden proces — Predaj alebo Vývoj.', 'warn'); return; }
+  const dev = d.devStage || '';
   const body = {
-    title, code: document.getElementById('pjCode').value.trim(),
-    salesStage: sales, devStage: dev,
-    workflow: dev ? 'development' : 'sales', phase: dev || sales,   // legacy/analytika
-    priority: document.getElementById('pjPriority').value,
-    owner: document.getElementById('pjOwner').value.trim(),
-    startDate: document.getElementById('pjStart').value || null,
-    deadline: document.getElementById('pjDeadline').value || null,
+    title, code: (d.code || '').trim(),
+    salesStage: d.salesStage || '', devStage: dev,
+    workflow: dev ? 'development' : 'sales', phase: dev || d.salesStage,   // legacy/analytika
+    priority: d.priority || 'normal', owner: (d.owner || '').trim(),
+    startDate: d.startDate || null, deadline: d.deadline || null,
     deliverables: dev ? _pjCurrentDeliv() : [],
-    folder: document.getElementById('pjFolder').value.trim(),
-    tags: document.getElementById('pjTags').value.split(',').map(s => s.trim()).filter(Boolean),
-    notes: document.getElementById('pjNotes').value.trim()
+    folder: (d.folder || '').trim(), tags: d.tags || [],
+    links: (d.links || []).filter(l => (l.url || '').trim() || (l.label || '').trim()),
+    description: (d.description || '').trim(), notes: (d.notes || '').trim()
   };
-  const id = document.getElementById('pjId').value;
   try {
-    const resp = await fetch(id ? '/api/projects/' + id : '/api/projects', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const resp = await fetch(pjPageIsNew ? '/api/projects' : '/api/projects/' + d._id, { method: pjPageIsNew ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!resp.ok) { const er = await resp.json().catch(() => ({})); toast('Chyba: ' + (er.error || resp.status), 'error'); return; }
-    closeProjectModal(); loadProjects();
+    toast('Projekt uložený.', 'success');
+    await loadProjectsData();
+    backToProjects();
   } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+async function loadProjectsData() {
+  try { projectsData = await fetch('/api/projects').then(r => r.json()); if (!Array.isArray(projectsData)) projectsData = []; } catch { projectsData = []; }
 }
 async function deleteProject(id) {
   if (!id || !await uiConfirm('Naozaj odstrániť projekt?')) return;
-  try { await fetch('/api/projects/' + id, { method: 'DELETE' }); closeProjectModal(); loadProjects(); } catch { alert('Chyba'); }
+  try { await fetch('/api/projects/' + id, { method: 'DELETE' }); toast('Projekt odstránený.', 'success'); await loadProjectsData(); backToProjects(); } catch { toast('Chyba pri mazaní', 'error'); }
 }
 
 // ── Testy ─────────────────────────────────────────────────────────────────────
@@ -4814,6 +4914,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.51.0', date: '14. 6. 2026', tag: 'feat', items: [
+    'Vývoj výrobkov: detail projektu sa otvára ako samostatná stránka (namiesto modálu) s komplexným obsahom.',
+    'Stránka projektu: chevron procesy (predaj/vývoj + spojený cyklus), checklist výstupov, popis, poznámky, odkazy (viacero), detaily, súvisiace testovacie protokoly.',
+    'Editovateľné odkazy projektu a popis (predtým neboli v UI); plynulé ukladanie a mazanie z detailu.',
+  ] },
   { v: '1.50.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Projekty: procesy zobrazené ako chevron tok (breadcrumb) — klik na stupeň ho nastaví.',
     'Predaj a vývoj môžu na projekte prebiehať SÚČASNE (paralelne) — každý má vlastný proces, zapína sa samostatne.',

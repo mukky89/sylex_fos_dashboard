@@ -2663,6 +2663,34 @@ body {
 .pj-chain-arrow { color: #10b981; font-weight: 700; font-size: 1rem; margin: 0 8px; }
 .pj-par-chip { display: inline-flex; align-items: center; gap: 4px; margin-top: 7px; font-size: 0.68rem; font-weight: 600; color: var(--c, #94a3b8); background: color-mix(in srgb, var(--c, #64748b) 16%, transparent); border: 1px solid color-mix(in srgb, var(--c, #64748b) 38%, transparent); border-radius: 100px; padding: 2px 9px; white-space: nowrap; }
 
+/* Detail projektu — samostatná stránka */
+.project-page { background: var(--hdr-bg); }
+.pjp-inner { max-width: 1180px; margin: 0 auto; padding: 28px 24px 56px; }
+.pjp-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.pjp-top-actions { display: flex; gap: 8px; }
+.pjp-head { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.pjp-title-input { flex: 1; min-width: 240px; font-family: var(--font-title); font-size: 1.5rem; font-weight: 800; color: #f0f9ff; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 10px 14px; }
+.pjp-code-input { width: 200px; font-size: 0.9rem; color: #cbd5e1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 10px 14px; }
+.pjp-title-input:focus, .pjp-code-input:focus { outline: none; border-color: var(--accent); }
+.pjp-grid { display: grid; grid-template-columns: 1fr 320px; gap: 16px; align-items: start; }
+.pjp-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.pjp-aside { display: flex; flex-direction: column; gap: 16px; }
+.pjp-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 16px 18px; }
+.pjp-card-hd { display: flex; align-items: center; gap: 10px; font-family: var(--font-title); font-size: 1rem; font-weight: 700; color: #e8f0fb; margin-bottom: 12px; }
+.pjp-card-hd .btn-sm { margin-left: auto; }
+.pjp-card-hint { font-family: var(--font); font-size: 0.72rem; font-weight: 400; color: #94a3b8; }
+.pjp-textarea { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 9px; color: #e2e8f0; padding: 9px 12px; font-family: var(--font); font-size: 0.88rem; resize: vertical; }
+.pjp-textarea:focus { outline: none; border-color: var(--accent); }
+.pjp-link-row { display: flex; gap: 8px; margin-bottom: 7px; }
+.pjp-link-row input { flex: 1; min-width: 0; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #e2e8f0; padding: 7px 10px; font-size: 0.84rem; }
+.pjp-link-row input:first-child { flex: 0 0 34%; }
+.pjp-empty { color: #94a3b8; font-size: 0.84rem; }
+.pjp-overdue { color: #fca5a5; font-weight: 600; font-size: 0.82rem; margin: -4px 0 10px; }
+.pjp-rel-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; margin-bottom: 6px; cursor: pointer; color: #dbe4f0; font-size: 0.85rem; }
+.pjp-rel-row:hover { background: rgba(255,255,255,0.05); }
+.pjp-aside .form-group label { color: #cbd5e1; }
+@media (max-width: 880px) { .pjp-grid { grid-template-columns: 1fr; } }
+
 /* Kalibračný odznak */
 .cal-badge { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 9px; border-radius: 10px; color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
 
