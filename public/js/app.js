@@ -4392,20 +4392,23 @@ function renderPjList(host, items) {
     const sales = pjSalesStage(p), dev = pjDevStage(p);
     const dl = p.deadline ? new Date(p.deadline) : null;
     const overdue = dl && dl < new Date();
-    const salesChev = sales ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.sales.stages, sales, 'sales', null, true)}</div>` : '<span class="prod-t-qty">—</span>';
-    const devChev = dev ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.development.stages, dev, 'dev', null, true)}</div>` : '<span class="prod-t-qty">—</span>';
+    const salesChev = sales ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.sales.stages, sales, 'sales', null, true)}</div>` : '<span class="prod-t-qty">neaktívne</span>';
+    const devChev = dev ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.development.stages, dev, 'dev', null, true)}</div>` : '<span class="prod-t-qty">neaktívne</span>';
+    const procStack = `<div class="pj-proc-stack">
+      <div class="pj-proc-line"><span class="pj-proc-tag" title="Predaj">💼</span>${salesChev}</div>
+      <div class="pj-proc-line"><span class="pj-proc-tag" title="Vývoj">🛠</span>${devChev}</div>
+    </div>`;
     const outputs = pjListDeliv(p);
     return `<tr onclick="openProjectModal(projectsData.find(x=>x._id==='${p._id}'))">
       <td><span class="prod-t-num">${escHtml(p.title)}</span>${p.code ? `<span class="prod-t-qty">${escHtml(p.code)}</span>` : ''}</td>
-      <td>${salesChev}</td>
-      <td>${devChev}</td>
+      <td>${procStack}</td>
       <td>${outputs}</td>
       <td>${escHtml(p.owner || '—')}</td>
       <td class="${overdue ? 'kanban-overdue' : ''}">${dl ? fmtDate(p.deadline) : '—'}</td>
     </tr>`;
   }).join('');
   host.innerHTML = `<div class="prod-list pj-list-wrap"><table class="prod-table">
-    <thead><tr><th>Projekt</th><th>💼 Predaj</th><th>🛠 Vývoj</th><th><div class="pj-col-hd">Výstupy ${pjDelivFilterOpts()}</div></th><th>Vlastník</th><th>Termín</th></tr></thead>
+    <thead><tr><th>Projekt</th><th>Procesy (predaj / vývoj)</th><th><div class="pj-col-hd">Výstupy ${pjDelivFilterOpts()}</div></th><th>Vlastník</th><th>Termín</th></tr></thead>
     <tbody>${rows}</tbody></table></div>`;
 }
 // Výstupy v zozname — všetky checkboxy priamo v hlavnom zobrazení (zaškrtnuteľné)
@@ -4960,6 +4963,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.57.0', date: '14. 6. 2026', tag: 'ui', items: [
+    'Zoznam projektov: procesy predaj a vývoj sú v jednom stĺpci pod sebou (predaj hore, vývoj dole) namiesto dvoch stĺpcov.',
+  ] },
   { v: '1.56.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Zoznam projektov: filter výstupov priamo v hlavičke stĺpca „Výstupy" — dá sa filtrovať podľa konkrétneho výstupu (má hotový / chýba) aj súhrnne (všetky hotové / niektorý chýba).',
     'Lepšia čitateľnosť stĺpca Projekt (širší, názov sa nezalamuje na pol slova).',
