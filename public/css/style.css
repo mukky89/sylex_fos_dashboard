@@ -2654,13 +2654,15 @@ body {
 .pj-chev:first-child { margin-left: 0; padding-left: 15px; border-radius: 6px 0 0 6px; clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 0 100%); }
 .pj-chev:last-child { border-radius: 0 6px 6px 0; }
 .pj-chev.done { background: #2f9e3f; color: #fff; }
-.pj-chev.current { background: #3b475c; color: #fff; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35); }
 .pj-chev:hover { filter: brightness(1.12); }
+/* prvý (štart) a posledný (cieľ) stupeň — farebne odlíšené, keď ešte nie sú hotové */
+.pj-chev.pj-chev-start.future { background: #4338ca; color: #c7d2fe; }
+.pj-chev.pj-chev-end.future { background: #9a3412; color: #fed7aa; }
+/* aktuálny stav vo workflow — výrazný žltý prstenec nad akoukoľvek farbou */
+.pj-chev.cur { box-shadow: inset 0 0 0 2px #fde047; }
 /* farebné odlíšenie procesov: predaj = modrá, vývoj = zelená */
 .pj-chev-sales.done { background: #2563eb; }
-.pj-chev-sales.current { background: #1e40af; }
 .pj-chev-dev.done { background: #2f9e3f; }
-.pj-chev-dev.current { background: #15803d; }
 /* štandardné výstupy = tyrkysová */
 .pj-chev-deliv.done { background: #0d9488; }
 .pj-deliv-flow { flex-wrap: wrap; gap: 4px 0; }

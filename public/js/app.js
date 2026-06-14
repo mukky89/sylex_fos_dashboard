@@ -4369,8 +4369,12 @@ function pjDelivChevron(doneArr, onclickTpl, extraCls) {
 // Chevron flow (breadcrumb proces) — done / current / future; farba podľa tracku (sales/dev)
 // onclickTpl(key) => reťazec do onclick; ak nie je → needitovateľné (span)
 function pjChevron(stages, doneArr, repKey, track, extraCls, onclickTpl) {
-  return stages.map(s => {
-    const cls = (doneArr || []).includes(s.key) ? 'done' : (s.key === repKey ? 'current' : 'future');
+  const last = stages.length - 1;
+  return stages.map((s, i) => {
+    let cls = (doneArr || []).includes(s.key) ? 'done' : 'future';
+    if (s.key === repKey) cls += ' cur';                 // aktuálny stav
+    if (i === 0) cls += ' pj-chev-start';                // prvý
+    if (i === last) cls += ' pj-chev-end';               // posledný
     const tag = onclickTpl ? 'button' : 'span';
     const attr = onclickTpl ? ` type="button" onclick="${onclickTpl(s.key)}"` : '';
     return `<${tag} class="pj-chev pj-chev-${track} ${cls} ${extraCls || ''}"${attr}>${escHtml(s.label)}</${tag}>`;
@@ -5114,6 +5118,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.65.0', date: '14. 6. 2026', tag: 'ui', items: [
+    'Workflow: prvý stupeň (štart) odlíšený fialovou, posledný (cieľ) oranžovou; aktuálny stav má výrazný žltý prstenec.',
+  ] },
   { v: '1.64.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Workflow sa dá meniť priamo v zozname Vývoj výrobkov — klik na stupeň (predaj aj vývoj) ho označí/odznačí ako hotový, hneď sa uloží (nie len v detaile).',
   ] },
