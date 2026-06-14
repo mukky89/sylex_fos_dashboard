@@ -2918,6 +2918,7 @@ body.logged-out .thermo-corner { display: none !important; }
 .fbg-frame-card { margin-bottom: 16px; }
 .fbg-card-title { padding: 12px 14px 0; }
 .fbg-frame-tall { height: 680px; }
+.fbg-frame-xtall { min-height: 1480px; height: 1480px; }
 
 /* =============================================
    MANAŽMENT dashboard

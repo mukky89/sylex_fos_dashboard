@@ -103,7 +103,7 @@ const TOUR_STEPS = [
   },
   { page: 'fbg', el: '#page-fbg .fbg-frame-card',
     title: '📡 FBG Peak — vizualizácia',
-    desc: 'Interaktívna animácia FBG senzorov: naťahovanie mriežky a <strong>posun odrazového peaku</strong>. Nižšie je simulácia <strong>Strain Cable SC-01</strong> s farebnou heat-mapou pnutia.',
+    desc: 'Interaktívna animácia FBG senzorov: naťahovanie mriežky a <strong>posun odrazového peaku</strong>. Nižšie je simulácia <strong>Strain Cable SC-01</strong> a <strong>FBG senzor teploty a vibrácií</strong> s konfiguráciou a interogačnou schémou.',
   },
   { page: 'dev', el: '#page-dev .admin-tabs',
     title: '⭐ Vývoj výrobkov — 9 záložiek',
