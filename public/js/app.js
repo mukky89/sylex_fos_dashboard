@@ -3419,6 +3419,70 @@ function switchAdminTab(tab) {
   if (tab === 'sensor') { loadSensorConfigAdmin(); loadSensorStats(); }
   if (tab === 'users') loadUsers();
   if (tab === 'appearance') renderAppearanceAdmin();
+  if (tab === 'projcfg') loadPjConfigAdmin();
+}
+
+// ── Admin: konfigurácia workflow procesov a štandardných výstupov ──
+let _pjCfgWork = null;
+function pjSlug(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || ('k' + Math.random().toString(36).slice(2, 7));
+}
+function pjCfgFromLive() {
+  return {
+    workflows: {
+      sales: { label: PJ_WORKFLOWS.sales.label, stages: PJ_WORKFLOWS.sales.stages.map(s => ({ key: s.key, label: s.label })) },
+      development: { label: PJ_WORKFLOWS.development.label, stages: PJ_WORKFLOWS.development.stages.map(s => ({ key: s.key, label: s.label })) }
+    },
+    deliverables: PJ_DELIVERABLES.map(d => ({ key: d.key, label: d.label, short: d.short || '' }))
+  };
+}
+async function loadPjConfigAdmin() {
+  await ensureProjectConfig();
+  _pjCfgWork = pjCfgFromLive();
+  renderPjCfgEditor();
+}
+function renderPjCfgEditor() {
+  const el = document.getElementById('pjCfgEditor'); if (!el || !_pjCfgWork) return;
+  const w = _pjCfgWork;
+  const stageRows = wf => w.workflows[wf].stages.map((s, i) => `
+    <div class="pjcfg-row"><span class="pjcfg-num">${i + 1}.</span>
+      <input type="text" value="${escHtml(s.label)}" oninput="_pjCfgWork.workflows['${wf}'].stages[${i}].label=this.value">
+      <button class="btn-delete btn-sm" title="Odstrániť" onclick="pjCfgDelStage('${wf}',${i})">✕</button></div>`).join('');
+  const delivRows = w.deliverables.map((d, i) => `
+    <div class="pjcfg-row">
+      <input type="text" placeholder="Názov" value="${escHtml(d.label)}" oninput="_pjCfgWork.deliverables[${i}].label=this.value">
+      <input type="text" class="pjcfg-short" placeholder="Skratka" value="${escHtml(d.short || '')}" oninput="_pjCfgWork.deliverables[${i}].short=this.value">
+      <button class="btn-delete btn-sm" title="Odstrániť" onclick="pjCfgDelDeliv(${i})">✕</button></div>`).join('');
+  el.innerHTML = `<div class="pjcfg-grid">
+    <div class="pjcfg-col pjcfg-col-sales"><h3>💼 Predajný proces</h3>
+      <label class="pjcfg-lbl">Názov procesu</label><input type="text" value="${escHtml(w.workflows.sales.label)}" oninput="_pjCfgWork.workflows.sales.label=this.value">
+      <label class="pjcfg-lbl">Stupne</label>${stageRows('sales')}
+      <button class="btn-secondary btn-sm pjcfg-add" onclick="pjCfgAddStage('sales')">+ Pridať stupeň</button></div>
+    <div class="pjcfg-col pjcfg-col-dev"><h3>🛠 Vývojový proces</h3>
+      <label class="pjcfg-lbl">Názov procesu</label><input type="text" value="${escHtml(w.workflows.development.label)}" oninput="_pjCfgWork.workflows.development.label=this.value">
+      <label class="pjcfg-lbl">Stupne</label>${stageRows('development')}
+      <button class="btn-secondary btn-sm pjcfg-add" onclick="pjCfgAddStage('development')">+ Pridať stupeň</button></div>
+    <div class="pjcfg-col pjcfg-col-deliv"><h3>📦 Štandardné výstupy</h3>
+      <label class="pjcfg-lbl">Názov · skratka (zobrazenie v chevrone)</label>${delivRows}
+      <button class="btn-secondary btn-sm pjcfg-add" onclick="pjCfgAddDeliv()">+ Pridať výstup</button></div>
+  </div>`;
+}
+function pjCfgAddStage(wf) { _pjCfgWork.workflows[wf].stages.push({ key: '', label: 'Nový stupeň' }); renderPjCfgEditor(); }
+function pjCfgDelStage(wf, i) { _pjCfgWork.workflows[wf].stages.splice(i, 1); renderPjCfgEditor(); }
+function pjCfgAddDeliv() { _pjCfgWork.deliverables.push({ key: '', label: 'Nový výstup', short: '' }); renderPjCfgEditor(); }
+function pjCfgDelDeliv(i) { _pjCfgWork.deliverables.splice(i, 1); renderPjCfgEditor(); }
+async function savePjConfig() {
+  const w = _pjCfgWork; if (!w) return;
+  const assign = items => { const seen = new Set(); items.forEach(it => { let k = it.key || pjSlug(it.label); while (seen.has(k)) k += '_'; it.key = k; seen.add(k); }); };
+  ['sales', 'development'].forEach(wf => { w.workflows[wf].stages = w.workflows[wf].stages.filter(s => (s.label || '').trim()); assign(w.workflows[wf].stages); });
+  w.deliverables = w.deliverables.filter(d => (d.label || '').trim()); assign(w.deliverables);
+  if (!w.workflows.sales.stages.length || !w.workflows.development.stages.length) { toast('Každý proces musí mať aspoň jeden stupeň.', 'warn'); return; }
+  try {
+    const r = await fetch('/api/projects/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(w) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); toast('Chyba: ' + (e.error || r.status), 'error'); return; }
+    pjApplyConfig(w); renderPjCfgEditor(); toast('Konfigurácia uložená.', 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
 }
 
 // ── Header links management ──────────────────────────────────────────────
@@ -4224,7 +4288,8 @@ function drawWdm(chans) {
 }
 
 // ── Vývoj výrobkov — projekty (workflow + 3 zobrazenia: kanban / zoznam / gantt) ──
-const PJ_WORKFLOWS = {
+// PJ_WORKFLOWS / PJ_DELIVERABLES sú default; dajú sa prepísať z admin konfigurácie (/api/projects/config)
+let PJ_WORKFLOWS = {
   development: { label: 'Vývoj', stages: [
     { key: 'koncept', label: 'Koncept', c: '#6366f1' },
     { key: 'prototyp', label: 'Prototyp', c: '#06b6d4' },
@@ -4241,8 +4306,8 @@ const PJ_WORKFLOWS = {
     { key: 'uzavrete', label: 'Uzavreté', c: '#64748b' }
   ] }
 };
-// Štandardné výstupy vývoja (vždy tento zoznam) — status splnených úloh projektu
-const PJ_DELIVERABLES = [
+// Štandardné výstupy vývoja — status splnených úloh projektu (default; editovateľné v admine)
+let PJ_DELIVERABLES = [
   { key: 'boo', label: 'BOO', short: 'BOO' },
   { key: 'bom', label: 'BOM', short: 'BOM' },
   { key: 'datasheet_web', label: 'Datasheet web', short: 'Datasheet' },
@@ -4314,7 +4379,27 @@ function _segActive(id, idx) { const seg = document.getElementById(id); if (!seg
 function pjSetView(v) { pjView = v; _segActive('pjViewSeg', { kanban: 0, list: 1, gantt: 2 }[v]); renderProjects(); }
 function pjSetWorkflow(w) { pjWorkflow = w; _segActive('pjWorkflowSeg', { development: 0, sales: 1 }[w]); renderProjects(); }
 
+// Konfigurácia workflow/výstupov z admina (s fallbackom na defaulty)
+const PJ_STAGE_PALETTE = ['#6366f1', '#0ea5e9', '#06b6d4', '#fbbf24', '#10b981', '#64748b', '#a855f7', '#f97316', '#ef4444'];
+let _pjCfgLoaded = false;
+function pjApplyConfig(cfg) {
+  if (!cfg) return;
+  if (cfg.workflows) ['sales', 'development'].forEach(wf => {
+    const w = cfg.workflows[wf];
+    if (w && Array.isArray(w.stages) && w.stages.length) {
+      PJ_WORKFLOWS[wf] = { label: w.label || (PJ_WORKFLOWS[wf] && PJ_WORKFLOWS[wf].label) || wf,
+        stages: w.stages.map((s, i) => ({ key: s.key, label: s.label, c: s.c || PJ_STAGE_PALETTE[i % PJ_STAGE_PALETTE.length] })) };
+    }
+  });
+  if (Array.isArray(cfg.deliverables) && cfg.deliverables.length)
+    PJ_DELIVERABLES = cfg.deliverables.map(d => ({ key: d.key, label: d.label, short: d.short || d.label }));
+}
+async function ensureProjectConfig() {
+  if (_pjCfgLoaded) return; _pjCfgLoaded = true;
+  try { const cfg = await fetch('/api/projects/config').then(r => r.ok ? r.json() : null); pjApplyConfig(cfg); } catch (_) {}
+}
 async function loadProjects() {
+  await ensureProjectConfig();
   try { projectsData = await fetch('/api/projects').then(r => r.json()); if (!Array.isArray(projectsData)) projectsData = []; }
   catch { projectsData = []; }
   renderProjects();
@@ -4541,6 +4626,7 @@ function pjBlankProject() {
 // openProjectModal je zachované meno kvôli existujúcim onclickom — presmeruje na stránku
 function openProjectModal(p = null) { openProjectPage(p && typeof p === 'object' ? p : null); }
 async function openProjectPage(arg) {
+  await ensureProjectConfig();
   let src = null;
   if (arg && typeof arg === 'object') src = arg;
   else if (arg) src = projectsData.find(x => x._id === arg) || await fetch('/api/projects/' + arg).then(r => r.ok ? r.json() : null).catch(() => null);
@@ -5010,6 +5096,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.62.0', date: '14. 6. 2026', tag: 'feat', items: [
+    'Admin → „Workflow projektov": editovateľné stupne predajného aj vývojového procesu a zoznam štandardných výstupov (názov + skratka).',
+    'Konfigurácia sa ukladá na server a aplikuje do celého modulu Vývoj výrobkov; existujúce projekty si zachovajú dáta podľa kľúčov.',
+  ] },
   { v: '1.61.0', date: '14. 6. 2026', tag: 'ui', items: [
     'Zoznam projektov: krajší dizajn — každý proces aj výstupy na jednom riadku (bez zalamovania), farebné textové štítky (Predaj/Vývoj/Výstupy), elegantnejšie chevrony na tmavom pozadí.',
   ] },
