@@ -2655,13 +2655,10 @@ body {
 .pj-chev:last-child { border-radius: 0 6px 6px 0; }
 .pj-chev.done { background: #2f9e3f; color: #fff; }
 .pj-chev:hover { filter: brightness(1.12); }
-/* prvý (štart) a posledný (cieľ) stupeň — jemný farebný prúžok navrchu (fialová / oranžová) */
-.pj-chev-start::before, .pj-chev-end::before { content: ''; position: absolute; left: 9px; right: 13px; top: 3px; height: 3px; border-radius: 2px; }
-.pj-chev-start::before { background: #a78bfa; }
-.pj-chev-end::before { background: #fb923c; }
-/* aktuálny stav vo workflow — mäkká žiara okolo (kopíruje tvar šípky) */
-.pj-chev.cur { filter: drop-shadow(0 0 4px rgba(253,224,71,0.95)); z-index: 3; }
-.pj-chev.cur:hover { filter: drop-shadow(0 0 5px rgba(253,224,71,1)) brightness(1.1); }
+/* aktuálny (posledný dosiahnutý) stav vo workflow — červený neón okolo šípky */
+.pj-chev.cur { z-index: 3; animation: pjCurGlow 1.6s ease-in-out infinite; }
+@keyframes pjCurGlow { 0%,100% { filter: drop-shadow(0 0 3px #ff174a) drop-shadow(0 0 6px rgba(255,23,74,0.7)); } 50% { filter: drop-shadow(0 0 5px #ff174a) drop-shadow(0 0 12px rgba(255,23,74,0.95)); } }
+.pj-chev.cur:hover { animation: none; filter: drop-shadow(0 0 5px #ff174a) drop-shadow(0 0 12px rgba(255,23,74,0.95)) brightness(1.1); }
 /* farebné odlíšenie procesov: predaj = modrá, vývoj = zelená */
 .pj-chev-sales.done { background: #2563eb; }
 .pj-chev-dev.done { background: #2f9e3f; }

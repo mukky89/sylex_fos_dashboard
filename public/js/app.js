@@ -5118,8 +5118,8 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
-  { v: '1.65.1', date: '14. 6. 2026', tag: 'ui', items: [
-    'Workflow — krajšie odlíšenie: prvý/posledný stupeň jemný fialový/oranžový prúžok navrchu, aktuálny stav mäkká žltá žiara (namiesto orezaného prstenca a kričiacich výplní).',
+  { v: '1.65.2', date: '14. 6. 2026', tag: 'ui', items: [
+    'Workflow: zrušené označenie prvého/posledného stupňa; aktuálny (posledný dosiahnutý) stav je teraz zvýraznený pulzujúcim červeným neónom.',
   ] },
   { v: '1.65.0', date: '14. 6. 2026', tag: 'ui', items: [
     'Workflow: prvý stupeň (štart) odlíšený, posledný (cieľ) odlíšený; aktuálny stav zvýraznený.',
