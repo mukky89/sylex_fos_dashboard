@@ -2675,11 +2675,13 @@ body {
 /* farebné oddelenie tratí ľavým pruhom */
 .pj-track-sales { border-left: 3px solid #2563eb; padding-left: 11px; }
 .pj-track-dev { border-left: 3px solid #2f9e3f; padding-left: 11px; }
-/* výstupy v zozname */
-.pj-out { display: flex; align-items: center; gap: 7px; }
-.pj-out .prod-t-bar { width: 70px; margin: 0; }
-.pj-out-lbl { font-size: 0.74rem; font-variant-numeric: tabular-nums; color: #94a3b8; white-space: nowrap; }
-.pj-out-lbl.done { color: #34d399; font-weight: 700; }
+/* výstupy v zozname — zaškrtávacie chipsy priamo v hlavnom zobrazení */
+.pj-out-checks { display: flex; flex-wrap: wrap; gap: 3px 10px; align-items: center; min-width: 280px; max-width: 360px; }
+.pj-outc { display: inline-flex; align-items: center; gap: 4px; font-size: 0.68rem; color: #94a3b8; cursor: pointer; white-space: nowrap; }
+.pj-outc input { width: 13px; height: 13px; accent-color: #10b981; margin: 0; cursor: pointer; flex-shrink: 0; }
+.pj-outc.on { color: #34d399; }
+.pj-out-lbl { font-size: 0.74rem; font-variant-numeric: tabular-nums; color: #94a3b8; white-space: nowrap; font-weight: 700; }
+.pj-out-lbl.done { color: #34d399; }
 .pj-list-wrap { overflow-x: auto; }
 .pj-par-chip { display: inline-flex; align-items: center; gap: 4px; margin-top: 7px; font-size: 0.68rem; font-weight: 600; color: var(--c, #94a3b8); background: color-mix(in srgb, var(--c, #64748b) 16%, transparent); border: 1px solid color-mix(in srgb, var(--c, #64748b) 38%, transparent); border-radius: 100px; padding: 2px 9px; white-space: nowrap; }
 

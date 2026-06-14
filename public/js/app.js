@@ -4243,15 +4243,15 @@ const PJ_WORKFLOWS = {
 };
 // Štandardné výstupy vývoja (vždy tento zoznam) — status splnených úloh projektu
 const PJ_DELIVERABLES = [
-  { key: 'boo', label: 'BOO' },
-  { key: 'bom', label: 'BOM' },
-  { key: 'datasheet_web', label: 'Datasheet web' },
-  { key: 'std_wavelength', label: 'Standard wavelength configuration' },
-  { key: 'test_protocol', label: 'Testovací protokol' },
-  { key: 'calibration', label: 'Kalibračné dáta' },
-  { key: 'routing', label: 'Technologický postup' },
-  { key: 'erp_card', label: 'ERP karta položky' },
-  { key: 'marketing', label: 'Marketingové materiály' }
+  { key: 'boo', label: 'BOO', short: 'BOO' },
+  { key: 'bom', label: 'BOM', short: 'BOM' },
+  { key: 'datasheet_web', label: 'Datasheet web', short: 'Datasheet' },
+  { key: 'std_wavelength', label: 'Standard wavelength configuration', short: 'Wavelength cfg' },
+  { key: 'test_protocol', label: 'Testovací protokol', short: 'Test protokol' },
+  { key: 'calibration', label: 'Kalibračné dáta', short: 'Kalibrácia' },
+  { key: 'routing', label: 'Technologický postup', short: 'Postup' },
+  { key: 'erp_card', label: 'ERP karta položky', short: 'ERP karta' },
+  { key: 'marketing', label: 'Marketingové materiály', short: 'Marketing' }
 ];
 const PJ_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#ef4444' } };
 let projectsData = [];
@@ -4383,11 +4383,7 @@ function renderPjList(host, items) {
     const overdue = dl && dl < new Date();
     const salesChev = sales ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.sales.stages, sales, 'sales', null, true)}</div>` : '<span class="prod-t-qty">—</span>';
     const devChev = dev ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.development.stages, dev, 'dev', null, true)}</div>` : '<span class="prod-t-qty">—</span>';
-    let outputs = '<span class="prod-t-qty">—</span>';
-    if (dev) {
-      const done = (p.deliverables || []).length, tot = PJ_DELIVERABLES.length, pct = Math.round(done / tot * 100), full = done >= tot;
-      outputs = `<div class="pj-out"><div class="prod-t-bar"><div style="width:${pct}%"></div></div><span class="pj-out-lbl ${full ? 'done' : ''}">${full ? '✓ ' : ''}${done}/${tot}</span></div>`;
-    }
+    const outputs = pjListDeliv(p);
     return `<tr onclick="openProjectModal(projectsData.find(x=>x._id==='${p._id}'))">
       <td><span class="prod-t-num">${escHtml(p.title)}</span>${p.code ? `<span class="prod-t-qty">${escHtml(p.code)}</span>` : ''}</td>
       <td>${salesChev}</td>
@@ -4400,6 +4396,29 @@ function renderPjList(host, items) {
   host.innerHTML = `<div class="prod-list pj-list-wrap"><table class="prod-table">
     <thead><tr><th>Projekt</th><th>💼 Predaj</th><th>🛠 Vývoj</th><th>Výstupy</th><th>Vlastník</th><th>Termín</th></tr></thead>
     <tbody>${rows}</tbody></table></div>`;
+}
+// Výstupy v zozname — všetky checkboxy priamo v hlavnom zobrazení (zaškrtnuteľné)
+function pjListDeliv(p) {
+  if (!pjDevStage(p)) return '<span class="prod-t-qty">—</span>';
+  const done = p.deliverables || [], tot = PJ_DELIVERABLES.length, full = done.length >= tot;
+  const checks = PJ_DELIVERABLES.map(d => {
+    const on = done.includes(d.key);
+    return `<label class="pj-outc ${on ? 'on' : ''}" title="${escHtml(d.label)}"><input type="checkbox" ${on ? 'checked' : ''} onchange="pjToggleDeliv('${p._id}','${d.key}',this)"> ${escHtml(d.short || d.label)}</label>`;
+  }).join('');
+  return `<div class="pj-out-checks" onclick="event.stopPropagation()">${checks}<span id="pjcnt-${p._id}" class="pj-out-lbl ${full ? 'done' : ''}">${full ? '✓ ' : ''}${done.length}/${tot}</span></div>`;
+}
+async function pjToggleDeliv(id, key, cb) {
+  const p = projectsData.find(x => x._id === id); if (!p) return;
+  const on = cb.checked; p.deliverables = p.deliverables || [];
+  const i = p.deliverables.indexOf(key);
+  if (on && i < 0) p.deliverables.push(key); else if (!on && i >= 0) p.deliverables.splice(i, 1);
+  cb.closest('.pj-outc')?.classList.toggle('on', on);
+  const tot = PJ_DELIVERABLES.length, doneN = p.deliverables.length, full = doneN >= tot;
+  const cnt = document.getElementById('pjcnt-' + id);
+  if (cnt) { cnt.textContent = (full ? '✓ ' : '') + doneN + '/' + tot; cnt.classList.toggle('done', full); }
+  try { const r = await fetch('/api/projects/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deliverables: p.deliverables }) }); if (!r.ok) throw 0; }
+  catch { toast('Uloženie zlyhalo', 'error'); await loadProjectsData(); }
+  if (pjDelivFilter !== 'all') renderProjects();
 }
 function renderPjGantt(host, items) {
   if (!items.length) { host.innerHTML = '<div class="dev-empty">Žiadne projekty v tomto workflow.</div>'; return; }
@@ -4930,6 +4949,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.55.0', date: '14. 6. 2026', tag: 'feat', items: [
+    'Zoznam projektov: všetky štandardné výstupy sú zobrazené ako zaškrtávacie políčka priamo v hlavnom zobrazení — dajú sa odškrtnúť bez otvárania detailu (okamžité uloženie).',
+  ] },
   { v: '1.54.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Backbone: nový 1-kanálový interrogátor (S-line Scan 800, 1 kanál) ako samostatný objekt.',
     'Backbone: kombinované objekty „S-line Scan + Switch 1×16" a „S-line Scan + Splitter 1×8" — dve zariadenia natrvalo spolu (interný patchcord), aby išli vždy pokope.',
