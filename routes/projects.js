@@ -25,6 +25,29 @@ router.put('/config', async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+// Komentáre / záznamy zmien k procesom (sales/dev/deliv)
+router.post('/:id/comments', async (req, res) => {
+  try {
+    const scope = String(req.body.scope || '');
+    const text = String(req.body.text || '').trim();
+    if (!['sales', 'dev', 'deliv'].includes(scope) || !text) return res.status(400).json({ error: 'Neplatný komentár' });
+    const author = (req.user && (req.user.name || req.user.username)) || '';
+    const d = await Project.findByIdAndUpdate(req.params.id,
+      { $push: { comments: { scope, text, author, at: new Date() } } },
+      { new: true });
+    if (!d) return res.status(404).json({ error: 'Not found' });
+    res.status(201).json(d.comments);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.delete('/:id/comments/:cid', async (req, res) => {
+  try {
+    const d = await Project.findByIdAndUpdate(req.params.id,
+      { $pull: { comments: { _id: req.params.cid } } }, { new: true });
+    if (!d) return res.status(404).json({ error: 'Not found' });
+    res.json(d.comments);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 router.get('/:id', async (req, res) => {
   try { const d = await Project.findById(req.params.id); if (!d) return res.status(404).json({ error: 'Not found' }); res.json(d); }
   catch (e) { res.status(500).json({ error: e.message }); }

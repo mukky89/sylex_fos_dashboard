@@ -2748,6 +2748,23 @@ body {
 .pjp-aside .form-group label { color: #cbd5e1; }
 @media (max-width: 880px) { .pjp-grid { grid-template-columns: 1fr; } }
 
+/* Komentáre / záznamy zmien k procesom */
+.pjp-com-card { border-left: 3px solid #64748b; }
+.pjp-com-sales { border-left-color: #2563eb; }
+.pjp-com-dev { border-left-color: #2f9e3f; }
+.pjp-com-deliv { border-left-color: #0d9488; }
+.pjc-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.pjc-item { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 9px; padding: 8px 11px; }
+.pjc-meta { display: flex; align-items: center; gap: 9px; margin-bottom: 3px; }
+.pjc-author { font-size: 0.78rem; font-weight: 700; color: #cbd5e1; }
+.pjc-at { font-size: 0.7rem; color: #8595ad; }
+.pjc-del { margin-left: auto; background: none; border: none; color: #64748b; cursor: pointer; font-size: 0.78rem; padding: 0 3px; }
+.pjc-del:hover { color: #fca5a5; }
+.pjc-text { font-size: 0.86rem; color: #e2e8f0; white-space: pre-wrap; word-break: break-word; }
+.pjc-add { display: flex; gap: 8px; }
+.pjc-add input { flex: 1; min-width: 0; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; color: #e2e8f0; padding: 8px 11px; font-size: 0.86rem; }
+.pjc-add input:focus { outline: none; border-color: var(--accent); }
+
 /* Kalibračný odznak */
 .cal-badge { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 9px; border-radius: 10px; color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
 
