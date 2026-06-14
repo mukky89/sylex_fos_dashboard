@@ -4256,7 +4256,7 @@ const PJ_DELIVERABLES = [
 const PJ_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#ef4444' } };
 let projectsData = [];
 let _dragPid = null;
-let pjView = 'kanban', pjWorkflow = 'development';
+let pjView = 'list', pjWorkflow = 'development', pjDelivFilter = 'all';
 
 function pjStages(wf) { return (PJ_WORKFLOWS[wf || pjWorkflow] || PJ_WORKFLOWS.development).stages; }
 // Dual-track: projekt môže mať súčasne predajný aj vývojový proces (legacy fallback z workflow/phase)
@@ -4275,12 +4275,14 @@ function pjStageUpdate(p, wf, key) {
   u.phase = dev || sales;
   return u;
 }
-// Chevron flow (breadcrumb proces) — done / current / future
-function pjChevron(stages, current, track, extraCls) {
+// Chevron flow (breadcrumb proces) — done / current / future; farba podľa tracku (sales/dev)
+function pjChevron(stages, current, track, extraCls, readonly) {
   const ci = stages.findIndex(s => s.key === current);
   return stages.map((s, i) => {
     const cls = i < ci ? 'done' : (i === ci ? 'current' : 'future');
-    return `<button type="button" class="pj-chev ${cls} ${extraCls || ''}" onclick="pjPickStage('${track}','${s.key}')">${escHtml(s.label)}</button>`;
+    const tag = readonly ? 'span' : 'button';
+    const attr = readonly ? '' : ` type="button" onclick="pjPickStage('${track}','${s.key}')"`;
+    return `<${tag} class="pj-chev pj-chev-${track} ${cls} ${extraCls || ''}"${attr}>${escHtml(s.label)}</${tag}>`;
   }).join('');
 }
 function _segActive(id, idx) { const seg = document.getElementById(id); if (!seg) return; [...seg.children].forEach((b, i) => b.classList.toggle('active', i === idx)); }
@@ -4292,16 +4294,31 @@ async function loadProjects() {
   catch { projectsData = []; }
   renderProjects();
 }
+function pjDelivMatch(p) {
+  if (pjDelivFilter === 'all') return true;
+  if (!pjActive(p, 'development')) return false;             // výstupy sa týkajú vývoja
+  const done = (p.deliverables || []).length, tot = PJ_DELIVERABLES.length;
+  return pjDelivFilter === 'done' ? done >= tot : done < tot;
+}
+function pjSetDelivFilter(v) { pjDelivFilter = v; renderProjects(); }
 function renderProjects() {
   const host = document.getElementById('projectsBoard'); if (!host) return;
+  _segActive('pjViewSeg', { kanban: 0, list: 1, gantt: 2 }[pjView]);
+  _segActive('pjWorkflowSeg', { development: 0, sales: 1 }[pjWorkflow]);
+  const wfSeg = document.getElementById('pjWorkflowSeg'); if (wfSeg) wfSeg.style.display = pjView === 'list' ? 'none' : '';
+  const dfSel = document.getElementById('pjDelivFilterSel'); if (dfSel) { dfSel.style.display = pjView === 'list' ? '' : 'none'; dfSel.value = pjDelivFilter; }
   const q = (document.getElementById('projSearch')?.value || '').toLowerCase();
-  const items = projectsData.filter(p =>
-    pjActive(p, pjWorkflow) &&
-    (!q || (p.title || '').toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q) || (p.owner || '').toLowerCase().includes(q)));
+  const match = p => !q || (p.title || '').toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q) || (p.owner || '').toLowerCase().includes(q);
   host.style.gridTemplateColumns = '';
-  if (pjView === 'list') { host.className = ''; renderPjList(host, items); }
-  else if (pjView === 'gantt') { host.className = ''; renderPjGantt(host, items); }
-  else { renderPjKanban(host, items); }
+  if (pjView === 'list') {
+    // zoznam: zobraz oba procesy (predaj aj vývoj) + filter podľa výstupov
+    const items = projectsData.filter(p => (pjActive(p, 'sales') || pjActive(p, 'development')) && match(p) && pjDelivMatch(p));
+    host.className = ''; renderPjList(host, items);
+  } else {
+    const items = projectsData.filter(p => pjActive(p, pjWorkflow) && match(p));
+    if (pjView === 'gantt') { host.className = ''; renderPjGantt(host, items); }
+    else renderPjKanban(host, items);
+  }
 }
 function renderPjKanban(host, items) {
   const stages = pjStages();
@@ -4359,30 +4376,29 @@ function pjCard(p, idx, stages) {
   return card;
 }
 function renderPjList(host, items) {
-  if (!items.length) { host.innerHTML = '<div class="dev-empty">Žiadne projekty v tomto procese.</div>'; return; }
-  const devWf = pjWorkflow === 'development';
-  const stages = pjStages(), lastKey = stages[stages.length - 1].key;
-  const otherWf = pjWorkflow === 'sales' ? 'development' : 'sales';
+  if (!items.length) { host.innerHTML = '<div class="dev-empty">Žiadne projekty pre tento filter.</div>'; return; }
   const rows = items.map(p => {
-    const prio = PJ_PRIO[p.priority] || PJ_PRIO.normal;
+    const sales = pjSalesStage(p), dev = pjDevStage(p);
     const dl = p.deadline ? new Date(p.deadline) : null;
-    const overdue = dl && dl < new Date() && pjStageOf(p, pjWorkflow) !== lastKey;
-    const chev = `<div class="pj-flow pj-flow-sm">${pjChevron(stages, pjStageOf(p, pjWorkflow), pjWorkflow)}</div>`;
-    const par = pjActive(p, otherWf) ? (() => { const oi = pjStageInfo(p, otherWf); return `<span class="pj-par-chip" style="--c:${oi.c}">${otherWf === 'sales' ? '💼' : '🛠'} ${escHtml(oi.label)}</span>`; })() : '<span class="prod-t-qty">—</span>';
-    let delivCell = '';
-    if (devWf) { const done = (p.deliverables || []).length, tot = PJ_DELIVERABLES.length, pct = Math.round(done / tot * 100);
-      delivCell = `<td><div class="prod-t-bar"><div style="width:${pct}%"></div></div><span class="prod-t-qty">${done}/${tot}</span></td>`; }
-    return `<tr>
-      <td onclick="openProjectModal(projectsData.find(x=>x._id==='${p._id}'))"><span class="prod-t-num">${escHtml(p.title)}</span>${p.code ? `<span class="prod-t-qty">${escHtml(p.code)}</span>` : ''}</td>
-      <td>${chev}</td>
-      <td>${par}</td>
+    const overdue = dl && dl < new Date();
+    const salesChev = sales ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.sales.stages, sales, 'sales', null, true)}</div>` : '<span class="prod-t-qty">—</span>';
+    const devChev = dev ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.development.stages, dev, 'dev', null, true)}</div>` : '<span class="prod-t-qty">—</span>';
+    let outputs = '<span class="prod-t-qty">—</span>';
+    if (dev) {
+      const done = (p.deliverables || []).length, tot = PJ_DELIVERABLES.length, pct = Math.round(done / tot * 100), full = done >= tot;
+      outputs = `<div class="pj-out"><div class="prod-t-bar"><div style="width:${pct}%"></div></div><span class="pj-out-lbl ${full ? 'done' : ''}">${full ? '✓ ' : ''}${done}/${tot}</span></div>`;
+    }
+    return `<tr onclick="openProjectModal(projectsData.find(x=>x._id==='${p._id}'))">
+      <td><span class="prod-t-num">${escHtml(p.title)}</span>${p.code ? `<span class="prod-t-qty">${escHtml(p.code)}</span>` : ''}</td>
+      <td>${salesChev}</td>
+      <td>${devChev}</td>
+      <td>${outputs}</td>
       <td>${escHtml(p.owner || '—')}</td>
       <td class="${overdue ? 'kanban-overdue' : ''}">${dl ? fmtDate(p.deadline) : '—'}</td>
-      ${devWf ? delivCell : ''}
     </tr>`;
   }).join('');
-  host.innerHTML = `<div class="prod-list"><table class="prod-table">
-    <thead><tr><th>Projekt</th><th>Proces (${pjWorkflow === 'sales' ? 'Predaj' : 'Vývoj'})</th><th>Paralelne</th><th>Vlastník</th><th>Termín</th>${devWf ? '<th>Výstupy</th>' : ''}</tr></thead>
+  host.innerHTML = `<div class="prod-list pj-list-wrap"><table class="prod-table">
+    <thead><tr><th>Projekt</th><th>💼 Predaj</th><th>🛠 Vývoj</th><th>Výstupy</th><th>Vlastník</th><th>Termín</th></tr></thead>
     <tbody>${rows}</tbody></table></div>`;
 }
 function renderPjGantt(host, items) {
@@ -4551,12 +4567,12 @@ function pjToggleTrack(track) {
 function pjRenderPageFlows() {
   const el = document.getElementById('pjPageFlows'); if (!el) return;
   const s = pjPageData.salesStage, dev = pjPageData.devStage;
-  const chain = (s && dev) ? `<div class="pj-track"><div class="pj-track-hd">🔗 Spojený životný cyklus (predaj → vývoj)</div>
-      <div class="pj-flow pj-flow-chain"><span class="pj-chain-lbl">Predaj</span>${pjChevron(PJ_WORKFLOWS.sales.stages, s, 'sales', 'pj-chev-sm')}<span class="pj-chain-arrow">→</span><span class="pj-chain-lbl">Vývoj</span>${pjChevron(PJ_WORKFLOWS.development.stages, dev, 'dev', 'pj-chev-sm')}</div></div>` : '';
+  const chain = (s && dev) ? `<div class="pj-track pj-track-chain"><div class="pj-track-hd">🔗 Spojený životný cyklus (predaj → vývoj)</div>
+      <div class="pj-flow pj-flow-chain"><span class="pj-chain-lbl pj-chain-lbl-sales">Predaj</span>${pjChevron(PJ_WORKFLOWS.sales.stages, s, 'sales', 'pj-chev-sm')}<span class="pj-chain-arrow">→</span><span class="pj-chain-lbl pj-chain-lbl-dev">Vývoj</span>${pjChevron(PJ_WORKFLOWS.development.stages, dev, 'dev', 'pj-chev-sm')}</div></div>` : '';
   el.innerHTML = `
-    <div class="pj-track"><label class="pj-track-hd"><input type="checkbox" ${s ? 'checked' : ''} onchange="pjToggleTrack('sales')"> 💼 Predajný proces</label>
+    <div class="pj-track pj-track-sales"><label class="pj-track-hd"><input type="checkbox" ${s ? 'checked' : ''} onchange="pjToggleTrack('sales')"> 💼 Predajný proces</label>
       <div class="pj-flow">${s ? pjChevron(PJ_WORKFLOWS.sales.stages, s, 'sales') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>
-    <div class="pj-track"><label class="pj-track-hd"><input type="checkbox" ${dev ? 'checked' : ''} onchange="pjToggleTrack('dev')"> 🛠 Vývojový proces</label>
+    <div class="pj-track pj-track-dev"><label class="pj-track-hd"><input type="checkbox" ${dev ? 'checked' : ''} onchange="pjToggleTrack('dev')"> 🛠 Vývojový proces</label>
       <div class="pj-flow">${dev ? pjChevron(PJ_WORKFLOWS.development.stages, dev, 'dev') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>
     ${chain}`;
   const card = document.getElementById('pjPageDelivCard'); if (card) card.style.display = dev ? '' : 'none';
@@ -4914,6 +4930,13 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.53.0', date: '14. 6. 2026', tag: 'feat', items: [
+    'Vývoj výrobkov: predvolené zobrazenie je teraz Zoznam.',
+    'Zoznam ukazuje súčasne predajný aj vývojový proces (oba chevron toky) v jednom riadku.',
+    'Filter podľa výstupov: všetky / len dokončené / len nedokončené.',
+    'Farebné odlíšenie procesov — predaj modrá, vývoj zelená (chevrony aj ľavý pruh).',
+    'Opravený „Spojený životný cyklus" — jeden riadok s vodorovným posunom namiesto rozbitého zalamovania.',
+  ] },
   { v: '1.52.1', date: '14. 6. 2026', tag: 'fix', items: [
     'Detail projektu: zviditeľnené texty na tmavom pozadí (štandardné výstupy, hlavičky procesov) — predtým tmavé na tmavom.',
   ] },
