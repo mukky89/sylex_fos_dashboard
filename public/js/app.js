@@ -4431,18 +4431,17 @@ function renderPjList(host, items) {
     const procStack = `<div class="pj-proc-stack">
       <div class="pj-proc-line"><span class="pj-proc-tag" title="Predaj">💼</span>${salesChev}</div>
       <div class="pj-proc-line"><span class="pj-proc-tag" title="Vývoj">🛠</span>${devChev}</div>
+      ${dev ? `<div class="pj-proc-line"><span class="pj-proc-tag" title="Výstupy">📦</span>${pjListDeliv(p)}</div>` : ''}
     </div>`;
-    const outputs = pjListDeliv(p);
     return `<tr onclick="openProjectModal(projectsData.find(x=>x._id==='${p._id}'))">
       <td><span class="prod-t-num">${escHtml(p.title)}</span>${p.code ? `<span class="prod-t-qty">${escHtml(p.code)}</span>` : ''}</td>
       <td>${procStack}</td>
-      <td>${outputs}</td>
       <td>${escHtml(p.owner || '—')}</td>
       <td class="${overdue ? 'kanban-overdue' : ''}">${dl ? fmtDate(p.deadline) : '—'}</td>
     </tr>`;
   }).join('');
   host.innerHTML = `<div class="prod-list pj-list-wrap"><table class="prod-table">
-    <thead><tr><th>Projekt</th><th>Procesy (predaj / vývoj)</th><th><div class="pj-col-hd">Výstupy ${pjDelivFilterOpts()}</div></th><th>Vlastník</th><th>Termín</th></tr></thead>
+    <thead><tr><th>Projekt</th><th><div class="pj-col-hd">Procesy &amp; výstupy ${pjDelivFilterOpts()}</div></th><th>Vlastník</th><th>Termín</th></tr></thead>
     <tbody>${rows}</tbody></table></div>`;
 }
 // Výstupy v zozname — chevron bar (ako workflow), priamo prepínateľný
@@ -5011,6 +5010,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.60.1', date: '14. 6. 2026', tag: 'ui', items: [
+    'Zoznam projektov: štandardné výstupy sú teraz v jednom stĺpci pod procesmi (💼 predaj / 🛠 vývoj / 📦 výstupy).',
+  ] },
   { v: '1.60.0', date: '14. 6. 2026', tag: 'ui', items: [
     'Štandardné výstupy sú teraz chevron bar (ako workflow) — tyrkysové, klik prepína hotový/nehotový (v detaile aj v zozname).',
   ] },
