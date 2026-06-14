@@ -2699,6 +2699,23 @@ body {
 .pj-proc-tag-dev { color: #4ade80; }
 .pj-proc-tag-deliv { color: #2dd4bf; }
 .pj-col-hd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Admin — editor workflow/výstupov */
+.pjcfg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 14px; }
+.pjcfg-col { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px 16px; }
+.pjcfg-col h3 { font-size: 0.95rem; font-weight: 700; color: #e8f0fb; margin: 0 0 10px; }
+.pjcfg-col-sales { border-top: 3px solid #2563eb; }
+.pjcfg-col-dev { border-top: 3px solid #2f9e3f; }
+.pjcfg-col-deliv { border-top: 3px solid #0d9488; }
+.pjcfg-lbl { display: block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: #94a3b8; margin: 12px 0 5px; }
+.pjcfg-row { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+.pjcfg-num { color: #64748b; font-size: 0.78rem; width: 18px; flex-shrink: 0; }
+.pjcfg-row input { flex: 1; min-width: 0; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); border-radius: 7px; color: #e2e8f0; padding: 6px 9px; font-size: 0.84rem; }
+.pjcfg-row input:focus { outline: none; border-color: var(--accent); }
+.pjcfg-row .pjcfg-short { flex: 0 0 32%; }
+.pjcfg-col > input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); border-radius: 7px; color: #e2e8f0; padding: 7px 10px; font-size: 0.86rem; }
+.pjcfg-add { margin-top: 8px; }
+@media (max-width: 860px) { .pjcfg-grid { grid-template-columns: 1fr; } }
 .pj-col-filter { font-family: var(--font); font-size: 0.72rem; font-weight: 600; color: #e2e8f0; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; padding: 3px 6px; cursor: pointer; max-width: 150px; text-transform: none; }
 .pj-col-filter:focus { outline: none; border-color: var(--accent); }
 .pj-par-chip { display: inline-flex; align-items: center; gap: 4px; margin-top: 7px; font-size: 0.68rem; font-weight: 600; color: var(--c, #94a3b8); background: color-mix(in srgb, var(--c, #64748b) 16%, transparent); border: 1px solid color-mix(in srgb, var(--c, #64748b) 38%, transparent); border-radius: 100px; padding: 2px 9px; white-space: nowrap; }

@@ -2399,6 +2399,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
           Používatelia
         </button>
+        <button class="admin-tab" data-tab="projcfg" onclick="switchAdminTab('projcfg')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/></svg>
+          Workflow projektov
+        </button>
         <button class="admin-tab" data-tab="system" onclick="switchAdminTab('system')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           Systém
@@ -2628,6 +2632,18 @@
           </div>
           <p class="admin-section-desc">Správa prístupov. Každý používateľ má vlastné úlohy. Len admin vidí túto sekciu.</p>
           <div id="usersList" class="admin-links-list"><div class="admin-loading">Načítavam…</div></div>
+        </div>
+      </div>
+
+      <!-- ── TAB: WORKFLOW PROJEKTOV ── -->
+      <div class="admin-panel" id="adminTab-projcfg">
+        <div class="admin-section">
+          <div class="admin-section-hdr">
+            <h2 class="admin-section-title">Workflow procesov a štandardné výstupy</h2>
+            <button class="btn-primary" onclick="savePjConfig()">💾 Uložiť konfiguráciu</button>
+          </div>
+          <p class="admin-section-desc">Uprav stupne predajného a vývojového procesu a zoznam štandardných výstupov. Existujúce projekty si zachovajú dáta podľa kľúčov — premenovanie popisu nič nepokazí, odstránenie stupňa/výstupu ho prestane zobrazovať.</p>
+          <div id="pjCfgEditor"></div>
         </div>
       </div>
 
