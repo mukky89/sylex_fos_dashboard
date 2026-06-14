@@ -4429,9 +4429,9 @@ function renderPjList(host, items) {
     const salesChev = sales ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.sales.stages, sDone, pjRepKey('sales', sDone, sales), 'sales', null, true)}</div>` : '<span class="prod-t-qty">neaktívne</span>';
     const devChev = dev ? `<div class="pj-flow pj-flow-sm">${pjChevron(PJ_WORKFLOWS.development.stages, dDone, pjRepKey('development', dDone, dev), 'dev', null, true)}</div>` : '<span class="prod-t-qty">neaktívne</span>';
     const procStack = `<div class="pj-proc-stack">
-      <div class="pj-proc-line"><span class="pj-proc-tag" title="Predaj">💼</span>${salesChev}</div>
-      <div class="pj-proc-line"><span class="pj-proc-tag" title="Vývoj">🛠</span>${devChev}</div>
-      ${dev ? `<div class="pj-proc-line"><span class="pj-proc-tag" title="Výstupy">📦</span>${pjListDeliv(p)}</div>` : ''}
+      <div class="pj-proc-line"><span class="pj-proc-tag pj-proc-tag-sales">Predaj</span>${salesChev}</div>
+      <div class="pj-proc-line"><span class="pj-proc-tag pj-proc-tag-dev">Vývoj</span>${devChev}</div>
+      ${dev ? `<div class="pj-proc-line"><span class="pj-proc-tag pj-proc-tag-deliv">Výstupy</span>${pjListDeliv(p)}</div>` : ''}
     </div>`;
     return `<tr onclick="openProjectModal(projectsData.find(x=>x._id==='${p._id}'))">
       <td><span class="prod-t-num">${escHtml(p.title)}</span>${p.code ? `<span class="prod-t-qty">${escHtml(p.code)}</span>` : ''}</td>
@@ -5010,6 +5010,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.61.0', date: '14. 6. 2026', tag: 'ui', items: [
+    'Zoznam projektov: krajší dizajn — každý proces aj výstupy na jednom riadku (bez zalamovania), farebné textové štítky (Predaj/Vývoj/Výstupy), elegantnejšie chevrony na tmavom pozadí.',
+  ] },
   { v: '1.60.1', date: '14. 6. 2026', tag: 'ui', items: [
     'Zoznam projektov: štandardné výstupy sú teraz v jednom stĺpci pod procesmi (💼 predaj / 🛠 vývoj / 📦 výstupy).',
   ] },
