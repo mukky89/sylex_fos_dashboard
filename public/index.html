@@ -674,6 +674,8 @@
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn-secondary" onclick="openIcsModal()" title="Napojiť Outlook / externý kalendár (publikovaný ICS)">🔗 Outlook</button>
+          <button class="btn-secondary" onclick="openCalExportModal()" title="Odoberať kalendár v Outlooku (iCal odkaz)">📤 Export</button>
+          <button class="btn-secondary" onclick="calPrint()" title="Tlač / PDF">🖨️</button>
           <button class="btn-word" onclick="exportCalendarExcel()" title="Export do Excelu">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             Excel
@@ -699,6 +701,14 @@
             <input type="text" id="calSearch" placeholder="Hľadať udalosť, meno…" oninput="setCalText(this.value)" autocomplete="off">
           </div>
           <select id="calPerson" class="util-select" onchange="setCalPerson(this.value)" title="Filter podľa osoby / zdroja"><option value="">👥 Všetci</option></select>
+          <select id="calType" class="util-select" onchange="setCalType(this.value)" title="Filter podľa typu">
+            <option value="">Všetky typy</option>
+            <option value="event">Udalosť</option><option value="meeting">Porada</option>
+            <option value="dovolenka">Dovolenka</option><option value="sluzobka">Služobná cesta</option>
+            <option value="homeoffice">Home office</option><option value="pn">PN / Lekár</option>
+            <option value="outlook">Outlook</option>
+          </select>
+          <button class="cal-today-btn cal-bh-btn hidden" id="calBhBtn" onclick="toggleCalBh()" title="Zobraziť len pracovné hodiny (7–19)">🕘 Prac. hodiny</button>
           <div class="cal-zoom hidden" id="calZoomCtl">
             <button class="cal-nav-btn" onclick="calZoomBy(-1)" title="Oddialiť">−</button>
             <button class="cal-nav-btn" onclick="calZoomBy(1)" title="Priblížiť">+</button>
@@ -751,9 +761,39 @@
             </label>
           </div>
           <div class="form-group" id="evTimeWrap" style="display:none">
-            <label>Čas</label>
+            <label>Od</label>
             <input type="time" id="evTime">
           </div>
+          <div class="form-group" id="evEndTimeWrap" style="display:none">
+            <label>Do</label>
+            <input type="time" id="evEndTime">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Opakovanie</label>
+            <select id="evRecur" onchange="toggleEventRecur()">
+              <option value="none">Bez opakovania</option>
+              <option value="daily">Denne</option>
+              <option value="weekly">Týždenne</option>
+              <option value="monthly">Mesačne</option>
+              <option value="yearly">Ročne</option>
+            </select>
+          </div>
+          <div class="form-group" id="evRecurUntilWrap" style="display:none">
+            <label>Opakovať do</label>
+            <input type="date" id="evRecurUntil">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Pripomienka</label>
+          <select id="evReminder">
+            <option value="0">Žiadna</option>
+            <option value="10">10 minút pred</option>
+            <option value="30">30 minút pred</option>
+            <option value="60">1 hodinu pred</option>
+            <option value="1440">1 deň pred</option>
+          </select>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -781,6 +821,30 @@
         <button class="btn-delete" id="evDeleteBtn" onclick="deleteEvent()" style="display:none">Odstrániť</button>
         <button class="btn-secondary" onclick="closeEventModal()">Zrušiť</button>
         <button class="btn-primary" onclick="saveEvent()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== iCal EXPORT MODAL (dashboard → Outlook) ===== -->
+  <div id="calExportModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="document.getElementById('calExportModal').classList.add('hidden')"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header"><h2>📤 Odoberať kalendár v Outlooku</h2><button class="modal-close" onclick="document.getElementById('calExportModal').classList.add('hidden')">✕</button></div>
+      <div class="modal-body">
+        <div class="ics-help">
+          <strong>Ako pridať tento kalendár do Outlooku:</strong>
+          <ol>
+            <li>Skopíruj odkaz nižšie</li>
+            <li>Outlook na webe → <em>Pridať kalendár → Predplatiť z webu</em></li>
+            <li>Vlož odkaz a potvrď</li>
+          </ol>
+          <p class="ics-note">Odkaz je <strong>verejný</strong> (kto ho má, vidí udalosti). Obsahuje aj opakované udalosti.</p>
+        </div>
+        <div class="form-group"><label>iCal odkaz</label><input type="text" id="calExportUrl" readonly onclick="this.select()"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('calExportModal').classList.add('hidden')">Zavrieť</button>
+        <button class="btn-primary" onclick="calCopyExportUrl()">📋 Kopírovať odkaz</button>
       </div>
     </div>
   </div>
