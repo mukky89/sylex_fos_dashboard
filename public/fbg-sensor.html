@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FBG senzor teploty a vibrácií — princíp a interogácia</title>
+<style>
+  :root {
+    --bg:      #0d1225;
+    --bg2:     #131a36;
+    --text:    #e2e8f0;
+    --dim:     #94a3b8;
+    --faint:   #64748b;
+    --cyan:    #22d3ee;
+    --blue:    #3b82f6;
+    --warm:    #f97316;
+    --hot:     #ef4444;
+    --amber:   #facc15;
+    --line:    rgba(255,255,255,0.10);
+    --font:    Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); padding: 14px; }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  .card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  h2 { font-size: 0.9rem; margin: 0 0 12px; color: #f1f5f9; font-weight: 600; letter-spacing: 0.02em; }
+  h2 .sub { color: var(--dim); font-weight: 400; font-size: 0.78rem; }
+  .hint { font-size: 0.7rem; color: var(--faint); margin-top: 8px; line-height: 1.5; }
+  svg { width: 100%; display: block; }
+
+  /* ── Konfigurácia ──────────────────────────────────────────── */
+  .cfg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px 22px; }
+  .cfg { display: flex; flex-direction: column; gap: 5px; }
+  .cfg-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .cfg label { font-size: 0.76rem; color: var(--dim); white-space: nowrap; }
+  .cfg .val { font-size: 0.8rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--cyan); white-space: nowrap; }
+  input[type=range] { width: 100%; accent-color: var(--cyan); cursor: pointer; }
+  .cfg-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
+  .btn {
+    padding: 6px 14px; border-radius: 8px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+    color: var(--text); cursor: pointer; font-size: 0.82rem; white-space: nowrap;
+  }
+  .btn:hover { background: rgba(255,255,255,0.12); }
+  .btn.active { background: var(--cyan); color: #06121f; border-color: var(--cyan); font-weight: 600; }
+  .preset-tag { font-size: 0.7rem; color: var(--faint); }
+  .preset { background: rgba(34,211,238,0.08); border-color: rgba(34,211,238,0.25); }
+
+  /* ── Readouts ──────────────────────────────────────────────── */
+  .readouts { display: flex; gap: 10px; flex-wrap: wrap; }
+  .ro { flex: 1; min-width: 120px; background: rgba(255,255,255,0.04);
+        border: 1px solid var(--line); border-radius: 8px; padding: 9px 13px;
+        transition: border-color .3s, background .3s; }
+  .ro .v { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; transition: color .3s; }
+  .ro .v .u { font-size: 0.66rem; font-weight: 500; color: var(--dim); }
+  .ro .k { font-size: 0.62rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; }
+
+  /* ── Interogačná schéma ────────────────────────────────────── */
+  .chain { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+  .chain-node {
+    flex: 1; min-width: 92px; text-align: center;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--line);
+    border-radius: 9px; padding: 10px 6px; position: relative;
+  }
+  .chain-node .ic { font-size: 1.2rem; line-height: 1; }
+  .chain-node .nm { font-size: 0.62rem; color: var(--dim); margin-top: 5px; line-height: 1.25; }
+  .chain-node.lit { border-color: rgba(34,211,238,0.55); box-shadow: 0 0 14px rgba(34,211,238,0.18) inset; }
+  .chain-arrow { display: flex; align-items: center; color: var(--faint); font-size: 1.1rem; padding: 0 2px; }
+  .chain-out { display: flex; gap: 10px; margin-top: 10px; }
+  .chain-out .ro { text-align: left; }
+
+  @media (max-width: 560px) {
+    .chain-arrow { display: none; }
+    .chain-node { min-width: 44%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ════════ KONFIGURÁCIA ════════ -->
+  <div class="card">
+    <h2>Konfigurácia senzora <span class="sub">— meranie teploty a vibrácií jedným FBG</span></h2>
+    <div class="cfg-grid">
+      <div class="cfg">
+        <div class="cfg-row"><label>🌡️ Teplota povrchu T</label><span class="val"><span id="vT">25</span> °C</span></div>
+        <input type="range" id="cT" min="-20" max="250" step="1" value="25">
+      </div>
+      <div class="cfg">
+        <div class="cfg-row"><label>📳 Amplitúda vibrácií</label><span class="val"><span id="vAmp">120</span> µε</span></div>
+        <input type="range" id="cAmp" min="0" max="600" step="5" value="120">
+      </div>
+      <div class="cfg">
+        <div class="cfg-row"><label>〰️ Frekvencia vibrácií</label><span class="val"><span id="vFreq">25</span> Hz</span></div>
+        <input type="range" id="cFreq" min="0" max="120" step="1" value="25">
+      </div>
+      <div class="cfg">
+        <div class="cfg-row"><label>λ<sub>B0</sub> (pokoj)</label><span class="val"><span id="vLb0">1550</span> nm</span></div>
+        <input type="range" id="cLb0" min="1530" max="1565" step="1" value="1550">
+      </div>
+      <div class="cfg">
+        <div class="cfg-row"><label>Teplotná citlivosť S<sub>T</sub></label><span class="val"><span id="vST">10</span> pm/°C</span></div>
+        <input type="range" id="cST" min="6" max="14" step="0.5" value="10">
+      </div>
+      <div class="cfg">
+        <div class="cfg-row"><label>Citlivosť na pnutie S<sub>ε</sub></label><span class="val"><span id="vSE">1.2</span> pm/µε</span></div>
+        <input type="range" id="cSE" min="0.6" max="2.0" step="0.1" value="1.2">
+      </div>
+    </div>
+    <div class="cfg-toolbar">
+      <span class="preset-tag">Predvoľby:</span>
+      <button class="btn preset" data-preset="idle">Pokoj</button>
+      <button class="btn preset" data-preset="motor">Motor / ložisko</button>
+      <button class="btn preset" data-preset="furnace">Pec / horúci povrch</button>
+      <button class="btn preset" data-preset="quake">Náraz / otras</button>
+      <span style="flex:1"></span>
+      <button class="btn active" id="btnPlay">⏸ Beží</button>
+    </div>
+  </div>
+
+  <!-- ════════ LIVE READOUTS ════════ -->
+  <div class="card">
+    <h2>Demodulované veličiny <span class="sub">— čo interogátor vyčíta zo spektra</span></h2>
+    <div class="readouts">
+      <div class="ro" id="roTemp">
+        <div class="v"><span id="oTemp">25.0</span> <span class="u">°C</span></div>
+        <div class="k">Teplota (Δλ pomalé)</div>
+      </div>
+      <div class="ro" id="roLb">
+        <div class="v"><span id="oLb">1550.00</span> <span class="u">nm</span></div>
+        <div class="k">λ_B aktuálne</div>
+      </div>
+      <div class="ro" id="roVibF">
+        <div class="v"><span id="oVibF">25</span> <span class="u">Hz</span></div>
+        <div class="k">Vibrácie — frekvencia</div>
+      </div>
+      <div class="ro" id="roVibA">
+        <div class="v">±<span id="oVibA">144</span> <span class="u">pm</span></div>
+        <div class="k">Vibrácie — amplitúda Δλ</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ KONŠTRUKCIA SONDY ════════ -->
+  <div class="card">
+    <h2>Konštrukcia sondy <span class="sub">— FBG hlava, potting, referenčný termočlánok</span></h2>
+    <svg id="probe" viewBox="0 0 1000 280"></svg>
+    <div class="hint">
+      <b>Teplota</b> rovnomerne mení periódu mriežky Λ (tepelná rozťažnosť + termo-optický jav) → pomalý posun λ<sub>B</sub>.
+      <b>Vibrácie</b> oscilujúceho povrchu sa cez vibračno-citlivý potting prenášajú na FBG ako striedavé pnutie ΔL →
+      λ<sub>B</sub> kmitá okolo strednej hodnoty. Referenčný termočlánok slúži na kompenzáciu teplotnej zložky.
+    </div>
+  </div>
+
+  <!-- ════════ SPEKTRÁLNA ODOZVA ════════ -->
+  <div class="card">
+    <h2>Spektrálna odozva <span class="sub">— statický stav · teplotný posun · vibračná modulácia</span></h2>
+    <canvas id="spec" style="width:100%; height:300px; display:block;"></canvas>
+    <div class="hint">
+      Sivý prerušovaný peak = pokojový stav (λ<sub>B0</sub>). Farebný peak = aktuálny — jeho <b>stredná poloha</b> nesie
+      teplotu, jeho <b>kmitanie</b> nesie vibrácie. Farba zóny odráža úroveň teploty.
+    </div>
+  </div>
+
+  <!-- ════════ INTEROGAČNÁ JEDNOTKA ════════ -->
+  <div class="card">
+    <h2>Interogačná jednotka <span class="sub">— spracovanie signálu (DSP)</span></h2>
+    <div class="chain" id="chain">
+      <div class="chain-node" data-step="0"><div class="ic">💡</div><div class="nm">Širokopásmový zdroj (SLED)</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node" data-step="1"><div class="ic">🔄</div><div class="nm">Cirkulátor</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node" data-step="2"><div class="ic">📡</div><div class="nm">FBG senzor (sonda)</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node" data-step="3"><div class="ic">🌈</div><div class="nm">Spektrálny analyzátor + fotodetektor</div></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node" data-step="4"><div class="ic">🧮</div><div class="nm">DSP — výpočet λ_B</div></div>
+    </div>
+    <div class="chain-out">
+      <div class="ro" id="roOutT">
+        <div class="v"><span id="cOutT">25.0</span> <span class="u">°C</span></div>
+        <div class="k">→ Teplotný výstup (Δλ → T)</div>
+      </div>
+      <div class="ro" id="roOutV">
+        <div class="v"><span id="cOutV">25</span> <span class="u">Hz</span></div>
+        <div class="k">→ Vibračný signál (Δλ → frekvencia &amp; amplitúda)</div>
+      </div>
+    </div>
+    <div class="hint">
+      Svetlo zo SLED zdroja prejde cirkulátorom do vlákna, FBG odrazí úzky pás okolo λ<sub>B</sub>, ten sa cez cirkulátor
+      vráti do spektrometra. DSP z polohy peaku oddelí <b>pomalú zložku</b> (teplota) od <b>striedavej zložky</b>
+      (frekvencia a amplitúda vibrácií).
+    </div>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+const NS = "http://www.w3.org/2000/svg";
+const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function el(t, a) { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); return e; }
+function $(id) { return document.getElementById(id); }
+
+// ── Stav / konfigurácia ────────────────────────────────────────────────────
+const cfg = { T: 25, amp: 120, freq: 25, lb0: 1550, ST: 10, SE: 1.2 };
+const T0 = 25;                 // referenčná teplota [°C]
+let playing = !reduceMotion;
+
+const bind = [
+  ["cT", "vT", "T", 0], ["cAmp", "vAmp", "amp", 0], ["cFreq", "vFreq", "freq", 0],
+  ["cLb0", "vLb0", "lb0", 0], ["cST", "vST", "ST", 1], ["cSE", "vSE", "SE", 1],
+];
+bind.forEach(([inp, out, key, dec]) => {
+  const e = $(inp);
+  e.addEventListener("input", () => {
+    cfg[key] = +e.value;
+    $(out).textContent = dec ? cfg[key].toFixed(1) : cfg[key];
+    if (!playing) { drawProbe(0); drawSpec(performance.now() / 1000); }
+  });
+});
+
+// Predvoľby
+const PRESETS = {
+  idle:    { T: 25,  amp: 0,   freq: 0 },
+  motor:   { T: 65,  amp: 180, freq: 48 },
+  furnace: { T: 220, amp: 40,  freq: 12 },
+  quake:   { T: 30,  amp: 520, freq: 90 },
+};
+document.querySelectorAll(".preset").forEach(b => {
+  b.addEventListener("click", () => {
+    const p = PRESETS[b.dataset.preset]; if (!p) return;
+    Object.assign(cfg, p);
+    bind.forEach(([inp, out, key, dec]) => {
+      $(inp).value = cfg[key];
+      $(out).textContent = dec ? cfg[key].toFixed(1) : cfg[key];
+    });
+  });
+});
+
+$("btnPlay").addEventListener("click", function () {
+  playing = !playing;
+  this.classList.toggle("active", playing);
+  this.textContent = playing ? "⏸ Beží" : "▶ Spustiť";
+  if (playing) requestAnimationFrame(loop);
+});
+
+// ── Farba podľa teploty (modrá → cyan → amber → červená) ────────────────────
+function tempColor(T, alpha) {
+  const t = Math.max(0, Math.min(1, (T + 20) / 270));   // -20..250 → 0..1
+  let r, g, b;
+  if (t < 0.25)      { const u = t / 0.25;        r = 59 + u * (34 - 59);  g = 130 + u * (211 - 130); b = 246 + u * (238 - 246); }
+  else if (t < 0.5)  { const u = (t - 0.25) / 0.25; r = 34 + u * (74 - 34); g = 211 + u * (222 - 211); b = 238 + u * (128 - 238); }
+  else if (t < 0.75) { const u = (t - 0.5) / 0.25;  r = 74 + u * (250 - 74); g = 222 + u * (190 - 222); b = 128 + u * (20 - 128); }
+  else               { const u = (t - 0.75) / 0.25; r = 250 + u * (239 - 250); g = 190 + u * (60 - 190); b = 20 + u * (50 - 20); }
+  r = Math.round(r); g = Math.round(g); b = Math.round(b);
+  return alpha !== undefined ? `rgba(${r},${g},${b},${alpha})` : `rgb(${r},${g},${b})`;
+}
+
+// ── Fyzika ──────────────────────────────────────────────────────────────────
+// λB(t) = λB0 + ST*(T-T0)/1000 + SE*amp*sin(2πft)/1000     [nm]   (ST,SE v pm)
+function tempShiftNm() { return cfg.ST * (cfg.T - T0) / 1000; }
+function vibAmpNm()    { return cfg.SE * cfg.amp / 1000; }      // amplitúda Δλ [nm]
+function vibPhase(t)   { return (playing && !reduceMotion) ? Math.sin(2 * Math.PI * cfg.freq * 0.04 * t) : 0; }
+function lambdaB(t)    { return cfg.lb0 + tempShiftNm() + vibAmpNm() * vibPhase(t); }
+
+// ════════════════════════════════════════════════════════════════════════════
+// KONŠTRUKCIA SONDY (SVG)
+// ════════════════════════════════════════════════════════════════════════════
+const probe = $("probe");
+function drawProbe(t) {
+  probe.innerHTML = "";
+  const cy = 130;
+  const col = tempColor(cfg.T);
+  const vib = vibPhase(t);
+  const vAmpPx = (cfg.amp / 600) * 14;          // posun oscilujúceho povrchu
+
+  const defs = el("defs", {});
+  // tepelný gradient horúceho povrchu
+  const hg = el("linearGradient", { id: "heatG", x1: "0", y1: "0", x2: "0", y2: "1" });
+  hg.appendChild(el("stop", { offset: "0%", "stop-color": tempColor(cfg.T, 0.0) }));
+  hg.appendChild(el("stop", { offset: "100%", "stop-color": tempColor(cfg.T, Math.min(0.7, 0.2 + cfg.T / 350)) }));
+  defs.appendChild(hg);
+  probe.appendChild(defs);
+
+  // ── Horúci povrch (cieľ teploty) ──
+  probe.appendChild(el("rect", { x: 60, y: 224, width: 760, height: 34, rx: 4, fill: "#1e293b", stroke: "#334155" }));
+  probe.appendChild(el("rect", { x: 60, y: 200, width: 760, height: 28, fill: "url(#heatG)" }));
+  const ht = el("text", { x: 70, y: 246, fill: tempColor(cfg.T, 0.95), "font-size": 11, "font-weight": "bold", "font-family": "monospace" });
+  ht.textContent = `HEATED SURFACE  ${cfg.T} °C`; probe.appendChild(ht);
+  // tepelné vlnky stúpajúce z povrchu
+  for (let i = 0; i < 6; i++) {
+    const hx = 140 + i * 110;
+    const ph = ((t * 0.6 + i * 0.4) % 1);
+    const hy = 200 - ph * 60;
+    probe.appendChild(el("path", {
+      d: `M${hx},${hy} q6,-8 0,-16 q-6,-8 0,-16`,
+      fill: "none", stroke: tempColor(cfg.T, (1 - ph) * Math.min(0.6, cfg.T / 250)), "stroke-width": 2, "stroke-linecap": "round"
+    }));
+  }
+
+  // ── Oscilujúci povrch (cieľ vibrácií) — vľavo ──
+  const ox = 60 + vib * vAmpPx;
+  probe.appendChild(el("rect", { x: ox - 34, y: 40, width: 34, height: 180, rx: 4, fill: "#1e293b", stroke: tempColor(cfg.T, 0.5) }));
+  const ovt = el("text", { x: ox - 17, y: 32, fill: "#94a3b8", "font-size": 9, "text-anchor": "middle" });
+  ovt.textContent = "OSC. SURFACE"; probe.appendChild(ovt);
+  if (cfg.amp > 20) {
+    [-1, 1].forEach(d => {
+      probe.appendChild(el("path", {
+        d: `M${ox - 17},${cy} l${d * (14 + vAmpPx)},0 m${-d * 6},-5 l${d * 6},5 l${-d * 6},5`,
+        stroke: "#22d3ee", "stroke-width": 2, fill: "none", "stroke-linecap": "round", opacity: 0.8
+      }));
+    });
+  }
+
+  // ── Ochranné puzdro sondy ──
+  const hx0 = 110, hx1 = 800;
+  probe.appendChild(el("rect", { x: hx0, y: cy - 46, width: hx1 - hx0, height: 92, rx: 18,
+    fill: "rgba(148,163,184,0.07)", stroke: "rgba(148,163,184,0.4)", "stroke-width": 1.5 }));
+  // špička sondy
+  probe.appendChild(el("path", { d: `M${hx0},${cy - 30} L${hx0 - 26},${cy} L${hx0},${cy + 30} Z`,
+    fill: "rgba(148,163,184,0.12)", stroke: "rgba(148,163,184,0.4)" }));
+
+  // ── Vibračno-citlivý potting ──
+  const pottCol = tempColor(cfg.T, 0.10);
+  probe.appendChild(el("rect", { x: hx0 + 12, y: cy - 34, width: hx1 - hx0 - 24, height: 68, rx: 12,
+    fill: pottCol, stroke: tempColor(cfg.T, 0.3), "stroke-dasharray": "4 3" }));
+  const pt = el("text", { x: (hx0 + hx1) / 2, y: cy + 56, fill: "rgba(148,163,184,0.6)", "font-size": 9, "text-anchor": "middle" });
+  pt.textContent = "vibračno-citlivý potting"; probe.appendChild(pt);
+
+  // ── Optické vlákno + FBG mriežka ──
+  const fy = cy - 8 + vib * (cfg.amp / 600) * 6;   // jadro mierne kmitá
+  probe.appendChild(el("line", { x1: hx0 - 24, y1: fy, x2: hx1 - 16, y2: fy, stroke: "#38bdf8", "stroke-width": 2.4, "stroke-linecap": "round" }));
+
+  // FBG zóna — perióda sa naťahuje s vibráciou, farba s teplotou
+  const zx0 = 430, baseZw = 150;
+  const zw = baseZw * (1 + vib * (cfg.amp / 600) * 0.25);
+  probe.appendChild(el("rect", { x: zx0, y: fy - 20, width: zw, height: 40, rx: 6, fill: tempColor(cfg.T, 0.14), stroke: col, "stroke-width": 1.6 }));
+  const pitch = (zw / 14);
+  for (let lx = zx0 + pitch / 2; lx < zx0 + zw; lx += pitch) {
+    probe.appendChild(el("line", { x1: lx, y1: fy - 17, x2: lx, y2: fy + 17, stroke: col, "stroke-width": 1.6, opacity: 0.9 }));
+  }
+  const fl = el("text", { x: zx0 + zw / 2, y: fy - 26, fill: col, "font-size": 10, "text-anchor": "middle", "font-family": "monospace", "font-weight": "bold" });
+  fl.textContent = "FBG (Λ)"; probe.appendChild(fl);
+
+  // ── Referenčný termočlánok ──
+  probe.appendChild(el("line", { x1: hx0 + 20, y1: cy + 22, x2: 680, y2: cy + 22, stroke: "#f59e0b", "stroke-width": 1.6, "stroke-dasharray": "2 2" }));
+  probe.appendChild(el("circle", { cx: 680, cy: cy + 22, r: 5, fill: "#f59e0b" }));
+  const tc = el("text", { x: 360, y: cy + 18, fill: "rgba(245,158,11,0.85)", "font-size": 9 });
+  tc.textContent = "referenčný termočlánok (kompenzácia)"; probe.appendChild(tc);
+
+  // ── Prívodné vlákno (vpravo, von zo sondy) ──
+  probe.appendChild(el("line", { x1: hx1 - 16, y1: cy - 8, x2: 960, y2: cy - 8, stroke: "#38bdf8", "stroke-width": 2.4 }));
+  const ft = el("text", { x: 960, y: cy - 16, fill: "#94a3b8", "font-size": 9, "text-anchor": "end" });
+  ft.textContent = "→ k interogátoru"; probe.appendChild(ft);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SPEKTRÁLNA ODOZVA (canvas)
+// ════════════════════════════════════════════════════════════════════════════
+const spec = $("spec");
+const sctx = spec.getContext("2d");
+let SW = 0, SH = 0;
+function resizeSpec() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const rect = spec.getBoundingClientRect();
+  SW = Math.max(rect.width, 1); SH = Math.max(rect.height, 1);
+  spec.width = Math.round(SW * dpr); spec.height = Math.round(SH * dpr);
+  sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener("resize", () => { resizeSpec(); });
+
+function specWindow() {
+  const center = cfg.lb0 + tempShiftNm();
+  const half = Math.max(1.2, vibAmpNm() * 1.6 + 0.8);
+  return [Math.min(cfg.lb0, center) - half, Math.max(cfg.lb0, center) + half];
+}
+function gauss(l, c, sig) { const d = l - c; return Math.exp(-(d * d) / (2 * sig * sig)); }
+
+let _nz = [];
+function drawSpec(t) {
+  const w = SW, h = SH, x0 = 46, y0 = 14;
+  const baseY = h - 42, plotW = w - x0 - 12, plotH = baseY - y0;
+  const [WMIN, WMAX] = specWindow();
+  const xOf = l => x0 + ((l - WMIN) / (WMAX - WMIN)) * plotW;
+
+  sctx.clearRect(0, 0, w, h);
+
+  // pozadie
+  sctx.fillStyle = "rgba(255,255,255,0.015)"; sctx.fillRect(x0, y0, plotW, plotH);
+
+  // vertikálna mriežka + popisky λ
+  const span = WMAX - WMIN;
+  const step = span > 6 ? 2 : span > 3 ? 1 : 0.5;
+  sctx.font = "10px monospace"; sctx.textBaseline = "top";
+  const first = Math.ceil(WMIN / step) * step;
+  for (let l = first; l <= WMAX; l += step) {
+    const gx = xOf(l);
+    sctx.strokeStyle = "rgba(255,255,255,0.06)"; sctx.lineWidth = 1;
+    sctx.beginPath(); sctx.moveTo(gx, y0); sctx.lineTo(gx, baseY); sctx.stroke();
+    sctx.fillStyle = "#64748b"; sctx.textAlign = "center";
+    sctx.fillText(l.toFixed(step < 1 ? 1 : 0), gx, baseY + 6);
+  }
+  sctx.fillStyle = "#64748b"; sctx.textAlign = "center";
+  sctx.fillText("vlnová dĺžka λ [nm]", x0 + plotW / 2, baseY + 22);
+
+  // baseline
+  sctx.strokeStyle = "rgba(200,216,240,0.5)"; sctx.lineWidth = 1;
+  sctx.beginPath(); sctx.moveTo(x0, baseY); sctx.lineTo(x0 + plotW, baseY); sctx.stroke();
+  sctx.save(); sctx.translate(14, y0 + plotH / 2); sctx.rotate(-Math.PI / 2);
+  sctx.fillStyle = "#64748b"; sctx.textAlign = "center"; sctx.fillText("Reflektivita R", 0, 0); sctx.restore();
+
+  const sig = 0.22;
+  const col = tempColor(cfg.T);
+  const lbNow = lambdaB(t);
+
+  // ── referenčný peak (pokoj, λB0) ──
+  drawPeak(xOf, cfg.lb0, sig, baseY, y0, plotH, "rgba(148,163,184,0.55)", null, true);
+  sctx.fillStyle = "rgba(148,163,184,0.7)"; sctx.font = "italic 9px monospace"; sctx.textAlign = "center";
+  sctx.fillText("ref. λB0", xOf(cfg.lb0), y0 + 2);
+
+  // ── obálka vibračného kmitania (min/max poloha peaku) ──
+  if (vibAmpNm() > 0.001) {
+    const cMean = cfg.lb0 + tempShiftNm();
+    [cMean - vibAmpNm(), cMean + vibAmpNm()].forEach(c => {
+      drawPeak(xOf, c, sig, baseY, y0, plotH, tempColor(cfg.T, 0.18), null, true);
+    });
+    // rozsah vibrácie
+    sctx.strokeStyle = tempColor(cfg.T, 0.4); sctx.setLineDash([2, 3]); sctx.lineWidth = 1;
+    sctx.beginPath(); sctx.moveTo(xOf(cMean - vibAmpNm()), y0 + 22); sctx.lineTo(xOf(cMean + vibAmpNm()), y0 + 22); sctx.stroke();
+    sctx.setLineDash([]);
+  }
+
+  // ── aktuálny peak ──
+  drawPeak(xOf, lbNow, sig, baseY, y0, plotH, col, tempColor(cfg.T, 0.5));
+
+  // marker + popis λB
+  const px = xOf(lbNow);
+  sctx.fillStyle = col; sctx.shadowColor = tempColor(cfg.T, 0.6); sctx.shadowBlur = 10;
+  sctx.beginPath(); sctx.arc(px, y0 + 4, 4, 0, Math.PI * 2); sctx.fill(); sctx.shadowBlur = 0;
+  sctx.fillStyle = col; sctx.font = "bold 11px monospace"; sctx.textAlign = px > x0 + plotW - 50 ? "right" : "left";
+  sctx.fillText("λB", px + (px > x0 + plotW - 50 ? -8 : 8), y0 + 10);
+
+  // ── teplotný posun šípka ──
+  if (Math.abs(tempShiftNm()) > 0.02) {
+    const xa = xOf(cfg.lb0), xb = xOf(cfg.lb0 + tempShiftNm()), ay = baseY - plotH * 0.55;
+    sctx.strokeStyle = "#facc15"; sctx.lineWidth = 1.6;
+    sctx.beginPath(); sctx.moveTo(xa, ay); sctx.lineTo(xb, ay); sctx.stroke();
+    const dir = xb > xa ? -1 : 1;
+    sctx.beginPath(); sctx.moveTo(xb, ay); sctx.lineTo(xb + dir * 6, ay - 4); sctx.moveTo(xb, ay); sctx.lineTo(xb + dir * 6, ay + 4); sctx.stroke();
+    sctx.fillStyle = "#facc15"; sctx.font = "bold 10px monospace"; sctx.textAlign = "center";
+    sctx.fillText(`ΔT → ${(tempShiftNm() * 1000).toFixed(0)} pm`, (xa + xb) / 2, ay - 14);
+  }
+}
+
+function drawPeak(xOf, center, sig, baseY, y0, plotH, stroke, fill, thin) {
+  const [WMIN, WMAX] = specWindow();
+  const steps = 200; const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const l = WMIN + (i / steps) * (WMAX - WMIN);
+    const r = gauss(l, center, sig);
+    pts.push([xOf(l), baseY - r * plotH]);
+  }
+  if (fill) {
+    const g = sctx.createLinearGradient(0, y0, 0, baseY);
+    g.addColorStop(0, fill); g.addColorStop(1, "rgba(0,0,0,0)");
+    sctx.beginPath(); sctx.moveTo(pts[0][0], baseY);
+    pts.forEach(p => sctx.lineTo(p[0], p[1]));
+    sctx.lineTo(pts[pts.length - 1][0], baseY); sctx.closePath();
+    sctx.fillStyle = g; sctx.fill();
+  }
+  sctx.strokeStyle = stroke; sctx.lineWidth = thin ? 1.2 : 2.4;
+  if (thin) sctx.setLineDash([4, 3]);
+  sctx.beginPath(); pts.forEach((p, i) => i ? sctx.lineTo(p[0], p[1]) : sctx.moveTo(p[0], p[1])); sctx.stroke();
+  sctx.setLineDash([]);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// INTEROGAČNÝ REŤAZEC + READOUTS
+// ════════════════════════════════════════════════════════════════════════════
+const chainNodes = [...document.querySelectorAll("#chain .chain-node")];
+function updateReadouts(t) {
+  const col = tempColor(cfg.T);
+  const lbNow = lambdaB(t);
+  const ampPm = Math.round(vibAmpNm() * 1000);
+
+  $("oTemp").textContent = cfg.T.toFixed(1);
+  $("oLb").textContent = lbNow.toFixed(2);
+  $("oVibF").textContent = cfg.freq;
+  $("oVibA").textContent = ampPm;
+  $("cOutT").textContent = cfg.T.toFixed(1);
+  $("cOutV").textContent = cfg.freq;
+
+  ["roTemp", "roLb", "roOutT"].forEach(id => {
+    const c = $(id); c.style.borderColor = tempColor(cfg.T, 0.5); c.style.background = tempColor(cfg.T, 0.07);
+    c.querySelector(".v").style.color = col;
+  });
+  ["roVibF", "roVibA", "roOutV"].forEach(id => {
+    const c = $(id); const lit = cfg.amp > 0 && cfg.freq > 0;
+    c.style.borderColor = lit ? "rgba(34,211,238,0.5)" : "var(--line)";
+    c.querySelector(".v").style.color = lit ? "var(--cyan)" : "var(--text)";
+  });
+
+  // putujúce zvýraznenie reťazca
+  if (playing && !reduceMotion) {
+    const lit = Math.floor((t * 1.5) % chainNodes.length);
+    chainNodes.forEach((n, i) => n.classList.toggle("lit", i === lit));
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// HLAVNÁ SLUČKA
+// ════════════════════════════════════════════════════════════════════════════
+let start = null;
+function loop(ts) {
+  if (start === null) start = ts;
+  const t = (ts - start) / 1000;
+  drawProbe(t);
+  drawSpec(t);
+  updateReadouts(t);
+  if (playing) requestAnimationFrame(loop);
+}
+
+resizeSpec();
+drawProbe(0);
+drawSpec(0);
+updateReadouts(0);
+if (playing) requestAnimationFrame(loop);
+else { chainNodes.forEach(n => n.classList.add("lit")); }
+</script>
+</body>
+</html>
