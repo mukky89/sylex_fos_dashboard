@@ -2660,6 +2660,11 @@ body {
 .pj-chev-sales.current { background: #1e40af; }
 .pj-chev-dev.done { background: #2f9e3f; }
 .pj-chev-dev.current { background: #15803d; }
+/* štandardné výstupy = tyrkysová */
+.pj-chev-deliv.done { background: #0d9488; }
+.pj-deliv-flow { flex-wrap: wrap; gap: 4px 0; }
+.pj-deliv-cell { display: flex; align-items: center; gap: 10px; }
+.pj-deliv-cell .pj-deliv-flow { max-width: 340px; }
 .pj-chev-sm { font-size: 0.66rem; padding: 5px 10px 5px 18px; margin-left: -11px; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%); }
 .pj-chev-sm:first-child { padding-left: 10px; margin-left: 0; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%); }
 /* zoznam: kompaktné, needitovateľné chevrony v jednom riadku */
