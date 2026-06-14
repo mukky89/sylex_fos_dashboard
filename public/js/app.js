@@ -4930,6 +4930,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.54.0', date: '14. 6. 2026', tag: 'feat', items: [
+    'Backbone: nový 1-kanálový interrogátor (S-line Scan 800, 1 kanál) ako samostatný objekt.',
+    'Backbone: kombinované objekty „S-line Scan + Switch 1×16" a „S-line Scan + Splitter 1×8" — dve zariadenia natrvalo spolu (interný patchcord), aby išli vždy pokope.',
+    'Backbone: konektorové spojenie a WPA-01 (vodeodolné konektorové spojenie) ako korálky na kábli s presnejším pomenovaním.',
+  ] },
   { v: '1.53.1', date: '14. 6. 2026', tag: 'fix', items: [
     'Chevron procesy: dlhé názvy stupňov (napr. „Cenová ponuka") sa už nezalamujú — opravený rozbitý tvar v zozname.',
   ] },
@@ -4947,6 +4952,9 @@ const CHANGELOG = [
     'Vývoj výrobkov: detail projektu sa otvára ako samostatná stránka (namiesto modálu) s komplexným obsahom.',
     'Stránka projektu: chevron procesy (predaj/vývoj + spojený cyklus), checklist výstupov, popis, poznámky, odkazy (viacero), detaily, súvisiace testovacie protokoly.',
     'Editovateľné odkazy projektu a popis (predtým neboli v UI); plynulé ukladanie a mazanie z detailu.',
+  ] },
+  { v: '1.51.0', date: '14. 6. 2026', tag: 'feat', items: [
+    'FBG: nová interaktívna animácia „FBG senzor teploty a vibrácií" — konštrukcia sondy, spektrálna odozva a interogačná jednotka s konfiguráciou (teplota, amplitúda/frekvencia vibrácií, citlivosti) a predvoľbami.',
   ] },
   { v: '1.50.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Projekty: procesy zobrazené ako chevron tok (breadcrumb) — klik na stupeň ho nastaví.',
@@ -8066,6 +8074,11 @@ let bbList = [], bbDoc = null, bbSel = null, bbConnect = null, bbAnim = true, bb
 // Katalóg komponentov (Sylex FBG monitoring system)
 const BB_TYPES = {
   scan:      { label: 'S-line Scan 800',    grp: 'interr', fill: '#222a33', text: '#fff',     ports: 4,  w: 168, h: 58 },
+  scan1:     { label: 'S-line Scan 800 (1 kanál)', grp: 'interr', fill: '#222a33', text: '#fff', ports: 1, w: 176, h: 58 },
+  scan16:    { label: 'S-line Scan + Switch 1×16', grp: 'interr', fill: '#222a33', text: '#fff', combo: true,
+               units: [{ name: 'S-line Scan 800', ports: 1 }, { name: 'S-line Switch 1×16', ports: 16 }], ports: 16, w: 214, h: 104 },
+  scan8:     { label: 'S-line Scan + Splitter 1×8', grp: 'interr', fill: '#222a33', text: '#fff', combo: true,
+               units: [{ name: 'S-line Scan 800', ports: 1 }, { name: 'S-line Splitter 1×8', ports: 8 }], ports: 8, w: 204, h: 104 },
   switch:    { label: 'S-line Switch 1×16', grp: 'interr', fill: '#222a33', text: '#fff',     ports: 8,  w: 196, h: 58 },
   splitter8: { label: 'S-line Splitter 1×8',grp: 'interr', fill: '#222a33', text: '#fff',     ports: 8,  w: 184, h: 58 },
   comp:      { label: 'S-line Comp (PC)',    grp: 'interr', fill: '#2a313b', text: '#fff',     ports: 0,  w: 152, h: 58 },
@@ -8080,7 +8093,7 @@ const BB_TYPE_LABEL = Object.fromEntries(Object.entries(BB_TYPES).map(([k, v]) =
 const BB_GROUPS = { interr: 'Interrogátor', box: 'Rozvádzač / splitter', sensor: 'Senzor' };
 // Inline komponenty na kábli (korálky)
 const BB_PARTS = { conn: 'Konektor', 'WSP-01': 'WSP-01', 'WCP-01': 'WCP-01', 'FSP-01': 'FSP-01', 'LCP-03': 'LCP-03', 'WPA-01': 'WPA-01' };
-const BB_PART_NAME = { conn: 'Konektor', 'WSP-01': 'WSP-01 splice protection', 'WCP-01': 'WCP-01 watertight conn.', 'FSP-01': 'FSP-01 fiber splice', 'LCP-03': 'LCP-03 pigtail', 'WPA-01': 'WPA-01 patchcord' };
+const BB_PART_NAME = { conn: 'Konektorové spojenie', 'WSP-01': 'WSP-01 splice protection', 'WCP-01': 'WCP-01 watertight conn.', 'FSP-01': 'FSP-01 fiber splice', 'LCP-03': 'LCP-03 pigtail', 'WPA-01': 'WPA-01 vodeodolné kon. spojenie' };
 
 function bbTy(n) { return BB_TYPES[n.type] || BB_TYPES.splitter; }
 function bbNodeW(n) { return Math.max(bbTy(n).w, (n.label || '').length * 7.2 + 26); }
@@ -8136,6 +8149,29 @@ function bbDefs() {
 function bbNodeInner(n, ty, w, h) {
   const lbl = escHtml(n.label || '(uzol)');
   const T = (x, y, s, anchor) => `<text x="${x}" y="${y}" text-anchor="${anchor || 'middle'}" style="${s}">`;
+  // Kombinované zariadenie — dve zariadenia natrvalo spolu (napr. Scan 800 + Switch/Splitter)
+  if (ty.combo) {
+    const gap = 8, uh = (h - gap) / 2;
+    let out = '';
+    ty.units.forEach((u, ui) => {
+      const yo = ui * (uh + gap);
+      const pn = Math.min(u.ports || 0, 12);
+      let ports = '';
+      for (let i = 0; i < pn; i++) { const cx = 16 + i * (w - 32) / Math.max(1, pn - 1); ports += `<circle class="bb-fc" cx="${cx}" cy="${yo + uh - 9}" r="3.2"/><circle class="bb-fc-i" cx="${cx}" cy="${yo + uh - 9}" r="1.3"/>`; }
+      out += `
+        <rect class="bb-dev-body" y="${yo}" width="${w}" height="${uh}" rx="5" style="fill:${ty.fill}"/>
+        <rect class="bb-dev-face" x="3" y="${yo + 3}" width="${w - 6}" height="${uh - 6}" rx="3"/>
+        <rect class="bb-dev-accent" x="3" y="${yo + 3}" width="6" height="${uh - 6}"/>
+        <rect class="bb-lcd" x="13" y="${yo + 7}" width="50" height="13" rx="2"/>${T(38, yo + 17, 'font-family:monospace;font-size:7px;fill:#7ee06a;letter-spacing:.3px')}S-line</text>
+        <circle class="bb-led on" cx="${w - 12}" cy="${yo + 11}" r="2.4"/>
+        <circle class="bb-led" cx="${w - 21}" cy="${yo + 11}" r="2.4"/>
+        ${T(w / 2 + 6, yo + uh / 2 + 5, `font-family:var(--font);font-size:10.5px;font-weight:700;fill:${ty.text}`)}${escHtml(u.name)}</text>
+        ${ports}`;
+    });
+    // interný patchcord — zariadenia sú pevne prepojené (preto idú vždy spolu)
+    out += `<line class="bb-fan" x1="16" y1="${uh - 9}" x2="16" y2="${uh + gap + uh / 2}"/><circle class="bb-fc-i" cx="16" cy="${uh + gap + uh / 2}" r="1.6"/>`;
+    return out;
+  }
   if (ty.grp === 'interr') {
     const isComp = n.type === 'comp';
     const pn = Math.min(ty.ports || 0, 12);
