@@ -4642,6 +4642,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.48.0', date: '14. 6. 2026', tag: 'feat', items: [
+    'Backbone: klávesa Delete (alebo Backspace) zmaže vybraný komponent alebo kábel.',
+    'Backbone: dvojklik na komponent alebo kábel = úprava popisu priamo na plátne (napr. „4 f @ 5m").',
+  ] },
   { v: '1.47.0', date: '14. 6. 2026', tag: 'ui', items: [
     'Backbone: komponenty vykreslené ako realistické zariadenia — S-line interrogátory s LCD displejom, stavovými LED a radom FC konektorov; WCB-01 ako skriňa s vekom, skrutkami a káblovými priechodkami; splitter s vejárovým rozbočením; FBG senzor ako kapsula s mriežkou a zeleným hrotom.',
     'Tmavý (dark) režim plátna s jemnou bodkovou mriežkou — verný štýlu Sylex schémy.',
@@ -7908,8 +7912,46 @@ function bbScheduleRender() { if (bbRenderReq) return; bbRenderReq = true; reque
 function bbInitEvents() {
   const svg = document.getElementById('bbSvg'); if (!svg || svg._bbInit) return; svg._bbInit = true;
   svg.addEventListener('pointerdown', bbPointerDown);
+  svg.addEventListener('dblclick', bbDblClick);
   window.addEventListener('pointermove', bbPointerMove);
   window.addEventListener('pointerup', bbPointerUp);
+  document.addEventListener('keydown', bbKeyDown);
+}
+// Delete/Backspace zmaže vybraný uzol alebo kábel (mimo textových polí)
+function bbKeyDown(e) {
+  if (_activePageName() !== 'bb' || !bbDoc || !bbSel) return;
+  const t = e.target, tag = (t.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || t.isContentEditable) return;
+  if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+  e.preventDefault();
+  if (bbSel.kind === 'node') bbDeleteNode(bbSel.id); else bbDeleteLink(bbSel.id);
+}
+// Dvojklik = úprava popisu uzla / kábla priamo na plátne
+function bbDblClick(e) {
+  if (!bbDoc) return;
+  const ng = e.target.closest('.bb-node');
+  if (ng) { const n = bbNode(ng.dataset.nid); if (n) bbInlineEdit(ng, n.label || '', v => { n.label = v; }); return; }
+  const el = e.target.closest('.bb-bead') || e.target.closest('.bb-link');
+  if (el) {
+    const l = bbDoc.links.find(x => x.lid === el.dataset.lid); if (!l) return;
+    const cur = l.label || (l.length > 0 ? `${l.fibers} f @ ${l.length}m` : '');
+    bbInlineEdit(el, cur, v => { l.label = v; });
+  }
+}
+function bbInlineEdit(targetEl, value, commit) {
+  const wrap = document.getElementById('bbCanvasWrap'); if (!wrap) return;
+  wrap.querySelector('.bb-inline-edit')?.remove();
+  const wr = wrap.getBoundingClientRect(), er = targetEl.getBoundingClientRect();
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.className = 'bb-inline-edit'; inp.value = value;
+  inp.style.left = (er.left - wr.left + wrap.scrollLeft) + 'px';
+  inp.style.top = (er.top - wr.top + wrap.scrollTop) + 'px';
+  inp.style.width = Math.max(90, er.width) + 'px';
+  let done = false;
+  const finish = (save) => { if (done) return; done = true; if (save) { commit(inp.value.trim()); bbRender(); bbPanelRender(); } inp.remove(); };
+  inp.addEventListener('keydown', ev => { ev.stopPropagation(); if (ev.key === 'Enter') finish(true); else if (ev.key === 'Escape') finish(false); });
+  inp.addEventListener('blur', () => finish(true));
+  wrap.appendChild(inp); inp.focus(); inp.select();
 }
 function bbClientToSvg(e) { const svg = document.getElementById('bbSvg'); const r = svg.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
 function bbPointerDown(e) {
