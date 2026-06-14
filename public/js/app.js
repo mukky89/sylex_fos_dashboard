@@ -4292,6 +4292,15 @@ function pjStageUpdate(p, wf, key) {
   u.phase = dev || sales;
   return u;
 }
+// Chevron bar pre štandardné výstupy (každý nezávisle hotový / nehotový)
+function pjDelivChevron(doneArr, onclickTpl, extraCls) {
+  return PJ_DELIVERABLES.map(d => {
+    const on = (doneArr || []).includes(d.key);
+    const tag = onclickTpl ? 'button' : 'span';
+    const attr = onclickTpl ? ` type="button" onclick="${onclickTpl(d.key)}"` : '';
+    return `<${tag} class="pj-chev pj-chev-deliv ${on ? 'done' : 'future'} ${extraCls || ''}"${attr} title="${escHtml(d.label)}">${escHtml(d.short || d.label)}</${tag}>`;
+  }).join('');
+}
 // Chevron flow (breadcrumb proces) — done / current / future; farba podľa tracku (sales/dev)
 function pjChevron(stages, doneArr, repKey, track, extraCls, readonly) {
   return stages.map(s => {
@@ -4436,22 +4445,19 @@ function renderPjList(host, items) {
     <thead><tr><th>Projekt</th><th>Procesy (predaj / vývoj)</th><th><div class="pj-col-hd">Výstupy ${pjDelivFilterOpts()}</div></th><th>Vlastník</th><th>Termín</th></tr></thead>
     <tbody>${rows}</tbody></table></div>`;
 }
-// Výstupy v zozname — všetky checkboxy priamo v hlavnom zobrazení (zaškrtnuteľné)
+// Výstupy v zozname — chevron bar (ako workflow), priamo prepínateľný
 function pjListDeliv(p) {
   if (!pjDevStage(p)) return '<span class="prod-t-qty">—</span>';
   const done = p.deliverables || [], tot = PJ_DELIVERABLES.length, full = done.length >= tot;
-  const checks = PJ_DELIVERABLES.map(d => {
-    const on = done.includes(d.key);
-    return `<label class="pj-outc ${on ? 'on' : ''}" title="${escHtml(d.label)}"><input type="checkbox" ${on ? 'checked' : ''} onchange="pjToggleDeliv('${p._id}','${d.key}',this)"> ${escHtml(d.short || d.label)}</label>`;
-  }).join('');
-  return `<div class="pj-out-checks" onclick="event.stopPropagation()">${checks}<span id="pjcnt-${p._id}" class="pj-out-lbl ${full ? 'done' : ''}">${full ? '✓ ' : ''}${done.length}/${tot}</span></div>`;
+  const bar = pjDelivChevron(done, k => `event.stopPropagation();pjToggleDeliv('${p._id}','${k}',this)`, 'pj-chev-sm');
+  return `<div class="pj-deliv-cell" onclick="event.stopPropagation()"><div class="pj-flow pj-deliv-flow">${bar}</div><span id="pjcnt-${p._id}" class="pj-out-lbl ${full ? 'done' : ''}">${full ? '✓ ' : ''}${done.length}/${tot}</span></div>`;
 }
-async function pjToggleDeliv(id, key, cb) {
+async function pjToggleDeliv(id, key, btn) {
   const p = projectsData.find(x => x._id === id); if (!p) return;
-  const on = cb.checked; p.deliverables = p.deliverables || [];
-  const i = p.deliverables.indexOf(key);
-  if (on && i < 0) p.deliverables.push(key); else if (!on && i >= 0) p.deliverables.splice(i, 1);
-  cb.closest('.pj-outc')?.classList.toggle('on', on);
+  p.deliverables = p.deliverables || [];
+  const i = p.deliverables.indexOf(key), on = i < 0;
+  if (on) p.deliverables.push(key); else p.deliverables.splice(i, 1);
+  btn.classList.toggle('done', on); btn.classList.toggle('future', !on);
   const tot = PJ_DELIVERABLES.length, doneN = p.deliverables.length, full = doneN >= tot;
   const cnt = document.getElementById('pjcnt-' + id);
   if (cnt) { cnt.textContent = (full ? '✓ ' : '') + doneN + '/' + tot; cnt.classList.toggle('done', full); }
@@ -4644,15 +4650,20 @@ function pjRenderPageFlows() {
       <div class="pj-flow">${dOn ? pjChevron(PJ_WORKFLOWS.development.stages, dDone, dRep, 'dev') : '<span class="pj-flow-off">neaktívne — zapni vyššie</span>'}</div></div>`;
   const card = document.getElementById('pjPageDelivCard'); if (card) card.style.display = dOn ? '' : 'none';
 }
-function _pjCurrentDeliv() { return [...document.querySelectorAll('.pj-deliv-cb')].filter(c => c.checked).map(c => c.value); }
 function pjBuildDeliverables(done) {
   const list = document.getElementById('pjDelivList'); if (!list) return;
-  list.innerHTML = PJ_DELIVERABLES.map(d => `<label><input type="checkbox" class="pj-deliv-cb" value="${d.key}"${done.includes(d.key) ? ' checked' : ''} onchange="pjUpdateDelivCount()"> ${escHtml(d.label)}</label>`).join('');
+  list.className = 'pj-flow pj-deliv-flow';
+  list.innerHTML = pjDelivChevron(done || [], k => `pjToggleDelivPage('${k}')`);
   pjUpdateDelivCount();
 }
+function pjToggleDelivPage(key) {
+  const arr = pjPageData.deliverables || (pjPageData.deliverables = []);
+  const i = arr.indexOf(key); if (i >= 0) arr.splice(i, 1); else arr.push(key);
+  pjBuildDeliverables(arr);
+}
 function pjUpdateDelivCount() {
-  const cbs = [...document.querySelectorAll('.pj-deliv-cb')], done = cbs.filter(c => c.checked).length;
-  const el = document.getElementById('pjDelivCount'); if (el) el.textContent = `${done}/${cbs.length} splnené`;
+  const tot = PJ_DELIVERABLES.length, done = (pjPageData && pjPageData.deliverables || []).length;
+  const el = document.getElementById('pjDelivCount'); if (el) el.textContent = `${done}/${tot} hotové`;
 }
 function pjAddLink() { pjPageData.links.push({ label: '', url: '' }); pjRenderLinks(); }
 function pjDelLink(i) { pjPageData.links.splice(i, 1); pjRenderLinks(); }
@@ -4689,7 +4700,7 @@ async function savePjPage() {
     workflow: dev ? 'development' : 'sales', phase: dev || salesStage,   // legacy/analytika
     priority: d.priority || 'normal', owner: (d.owner || '').trim(),
     startDate: d.startDate || null, deadline: d.deadline || null,
-    deliverables: devOn ? _pjCurrentDeliv() : [],
+    deliverables: devOn ? (d.deliverables || []) : [],
     folder: (d.folder || '').trim(), tags: d.tags || [],
     links: (d.links || []).filter(l => (l.url || '').trim() || (l.label || '').trim()),
     description: (d.description || '').trim(), notes: (d.notes || '').trim()
@@ -5000,6 +5011,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.60.0', date: '14. 6. 2026', tag: 'ui', items: [
+    'Štandardné výstupy sú teraz chevron bar (ako workflow) — tyrkysové, klik prepína hotový/nehotový (v detaile aj v zozname).',
+  ] },
   { v: '1.59.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Workflow nemusí ísť postupne — klikom na ktorýkoľvek stupeň ho označíš ako hotový (aj nepostupne), opätovný klik ho odznačí.',
     'Hotové stupne sa ukladajú samostatne pre predaj aj vývoj; pozícia na boarde sa odvodzuje od najďalšieho hotového stupňa.',
