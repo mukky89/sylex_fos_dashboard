@@ -4294,6 +4294,14 @@ async function loadProjects() {
   catch { projectsData = []; }
   renderProjects();
 }
+async function seedProjectsData() {
+  if (!await uiConfirm('Nahradiť ukážkové projekty novými (každý s predajným aj vývojovým procesom)?')) return;
+  try {
+    const r = await fetch('/api/admin/seed-projects', { method: 'POST' }); const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    await loadProjects(); toast(`Vygenerovaných ${d.inserted} projektov.`, 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
 function pjDelivMatch(p) {
   if (pjDelivFilter === 'all') return true;
   if (!pjActive(p, 'development')) return false;             // výstupy sa týkajú vývoja
@@ -4498,11 +4506,11 @@ function moveProjectPhase(id, dir) {
 // ── Detail projektu = samostatná stránka (komplexný obsah) ──
 let pjPageData = null, pjPageIsNew = false, pjPageTests = [];
 function pjBlankProject() {
-  const dev = pjWorkflow !== 'sales';
+  // nový projekt má defaultne oba procesy — predajný aj vývojový
   return {
     title: '', code: '',
-    salesStage: dev ? '' : PJ_WORKFLOWS.sales.stages[0].key,
-    devStage: dev ? PJ_WORKFLOWS.development.stages[0].key : '',
+    salesStage: PJ_WORKFLOWS.sales.stages[0].key,
+    devStage: PJ_WORKFLOWS.development.stages[0].key,
     priority: 'normal', owner: '', startDate: null, deadline: null,
     deliverables: [], folder: '', tags: [], links: [], description: '', notes: ''
   };
@@ -4963,6 +4971,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.58.0', date: '14. 6. 2026', tag: 'feat', items: [
+    'Nový projekt má defaultne zapnutý predajný aj vývojový proces.',
+    'Tlačidlo „🎲 Ukážkové dáta" v projektoch — vygeneruje nové testovacie projekty, každý s predajným aj vývojovým procesom a stavom výstupov.',
+  ] },
   { v: '1.57.0', date: '14. 6. 2026', tag: 'ui', items: [
     'Zoznam projektov: procesy predaj a vývoj sú v jednom stĺpci pod sebou (predaj hore, vývoj dole) namiesto dvoch stĺpcov.',
   ] },

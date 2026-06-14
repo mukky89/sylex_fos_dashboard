@@ -184,5 +184,14 @@ module.exports = function(sensorCfg) {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // ── Ukážkové projekty (Vývoj výrobkov) — každý s predajným aj vývojovým procesom ──
+  router.post('/seed-projects', async (req, res) => {
+    try {
+      const { seedProjects } = require('../scripts/seedProjects');
+      const result = await seedProjects();
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   return router;
 };
