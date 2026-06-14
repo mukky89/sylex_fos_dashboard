@@ -4914,7 +4914,7 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
-  { v: '1.51.0', date: '14. 6. 2026', tag: 'feat', items: [
+  { v: '1.52.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Vývoj výrobkov: detail projektu sa otvára ako samostatná stránka (namiesto modálu) s komplexným obsahom.',
     'Stránka projektu: chevron procesy (predaj/vývoj + spojený cyklus), checklist výstupov, popis, poznámky, odkazy (viacero), detaily, súvisiace testovacie protokoly.',
     'Editovateľné odkazy projektu a popis (predtým neboli v UI); plynulé ukladanie a mazanie z detailu.',
