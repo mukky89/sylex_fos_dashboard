@@ -2683,6 +2683,11 @@ body {
 .pj-out-lbl { font-size: 0.74rem; font-variant-numeric: tabular-nums; color: #94a3b8; white-space: nowrap; font-weight: 700; }
 .pj-out-lbl.done { color: #34d399; }
 .pj-list-wrap { overflow-x: auto; }
+.pj-list-wrap td:first-child, .pj-list-wrap th:first-child { min-width: 175px; }
+.pj-list-wrap .prod-t-num { white-space: nowrap; }
+.pj-col-hd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pj-col-filter { font-family: var(--font); font-size: 0.72rem; font-weight: 600; color: #e2e8f0; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; padding: 3px 6px; cursor: pointer; max-width: 150px; text-transform: none; }
+.pj-col-filter:focus { outline: none; border-color: var(--accent); }
 .pj-par-chip { display: inline-flex; align-items: center; gap: 4px; margin-top: 7px; font-size: 0.68rem; font-weight: 600; color: var(--c, #94a3b8); background: color-mix(in srgb, var(--c, #64748b) 16%, transparent); border: 1px solid color-mix(in srgb, var(--c, #64748b) 38%, transparent); border-radius: 100px; padding: 2px 9px; white-space: nowrap; }
 
 /* Detail projektu — samostatná stránka */
