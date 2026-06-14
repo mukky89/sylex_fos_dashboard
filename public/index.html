@@ -1543,13 +1543,17 @@
           <div class="form-group"><label>Názov *</label><input type="text" id="pjTitle" placeholder="napr. FOS senzor X"></div>
           <div class="form-group"><label>Kód</label><input type="text" id="pjCode" placeholder="napr. P-2026-01"></div>
         </div>
-        <div class="form-row">
-          <div class="form-group"><label>Workflow</label>
-            <select id="pjWorkflowSel" onchange="pjModalWorkflowChange()">
-              <option value="development">🛠 Vývoj</option><option value="sales">💼 Predaj</option>
-            </select>
-          </div>
-          <div class="form-group"><label>Fáza / stage</label><select id="pjPhase"></select></div>
+        <div class="pj-track">
+          <label class="pj-track-hd"><input type="checkbox" id="pjSalesOn" onchange="pjToggleTrack('sales')"> 💼 Predajný proces</label>
+          <div class="pj-flow" id="pjSalesFlow"></div>
+        </div>
+        <div class="pj-track">
+          <label class="pj-track-hd"><input type="checkbox" id="pjDevOn" onchange="pjToggleTrack('dev')"> 🛠 Vývojový proces</label>
+          <div class="pj-flow" id="pjDevFlow"></div>
+        </div>
+        <div class="pj-track" id="pjChainWrap" style="display:none">
+          <label class="pj-track-hd">🔗 Spojený životný cyklus (predaj → vývoj)</label>
+          <div class="pj-flow pj-flow-chain" id="pjChainFlow"></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Priorita</label>
