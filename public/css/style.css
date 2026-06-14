@@ -4226,3 +4226,7 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
   .cal-ev-allday, .cal-span, .ctg-ev { color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .cal-cell { border-color: #ccc !important; }
 }
+
+/* Combobox (select) — tmavé rozbaľovacie menu so svetlým textom (čitateľné options) */
+select option, select optgroup { background-color: #131c33; color: #e2e8f0; }
+.util-select, .cal-jump, select.util-select { color-scheme: dark; }
