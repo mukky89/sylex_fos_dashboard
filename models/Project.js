@@ -13,6 +13,7 @@ const projectSchema = new mongoose.Schema({
   code:        { type: String, default: '', trim: true },     // kód projektu
   description: { type: String, default: '' },
   workflow:    { type: String, enum: ['development', 'sales'], default: 'development' }, // primárny track (legacy/analytika)
+  status:      { type: String, enum: ['active', 'onhold', 'done', 'cancelled'], default: 'active' }, // stav projektu
   phase:       { type: String, default: 'koncept' },           // primárny stage (legacy/analytika)
   salesStage:  { type: String, default: '' },                  // primárny/reprezentatívny stage predaja ('' = neaktívny)
   devStage:    { type: String, default: '' },                  // primárny/reprezentatívny stage vývoja ('' = neaktívny)

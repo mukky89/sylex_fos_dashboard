@@ -57,6 +57,7 @@ function build([title, code, tags]) {
     title, code, tags,
     salesStage, devStage, salesDone, devDone,
     workflow: 'development', phase: devStage,    // legacy/analytika
+    status: pick(['active', 'active', 'active', 'onhold', 'done', 'cancelled']),
     owner: pick(OWNERS), priority: pick(PRIOS),
     startDate: dPlus(-ri(20, 120)),
     deadline: Math.random() < 0.7 ? dPlus(ri(10, 120)) : null,
