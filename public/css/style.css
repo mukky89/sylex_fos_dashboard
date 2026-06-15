@@ -4254,7 +4254,11 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .bb-anim .bb-flows { display: block; }
 .bb-flow { fill: none; stroke: rgba(141,198,63,0.45); stroke-width: 2; stroke-dasharray: 1 11; stroke-linecap: round; animation: bbFlow 1s linear infinite; }
 @keyframes bbFlow { to { stroke-dashoffset: -12; } }
+/* odrazený (reflektovaný) signál späť do interrogátora */
+.bb-flow-rx { stroke: rgba(127,208,255,0.40); stroke-dashoffset: 6; animation: bbFlowRx 1s linear infinite; }
+@keyframes bbFlowRx { to { stroke-dashoffset: 18; } }
 .bb-photon { fill: #c6ff8e; filter: url(#bbGlow); }
+.bb-photon-rx { fill: #7fd0ff; }
 .bb-dragging .bb-flow, .bb-dragging .bb-photon { animation: none; }
 
 /* panel */
