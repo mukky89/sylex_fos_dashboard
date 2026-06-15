@@ -45,7 +45,8 @@ function sanitize(b) {
   if (Array.isArray(b.links)) out.links = b.links.map(l => ({
     lid: String(l.lid), from: String(l.from), to: String(l.to),
     fibers: Number(l.fibers) || 0, length: Number(l.length) || 0, label: String(l.label || ''),
-    parts: Array.isArray(l.parts) ? l.parts.map(String) : []
+    parts: Array.isArray(l.parts) ? l.parts.map(String) : [],
+    waypoints: Array.isArray(l.waypoints) ? l.waypoints.map(p => ({ x: Number(p.x) || 0, y: Number(p.y) || 0 })) : []
   }));
   return out;
 }
