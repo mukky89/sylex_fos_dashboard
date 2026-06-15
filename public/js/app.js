@@ -5155,6 +5155,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.66.1', date: '15. 6. 2026', tag: 'ui', items: [
+    'Workflow chevrony: výraznejší hover — zdvih, zväčšenie a žiara.',
+  ] },
   { v: '1.66.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Detail projektu: komentáre / záznamy zmien samostatne pre Predaj, Vývoj a Výstupy — s autorom a časom, okamžité uloženie a mazanie.',
   ] },
