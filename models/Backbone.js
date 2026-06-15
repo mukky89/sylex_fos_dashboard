@@ -17,7 +17,8 @@ const bbLinkSchema = new mongoose.Schema({
   fibers: { type: Number, default: 4 },     // počet vlákien
   length: { type: Number, default: 0 },     // dĺžka v metroch
   label:  { type: String, default: '' },    // voliteľný vlastný popis (inak "N f @ Lm")
-  parts:  { type: [String], default: [] }   // korálky na kábli: conn / WSP-01 / WCP-01 / FSP-01 / LCP-03 / WPA-01
+  parts:  { type: [String], default: [] },  // korálky na kábli: conn / WSP-01 / WCP-01 / FSP-01 / LCP-03 / WPA-01
+  waypoints: { type: [new mongoose.Schema({ x: Number, y: Number }, { _id: false })], default: [] } // body trasy kábla (interaktívne editovanie cesty)
 }, { _id: false });
 
 const backboneSchema = new mongoose.Schema({

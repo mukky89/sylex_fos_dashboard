@@ -4255,10 +4255,17 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .bb-node.conn .bb-sel-ring { stroke: #f59e0b; stroke-dasharray: 6 4; }
 
 /* káble */
-.bb-link { fill: none; stroke: #355a2b; stroke-width: 2.5; cursor: pointer; }
-.bb-link:hover { stroke: #8DC63F; stroke-width: 3.5; }
+.bb-link { fill: none; stroke: #355a2b; stroke-width: 2.5; pointer-events: none; }
 .bb-link.sel { stroke: #38bdf8; stroke-width: 3.5; }
+.bb-link-hit { fill: none; stroke: transparent; stroke-width: 16; stroke-linecap: round; cursor: grab; }
+.bb-link-hit:hover + .bb-link { stroke: #8DC63F; stroke-width: 3.5; }
+.bb-dragging .bb-link-hit { cursor: grabbing; }
 .bb-link-lbl { fill: #cbd5e1; font-family: var(--font); font-size: 13px; }
+/* úchyty trasy kábla (waypoints) */
+.bb-wp { fill: #38bdf8; stroke: #0d1117; stroke-width: 1.6; cursor: grab; }
+.bb-wp:hover { fill: #7dd3fc; r: 7.5; }
+.bb-handles { pointer-events: all; }
+.bb-route-hint { font-size: 0.7rem; color: var(--text-dim); line-height: 1.4; margin-bottom: 6px; }
 .bb-flows { display: none; pointer-events: none; }
 .bb-anim .bb-flows { display: block; }
 .bb-flow { fill: none; stroke: rgba(141,198,63,0.45); stroke-width: 2; stroke-dasharray: 1 11; stroke-linecap: round; animation: bbFlow 1s linear infinite; }
