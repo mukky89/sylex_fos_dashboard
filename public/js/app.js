@@ -4930,6 +4930,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.55.0', date: '15. 6. 2026', tag: 'feat', items: [
+    'Backbone: obojsmerný tok signálu — okrem dopredného (širokopásmového) svetla z interrogátora do zariadenia putuje po kábli aj odrazený (reflektovaný λB) signál späť do interrogátora (modré fotóny a protismerné čiarkovanie).',
+  ] },
   { v: '1.54.0', date: '14. 6. 2026', tag: 'feat', items: [
     'Backbone: nový 1-kanálový interrogátor (S-line Scan 800, 1 kanál) ako samostatný objekt.',
     'Backbone: kombinované objekty „S-line Scan + Switch 1×16" a „S-line Scan + Splitter 1×8" — dve zariadenia natrvalo spolu (interný patchcord), aby išli vždy pokope.',
@@ -8239,9 +8242,14 @@ function bbRender() {
     const d = bbPathD(pts);
     const sel = bbSel && bbSel.kind === 'link' && bbSel.id === l.lid;
     links += `<path class="bb-link${sel ? ' sel' : ''}" data-lid="${l.lid}" d="${d}"/>`;
-    flows += `<path class="bb-flow" d="${d}"/>`;
+    flows += `<path class="bb-flow" d="${d}"/>`
+          +  `<path class="bb-flow bb-flow-rx" d="${d}"/>`;
+    // dopredný (širokopásmový) signál: interrogátor → zariadenie
     photons += `<circle class="bb-photon" r="2.6"><animateMotion dur="2.4s" repeatCount="indefinite" path="${d}"/></circle>`
-            +  `<circle class="bb-photon" r="2.6"><animateMotion dur="2.4s" begin="1.2s" repeatCount="indefinite" path="${d}"/></circle>`;
+            +  `<circle class="bb-photon" r="2.6"><animateMotion dur="2.4s" begin="1.2s" repeatCount="indefinite" path="${d}"/></circle>`
+    // odrazený (reflektovaný λB) signál: zariadenie → interrogátor (naspäť)
+            +  `<circle class="bb-photon bb-photon-rx" r="2.3"><animateMotion dur="2.4s" begin="0.6s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear" path="${d}"/></circle>`
+            +  `<circle class="bb-photon bb-photon-rx" r="2.3"><animateMotion dur="2.4s" begin="1.8s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear" path="${d}"/></circle>`;
     const txt = l.label || (l.length > 0 ? `${l.fibers} f @ ${l.length}m` : '');
     if (txt) { const mid = bbPolyPoint(pts, 0.5); labels += `<text class="bb-link-lbl" x="${mid[0]}" y="${mid[1] - 7}" text-anchor="middle">${escHtml(txt)}</text>`; }
     (l.parts || []).forEach((p, i) => {
