@@ -4544,14 +4544,15 @@ function renderPjList(host, items) {
     </div>`;
     const st = PJ_STATUS[p.status] || PJ_STATUS.active;
     return `<tr onclick="openProjectModal(projectsData.find(x=>x._id==='${p._id}'))">
-      <td><span class="prod-t-num">${escHtml(p.title)}</span>${p.code ? `<span class="prod-t-qty">${escHtml(p.code)}</span>` : ''}<span class="pj-status-badge" style="--c:${st.c}">${st.l}</span></td>
+      <td><span class="prod-t-num">${escHtml(p.title)}</span>${p.code ? `<span class="prod-t-qty">${escHtml(p.code)}</span>` : ''}</td>
+      <td><span class="pj-status-badge" style="--c:${st.c}">${st.l}</span></td>
       <td>${procStack}</td>
       <td>${escHtml(p.owner || '—')}</td>
       <td class="${overdue ? 'kanban-overdue' : ''}">${dl ? fmtDate(p.deadline) : '—'}</td>
     </tr>`;
   }).join('');
   host.innerHTML = `<div class="prod-list pj-list-wrap"><table class="prod-table">
-    <thead><tr><th>Projekt</th><th><div class="pj-col-hd">Procesy &amp; výstupy ${pjDelivFilterOpts()}</div></th><th>Vlastník</th><th>Termín</th></tr></thead>
+    <thead><tr><th>Projekt</th><th>Stav</th><th><div class="pj-col-hd">Procesy &amp; výstupy ${pjDelivFilterOpts()}</div></th><th>Vlastník</th><th>Termín</th></tr></thead>
     <tbody>${rows}</tbody></table></div>`;
 }
 // Výstupy v zozname — chevron bar (ako workflow), priamo prepínateľný
@@ -5169,6 +5170,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.68.1', date: '15. 6. 2026', tag: 'ui', items: [
+    'Zoznam projektov: stav projektu má teraz samostatný stĺpec.',
+  ] },
   { v: '1.68.0', date: '15. 6. 2026', tag: 'feat', items: [
     'Stav projektu (Aktívny / Pozastavený / Dokončený / Zrušený) — nastaviteľný v detaile, zobrazený ako farebný odznak v detaile aj v zozname.',
   ] },
