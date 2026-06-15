@@ -2185,6 +2185,14 @@ function renderCalendar() {
   calFillPersonFilter();
   if (calView === 'month') renderCalMonth(vp);
   else renderCalTimeGrid(vp, calView === 'week' ? calWeekDays() : [new Date(calRef)]);
+  calUpdateSticky();
+}
+// Ukotvenie hlavičky dní pod lepkavú lištu filtrov (offset = výška hlavičky appky + lišty)
+function calUpdateSticky() {
+  const tb = document.querySelector('#page-calendar .cal-toolbar'); if (!tb) return;
+  const hh = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 58;
+  document.documentElement.style.setProperty('--cal-sticky-top', (hh + tb.offsetHeight) + 'px');
+  if (!calUpdateSticky._bound) { calUpdateSticky._bound = true; window.addEventListener('resize', () => { if (document.getElementById('page-calendar')?.classList.contains('active')) calUpdateSticky(); }); }
 }
 
 // ── Slovenské štátne sviatky a dni pracovného pokoja ──
@@ -5170,6 +5178,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.71.0', date: '15. 6. 2026', tag: 'ui', items: [
+    'Kalendár: lišta filtrov aj hlavička dní (Po–Ne / dni v týždni) sú teraz ukotvené (sticky) — pri scrolovaní stále vidíš, ktoré dni sú v stĺpcoch a ako filtrovať.',
+  ] },
   { v: '1.70.0', date: '15. 6. 2026', tag: 'ui', items: [
     'Zoznam projektov: stav projektu má teraz samostatný stĺpec.',
   ] },
