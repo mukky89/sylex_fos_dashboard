@@ -4265,6 +4265,19 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .bb-photon-rx { fill: #7fd0ff; }
 .bb-dragging .bb-flow, .bb-dragging .bb-photon { animation: none; }
 
+/* S-line zariadenia — zelené telo, čierny panel (podľa katalógu Sylex) */
+.bb-sl-body { stroke: #4e7d24; stroke-width: 1; }
+.bb-sl-panel { fill: #16181b; stroke: #000; stroke-width: 1; }
+.bb-sl-gear { fill: none; stroke: #d6ebbb; stroke-width: 1.6; }
+.bb-sl-gear-h { fill: #d6ebbb; }
+.bb-sl-port { fill: #eef2f4; stroke: #707f86; stroke-width: 0.8; }
+.bb-sl-inport { fill: #b9c5cd; stroke: #5a666d; stroke-width: 0.7; }
+.bb-sl-disp { fill: #0a0c0d; stroke: #2c3b18; stroke-width: 1; }
+.bb-sl-pwr { fill: #1d1f22; stroke: #3a4150; stroke-width: 1; }
+.bb-sl-pwr-i { stroke: #8DC63F; stroke-width: 1.4; stroke-linecap: round; }
+.bb-sl-io { fill: #2a2d31; stroke: #565b62; stroke-width: 0.8; }
+.bb-node:hover .bb-sl-body { filter: brightness(1.08); }
+
 /* panel */
 .bb-panel { width: 270px; flex-shrink: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px; align-self: stretch; }
 .bb-panel-hd { font-family: var(--font-title); font-weight: 700; font-size: 1rem; color: var(--text-bright); margin-bottom: 10px; }

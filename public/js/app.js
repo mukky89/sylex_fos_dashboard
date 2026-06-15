@@ -5169,6 +5169,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.69.0', date: '15. 6. 2026', tag: 'feat', items: [
+    'Backbone: S-line zariadenia prekreslené podľa oficiálneho katalógu Sylex — zelené telo, čierny panel, ozubené koliesko a biele FC porty.',
+    'Nový katalóg objektov: S-line Scan 800, S-line Comp, Splitter 1×4 / 1×8 / 4×16 / 4×32 a Switch 1×4 / 1×8 / 4×16 / 4×32 (viacvstupové majú vstupné porty vľavo a mriežku výstupov vpravo).',
+  ] },
   { v: '1.68.0', date: '15. 6. 2026', tag: 'feat', items: [
     'Stav projektu (Aktívny / Pozastavený / Dokončený / Zrušený) — nastaviteľný v detaile, zobrazený ako farebný odznak v detaile aj v zozname.',
   ] },
@@ -8370,16 +8374,21 @@ async function deleteCrmEmail(id) {
 let bbList = [], bbDoc = null, bbSel = null, bbConnect = null, bbAnim = true, bbDrag = null, bbRenderReq = false;
 // Katalóg komponentov (Sylex FBG monitoring system)
 const BB_TYPES = {
-  scan:      { label: 'S-line Scan 800',    grp: 'interr', fill: '#222a33', text: '#fff',     ports: 4,  w: 168, h: 58 },
-  scan1:     { label: 'S-line Scan 800 (1 kanál)', grp: 'interr', fill: '#222a33', text: '#fff', ports: 1, w: 176, h: 58 },
-  scan16:    { label: 'S-line Scan + Switch 1×16', grp: 'interr', fill: '#222a33', text: '#fff', combo: true,
-               units: [{ name: 'S-line Scan 800', ports: 1 }, { name: 'S-line Switch 1×16', ports: 16 }], ports: 16, w: 214, h: 104 },
-  scan8:     { label: 'S-line Scan + Splitter 1×8', grp: 'interr', fill: '#222a33', text: '#fff', combo: true,
-               units: [{ name: 'S-line Scan 800', ports: 1 }, { name: 'S-line Splitter 1×8', ports: 8 }], ports: 8, w: 204, h: 104 },
-  switch:    { label: 'S-line Switch 1×16', grp: 'interr', fill: '#222a33', text: '#fff',     ports: 8,  w: 196, h: 58 },
-  splitter8: { label: 'S-line Splitter 1×8',grp: 'interr', fill: '#222a33', text: '#fff',     ports: 8,  w: 184, h: 58 },
-  comp:      { label: 'S-line Comp (PC)',    grp: 'interr', fill: '#2a313b', text: '#fff',     ports: 0,  w: 152, h: 58 },
-  interrogator:{ label: 'Interrogátor',      grp: 'interr', fill: '#222a33', text: '#fff',     ports: 4,  w: 160, h: 58 },
+  // S-line zariadenia (zelené telo, čierny panel) — podľa oficiálneho katalógu Sylex
+  scan:         { label: 'S-line Scan 800',     grp: 'interr', dev: 'scan',  w: 234, h: 44 },
+  comp:         { label: 'S-line Comp',          grp: 'interr', dev: 'comp',  w: 234, h: 44 },
+  splitter1x4:  { label: 'S-line Splitter 1×4',  grp: 'interr', dev: 'ports', inN: 1, outN: 4,  w: 226, h: 44 },
+  splitter8:    { label: 'S-line Splitter 1×8',  grp: 'interr', dev: 'ports', inN: 1, outN: 8,  w: 262, h: 44 },
+  splitter4x16: { label: 'S-line Splitter 4×16', grp: 'interr', dev: 'ports', inN: 4, outN: 16, w: 300, h: 62 },
+  splitter4x32: { label: 'S-line Splitter 4×32', grp: 'interr', dev: 'ports', inN: 4, outN: 32, w: 304, h: 96 },
+  switch1x4:    { label: 'S-line Switch 1×4',    grp: 'interr', dev: 'ports', inN: 1, outN: 4,  w: 226, h: 44 },
+  switch1x8:    { label: 'S-line Switch 1×8',    grp: 'interr', dev: 'ports', inN: 1, outN: 8,  w: 262, h: 44 },
+  switch4x16:   { label: 'S-line Switch 4×16',   grp: 'interr', dev: 'ports', inN: 4, outN: 16, w: 300, h: 62 },
+  switch4x32:   { label: 'S-line Switch 4×32',   grp: 'interr', dev: 'ports', inN: 4, outN: 32, w: 304, h: 96 },
+  // legacy kľúče (zachované pre staré topológie; nie sú v palete)
+  switch:       { label: 'S-line Switch 1×16',   grp: 'interr', dev: 'ports', inN: 1, outN: 16, w: 300, h: 62 },
+  interrogator: { label: 'Interrogátor',         grp: 'interr', dev: 'scan',  w: 200, h: 44 },
+  // ostatné komponenty
   wcb:       { label: 'WCB-01 Connection box',grp: 'box',   fill: '#2c322a', text: '#fff',     ports: 0,  w: 186, h: 58 },
   splitter:  { label: 'Splitter 1×4',        grp: 'box',    fill: '#2f6b22', text: '#fff',     ports: 4,  w: 138, h: 50 },
   patch:     { label: 'Prepojovacia',        grp: 'box',    fill: '#2f6b22', text: '#fff',     ports: 2,  w: 134, h: 50 },
@@ -8387,7 +8396,7 @@ const BB_TYPES = {
   sensors:   { label: 'Senzory',             grp: 'sensor', fill: '#f4f6f3', text: '#14321a', tip: '#8DC63F', ports: 0, w: 156, h: 44 },
 };
 const BB_TYPE_LABEL = Object.fromEntries(Object.entries(BB_TYPES).map(([k, v]) => [k, v.label]));
-const BB_GROUPS = { interr: 'Interrogátor', box: 'Rozvádzač / splitter', sensor: 'Senzor' };
+const BB_GROUPS = { interr: 'S-line zariadenia', box: 'Rozvádzač / splitter', sensor: 'Senzor' };
 // Inline komponenty na kábli (korálky)
 const BB_PARTS = { conn: 'Konektor', 'WSP-01': 'WSP-01', 'WCP-01': 'WCP-01', 'FSP-01': 'FSP-01', 'LCP-03': 'LCP-03', 'WPA-01': 'WPA-01' };
 const BB_PART_NAME = { conn: 'Konektorové spojenie', 'WSP-01': 'WSP-01 splice protection', 'WCP-01': 'WCP-01 watertight conn.', 'FSP-01': 'FSP-01 fiber splice', 'LCP-03': 'LCP-03 pigtail', 'WPA-01': 'WPA-01 vodeodolné kon. spojenie' };
@@ -8440,52 +8449,52 @@ function bbDefs() {
   return `<defs>
     <filter id="bbGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <linearGradient id="bbFace" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(255,255,255,0.14)"/><stop offset="0.5" stop-color="rgba(255,255,255,0.02)"/><stop offset="1" stop-color="rgba(0,0,0,0.22)"/></linearGradient>
+    <linearGradient id="bbGreen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8ec63f"/><stop offset="0.55" stop-color="#6fae33"/><stop offset="1" stop-color="#588f27"/></linearGradient>
   </defs>`;
 }
 // Vykreslenie realistického zariadenia (podľa Sylex S-line / WCB / FBG)
 function bbNodeInner(n, ty, w, h) {
   const lbl = escHtml(n.label || '(uzol)');
   const T = (x, y, s, anchor) => `<text x="${x}" y="${y}" text-anchor="${anchor || 'middle'}" style="${s}">`;
-  // Kombinované zariadenie — dve zariadenia natrvalo spolu (napr. Scan 800 + Switch/Splitter)
-  if (ty.combo) {
-    const gap = 8, uh = (h - gap) / 2;
-    let out = '';
-    ty.units.forEach((u, ui) => {
-      const yo = ui * (uh + gap);
-      const pn = Math.min(u.ports || 0, 12);
-      let ports = '';
-      for (let i = 0; i < pn; i++) { const cx = 16 + i * (w - 32) / Math.max(1, pn - 1); ports += `<circle class="bb-fc" cx="${cx}" cy="${yo + uh - 9}" r="3.2"/><circle class="bb-fc-i" cx="${cx}" cy="${yo + uh - 9}" r="1.3"/>`; }
-      out += `
-        <rect class="bb-dev-body" y="${yo}" width="${w}" height="${uh}" rx="5" style="fill:${ty.fill}"/>
-        <rect class="bb-dev-face" x="3" y="${yo + 3}" width="${w - 6}" height="${uh - 6}" rx="3"/>
-        <rect class="bb-dev-accent" x="3" y="${yo + 3}" width="6" height="${uh - 6}"/>
-        <rect class="bb-lcd" x="13" y="${yo + 7}" width="50" height="13" rx="2"/>${T(38, yo + 17, 'font-family:monospace;font-size:7px;fill:#7ee06a;letter-spacing:.3px')}S-line</text>
-        <circle class="bb-led on" cx="${w - 12}" cy="${yo + 11}" r="2.4"/>
-        <circle class="bb-led" cx="${w - 21}" cy="${yo + 11}" r="2.4"/>
-        ${T(w / 2 + 6, yo + uh / 2 + 5, `font-family:var(--font);font-size:10.5px;font-weight:700;fill:${ty.text}`)}${escHtml(u.name)}</text>
-        ${ports}`;
-    });
-    // interný patchcord — zariadenia sú pevne prepojené (preto idú vždy spolu)
-    out += `<line class="bb-fan" x1="16" y1="${uh - 9}" x2="16" y2="${uh + gap + uh / 2}"/><circle class="bb-fc-i" cx="16" cy="${uh + gap + uh / 2}" r="1.6"/>`;
-    return out;
-  }
+  // S-line zariadenie — zelené telo, čierny panel, ozubené koliesko, biele FC porty (podľa katalógu Sylex)
   if (ty.grp === 'interr') {
-    const isComp = n.type === 'comp';
-    const pn = Math.min(ty.ports || 0, 12);
-    let ports = '';
-    for (let i = 0; i < pn; i++) { const cx = 16 + i * (w - 32) / Math.max(1, pn - 1); ports += `<circle class="bb-fc" cx="${cx}" cy="${h - 10}" r="3.4"/><circle class="bb-fc-i" cx="${cx}" cy="${h - 10}" r="1.4"/>`; }
-    const screen = isComp
-      ? `<rect class="bb-lcd" x="13" y="9" width="${w - 26}" height="20" rx="2"/>${T(w / 2, 22, 'font-family:monospace;font-size:8px;fill:#7ee06a')}S-line Comp</text>`
-      : `<rect class="bb-lcd" x="13" y="9" width="58" height="16" rx="2"/>${T(42, 20, 'font-family:monospace;font-size:8px;fill:#7ee06a;letter-spacing:.4px')}S-line</text>`;
+    const dev = ty.dev || 'ports';
+    const outN = ty.outN || 0, inN = ty.inN || 1;
+    const perRow = 8, gap = 13.5;
+    // ozubené koliesko (vľavo hore)
+    const gear = `<circle class="bb-sl-gear" cx="16" cy="13" r="6"/><circle class="bb-sl-gear-h" cx="16" cy="13" r="2"/>`;
+    // vstupné porty (kombinátor) pri viacvstupových zariadeniach (4×N)
+    let inDots = '', labelX = 30;
+    if (dev === 'ports' && inN >= 2) {
+      const icol = 2, irow = Math.ceil(inN / icol), ig = 10, ix0 = 13, iy0 = h / 2 - (irow - 1) * ig / 2;
+      for (let i = 0; i < inN; i++) { const r = Math.floor(i / icol), c = i % icol; inDots += `<circle class="bb-sl-inport" cx="${ix0 + c * ig}" cy="${iy0 + r * ig}" r="2.6"/>`; }
+      labelX = ix0 + icol * ig + 8;
+    }
+    // výstupné FC porty — mriežka po 8 v rade, zarovnaná vpravo
+    let portsSvg = '';
+    if (dev === 'ports' && outN > 0) {
+      const cols = Math.min(perRow, outN), rows = Math.ceil(outN / perRow);
+      const gx0 = w - 16 - (cols - 1) * gap, gy0 = h / 2 - (rows - 1) * gap / 2;
+      for (let i = 0; i < outN; i++) { const r = Math.floor(i / perRow), c = i % perRow; portsSvg += `<circle class="bb-sl-port" cx="${gx0 + c * gap}" cy="${gy0 + r * gap}" r="3.3"/>`; }
+    }
+    // pravé ikony: Scan = displej + vypínač, Comp = rad konektorov (USB/RJ45/VGA/napájanie)
+    let rightIcons = '';
+    if (dev === 'scan') {
+      const ry = h / 2;
+      rightIcons = `<rect class="bb-sl-disp" x="${w - 60}" y="${ry - 8}" width="26" height="16" rx="2"/>`
+        + `<rect class="bb-sl-pwr" x="${w - 24}" y="${ry - 9}" width="13" height="18" rx="2"/>`
+        + `<line class="bb-sl-pwr-i" x1="${w - 17.5}" y1="${ry - 5}" x2="${w - 17.5}" y2="${ry + 1}"/>`;
+    } else if (dev === 'comp') {
+      const icons = [{ w: 8, h: 10 }, { w: 8, h: 10 }, { w: 11, h: 11 }, { w: 14, h: 9 }, { w: 9, h: 13 }];
+      let x = w - 14;
+      for (let i = icons.length - 1; i >= 0; i--) { const ic = icons[i]; x -= ic.w; rightIcons = `<rect class="bb-sl-io" x="${x}" y="${h / 2 - ic.h / 2}" width="${ic.w}" height="${ic.h}" rx="1.5"/>` + rightIcons; x -= 5; }
+    }
     return `
-      <rect class="bb-dev-body" width="${w}" height="${h}" rx="6" style="fill:${ty.fill}"/>
-      <rect class="bb-dev-face" x="3" y="3" width="${w - 6}" height="${h - 6}" rx="4"/>
-      <rect class="bb-dev-accent" x="3" y="3" width="6" height="${h - 6}"/>
-      ${screen}
-      <circle class="bb-led on" cx="${w - 12}" cy="13" r="2.7"/>
-      <circle class="bb-led" cx="${w - 22}" cy="13" r="2.7"/>
-      ${T(w / 2 + 3, h / 2 + 6, `font-family:var(--font);font-size:12.5px;font-weight:700;fill:${ty.text}`)}${lbl}</text>
-      ${ports}`;
+      <rect class="bb-sl-body" width="${w}" height="${h}" rx="11" fill="url(#bbGreen)"/>
+      <rect class="bb-sl-panel" x="5" y="5" width="${w - 10}" height="${h - 10}" rx="7"/>
+      ${gear}${inDots}
+      ${T(labelX, h / 2 + 4, 'font-family:var(--font);font-size:11px;font-weight:700;fill:#ffffff', 'start')}${lbl}</text>
+      ${portsSvg}${rightIcons}`;
   }
   if (n.type === 'wcb') {
     return `
