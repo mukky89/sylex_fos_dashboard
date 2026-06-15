@@ -5170,6 +5170,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.72.0', date: '15. 6. 2026', tag: 'feat', items: [
+    'Backbone: interaktívne editovanie trasy káblov — ťahaním kábla myšou pridáš ohyb, ťahaním bodu ho posunieš, dvojklik bod odstráni.',
+    'Backbone: rohy trás sú zaoblené (90° → oblúk) pre čistejší vzhľad; v paneli kábla pribudlo „Vyrovnať trasu".',
+  ] },
   { v: '1.71.0', date: '15. 6. 2026', tag: 'feat', items: [
     'Backbone: FBG senzory podľa meranej veličiny — farebne odlíšené s ikonou (teplota, pnutie/strain, akcelerometer, posun/konvergencia, náklon/inklinometer, tlak/piezometer).',
     'Backbone: legenda na plátne (aj v PNG exporte) a súhrnný panel projektu — počet zariadení, FBG senzorov, dĺžka kábla a prehľad meraných veličín.',
@@ -8457,10 +8461,31 @@ async function seedBackboneData() {
 function bbLinkPts(l) {
   const a = bbNode(l.from), b = bbNode(l.to); if (!a || !b) return null;
   const x1 = a.x + bbNodeW(a), y1 = a.y + bbNodeH(a) / 2, x2 = b.x, y2 = b.y + bbNodeH(b) / 2;
+  // vlastná trasa cez body, ktoré používateľ ťahá myšou
+  if (l.waypoints && l.waypoints.length) return [[x1, y1], ...l.waypoints.map(p => [p.x, p.y]), [x2, y2]];
+  // predvolená ortogonálna trasa (Z) s ohybom v strede
   const mx = Math.max(x1 + 16, (x1 + x2) / 2);
   return [[x1, y1], [mx, y1], [mx, y2], [x2, y2]];
 }
-function bbPathD(pts) { return 'M' + pts.map(p => p[0] + ',' + p[1]).join(' L'); }
+// polomer zaoblenia rohov trasy (90° → oblúk)
+const BB_CORNER_R = 16;
+function bbPathD(pts) {
+  if (!pts || pts.length < 2) return '';
+  if (pts.length < 3) return 'M' + pts.map(p => p[0] + ',' + p[1]).join(' L');
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1], p1 = pts[i], p2 = pts[i + 1];
+    const v1x = p1[0] - p0[0], v1y = p1[1] - p0[1], v2x = p2[0] - p1[0], v2y = p2[1] - p1[1];
+    const l1 = Math.hypot(v1x, v1y) || 1, l2 = Math.hypot(v2x, v2y) || 1;
+    const r = Math.min(BB_CORNER_R, l1 / 2, l2 / 2);
+    const ax = p1[0] - v1x / l1 * r, ay = p1[1] - v1y / l1 * r;
+    const cx = p1[0] + v2x / l2 * r, cy = p1[1] + v2y / l2 * r;
+    d += ` L${ax.toFixed(1)},${ay.toFixed(1)} Q${p1[0]},${p1[1]} ${cx.toFixed(1)},${cy.toFixed(1)}`;
+  }
+  const last = pts[pts.length - 1];
+  d += ` L${last[0]},${last[1]}`;
+  return d;
+}
 function bbDefs() {
   return `<defs>
     <filter id="bbGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
@@ -8561,12 +8586,18 @@ function bbRender() {
   bbDoc.nodes.forEach(n => { maxX = Math.max(maxX, n.x + bbNodeW(n) + 250); maxY = Math.max(maxY, n.y + bbNodeH(n) + 60); });
   if (bbLegend) { maxX = Math.max(maxX, 260); maxY = Math.max(maxY, 280); }
   svg.setAttribute('width', maxX); svg.setAttribute('height', maxY); svg.setAttribute('viewBox', `0 0 ${maxX} ${maxY}`);
-  let links = '', flows = '', labels = '', beads = '', photons = '';
+  let links = '', flows = '', labels = '', beads = '', photons = '', handles = '';
   bbDoc.links.forEach(l => {
     const pts = bbLinkPts(l); if (!pts) return;
     const d = bbPathD(pts);
     const sel = bbSel && bbSel.kind === 'link' && bbSel.id === l.lid;
+    // široká priehľadná dráha na ľahšie chytenie myšou
+    links += `<path class="bb-link-hit" data-lid="${l.lid}" d="${d}"/>`;
     links += `<path class="bb-link${sel ? ' sel' : ''}" data-lid="${l.lid}" d="${d}"/>`;
+    // úchyty trasy (body) — len pre vybraný kábel
+    if (sel) (l.waypoints || []).forEach((wp, wi) => {
+      handles += `<circle class="bb-wp" data-lid="${l.lid}" data-idx="${wi}" cx="${wp.x}" cy="${wp.y}" r="6"><title>Ťahaj = posun bodu · dvojklik = odstrániť</title></circle>`;
+    });
     flows += `<path class="bb-flow" d="${d}"/>`
           +  `<path class="bb-flow bb-flow-rx" d="${d}"/>`;
     // dopredný (širokopásmový) signál: interrogátor → zariadenie
@@ -8591,7 +8622,7 @@ function bbRender() {
       ${selRect}${bbNodeInner(n, ty, w, h)}
     </g>`;
   });
-  svg.innerHTML = `${bbDefs()}<g>${links}</g><g class="bb-flows">${flows}${photons}</g><g>${labels}</g><g class="bb-beads">${beads}</g><g>${nodes}</g>${bbLegendSvg(maxX)}`;
+  svg.innerHTML = `${bbDefs()}<g>${links}</g><g class="bb-flows">${flows}${photons}</g><g>${labels}</g><g class="bb-beads">${beads}</g><g>${nodes}</g><g class="bb-handles">${handles}</g>${bbLegendSvg(maxX)}`;
 }
 function bbScheduleRender() { if (bbRenderReq) return; bbRenderReq = true; requestAnimationFrame(() => { bbRenderReq = false; bbRender(); }); }
 
@@ -8674,6 +8705,9 @@ function bbKeyDown(e) {
 // Dvojklik = úprava popisu uzla / kábla priamo na plátne
 function bbDblClick(e) {
   if (!bbDoc) return;
+  // dvojklik na bod trasy = odstrániť ho
+  const wpel = e.target.closest('.bb-wp');
+  if (wpel) { const l = bbDoc.links.find(x => x.lid === wpel.dataset.lid); if (l && l.waypoints) { l.waypoints.splice(+wpel.dataset.idx, 1); bbRender(); bbPanelRender(); } return; }
   const ng = e.target.closest('.bb-node');
   if (ng) { const n = bbNode(ng.dataset.nid); if (n) bbInlineEdit(ng, n.label || '', v => { n.label = v; }); return; }
   const el = e.target.closest('.bb-bead') || e.target.closest('.bb-link');
@@ -8699,19 +8733,56 @@ function bbInlineEdit(targetEl, value, commit) {
   wrap.appendChild(inp); inp.focus(); inp.select();
 }
 function bbClientToSvg(e) { const svg = document.getElementById('bbSvg'); const r = svg.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+// vzdialenosť bodu od úsečky (pre vloženie bodu trasy do správneho segmentu)
+function bbSegDist(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], len2 = dx * dx + dy * dy || 1;
+  let t = ((p.x - a[0]) * dx + (p.y - a[1]) * dy) / len2; t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a[0] + t * dx), p.y - (a[1] + t * dy));
+}
+// vloží bod trasy do najbližšieho segmentu kábla, vráti jeho index
+function bbInsertWaypoint(l, at) {
+  const pts = bbLinkPts(l); l.waypoints = l.waypoints || [];
+  if (!l.waypoints.length) { l.waypoints.push({ x: at.x, y: at.y }); return 0; }
+  let best = 0, bestD = Infinity;
+  for (let i = 0; i < pts.length - 1; i++) { const d = bbSegDist(at, pts[i], pts[i + 1]); if (d < bestD) { bestD = d; best = i; } }
+  const idx = Math.max(0, Math.min(l.waypoints.length, best));
+  l.waypoints.splice(idx, 0, { x: at.x, y: at.y });
+  return idx;
+}
+function bbResetWaypoints(lid) { const l = bbDoc.links.find(x => x.lid === lid); if (!l) return; l.waypoints = []; bbRender(); bbPanelRender(); }
 function bbPointerDown(e) {
   if (!bbDoc) return;
   const ng = e.target.closest('.bb-node');
   if (ng) { const n = bbNode(ng.dataset.nid); if (!n) return; const p = bbClientToSvg(e); bbDrag = { nid: n.nid, dx: p.x - n.x, dy: p.y - n.y, moved: false, sx: e.clientX, sy: e.clientY }; document.getElementById('bbCanvasWrap')?.classList.add('bb-dragging'); return; }
+  // ťahanie bodu trasy kábla
+  const wp = e.target.closest('.bb-wp');
+  if (wp) { bbSelect('link', wp.dataset.lid); bbDrag = { kind: 'wp', lid: wp.dataset.lid, idx: +wp.dataset.idx, moved: false, sx: e.clientX, sy: e.clientY }; document.getElementById('bbCanvasWrap')?.classList.add('bb-dragging'); return; }
   const bd = e.target.closest('.bb-bead');
   if (bd) { bbSelect('link', bd.dataset.lid); return; }
-  const lk = e.target.closest('.bb-link');
-  if (lk) { bbSelect('link', lk.dataset.lid); return; }
+  // ťahanie samotného kábla = vloženie/posun bodu trasy
+  const lk = e.target.closest('.bb-link-hit') || e.target.closest('.bb-link');
+  if (lk) { const p = bbClientToSvg(e); bbSelect('link', lk.dataset.lid); bbDrag = { kind: 'linkmaybe', lid: lk.dataset.lid, at: { x: Math.round(p.x), y: Math.round(p.y) }, moved: false, sx: e.clientX, sy: e.clientY }; return; }
   bbSelect(null);
 }
 function bbPointerMove(e) {
   if (!bbDrag) return;
-  const p = bbClientToSvg(e), n = bbNode(bbDrag.nid); if (!n) return;
+  const p = bbClientToSvg(e);
+  if (bbDrag.kind === 'wp') {
+    const l = bbDoc.links.find(x => x.lid === bbDrag.lid); if (!l || !l.waypoints || !l.waypoints[bbDrag.idx]) return;
+    l.waypoints[bbDrag.idx].x = Math.max(0, Math.round(p.x)); l.waypoints[bbDrag.idx].y = Math.max(0, Math.round(p.y));
+    bbDrag.moved = true; bbScheduleRender(); return;
+  }
+  if (bbDrag.kind === 'linkmaybe') {
+    if (Math.abs(e.clientX - bbDrag.sx) + Math.abs(e.clientY - bbDrag.sy) > 4) {
+      const l = bbDoc.links.find(x => x.lid === bbDrag.lid); if (!l) return;
+      const idx = bbInsertWaypoint(l, bbDrag.at);
+      bbDrag = { kind: 'wp', lid: bbDrag.lid, idx, moved: true, sx: bbDrag.sx, sy: bbDrag.sy };
+      document.getElementById('bbCanvasWrap')?.classList.add('bb-dragging');
+      bbScheduleRender();
+    }
+    return;
+  }
+  const n = bbNode(bbDrag.nid); if (!n) return;
   n.x = Math.max(0, Math.round(p.x - bbDrag.dx)); n.y = Math.max(0, Math.round(p.y - bbDrag.dy));
   if (Math.abs(e.clientX - bbDrag.sx) + Math.abs(e.clientY - bbDrag.sy) > 3) bbDrag.moved = true;
   bbScheduleRender();
@@ -8719,6 +8790,7 @@ function bbPointerMove(e) {
 function bbPointerUp() {
   document.getElementById('bbCanvasWrap')?.classList.remove('bb-dragging');
   if (!bbDrag) return;
+  if (bbDrag.kind === 'wp' || bbDrag.kind === 'linkmaybe') { bbDrag = null; bbRender(); return; }
   if (!bbDrag.moved) {
     if (bbConnect && bbConnect !== bbDrag.nid) { bbCreateLink(bbConnect, bbDrag.nid); bbConnect = null; }
     else bbSelect('node', bbDrag.nid);
@@ -8792,6 +8864,10 @@ function bbPanelRender() {
         <div class="bb-parts">${partsHtml}</div>
         <div class="bb-part-add"><select id="bbPartSel">${Object.entries(BB_PART_NAME).map(([k, v]) => `<option value="${k}">${escHtml(v)}</option>`).join('')}</select><button class="btn-secondary btn-sm" onclick="bbPartAdd('${l.lid}')">+ Pridať</button></div>
       </div>
+      <div class="form-group"><label>Trasa kábla</label>
+        <div class="bb-route-hint">Ťahaj kábel myšou = pridáš ohyb · ťahaj bod = posun · dvojklik na bod = odstrániť. Rohy sú zaoblené.</div>
+        <button class="btn-secondary btn-sm bb-panel-btn" onclick="bbResetWaypoints('${l.lid}')">↺ Vyrovnať trasu (${(l.waypoints || []).length} bodov)</button>
+      </div>
       <button class="btn-delete bb-panel-btn" onclick="bbDeleteLink('${l.lid}')">Odstrániť kábel</button>`;
   }
 }
@@ -8801,6 +8877,7 @@ function bbPartDel(lid, i) { const l = bbDoc.links.find(x => x.lid === lid); if 
 
 function bbAutoLayout() {
   if (!bbDoc) return;
+  bbDoc.links.forEach(l => l.waypoints = []); // pri automatickom rozložení vyrovnaj trasy
   const incoming = {}; bbDoc.links.forEach(l => incoming[l.to] = (incoming[l.to] || 0) + 1);
   const children = {}; bbDoc.links.forEach(l => (children[l.from] = children[l.from] || []).push(l.to));
   const depth = {}; const roots = bbDoc.nodes.filter(n => !incoming[n.nid]);
