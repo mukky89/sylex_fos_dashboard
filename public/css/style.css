@@ -1796,7 +1796,10 @@ body {
 /* Toolbar (month nav) */
 .cal-toolbar {
   display: flex; align-items: center; gap: 16px;
-  margin-bottom: 16px; flex-wrap: wrap;
+  flex-wrap: wrap;
+  position: sticky; top: var(--header-h); z-index: 40;
+  background: var(--hdr-bg); padding: 10px 0; margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 .cal-nav { display: flex; align-items: center; gap: 6px; }
 .cal-nav-btn {
@@ -1829,11 +1832,13 @@ body {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow: visible;
 }
 .cal-weekdays {
   display: grid; grid-template-columns: repeat(7, 1fr);
   border-bottom: 1px solid rgba(255,255,255,0.1);
+  position: sticky; top: var(--cal-sticky-top, 116px); z-index: 30;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 .cal-weekdays > div {
   padding: 10px 8px; text-align: center;
@@ -4180,7 +4185,7 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 /* Časová mriežka (týždeň / deň) */
 .ctg { --gutter: 54px; }
 .ctg-head, .ctg-allday { display: grid; grid-template-columns: var(--gutter) repeat(var(--ctg-days), minmax(0,1fr)); }
-.ctg-head { border-bottom: 1px solid rgba(255,255,255,0.1); }
+.ctg-head { border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: var(--cal-sticky-top, 116px); z-index: 30; background: #141a2e; }
 .ctg-dayhdr { padding: 8px 4px; text-align: center; font-size: 0.78rem; color: #cbd5e1; border-left: 1px solid rgba(255,255,255,0.07); cursor: pointer; white-space: nowrap; }
 .ctg-dayhdr:hover { background: rgba(255,255,255,0.04); }
 .ctg-dayhdr.ctg-today { color: #67e8f9; }
@@ -4308,7 +4313,7 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .calendar-page #calPerson, .calendar-page .util-select { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #e2e8f0; }
 
 .calendar-page .cal-grid-wrap { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); }
-.calendar-page .cal-weekdays { background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.1); }
+.calendar-page .cal-weekdays { background: #141a2e; border-bottom: 1px solid rgba(255,255,255,0.1); }
 .calendar-page .cal-weekdays > div { color: rgba(255,255,255,0.45); }
 .calendar-page .cal-weekdays .cal-weekend { color: rgba(248,113,113,0.6); }
 .calendar-page .cal-cell { border-right: 1px solid rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.06); }
