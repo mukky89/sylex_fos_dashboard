@@ -2721,8 +2721,16 @@ body {
 .pjcfg-col > input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); border-radius: 7px; color: #e2e8f0; padding: 7px 10px; font-size: 0.86rem; }
 .pjcfg-add { margin-top: 8px; }
 @media (max-width: 860px) { .pjcfg-grid { grid-template-columns: 1fr; } }
-.pj-col-filter { font-family: var(--font); font-size: 0.72rem; font-weight: 600; color: #e2e8f0; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; padding: 3px 6px; cursor: pointer; max-width: 150px; text-transform: none; }
+.pj-col-filter { font-family: var(--font); font-size: 0.72rem; font-weight: 600; color: #e2e8f0; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; padding: 4px 7px; cursor: pointer; max-width: 100%; width: 100%; text-transform: none; }
 .pj-col-filter:focus { outline: none; border-color: var(--accent); }
+/* filtračný riadok nad stĺpcami zoznamu projektov */
+.pj-filter-row th { padding: 7px 10px !important; background: rgba(255,255,255,0.015); border-bottom: 1px solid rgba(255,255,255,0.1); vertical-align: top; }
+.pj-fcell { display: flex; flex-direction: column; gap: 5px; max-width: 230px; }
+.pj-fcell .pj-col-filter { cursor: pointer; }
+.pj-filter-row th:last-child { display: flex; align-items: center; gap: 6px; }
+.pj-filter-clear { flex-shrink: 0; width: 26px; height: 26px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #fca5a5; cursor: pointer; font-size: 0.8rem; }
+.pj-filter-clear:hover { background: rgba(239,68,68,0.18); }
+.pj-filter-badge { font-size: 0.62rem; font-weight: 700; color: #67e8f9; background: rgba(103,232,249,0.12); border: 1px solid rgba(103,232,249,0.3); border-radius: 100px; padding: 1px 7px; margin-left: 4px; text-transform: none; letter-spacing: 0; }
 .pj-par-chip { display: inline-flex; align-items: center; gap: 4px; margin-top: 7px; font-size: 0.68rem; font-weight: 600; color: var(--c, #94a3b8); background: color-mix(in srgb, var(--c, #64748b) 16%, transparent); border: 1px solid color-mix(in srgb, var(--c, #64748b) 38%, transparent); border-radius: 100px; padding: 2px 9px; white-space: nowrap; }
 
 /* Detail projektu — samostatná stránka */

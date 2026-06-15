@@ -4332,6 +4332,9 @@ const PJ_STATUS_ORDER = ['active', 'onhold', 'done', 'cancelled'];
 let projectsData = [];
 let _dragPid = null;
 let pjView = 'list', pjWorkflow = 'development', pjDelivFilter = 'all';
+let pjFilters = { text: '', status: '', owner: '', sales: '', dev: '', deadline: '' };
+function pjSetFilter(key, val) { pjFilters[key] = val; renderProjects(); }
+function pjClearFilters() { pjFilters = { text: '', status: '', owner: '', sales: '', dev: '', deadline: '' }; pjDelivFilter = 'all'; const s = document.getElementById('projSearch'); if (s) s.value = ''; renderProjects(); }
 
 function pjStages(wf) { return (PJ_WORKFLOWS[wf || pjWorkflow] || PJ_WORKFLOWS.development).stages; }
 // Dual-track: projekt môže mať súčasne predajný aj vývojový proces (legacy fallback z workflow/phase)
@@ -4463,6 +4466,50 @@ function pjDelivFilterOpts() {
     <optgroup label="Má hotový výstup">${done}</optgroup><optgroup label="Chýba výstup">${miss}</optgroup></select>`;
 }
 function pjSetDelivFilter(v) { pjDelivFilter = v; renderProjects(); }
+// Sofistikované filtre nad stĺpcami zoznamu
+function pjListMatch(p) {
+  const f = pjFilters;
+  if (f.text) { const t = f.text.toLowerCase(); if (!((p.title || '').toLowerCase().includes(t) || (p.code || '').toLowerCase().includes(t))) return false; }
+  if (f.status && (p.status || 'active') !== f.status) return false;
+  if (f.owner && (p.owner || '') !== f.owner) return false;
+  if (f.sales && pjRepStage(p, 'sales') !== f.sales) return false;
+  if (f.dev && pjRepStage(p, 'development') !== f.dev) return false;
+  if (f.deadline) {
+    const dl = p.deadline ? new Date(p.deadline) : null, now = new Date();
+    if (f.deadline === 'none' && dl) return false;
+    if (f.deadline === 'has' && !dl) return false;
+    if (f.deadline === 'overdue' && !(dl && dl < now)) return false;
+    if (f.deadline === 'month') { if (!dl || dl.getFullYear() !== now.getFullYear() || dl.getMonth() !== now.getMonth()) return false; }
+  }
+  return true;
+}
+function pjOwnerOptions() {
+  const owners = [...new Set(projectsData.map(p => (p.owner || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'sk'));
+  return `<option value="">— ktokoľvek —</option>` + owners.map(o => `<option value="${escHtml(o)}"${pjFilters.owner === o ? ' selected' : ''}>${escHtml(o)}</option>`).join('');
+}
+function pjStatusFilterOptions() {
+  return `<option value="">— všetky —</option>` + PJ_STATUS_ORDER.map(k => `<option value="${k}"${pjFilters.status === k ? ' selected' : ''}>${PJ_STATUS[k].l}</option>`).join('');
+}
+function pjStageFilterOptions(wf, sel) {
+  return `<option value="">${wf === 'sales' ? '💼 predaj' : '🛠 vývoj'}: všetky</option>` + pjStages(wf).map(s => `<option value="${s.key}"${sel === s.key ? ' selected' : ''}>${escHtml(s.label)}</option>`).join('');
+}
+function pjDeadlineFilterOptions() {
+  const opt = (v, l) => `<option value="${v}"${pjFilters.deadline === v ? ' selected' : ''}>${l}</option>`;
+  return opt('', '— všetky —') + opt('overdue', '⚠ po termíne') + opt('month', 'tento mesiac') + opt('has', 's termínom') + opt('none', 'bez termínu');
+}
+function pjListFilterRow() {
+  return `<tr class="pj-filter-row">
+    <th><input type="text" class="pj-col-filter" placeholder="Hľadať projekt / kód…" value="${escHtml(pjFilters.text)}" oninput="pjSetFilter('text',this.value)"></th>
+    <th><select class="pj-col-filter" onchange="pjSetFilter('status',this.value)">${pjStatusFilterOptions()}</select></th>
+    <th><div class="pj-fcell">
+      <select class="pj-col-filter" onchange="pjSetFilter('sales',this.value)">${pjStageFilterOptions('sales', pjFilters.sales)}</select>
+      <select class="pj-col-filter" onchange="pjSetFilter('dev',this.value)">${pjStageFilterOptions('development', pjFilters.dev)}</select>
+      ${pjDelivFilterOpts()}
+    </div></th>
+    <th><select class="pj-col-filter" onchange="pjSetFilter('owner',this.value)">${pjOwnerOptions()}</select></th>
+    <th><select class="pj-col-filter" onchange="pjSetFilter('deadline',this.value)">${pjDeadlineFilterOptions()}</select><button class="pj-filter-clear" title="Zrušiť filtre" onclick="pjClearFilters()">✕</button></th>
+  </tr>`;
+}
 function renderProjects() {
   const host = document.getElementById('projectsBoard'); if (!host) return;
   _segActive('pjViewSeg', { kanban: 0, list: 1, gantt: 2 }[pjView]);
@@ -4472,8 +4519,8 @@ function renderProjects() {
   const match = p => !q || (p.title || '').toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q) || (p.owner || '').toLowerCase().includes(q);
   host.style.gridTemplateColumns = '';
   if (pjView === 'list') {
-    // zoznam: zobraz oba procesy (predaj aj vývoj) + filter podľa výstupov
-    const items = projectsData.filter(p => (pjActive(p, 'sales') || pjActive(p, 'development')) && match(p) && pjDelivMatch(p));
+    // zoznam: zobraz oba procesy (predaj aj vývoj) + sofistikované filtre nad stĺpcami
+    const items = projectsData.filter(p => (pjActive(p, 'sales') || pjActive(p, 'development')) && match(p) && pjDelivMatch(p) && pjListMatch(p));
     host.className = ''; renderPjList(host, items);
   } else {
     const items = projectsData.filter(p => pjActive(p, pjWorkflow) && match(p));
@@ -4559,9 +4606,17 @@ function renderPjList(host, items) {
       <td class="${overdue ? 'kanban-overdue' : ''}">${dl ? fmtDate(p.deadline) : '—'}</td>
     </tr>`;
   }).join('');
+  const active = pjListActiveCount();
   host.innerHTML = `<div class="prod-list pj-list-wrap"><table class="prod-table">
-    <thead><tr><th>Projekt</th><th>Stav</th><th><div class="pj-col-hd">Procesy &amp; výstupy ${pjDelivFilterOpts()}</div></th><th>Vlastník</th><th>Termín</th></tr></thead>
+    <thead><tr><th>Projekt</th><th>Stav</th><th>Procesy &amp; výstupy</th><th>Vlastník</th><th>Termín ${active ? `<span class="pj-filter-badge" title="Aktívne filtre">filtre: ${active} · ${items.length}</span>` : ''}</th></tr>
+    ${pjListFilterRow()}</thead>
     <tbody>${rows}</tbody></table></div>`;
+}
+function pjListActiveCount() {
+  let n = 0; const f = pjFilters;
+  ['text', 'status', 'owner', 'sales', 'dev', 'deadline'].forEach(k => { if (f[k]) n++; });
+  if (pjDelivFilter !== 'all') n++;
+  return n;
 }
 // Výstupy v zozname — chevron bar (ako workflow), priamo prepínateľný
 function pjListDeliv(p) {
@@ -5178,6 +5233,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.74.0', date: '15. 6. 2026', tag: 'feat', items: [
+    'Zoznam projektov: sofistikované filtre nad stĺpcami — text (projekt/kód), stav, stupeň predaja, stupeň vývoja, výstupy, vlastník a termín (po termíne / tento mesiac / s termínom / bez termínu). Počítadlo aktívnych filtrov + rýchle zrušenie.',
+  ] },
   { v: '1.73.0', date: '15. 6. 2026', tag: 'ui', items: [
     'Kalendár: lišta filtrov aj hlavička dní (Po–Ne / dni v týždni) sú teraz ukotvené (sticky) — pri scrolovaní stále vidíš, ktoré dni sú v stĺpcoch a ako filtrovať.',
   ] },
