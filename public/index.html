@@ -432,18 +432,27 @@
           <button class="btn-secondary btn-sm" onclick="bbNew()">+ Nová</button>
         </div>
         <div class="bb-topbar-right">
-          <button class="btn-secondary btn-sm" onclick="seedBackboneData()" title="Načítať ukážkovú topológiu (OA77/OA79)">🎲 Ukážka</button>
+          <button class="btn-secondary btn-sm" onclick="seedBackboneData()" title="Načítať ukážkové projekty (most / tunel / oporný múr)">🎲 Ukážka</button>
           <button class="btn-secondary btn-sm" onclick="bbAutoLayout()" title="Automaticky rozložiť">⌗ Rozložiť</button>
           <button class="btn-secondary btn-sm" id="bbAnimBtn" onclick="bbToggleAnim()">⏸ Animácia</button>
+          <button class="btn-secondary btn-sm active" id="bbLegendBtn" onclick="bbToggleLegend()" title="Zobraziť/skryť legendu">🗺️ Legenda</button>
           <button class="btn-secondary btn-sm" onclick="bbExportPng()" title="Export PNG">⬇ PNG</button>
           <button class="btn-primary btn-sm" onclick="bbSave()">💾 Uložiť</button>
         </div>
       </div>
       <div class="bb-toolbar">
-        <span class="bb-tool-label">Pridať:</span>
-        <button class="bb-add bb-add-sensor" onclick="bbAddNode('sensor')">FBG senzor</button>
+        <span class="bb-tool-label">Senzory:</span>
+        <button class="bb-add bb-add-sensor" onclick="bbAddNode('sensorT')" title="FBG teplotný senzor">🌡 Teplota</button>
+        <button class="bb-add bb-add-sensor" onclick="bbAddNode('sensorE')" title="FBG tenzometer (pnutie)">ε Pnutie</button>
+        <button class="bb-add bb-add-sensor" onclick="bbAddNode('sensorA')" title="FBG akcelerometer / vibrácie">a Akcel.</button>
+        <button class="bb-add bb-add-sensor" onclick="bbAddNode('sensorD')" title="FBG posun / konvergencia">d Posun</button>
+        <button class="bb-add bb-add-sensor" onclick="bbAddNode('sensorTilt')" title="FBG inklinometer (náklon)">∠ Náklon</button>
+        <button class="bb-add bb-add-sensor" onclick="bbAddNode('sensorP')" title="FBG tlak / piezometer">P Tlak</button>
+        <button class="bb-add bb-add-sensor" onclick="bbAddNode('sensors')" title="Reťazec FBG senzorov (WDM)">⛓ Reťazec</button>
+        <span class="bb-tool-label">Rozvádzač:</span>
         <button class="bb-add bb-add-box" onclick="bbAddNode('splitter')">Splitter</button>
         <button class="bb-add bb-add-box" onclick="bbAddNode('wcb')">WCB-01</button>
+        <span class="bb-tool-label">S-line:</span>
         <button class="bb-add bb-add-interr" onclick="bbAddNode('scan')">S-line Scan 800</button>
         <button class="bb-add bb-add-interr" onclick="bbAddNode('comp')">S-line Comp</button>
         <button class="bb-add bb-add-interr" onclick="bbAddNode('splitter1x4')">Splitter 1×4</button>

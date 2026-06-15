@@ -4278,6 +4278,15 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .bb-sl-io { fill: #2a2d31; stroke: #565b62; stroke-width: 0.8; }
 .bb-node:hover .bb-sl-body { filter: brightness(1.08); }
 
+/* súhrnná štatistika + merané veličiny v paneli */
+.bb-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 12px; }
+.bb-stat { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.bb-stat b { display: block; font-size: 1.15rem; font-weight: 700; color: var(--text-bright); font-variant-numeric: tabular-nums; }
+.bb-stat span { font-size: 0.64rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+.bb-mtags { display: flex; flex-wrap: wrap; gap: 6px; }
+.bb-mtag { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--text); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.2); border-left-width: 3px; border-radius: 6px; padding: 3px 8px; }
+.bb-mtag i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
 /* panel */
 .bb-panel { width: 270px; flex-shrink: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px; align-self: stretch; }
 .bb-panel-hd { font-family: var(--font-title); font-weight: 700; font-size: 1rem; color: var(--text-bright); margin-bottom: 10px; }
