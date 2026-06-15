@@ -5169,6 +5169,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.70.0', date: '15. 6. 2026', tag: 'feat', items: [
+    'Backbone: FBG senzory podľa meranej veličiny — farebne odlíšené s ikonou (teplota, pnutie/strain, akcelerometer, posun/konvergencia, náklon/inklinometer, tlak/piezometer).',
+    'Backbone: legenda na plátne (aj v PNG exporte) a súhrnný panel projektu — počet zariadení, FBG senzorov, dĺžka kábla a prehľad meraných veličín.',
+    'Backbone: nové ukážkové projekty pre zákazníka — Most (SHM), Tunel (geotechnika) a Oporný múr (stabilita svahu) s WDM kanálmi a vlnovými dĺžkami.',
+  ] },
   { v: '1.69.0', date: '15. 6. 2026', tag: 'feat', items: [
     'Backbone: S-line zariadenia prekreslené podľa oficiálneho katalógu Sylex — zelené telo, čierny panel, ozubené koliesko a biele FC porty.',
     'Nový katalóg objektov: S-line Scan 800, S-line Comp, Splitter 1×4 / 1×8 / 4×16 / 4×32 a Switch 1×4 / 1×8 / 4×16 / 4×32 (viacvstupové majú vstupné porty vľavo a mriežku výstupov vpravo).',
@@ -8371,7 +8376,7 @@ async function deleteCrmEmail(id) {
 // ══════════════════════════════════════════════════════════════════════════════
 //  BACKBONE EDITOR — optická topológia (interrogátor · splitter · káble · senzory)
 // ══════════════════════════════════════════════════════════════════════════════
-let bbList = [], bbDoc = null, bbSel = null, bbConnect = null, bbAnim = true, bbDrag = null, bbRenderReq = false;
+let bbList = [], bbDoc = null, bbSel = null, bbConnect = null, bbAnim = true, bbDrag = null, bbRenderReq = false, bbLegend = true;
 // Katalóg komponentov (Sylex FBG monitoring system)
 const BB_TYPES = {
   // S-line zariadenia (zelené telo, čierny panel) — podľa oficiálneho katalógu Sylex
@@ -8392,8 +8397,15 @@ const BB_TYPES = {
   wcb:       { label: 'WCB-01 Connection box',grp: 'box',   fill: '#2c322a', text: '#fff',     ports: 0,  w: 186, h: 58 },
   splitter:  { label: 'Splitter 1×4',        grp: 'box',    fill: '#2f6b22', text: '#fff',     ports: 4,  w: 138, h: 50 },
   patch:     { label: 'Prepojovacia',        grp: 'box',    fill: '#2f6b22', text: '#fff',     ports: 2,  w: 134, h: 50 },
-  sensor:    { label: 'FBG senzor',          grp: 'sensor', fill: '#f4f6f3', text: '#14321a', tip: '#8DC63F', ports: 0, w: 138, h: 44 },
-  sensors:   { label: 'Senzory',             grp: 'sensor', fill: '#f4f6f3', text: '#14321a', tip: '#8DC63F', ports: 0, w: 156, h: 44 },
+  sensor:    { label: 'FBG senzor',          grp: 'sensor', meas: 'FBG',           mc: '#8DC63F', mi: '',  fill: '#f4f6f3', text: '#14321a', tip: '#8DC63F', w: 140, h: 44 },
+  sensors:   { label: 'Reťazec senzorov',    grp: 'sensor', meas: 'FBG reťazec',   mc: '#8DC63F', mi: '',  fill: '#f4f6f3', text: '#14321a', tip: '#8DC63F', w: 168, h: 44 },
+  // FBG senzory podľa meranej veličiny (farebne odlíšené)
+  sensorT:    { label: 'FBG teplota',       grp: 'sensor', meas: 'Teplota',       mc: '#ef4444', mi: 'T', fill: '#f4f6f3', text: '#14321a', tip: '#ef4444', w: 150, h: 44 },
+  sensorE:    { label: 'FBG pnutie',        grp: 'sensor', meas: 'Pnutie (ε)',    mc: '#3b82f6', mi: 'ε', fill: '#f4f6f3', text: '#14321a', tip: '#3b82f6', w: 150, h: 44 },
+  sensorA:    { label: 'FBG akcelerometer', grp: 'sensor', meas: 'Akcelerometer', mc: '#a855f7', mi: 'a', fill: '#f4f6f3', text: '#14321a', tip: '#a855f7', w: 172, h: 44 },
+  sensorD:    { label: 'FBG posun',         grp: 'sensor', meas: 'Posun',         mc: '#14b8a6', mi: 'd', fill: '#f4f6f3', text: '#14321a', tip: '#14b8a6', w: 150, h: 44 },
+  sensorTilt: { label: 'FBG náklon',        grp: 'sensor', meas: 'Náklon',        mc: '#f59e0b', mi: '∠', fill: '#f4f6f3', text: '#14321a', tip: '#f59e0b', w: 150, h: 44 },
+  sensorP:    { label: 'FBG tlak',          grp: 'sensor', meas: 'Tlak',          mc: '#06b6d4', mi: 'P', fill: '#f4f6f3', text: '#14321a', tip: '#06b6d4', w: 150, h: 44 },
 };
 const BB_TYPE_LABEL = Object.fromEntries(Object.entries(BB_TYPES).map(([k, v]) => [k, v.label]));
 const BB_GROUPS = { interr: 'S-line zariadenia', box: 'Rozvádzač / splitter', sensor: 'Senzor' };
@@ -8429,7 +8441,7 @@ async function bbNew() {
   } catch (e) { toast('Chyba: ' + e.message, 'error'); }
 }
 async function seedBackboneData() {
-  if (!await uiConfirm('Načítať ukážkovú topológiu (CB OA77 / CB OA79)?')) return;
+  if (!await uiConfirm('Načítať ukážkové projekty (most SHM / tunel / oporný múr)?')) return;
   try {
     const r = await fetch('/api/admin/seed-backbones', { method: 'POST' }); const d = await r.json();
     if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
@@ -8517,14 +8529,19 @@ function bbNodeInner(n, ty, w, h) {
       ${fan}
       ${T(w / 2 - 6, h / 2 + 5, `font-family:var(--font);font-size:12px;font-weight:700;fill:${ty.text}`)}${lbl}</text>`;
   }
-  // senzor — kapsula s FBG mriežkou a zeleným hrotom
+  // FBG senzor — kapsula s mriežkou, farba a štítok podľa meranej veličiny
+  const mc = ty.mc || '#8DC63F', mi = ty.mi || '';
   let grating = '';
-  for (let i = 0; i < 5; i++) { const gx = 16 + i * 4; grating += `<line class="bb-grating" x1="${gx}" y1="${h / 2 - 6}" x2="${gx}" y2="${h / 2 + 6}"/>`; }
+  for (let i = 0; i < 5; i++) { const gx = 20 + i * 4; grating += `<line class="bb-grating" x1="${gx}" y1="${h / 2 - 6}" x2="${gx}" y2="${h / 2 + 6}" style="stroke:${mc}"/>`; }
+  const chip = mi
+    ? `<circle cx="${w - 12}" cy="${h / 2}" r="8.5" style="fill:${mc}"/>${T(w - 12, h / 2 + 3.6, 'font-family:var(--font);font-size:10px;font-weight:800;fill:#fff', 'middle')}${escHtml(mi)}</text>`
+    : '';
   return `
-    <rect class="bb-sensor-body" width="${w}" height="${h}" rx="${h / 2}" style="fill:${ty.fill}"/>
+    <rect class="bb-sensor-body" width="${w}" height="${h}" rx="${h / 2}" style="fill:${ty.fill};stroke:${mc}"/>
     <rect class="bb-tip" x="-5" y="${h / 2 - 6}" width="10" height="12" rx="2.5" style="fill:${ty.tip}"/>
     ${grating}
-    ${T(w / 2 + 12, h / 2 + 4, `font-family:var(--font);font-size:11.5px;font-weight:700;fill:${ty.text}`, 'middle')}${lbl}</text>`;
+    ${T(38, h / 2 + 4, `font-family:var(--font);font-size:11px;font-weight:700;fill:${ty.text}`, 'start')}${lbl}</text>
+    ${chip}`;
 }
 function bbPolyPoint(pts, t) {
   const segs = []; let total = 0;
@@ -8538,6 +8555,7 @@ function bbRender() {
   if (!bbDoc) { svg.innerHTML = '<text x="40" y="60" class="bb-empty-txt">Žiadna topológia — klikni na „🎲 Ukážka" alebo „+ Nová".</text>'; svg.setAttribute('width', 600); svg.setAttribute('height', 200); svg.setAttribute('viewBox', '0 0 600 200'); return; }
   let maxX = 400, maxY = 240;
   bbDoc.nodes.forEach(n => { maxX = Math.max(maxX, n.x + bbNodeW(n) + 250); maxY = Math.max(maxY, n.y + bbNodeH(n) + 60); });
+  if (bbLegend) { maxX = Math.max(maxX, 260); maxY = Math.max(maxY, 280); }
   svg.setAttribute('width', maxX); svg.setAttribute('height', maxY); svg.setAttribute('viewBox', `0 0 ${maxX} ${maxY}`);
   let links = '', flows = '', labels = '', beads = '', photons = '';
   bbDoc.links.forEach(l => {
@@ -8569,9 +8587,67 @@ function bbRender() {
       ${selRect}${bbNodeInner(n, ty, w, h)}
     </g>`;
   });
-  svg.innerHTML = `${bbDefs()}<g>${links}</g><g class="bb-flows">${flows}${photons}</g><g>${labels}</g><g class="bb-beads">${beads}</g><g>${nodes}</g>`;
+  svg.innerHTML = `${bbDefs()}<g>${links}</g><g class="bb-flows">${flows}${photons}</g><g>${labels}</g><g class="bb-beads">${beads}</g><g>${nodes}</g>${bbLegendSvg(maxX)}`;
 }
 function bbScheduleRender() { if (bbRenderReq) return; bbRenderReq = true; requestAnimationFrame(() => { bbRenderReq = false; bbRender(); }); }
+
+// ── legenda (vykresľuje sa do SVG, takže je aj v exporte PNG) ──
+function bbLegendSvg(maxX) {
+  if (!bbLegend) return '';
+  const items = [
+    ['dev', '#6fae33', 'S-line interrogátor / switch / splitter'],
+    ['box', '#2c322a', 'WCB-01 skriňa / splitter'],
+    ['sep'],
+    ['dot', '#ef4444', 'Teplota (T)'],
+    ['dot', '#3b82f6', 'Pnutie / strain (ε)'],
+    ['dot', '#a855f7', 'Akcelerometer / vibrácie (a)'],
+    ['dot', '#14b8a6', 'Posun / konvergencia (d)'],
+    ['dot', '#f59e0b', 'Náklon / inklinometer (∠)'],
+    ['dot', '#06b6d4', 'Tlak / piezometer (P)'],
+    ['sep'],
+    ['line', '#8DC63F', '→ dopredné (širokopásmové) svetlo'],
+    ['line', '#7fd0ff', '← odraz λB späť do interrogátora'],
+  ];
+  const LW = 250, pad = 12, rowH = 17.5;
+  let bh = pad * 2 + 16;
+  items.forEach(it => bh += it[0] === 'sep' ? 9 : rowH);
+  const x0 = Math.max(14, maxX - LW - 14), y0 = 14;
+  let y = y0 + pad + 14, rows = '';
+  rows += `<text x="${x0 + pad}" y="${y0 + pad + 4}" style="font-family:var(--font);font-size:11px;font-weight:800;letter-spacing:.4px;fill:#cdd8e6">LEGENDA</text>`;
+  items.forEach(it => {
+    if (it[0] === 'sep') { rows += `<line x1="${x0 + pad}" y1="${y - 7}" x2="${x0 + LW - pad}" y2="${y - 7}" style="stroke:rgba(255,255,255,0.12)"/>`; y += 2; return; }
+    if (it[0] === 'dev' || it[0] === 'box') rows += `<rect x="${x0 + pad}" y="${y - 9}" width="16" height="11" rx="2.5" style="fill:${it[1]};stroke:rgba(0,0,0,0.4)"/>`;
+    else if (it[0] === 'dot') rows += `<circle cx="${x0 + pad + 8}" cy="${y - 3}" r="5.5" style="fill:${it[1]}"/>`;
+    else if (it[0] === 'line') rows += `<line x1="${x0 + pad}" y1="${y - 3}" x2="${x0 + pad + 16}" y2="${y - 3}" style="stroke:${it[1]};stroke-width:2.6;stroke-linecap:round"/>`;
+    rows += `<text x="${x0 + pad + 24}" y="${y}" style="font-family:var(--font);font-size:10.5px;fill:#aebccd">${it[2]}</text>`;
+    y += rowH;
+  });
+  return `<g class="bb-legend"><rect x="${x0}" y="${y0}" width="${LW}" height="${bh}" rx="9" style="fill:rgba(13,18,30,0.92);stroke:rgba(255,255,255,0.14)"/>${rows}</g>`;
+}
+function bbToggleLegend() {
+  bbLegend = !bbLegend;
+  const b = document.getElementById('bbLegendBtn'); if (b) b.classList.toggle('active', bbLegend);
+  bbRender();
+}
+// súhrnná štatistika topológie (pre zákazníka)
+function bbStats() {
+  const s = { dev: 0, box: 0, strings: 0, fbg: 0, len: 0, meas: {} };
+  bbDoc.nodes.forEach(n => {
+    const ty = bbTy(n);
+    if (ty.grp === 'interr') s.dev++;
+    else if (ty.grp === 'box') s.box++;
+    else if (ty.grp === 'sensor') {
+      s.strings++;
+      const m = String(n.label || '').match(/(\d+)\s*[x×]/gi);
+      const cnt = m ? m.reduce((a, g) => a + parseInt(g, 10), 0) : 1;
+      s.fbg += cnt;
+      if (ty.meas && ty.meas !== 'FBG' && ty.meas !== 'FBG reťazec') s.meas[ty.meas] = (s.meas[ty.meas] || 0) + cnt;
+    }
+  });
+  bbDoc.links.forEach(l => s.len += Number(l.length) || 0);
+  return s;
+}
+const BB_MEAS_COLOR = { 'Teplota': '#ef4444', 'Pnutie (ε)': '#3b82f6', 'Akcelerometer': '#a855f7', 'Posun': '#14b8a6', 'Náklon': '#f59e0b', 'Tlak': '#06b6d4' };
 
 // ── interakcia ──
 function bbInitEvents() {
@@ -8669,9 +8745,21 @@ function bbDeleteLink(id) { bbDoc.links = bbDoc.links.filter(l => l.lid !== id);
 function bbPanelRender() {
   const el = document.getElementById('bbPanel'); if (!el) return;
   if (!bbDoc) { el.innerHTML = '<div class="bb-panel-empty">Žiadna topológia.</div>'; return; }
-  if (!bbSel) { el.innerHTML = `<div class="bb-panel-hd">Topológia</div>
+  if (!bbSel) {
+    const st = bbStats();
+    const measRows = Object.keys(st.meas).length
+      ? Object.entries(st.meas).map(([k, v]) => `<span class="bb-mtag" style="border-color:${BB_MEAS_COLOR[k] || '#8DC63F'}"><i style="background:${BB_MEAS_COLOR[k] || '#8DC63F'}"></i>${escHtml(k)} · ${v}</span>`).join('')
+      : '<span class="bb-panel-empty">— pridaj FBG senzory podľa veličiny —</span>';
+    el.innerHTML = `<div class="bb-panel-hd">Topológia</div>
     <div class="form-group"><label>Názov</label><input type="text" value="${escHtml(bbDoc.name || '')}" oninput="bbDoc.name=this.value"></div>
-    <div class="bb-panel-stat">${bbDoc.nodes.length} uzlov · ${bbDoc.links.length} káblov</div>
+    <div class="bb-stat-grid">
+      <div class="bb-stat"><b>${st.dev}</b><span>S-line zariadenia</span></div>
+      <div class="bb-stat"><b>${st.box}</b><span>skrine / splittre</span></div>
+      <div class="bb-stat"><b>${st.fbg}</b><span>FBG senzorov</span></div>
+      <div class="bb-stat"><b>${st.len} m</b><span>optický kábel</span></div>
+    </div>
+    <div class="form-group"><label>Merané veličiny</label><div class="bb-mtags">${measRows}</div></div>
+    <div class="bb-panel-stat">${bbDoc.nodes.length} uzlov · ${bbDoc.links.length} káblov · ${st.strings} reťazcov</div>
     <div class="bb-panel-empty">Klikni na uzol alebo kábel pre úpravu.</div>`; return; }
   if (bbSel.kind === 'node') {
     const n = bbNode(bbSel.id); if (!n) { el.innerHTML = ''; return; }
