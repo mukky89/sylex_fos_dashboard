@@ -4319,6 +4319,8 @@ let PJ_DELIVERABLES = [
   { key: 'marketing', label: 'Marketingové materiály', short: 'Marketing' }
 ];
 const PJ_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#ef4444' } };
+const PJ_STATUS = { active: { l: 'Aktívny', c: '#10b981' }, onhold: { l: 'Pozastavený', c: '#f59e0b' }, done: { l: 'Dokončený', c: '#3b82f6' }, cancelled: { l: 'Zrušený', c: '#ef4444' } };
+const PJ_STATUS_ORDER = ['active', 'onhold', 'done', 'cancelled'];
 let projectsData = [];
 let _dragPid = null;
 let pjView = 'list', pjWorkflow = 'development', pjDelivFilter = 'all';
@@ -4540,8 +4542,9 @@ function renderPjList(host, items) {
       <div class="pj-proc-line"><span class="pj-proc-tag pj-proc-tag-dev">Vývoj</span>${devChev}</div>
       ${dev ? `<div class="pj-proc-line"><span class="pj-proc-tag pj-proc-tag-deliv">Výstupy</span>${pjListDeliv(p)}</div>` : ''}
     </div>`;
+    const st = PJ_STATUS[p.status] || PJ_STATUS.active;
     return `<tr onclick="openProjectModal(projectsData.find(x=>x._id==='${p._id}'))">
-      <td><span class="prod-t-num">${escHtml(p.title)}</span>${p.code ? `<span class="prod-t-qty">${escHtml(p.code)}</span>` : ''}</td>
+      <td><span class="prod-t-num">${escHtml(p.title)}</span>${p.code ? `<span class="prod-t-qty">${escHtml(p.code)}</span>` : ''}<span class="pj-status-badge" style="--c:${st.c}">${st.l}</span></td>
       <td>${procStack}</td>
       <td>${escHtml(p.owner || '—')}</td>
       <td class="${overdue ? 'kanban-overdue' : ''}">${dl ? fmtDate(p.deadline) : '—'}</td>
@@ -4641,7 +4644,7 @@ function pjBlankProject() {
     salesStage: PJ_WORKFLOWS.sales.stages[0].key,
     devStage: PJ_WORKFLOWS.development.stages[0].key,
     salesDone: [], devDone: [],
-    priority: 'normal', owner: '', startDate: null, deadline: null,
+    status: 'active', priority: 'normal', owner: '', startDate: null, deadline: null,
     deliverables: [], folder: '', tags: [], links: [], comments: [], description: '', notes: ''
   };
 }
@@ -4676,6 +4679,9 @@ function renderProjectPage() {
   const d = pjPageData, dl = d.deadline ? new Date(d.deadline) : null;
   const overdue = dl && dl < new Date();
   const prioOpts = PJ_PRIO_OPTS.map(([v, l]) => `<option value="${v}"${d.priority === v ? ' selected' : ''}>${l}</option>`).join('');
+  const curStatus = d.status || 'active';
+  const statusOpts = PJ_STATUS_ORDER.map(k => `<option value="${k}"${curStatus === k ? ' selected' : ''}>${PJ_STATUS[k].l}</option>`).join('');
+  const stInfo = PJ_STATUS[curStatus] || PJ_STATUS.active;
   host.innerHTML = `
     <div class="pjp-top">
       <button class="btn-secondary btn-sm" onclick="backToProjects()">← Späť na projekty</button>
@@ -4687,6 +4693,7 @@ function renderProjectPage() {
     <div class="pjp-head">
       <input class="pjp-title-input" type="text" placeholder="Názov projektu *" value="${escHtml(d.title || '')}" oninput="pjPageData.title=this.value">
       <input class="pjp-code-input" type="text" placeholder="Kód (napr. P-2026-01)" value="${escHtml(d.code || '')}" oninput="pjPageData.code=this.value">
+      <span class="pj-status-badge pjp-status-badge" id="pjStatusBadge" style="--c:${stInfo.c}">${stInfo.l}</span>
     </div>
     <div class="pjp-grid">
       <div class="pjp-main">
@@ -4721,6 +4728,7 @@ function renderProjectPage() {
       <aside class="pjp-aside">
         <div class="pjp-card">
           <div class="pjp-card-hd">📋 Detaily</div>
+          <div class="form-group"><label>Stav projektu</label><select onchange="pjPageData.status=this.value;pjSyncStatusBadge()">${statusOpts}</select></div>
           <div class="form-group"><label>Priorita</label><select onchange="pjPageData.priority=this.value">${prioOpts}</select></div>
           <div class="form-group"><label>Zodpovedný</label><input type="text" value="${escHtml(d.owner || '')}" oninput="pjPageData.owner=this.value"></div>
           <div class="form-group"><label>Začiatok</label><input type="date" value="${d.startDate ? String(d.startDate).slice(0, 10) : ''}" onchange="pjPageData.startDate=this.value||null"></div>
@@ -4736,6 +4744,11 @@ function renderProjectPage() {
   pjRenderLinks();
   pjRenderRelated();
   ['sales', 'dev', 'deliv'].forEach(pjRenderComments);
+}
+function pjSyncStatusBadge() {
+  const b = document.getElementById('pjStatusBadge'); if (!b) return;
+  const s = PJ_STATUS[pjPageData.status] || PJ_STATUS.active;
+  b.textContent = s.l; b.style.setProperty('--c', s.c);
 }
 function pjDateTime(d) {
   try { return new Date(d).toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
@@ -4841,6 +4854,7 @@ async function savePjPage() {
     title, code: (d.code || '').trim(),
     salesStage, devStage: dev, salesDone: sDone, devDone: dDone,
     workflow: dev ? 'development' : 'sales', phase: dev || salesStage,   // legacy/analytika
+    status: d.status || 'active',
     priority: d.priority || 'normal', owner: (d.owner || '').trim(),
     startDate: d.startDate || null, deadline: d.deadline || null,
     deliverables: devOn ? (d.deliverables || []) : [],
@@ -5155,6 +5169,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.68.0', date: '15. 6. 2026', tag: 'feat', items: [
+    'Stav projektu (Aktívny / Pozastavený / Dokončený / Zrušený) — nastaviteľný v detaile, zobrazený ako farebný odznak v detaile aj v zozname.',
+  ] },
   { v: '1.67.0', date: '15. 6. 2026', tag: 'feat', items: [
     'Backbone: obojsmerný tok signálu — okrem dopredného (širokopásmového) svetla z interrogátora do zariadenia putuje po kábli aj odrazený (reflektovaný λB) signál späť do interrogátora (modré fotóny a protismerné čiarkovanie).',
   ] },

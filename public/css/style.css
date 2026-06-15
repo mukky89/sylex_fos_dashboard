@@ -2748,6 +2748,10 @@ body {
 .pjp-aside .form-group label { color: #cbd5e1; }
 @media (max-width: 880px) { .pjp-grid { grid-template-columns: 1fr; } }
 
+/* Stav projektu — odznak */
+.pj-status-badge { display: inline-block; margin-top: 4px; font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--c, #94a3b8); background: color-mix(in srgb, var(--c, #64748b) 16%, transparent); border: 1px solid color-mix(in srgb, var(--c, #64748b) 45%, transparent); border-radius: 100px; padding: 2px 9px; white-space: nowrap; }
+.pjp-status-badge { align-self: center; margin-top: 0; font-size: 0.74rem; padding: 5px 13px; }
+
 /* Komentáre / záznamy zmien k procesom */
 .pjp-com-card { border-left: 3px solid #64748b; }
 .pjp-com-sales { border-left-color: #2563eb; }
