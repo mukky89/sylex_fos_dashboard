@@ -23,7 +23,10 @@ router.get('/summary', async (req, res) => {
     const now = new Date(new Date().toDateString());
     const active = all.filter(o => !['done', 'shipped'].includes(o.stage));
     const inProd = all.filter(o => o.stage === 'production');
-    const overdue = active.filter(o => o.due && new Date(o.due) < now);
+    const notShipped = all.filter(o => o.stage !== 'shipped');
+    const overdue = notShipped.filter(o => o.due && new Date(o.due) < now);
+    const soon = new Date(now.getTime() + 7 * 864e5);
+    const dueSoon = notShipped.filter(o => o.due && new Date(o.due) >= now && new Date(o.due) <= soon);
     const qtyPlanned = all.reduce((s, o) => s + (o.qtyPlanned || 0), 0);
     const qtyDone = all.reduce((s, o) => s + (o.qtyDone || 0), 0);
     const byStage = {}; STAGES.forEach(s => byStage[s] = all.filter(o => o.stage === s).length);
@@ -35,7 +38,8 @@ router.get('/summary', async (req, res) => {
       lines[k].orders++; lines[k].qty += (o.qtyPlanned || 0);
     });
     res.json({
-      total: all.length, active: active.length, inProduction: inProd.length, overdue: overdue.length,
+      total: all.length, active: active.length, inProduction: inProd.length,
+      overdue: overdue.length, dueSoon: dueSoon.length,
       qtyPlanned, qtyDone, fulfillment: qtyPlanned ? Math.round(qtyDone / qtyPlanned * 100) : 0,
       byStage, lines: Object.values(lines).sort((a, b) => b.orders - a.orders)
     });
@@ -79,9 +83,10 @@ router.put('/:id', async (req, res) => {
   try {
     const o = await ProductionOrder.findById(req.params.id);
     if (!o) return res.status(404).json({ error: 'Not found' });
-    ['number', 'product', 'customer', 'salesOrder', 'unit', 'workstation', 'assignee', 'priority', 'stage', 'note'].forEach(k => { if (req.body[k] !== undefined) o[k] = req.body[k]; });
-    ['qtyPlanned', 'qtyDone'].forEach(k => { if (req.body[k] !== undefined) o[k] = Number(req.body[k]) || 0; });
-    ['start', 'due'].forEach(k => { if (req.body[k] !== undefined) o[k] = req.body[k] || null; });
+    ['number', 'product', 'customer', 'salesOrder', 'unit', 'workstation', 'assignee', 'priority', 'stage', 'note',
+     'division', 'drawing', 'sensor', 'orderStatus', 'delayReason'].forEach(k => { if (req.body[k] !== undefined) o[k] = req.body[k]; });
+    ['qtyPlanned', 'qtyDone', 'normHours'].forEach(k => { if (req.body[k] !== undefined) o[k] = Number(req.body[k]) || 0; });
+    ['start', 'due', 'produceBy', 'requiredDate', 'agreedDate', 'deliveryDate', 'producedDate', 'shippedDate'].forEach(k => { if (req.body[k] !== undefined) o[k] = req.body[k] || null; });
     if (req.body.order !== undefined) o.order = Number(req.body.order) || 0;
     if (req.body.progress !== undefined) o.progress = clampPct(req.body.progress);
     else if (req.body.qtyDone !== undefined && o.qtyPlanned > 0) o.progress = clampPct(o.qtyDone / o.qtyPlanned * 100);

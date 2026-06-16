@@ -5233,6 +5233,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.75.0', date: '16. 6. 2026', tag: 'feat', items: [
+    'Plánovanie výroby: import reálnych objednávok z exportu IO (tlačidlo „📥 Import objednávok (IO)" — zmaže všetko a nahradí 312 objednávkami).',
+    'Dôraz na termíny: KPI „⚠ Meškajú" a „Do expedície ≤ 7 dní"; panel meškajúcich zákaziek hneď navrchu s počtom dní po termíne a poľom na zápis dôvodu meškania.',
+    'Zoznam: stĺpec „Do expedície" (dni do/po termíne, farebne), meškajúce navrch a zvýraznené; termín = dátum expedície.',
+  ] },
   { v: '1.74.0', date: '15. 6. 2026', tag: 'feat', items: [
     'Zoznam projektov: sofistikované filtre nad stĺpcami — text (projekt/kód), stav, stupeň predaja, stupeň vývoja, výstupy, vlastník a termín (po termíne / tento mesiac / s termínom / bez termínu). Počítadlo aktívnych filtrov + rýchle zrušenie.',
   ] },
@@ -6198,6 +6203,7 @@ async function loadProd() {
   const dl = document.getElementById('poLineList');
   if (dl) { const set = [...new Set(prodData.map(o => o.workstation).filter(Boolean))]; dl.innerHTML = set.map(w => `<option value="${escHtml(w)}">`).join(''); }
   renderProdKpis();
+  renderProdLate();
   setProdView(prodView);   // synchronizuj viditeľnosť pohľadu (default = gantt) + vykresli
   renderProdLines();
 }
@@ -6217,7 +6223,18 @@ function prodFiltered() {
   if (!q) return prodData.slice();
   return prodData.filter(o => [o.number, o.product, o.customer, o.salesOrder, o.workstation, o.assignee].some(x => (x || '').toLowerCase().includes(q)));
 }
-function prodOverdue(o) { return o.due && !['done', 'shipped'].includes(o.stage) && new Date(o.due) < new Date(new Date().toDateString()); }
+function _prodToday() { return new Date(new Date().toDateString()); }
+function prodOverdue(o) { return o.due && o.stage !== 'shipped' && new Date(o.due) < _prodToday(); }
+// dni do expedície (záporné = po termíne); vráti aj triedu pre farbu
+function prodShipInfo(o) {
+  if (!o.due) return null;
+  if (o.stage === 'shipped') return { days: null, cls: 'shipped', label: 'expedované' };
+  const days = Math.round((new Date(new Date(o.due).toDateString()) - _prodToday()) / 864e5);
+  let cls = 'ok';
+  if (days < 0) cls = 'late'; else if (days <= 3) cls = 'urgent'; else if (days <= 7) cls = 'soon';
+  const label = days < 0 ? `${-days} dní po termíne` : days === 0 ? 'dnes' : `o ${days} dní`;
+  return { days, cls, label };
+}
 
 async function renderProdKpis() {
   let s = null;
@@ -6227,9 +6244,34 @@ async function renderProdKpis() {
   const card = (val, label, sub, cls) => `<div class="prod-kpi ${cls || ''}"><div class="prod-kpi-val">${val}</div><div class="prod-kpi-lbl">${label}</div>${sub ? `<div class="prod-kpi-sub">${sub}</div>` : ''}</div>`;
   el.innerHTML =
     card(s.active, 'Aktívne zákazky', s.total + ' celkom', 'pk-blue') +
-    card(s.inProduction, 'Vo výrobe', '', 'pk-cyan') +
-    card(s.overdue, 'Po termíne', '', s.overdue ? 'pk-red' : '') +
-    card(s.fulfillment + '%', 'Plnenie množstva', s.qtyDone + ' / ' + s.qtyPlanned + ' ks', 'pk-green');
+    card(s.overdue, '⚠ Meškajú', s.overdue ? 'treba riešiť hneď' : 'OK', s.overdue ? 'pk-red' : 'pk-green') +
+    card(s.dueSoon || 0, 'Do expedície ≤ 7 dní', '', (s.dueSoon ? 'pk-amber' : '')) +
+    card(s.inProduction, 'Vo výrobe', '', 'pk-cyan');
+}
+
+// Panel meškajúcich zákaziek — treba riešiť hneď + zaznamenať dôvod meškania
+function renderProdLate() {
+  const el = document.getElementById('prodLatePanel'); if (!el) return;
+  const late = prodData.filter(prodOverdue).sort((a, b) => new Date(a.due) - new Date(b.due));
+  if (!late.length) { el.innerHTML = '<div class="prod-late-ok">✅ Žiadne meškajúce zákazky — všetko v termíne.</div>'; return; }
+  const rows = late.map(o => {
+    const si = prodShipInfo(o), st = prodStageMap(o.stage);
+    return `<div class="prod-late-row" data-id="${o._id}">
+      <div class="prod-late-main" onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))">
+        <div class="prod-late-prod">${escHtml(o.product)}</div>
+        <div class="prod-late-meta">${escHtml(o.number || '')}${o.customer ? ' · ' + escHtml(o.customer) : ''}${o.workstation ? ' · ' + escHtml(o.workstation) : ''} · <span class="prod-stage-badge" style="background:${st.c}22;color:${st.c}">${st.label}</span></div>
+      </div>
+      <div class="prod-late-when"><span class="prod-late-days">${si ? si.label : ''}</span><span class="prod-late-date">exp. ${o.due ? fmtDate(o.due) : '—'}</span></div>
+      <input class="prod-late-reason" type="text" placeholder="Dôvod meškania…" value="${escHtml(o.delayReason || '')}" onchange="prodSaveReason('${o._id}', this.value)" onclick="event.stopPropagation()">
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div class="prod-late-hd">⚠ Meškajúce zákazky <span class="prod-late-count">${late.length}</span><span class="prod-late-hint">klikni na zákazku pre detail · zapíš dôvod meškania</span></div>${rows}`;
+}
+async function prodSaveReason(id, val) {
+  const o = prodData.find(x => x._id === id); if (!o) return;
+  o.delayReason = val;
+  try { await fetch('/api/production/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ delayReason: val }) }); }
+  catch { toast('Uloženie dôvodu zlyhalo', 'error'); }
 }
 
 function renderProd() {
@@ -6315,21 +6357,26 @@ async function persistProdOrder() {
 
 function renderProdList() {
   const el = document.getElementById('prodList'); if (!el) return;
-  const items = prodFiltered().sort((a, b) => (a.due ? String(a.due) : '9999').localeCompare(b.due ? String(b.due) : '9999'));
+  // zoradenie: najprv meškajúce (najviac po termíne), potom podľa termínu expedície
+  const rank = o => { const si = prodShipInfo(o); if (!si || si.days === null) return 1e9; return si.days; };
+  const items = prodFiltered().sort((a, b) => rank(a) - rank(b));
   if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne výrobné zákazky.</div>'; return; }
   el.innerHTML = `<table class="prod-table"><thead><tr>
-    <th>Zákazka</th><th>Produkt</th><th>Zákazník</th><th>Pracovisko</th><th>Množstvo</th><th>Fáza</th><th>Termín</th><th></th>
+    <th>IO / obj.</th><th>Produkt</th><th>Zákazník</th><th>Pracovisko</th><th>Množstvo</th><th>Fáza</th><th>Expedícia</th><th>Do expedície</th><th></th>
     </tr></thead><tbody>${items.map(o => {
     const st = prodStageMap(o.stage), prio = PROD_PRIO[o.priority] || PROD_PRIO.normal, od = prodOverdue(o);
+    const si = prodShipInfo(o);
     const p = Math.max(0, Math.min(100, o.progress || 0));
-    return `<tr onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))">
-      <td><span class="prod-t-num">${escHtml(o.number || '')}</span><span class="prod-t-prio" style="color:${prio.c}">${o.priority !== 'normal' ? prio.l : ''}</span></td>
-      <td>${escHtml(o.product)}</td>
+    const reasonHint = od && o.delayReason ? ` title="Dôvod: ${escHtml(o.delayReason)}"` : '';
+    return `<tr class="${od ? 'prod-row-late' : ''}" onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))"${reasonHint}>
+      <td><span class="prod-t-num">${escHtml(o.number || '')}</span>${o.salesOrder ? `<span class="prod-t-qty">obj. ${escHtml(o.salesOrder)}</span>` : ''}</td>
+      <td>${escHtml(o.product)}${o.delayReason ? `<span class="prod-reason-tag" title="Dôvod meškania">💬 ${escHtml(o.delayReason)}</span>` : ''}</td>
       <td>${escHtml(o.customer || '—')}</td>
       <td>${escHtml(o.workstation || '—')}</td>
-      <td><div class="prod-t-qty">${o.qtyDone || 0}/${o.qtyPlanned || 0} ${escHtml(o.unit || 'ks')}</div><div class="prod-t-bar"><div style="width:${p}%"></div></div></td>
+      <td><div class="prod-t-qty">${o.qtyPlanned || 0} ${escHtml(o.unit || 'ks')}</div></td>
       <td><span class="prod-stage-badge" style="background:${st.c}22;color:${st.c};border:1px solid ${st.c}66">${st.label}</span></td>
       <td class="${od ? 'task-od' : ''}">${o.due ? fmtDate(o.due) : '—'}</td>
+      <td>${si ? `<span class="prod-ship-badge ship-${si.cls}">${si.label}</span>` : '—'}</td>
       <td><button class="admin-icon-btn danger" onclick="event.stopPropagation(); deleteProd('${o._id}')">✕</button></td>
     </tr>`;
   }).join('')}</tbody></table>`;
@@ -6381,6 +6428,7 @@ function openProdModal(o = null) {
   const prog = e ? (o.progress || 0) : 0;
   set('poProgress', prog); document.getElementById('poProgressVal').textContent = prog;
   set('poNote', e ? (o.note || '') : '');
+  const dr = document.getElementById('poDelayReason'); if (dr) dr.value = e ? (o.delayReason || '') : '';
   document.getElementById('poDeleteBtn').style.display = e ? '' : 'none';
   document.getElementById('prodModal').classList.remove('hidden');
   modalSnapshot('prodModal');
@@ -6402,6 +6450,7 @@ async function saveProd() {
     due: document.getElementById('poDue').value || null,
     assignee: document.getElementById('poAssignee').value.trim(),
     progress: Number(document.getElementById('poProgress').value) || 0,
+    delayReason: (document.getElementById('poDelayReason')?.value || '').trim(),
     note: document.getElementById('poNote').value.trim()
   };
   if (!body.product) { alert('Zadaj produkt'); return; }
@@ -6426,6 +6475,16 @@ async function seedProdData() {
     loadProd();
     setTimeout(() => alert('Hotovo — vytvorených ' + d.inserted + ' zákaziek.'), 200);
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+async function importProdData() {
+  if (!await uiConfirm('Zmazať VŠETKY existujúce výrobné zákazky a nahradiť ich objednávkami z exportu IO?')) return;
+  try {
+    const r = await fetch('/api/admin/import-production', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    await loadProd();
+    toast('Importovaných ' + d.inserted + ' objednávok z IO.', 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
