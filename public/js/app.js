@@ -5233,6 +5233,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.76.0', date: '16. 6. 2026', tag: 'ui', items: [
+    'Gantt výroby: horizontálny scrollbar aj navrchu (synchronizovaný s plátnom) — netreba scrollovať dole, aby si posunul časovú os.',
+  ] },
   { v: '1.75.0', date: '16. 6. 2026', tag: 'feat', items: [
     'Plánovanie výroby: import reálnych objednávok z exportu IO (tlačidlo „📥 Import objednávok (IO)" — zmaže všetko a nahradí 312 objednávkami).',
     'Dôraz na termíny: KPI „⚠ Meškajú" a „Do expedície ≤ 7 dní"; panel meškajúcich zákaziek hneď navrchu s počtom dní po termíne a poľom na zápis dôvodu meškania.',
@@ -7419,6 +7422,18 @@ function renderProdGantt() {
   chart.innerHTML = `<div class="ug-head">${head}</div><div class="ug-body">${rows}</div>${nowLine}`;
   const dayW = days <= 7 ? 96 : days <= 14 ? 78 : 58;
   chart.style.minWidth = (180 + days * dayW) + 'px';
+  prodGanttSyncTopScroll();
+}
+// Horný horizontálny scrollbar synchronizovaný s Gantt plátnom
+function prodGanttSyncTopScroll() {
+  const wrap = document.getElementById('prodGanttWrap'), top = document.getElementById('prodGanttTopScroll'), inner = document.getElementById('prodGanttTopScrollInner'), chart = document.getElementById('prodGanttChart');
+  if (!wrap || !top || !inner || !chart) return;
+  inner.style.width = chart.scrollWidth + 'px';
+  if (!top._bound) {
+    top._bound = true;
+    top.addEventListener('scroll', () => { if (top._lock) return; wrap._lock = true; wrap.scrollLeft = top.scrollLeft; wrap._lock = false; });
+    wrap.addEventListener('scroll', () => { if (wrap._lock) return; top._lock = true; top.scrollLeft = wrap.scrollLeft; top._lock = false; });
+  }
 }
 
 // ── "AI" analýza & optimalizácia (rule-based, prezentované ako AI) ─────────────
