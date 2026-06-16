@@ -3701,6 +3701,35 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .prod-kpi.pk-blue { border-left-color: #3b82f6; } .prod-kpi.pk-cyan { border-left-color: #06b6d4; }
 .prod-kpi.pk-red { border-left-color: #ef4444; } .prod-kpi.pk-red .prod-kpi-val { color: #fca5a5; }
 .prod-kpi.pk-green { border-left-color: #10b981; }
+.prod-kpi.pk-amber { border-left-color: #f59e0b; } .prod-kpi.pk-amber .prod-kpi-val { color: #fbbf24; }
+
+/* Panel meškajúcich zákaziek */
+.prod-late-panel { margin-bottom: 18px; }
+.prod-late-ok { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); color: #6ee7b7; border-radius: 12px; padding: 12px 16px; font-size: 0.86rem; font-weight: 600; }
+.prod-late-hd { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; font-weight: 800; color: #fca5a5; margin-bottom: 8px; }
+.prod-late-count { background: #ef4444; color: #fff; border-radius: 100px; padding: 1px 9px; font-size: 0.78rem; }
+.prod-late-hint { font-size: 0.7rem; font-weight: 400; color: #94a3b8; margin-left: auto; }
+.prod-late-row { display: grid; grid-template-columns: 1fr 150px minmax(180px, 260px); gap: 12px; align-items: center; background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.22); border-radius: 10px; padding: 9px 13px; margin-bottom: 7px; }
+.prod-late-main { cursor: pointer; min-width: 0; }
+.prod-late-prod { font-size: 0.88rem; font-weight: 600; color: #f0f9ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prod-late-meta { font-size: 0.72rem; color: #94a3b8; margin-top: 2px; }
+.prod-late-when { text-align: right; }
+.prod-late-days { display: block; font-size: 0.82rem; font-weight: 800; color: #f87171; }
+.prod-late-date { font-size: 0.68rem; color: #94a3b8; }
+.prod-late-reason { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; color: #e2e8f0; padding: 7px 10px; font-size: 0.82rem; }
+.prod-late-reason:focus { outline: none; border-color: var(--accent); }
+@media (max-width: 760px) { .prod-late-row { grid-template-columns: 1fr; gap: 6px; } .prod-late-when { text-align: left; } }
+
+/* Termín expedície — odznak dni do expedície */
+.prod-ship-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 9px; border-radius: 100px; white-space: nowrap; }
+.prod-ship-badge.ship-late { background: rgba(239,68,68,0.18); color: #fca5a5; border: 1px solid rgba(239,68,68,0.4); }
+.prod-ship-badge.ship-urgent { background: rgba(245,158,11,0.18); color: #fcd34d; border: 1px solid rgba(245,158,11,0.4); }
+.prod-ship-badge.ship-soon { background: rgba(234,179,8,0.12); color: #fde68a; }
+.prod-ship-badge.ship-ok { background: rgba(16,185,129,0.12); color: #6ee7b7; }
+.prod-ship-badge.ship-shipped { background: rgba(59,130,246,0.15); color: #93c5fd; }
+.prod-row-late td { background: rgba(239,68,68,0.05); }
+.prod-row-late:hover td { background: rgba(239,68,68,0.1); }
+.prod-reason-tag { display: inline-block; margin-left: 8px; font-size: 0.68rem; color: #fcd34d; background: rgba(245,158,11,0.12); border-radius: 6px; padding: 1px 7px; }
 
 .prod-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
 

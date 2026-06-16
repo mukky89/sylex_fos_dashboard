@@ -193,5 +193,14 @@ module.exports = function(sensorCfg) {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // ── Import výrobných zákaziek z prílohy IO (zmaže všetky a nahradí) ──
+  router.post('/import-production', async (req, res) => {
+    try {
+      const { importProduction } = require('../scripts/importProduction');
+      const result = await importProduction();
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   return router;
 };

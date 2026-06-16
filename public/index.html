@@ -1891,13 +1891,16 @@
           <p class="prod-sub">Výrobné zákazky · fázy výroby · vyťaženie pracovísk · plnenie množstiev</p>
         </div>
         <div class="prod-hdr-actions">
-          <button class="btn-secondary" onclick="seedProdData()" title="Vygenerovať ukážkové zákazky">🎲 Ukážkové dáta</button>
+          <button class="btn-secondary" onclick="importProdData()" title="Zmazať všetko a načítať objednávky z exportu IO">📥 Import objednávok (IO)</button>
           <button class="btn-primary" onclick="openProdModal()">+ Nová zákazka</button>
         </div>
       </div>
 
       <!-- KPI -->
       <div id="prodKpis" class="prod-kpis"></div>
+
+      <!-- Meškajúce zákazky -->
+      <div id="prodLatePanel" class="prod-late-panel"></div>
 
       <div class="prod-toolbar">
         <div class="proc-search-wrap" style="margin:0;flex:1;max-width:340px">
@@ -1981,14 +1984,15 @@
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Plánovaný štart</label><input type="date" id="poStart"></div>
-          <div class="form-group"><label>Termín dokončenia</label><input type="date" id="poDue"></div>
+          <div class="form-group"><label>Do výroby</label><input type="date" id="poStart"></div>
+          <div class="form-group"><label>Expedovať (termín)</label><input type="date" id="poDue"></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Zodpovedný</label><input type="text" id="poAssignee" placeholder="Meno"></div>
           <div class="form-group"><label>Progres — <span id="poProgressVal">0</span> %</label>
             <input type="range" id="poProgress" min="0" max="100" step="5" value="0" oninput="document.getElementById('poProgressVal').textContent=this.value"></div>
         </div>
+        <div class="form-group"><label>Dôvod meškania (ak mešká)</label><input type="text" id="poDelayReason" placeholder="napr. čaká na materiál, výpadok pracoviska…"></div>
         <div class="form-group"><label>Poznámka</label><textarea id="poNote" rows="2"></textarea></div>
       </div>
       <div class="modal-footer">
