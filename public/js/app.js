@@ -5233,6 +5233,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.78.0', date: '18. 6. 2026', tag: 'ui', items: [
+    'Plánovanie výroby → Zoznam: hlavička skupiny ukazuje „Zákazka č. XXX" a pod ňou „XX QTY" (spolu kusov). Do vnoreného gridu idú teraz aj zákazky s jedinou objednávkou (rovnaký vzhľad). Pod-objednávky sú farebne odlíšené (tyrkysový nádych).',
+  ] },
   { v: '1.77.0', date: '18. 6. 2026', tag: 'feat', items: [
     'Plánovanie výroby → Zoznam: vnorený (nested) datagrid — zákazky zoskupené podľa objednávky; rozbalením vidíš jednotlivé pod-objednávky (IO/výrobky). Súhrnný riadok ukazuje počet položiek, spolu množstvo, najbližšiu expedíciu a najhorší termín.',
   ] },
@@ -6383,10 +6386,7 @@ function renderProdList() {
 
   // bloky na vykreslenie: skupina (viac položiek pod jednou obj.) alebo samostatný riadok
   const blocks = [];
-  groups.forEach((arr, key) => {
-    if (arr.length > 1) blocks.push({ type: 'group', key, items: arr });
-    else blocks.push({ type: 'single', items: arr });
-  });
+  groups.forEach((arr, key) => blocks.push({ type: 'group', key, items: arr }));
   singles.forEach(o => blocks.push({ type: 'single', items: [o] }));
   // zoradenie blokov podľa najhoršieho (najmenšieho) termínu v bloku
   const blockRank = b => Math.min(...b.items.map(rank));
@@ -6437,7 +6437,7 @@ function renderProdList() {
     const si = prodShipInfo(worst);
     const doneCount = arr.filter(o => ['done', 'shipped'].includes(o.stage)).length;
     const head = `<tr class="prod-grp-row ${open ? 'is-open' : ''} ${anyLate ? 'prod-row-late' : ''}" data-grpkey="${safe}" onclick="prodToggleGroup('${safe}')">
-      <td><span class="prod-grp-chev">▸</span><span class="prod-t-num">obj. ${escHtml(b.key)}</span><span class="prod-t-qty">${arr.length} pod-objednávok</span></td>
+      <td><span class="prod-grp-chev">▸</span><span class="prod-t-num">Zákazka č. ${escHtml(b.key)}</span><span class="prod-t-qty">${totalQty} QTY</span></td>
       <td><span class="prod-grp-sum">${arr.length} výrobkov · ${doneCount}/${arr.length} hotových</span></td>
       <td>${escHtml(cust)}</td>
       <td>${escHtml(ws)}</td>
