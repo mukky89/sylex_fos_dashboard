@@ -5233,6 +5233,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.77.0', date: '18. 6. 2026', tag: 'feat', items: [
+    'Plánovanie výroby → Zoznam: vnorený (nested) datagrid — zákazky zoskupené podľa objednávky; rozbalením vidíš jednotlivé pod-objednávky (IO/výrobky). Súhrnný riadok ukazuje počet položiek, spolu množstvo, najbližšiu expedíciu a najhorší termín.',
+  ] },
   { v: '1.76.0', date: '16. 6. 2026', tag: 'ui', items: [
     'Gantt výroby: horizontálny scrollbar aj navrchu (synchronizovaný s plátnom) — netreba scrollovať dole, aby si posunul časovú os.',
   ] },
@@ -6188,6 +6191,7 @@ async function deleteEquipment(id) {
 let prodData = [];
 let prodView = 'gantt';
 let _dragProdId = null;
+let prodExpanded = new Set();   // rozbalené objednávky vo vnorenom zozname (kľúč = encodeURIComponent(salesOrder))
 const PROD_STAGES = [
   { key: 'plan', label: 'Plánovaná', c: '#64748b' },
   { key: 'material', label: 'Príprava materiálu', c: '#8b5cf6' },
@@ -6358,21 +6362,50 @@ async function persistProdOrder() {
   renderProdKpis(); renderProdLines();
 }
 
+// Vnorený (nested) zoznam: zákazky zoskupené podľa objednávky (salesOrder),
+// pod-objednávky (jednotlivé IO/výrobné zákazky) sa zobrazia po rozbalení.
 function renderProdList() {
   const el = document.getElementById('prodList'); if (!el) return;
   // zoradenie: najprv meškajúce (najviac po termíne), potom podľa termínu expedície
   const rank = o => { const si = prodShipInfo(o); if (!si || si.days === null) return 1e9; return si.days; };
-  const items = prodFiltered().sort((a, b) => rank(a) - rank(b));
+  const items = prodFiltered();
   if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne výrobné zákazky.</div>'; return; }
-  el.innerHTML = `<table class="prod-table"><thead><tr>
-    <th>IO / obj.</th><th>Produkt</th><th>Zákazník</th><th>Pracovisko</th><th>Množstvo</th><th>Fáza</th><th>Expedícia</th><th>Do expedície</th><th></th>
-    </tr></thead><tbody>${items.map(o => {
-    const st = prodStageMap(o.stage), prio = PROD_PRIO[o.priority] || PROD_PRIO.normal, od = prodOverdue(o);
+
+  // zoskupenie podľa objednávky; položky bez obj. ostávajú samostatné
+  const groups = new Map();
+  const singles = [];
+  items.forEach(o => {
+    const key = (o.salesOrder || '').trim();
+    if (!key) { singles.push(o); return; }
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(o);
+  });
+
+  // bloky na vykreslenie: skupina (viac položiek pod jednou obj.) alebo samostatný riadok
+  const blocks = [];
+  groups.forEach((arr, key) => {
+    if (arr.length > 1) blocks.push({ type: 'group', key, items: arr });
+    else blocks.push({ type: 'single', items: arr });
+  });
+  singles.forEach(o => blocks.push({ type: 'single', items: [o] }));
+  // zoradenie blokov podľa najhoršieho (najmenšieho) termínu v bloku
+  const blockRank = b => Math.min(...b.items.map(rank));
+  blocks.sort((a, b) => blockRank(a) - blockRank(b));
+
+  // riadok jednej pod-objednávky / samostatnej zákazky
+  const itemRow = (o, grpSafe) => {
+    const st = prodStageMap(o.stage), od = prodOverdue(o);
     const si = prodShipInfo(o);
-    const p = Math.max(0, Math.min(100, o.progress || 0));
     const reasonHint = od && o.delayReason ? ` title="Dôvod: ${escHtml(o.delayReason)}"` : '';
-    return `<tr class="${od ? 'prod-row-late' : ''}" onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))"${reasonHint}>
-      <td><span class="prod-t-num">${escHtml(o.number || '')}</span>${o.salesOrder ? `<span class="prod-t-qty">obj. ${escHtml(o.salesOrder)}</span>` : ''}</td>
+    const child = !!grpSafe;
+    const open = child && prodExpanded.has(grpSafe);
+    const cls = [od ? 'prod-row-late' : '', child ? 'prod-child-row' : '', (child && !open) ? 'hidden' : ''].filter(Boolean).join(' ');
+    const grpAttr = child ? ` data-grp="${grpSafe}"` : '';
+    const numCell = child
+      ? `<td class="prod-child-cell"><span class="prod-t-num">${escHtml(o.number || '')}</span></td>`
+      : `<td><span class="prod-t-num">${escHtml(o.number || '')}</span>${o.salesOrder ? `<span class="prod-t-qty">obj. ${escHtml(o.salesOrder)}</span>` : ''}</td>`;
+    return `<tr class="${cls}"${grpAttr} onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))"${reasonHint}>
+      ${numCell}
       <td>${escHtml(o.product)}${o.delayReason ? `<span class="prod-reason-tag" title="Dôvod meškania">💬 ${escHtml(o.delayReason)}</span>` : ''}</td>
       <td>${escHtml(o.customer || '—')}</td>
       <td>${escHtml(o.workstation || '—')}</td>
@@ -6382,7 +6415,53 @@ function renderProdList() {
       <td>${si ? `<span class="prod-ship-badge ship-${si.cls}">${si.label}</span>` : '—'}</td>
       <td><button class="admin-icon-btn danger" onclick="event.stopPropagation(); deleteProd('${o._id}')">✕</button></td>
     </tr>`;
-  }).join('')}</tbody></table>`;
+  };
+
+  // súhrnný riadok objednávky (rozbaľovací)
+  const groupRow = (b) => {
+    const safe = encodeURIComponent(b.key);
+    const arr = b.items.slice().sort((a, c) => rank(a) - rank(c));
+    const open = prodExpanded.has(safe);
+    const totalQty = arr.reduce((s, o) => s + (o.qtyPlanned || 0), 0);
+    const unit = arr[0].unit || 'ks';
+    const customers = [...new Set(arr.map(o => o.customer).filter(Boolean))];
+    const cust = customers.length ? (customers.length === 1 ? customers[0] : `${customers[0]} +${customers.length - 1}`) : '—';
+    const wss = [...new Set(arr.map(o => o.workstation).filter(Boolean))];
+    const ws = wss.length ? (wss.length === 1 ? wss[0] : `${wss.length} pracovísk`) : '—';
+    const stIdx = Math.min(...arr.map(o => Math.max(0, PROD_STAGES.findIndex(s => s.key === o.stage))));
+    const st = PROD_STAGES[stIdx] || PROD_STAGES[0];
+    const anyLate = arr.some(prodOverdue);
+    const dueDates = arr.map(o => o.due).filter(Boolean).sort((a, c) => new Date(a) - new Date(c));
+    const earliestDue = dueDates[0];
+    const worst = arr.reduce((w, o) => rank(o) < rank(w) ? o : w, arr[0]);
+    const si = prodShipInfo(worst);
+    const doneCount = arr.filter(o => ['done', 'shipped'].includes(o.stage)).length;
+    const head = `<tr class="prod-grp-row ${open ? 'is-open' : ''} ${anyLate ? 'prod-row-late' : ''}" data-grpkey="${safe}" onclick="prodToggleGroup('${safe}')">
+      <td><span class="prod-grp-chev">▸</span><span class="prod-t-num">obj. ${escHtml(b.key)}</span><span class="prod-t-qty">${arr.length} pod-objednávok</span></td>
+      <td><span class="prod-grp-sum">${arr.length} výrobkov · ${doneCount}/${arr.length} hotových</span></td>
+      <td>${escHtml(cust)}</td>
+      <td>${escHtml(ws)}</td>
+      <td><div class="prod-t-qty">${totalQty} ${escHtml(unit)}</div></td>
+      <td><span class="prod-stage-badge" style="background:${st.c}22;color:${st.c};border:1px solid ${st.c}66">${st.label}</span></td>
+      <td class="${anyLate ? 'task-od' : ''}">${earliestDue ? fmtDate(earliestDue) : '—'}</td>
+      <td>${si ? `<span class="prod-ship-badge ship-${si.cls}">${si.label}</span>` : '—'}</td>
+      <td></td>
+    </tr>`;
+    return head + arr.map(o => itemRow(o, safe)).join('');
+  };
+
+  el.innerHTML = `<table class="prod-table"><thead><tr>
+    <th>IO / obj.</th><th>Produkt</th><th>Zákazník</th><th>Pracovisko</th><th>Množstvo</th><th>Fáza</th><th>Expedícia</th><th>Do expedície</th><th></th>
+    </tr></thead><tbody>${blocks.map(b => b.type === 'group' ? groupRow(b) : itemRow(b.items[0], null)).join('')}</tbody></table>`;
+}
+
+// rozbalenie / zbalenie objednávky vo vnorenom zozname
+function prodToggleGroup(safe) {
+  if (prodExpanded.has(safe)) prodExpanded.delete(safe); else prodExpanded.add(safe);
+  const open = prodExpanded.has(safe);
+  document.querySelectorAll(`#prodList tr[data-grp="${safe}"]`).forEach(tr => tr.classList.toggle('hidden', !open));
+  const head = document.querySelector(`#prodList tr.prod-grp-row[data-grpkey="${safe}"]`);
+  if (head) head.classList.toggle('is-open', open);
 }
 
 function renderProdLines() {
