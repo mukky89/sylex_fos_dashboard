@@ -97,9 +97,11 @@ router.get('/:id/docx', async (req, res) => {
     const p = await Datasheet.findById(req.params.id).lean();
     if (!p) return res.status(404).json({ error: 'Not found' });
     const buffer = await Packer.toBuffer(buildDatasheetDoc(p));
-    const safe = (p.title || 'datasheet').replace(/[^a-zA-Z0-9áäčďéíĺľňóôŕšťúýžÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽ _-]/g, '').trim().replace(/\s+/g, '_') || 'datasheet';
+    // ASCII fallback bez diakritiky (Content-Disposition musí byť latin1) + plný UTF-8 názov cez RFC 5987
+    const ascii = ((p.title || 'datasheet').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9 _-]/g, '').trim().replace(/\s+/g, '_') || 'datasheet');
+    const utf8 = encodeURIComponent(`Datasheet_${(p.title || 'datasheet').replace(/\s+/g, '_')}.docx`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Disposition', `attachment; filename="Datasheet_${safe}.docx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="Datasheet_${ascii}.docx"; filename*=UTF-8''${utf8}`);
     res.send(buffer);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
