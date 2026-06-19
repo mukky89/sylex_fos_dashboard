@@ -2669,52 +2669,116 @@ async function loadProcedures() {
   renderProcedures();
 }
 
+// Vlastník postupu (fallback na Vypracoval / Autor pre staršie záznamy)
+function procOwnerOf(p) { return p.owner || (p.validity && p.validity.preparedBy) || p.author || ''; }
+function procStepCount(p) { return (p.steps || []).filter(s => stripHtmlText(s.text) || s.image).length; }
+
+// Stav zoradenia tabuľky postupov
+let procSort = { key: 'updatedAt', dir: 'desc' };
+function setProcSort(key) {
+  if (procSort.key === key) procSort.dir = procSort.dir === 'asc' ? 'desc' : 'asc';
+  else procSort = { key, dir: (key === 'updatedAt' || key === 'nextRevision') ? 'desc' : 'asc' };
+  renderProcedures();
+}
+
 function renderProcedures() {
   const list = document.getElementById('procList');
   if (!list) return;
   const q = (document.getElementById('procSearch')?.value || '').toLowerCase();
-  const items = proceduresData.filter(p =>
-    !q || (p.title || '').toLowerCase().includes(q) ||
-    (p.department || '').toLowerCase().includes(q) ||
-    (p.author || '').toLowerCase().includes(q)
-  );
+  const statusF = document.getElementById('procStatusFilter')?.value || '';
+  const revF = document.getElementById('procRevFilter')?.value || '';
 
-  if (items.length === 0) {
-    list.innerHTML = proceduresData.length === 0
-      ? '<div class="proc-empty">Zatiaľ žiadne postupy.<div class="proc-empty-actions"><button class="btn-primary" onclick="openProcedureModal()">+ Vytvoriť prvý postup</button></div></div>'
-      : '<div class="proc-empty">Žiadne výsledky pre zadané hľadanie.</div>';
+  if (proceduresData.length === 0) {
+    list.innerHTML = '<div class="proc-empty">Zatiaľ žiadne postupy.<div class="proc-empty-actions"><button class="btn-primary" onclick="openProcedureModal()">+ Vytvoriť prvý postup</button></div></div>';
     return;
   }
 
-  list.innerHTML = '';
-  items.forEach(p => {
-    const stepCount = (p.steps || []).filter(s => stripHtmlText(s.text) || s.image).length;
-    const card = document.createElement('div');
-    card.className = 'proc-card';
-    card.innerHTML = `
-      <div class="proc-card-main" onclick="openProcedureById('${p._id}')">
-        <div class="proc-card-top">
-          <span class="proc-card-title">${escHtml(p.title)}</span>
-          <span class="proc-status-badge proc-status-${p.status}">${PROC_STATUS[p.status] || p.status}</span>
-        </div>
-        <div class="proc-card-meta">
-          ${p.department ? `<span>🏢 ${escHtml(p.department)}</span>` : ''}
-          ${p.author ? `<span>👤 ${escHtml(p.author)}</span>` : ''}
-          <span>🪜 ${stepCount} ${stepCount === 1 ? 'operácia' : (stepCount >= 2 && stepCount <= 4 ? 'operácie' : 'operácií')}</span>
-          <span>🕒 ${fmtDate(p.updatedAt)}</span>
-          ${(() => { const r = procRevisionStatus(p); return (r && r.level !== 'ok') ? `<span class="pdv-rev-flag pdv-rev-${r.level}">📋 ${r.label}</span>` : ''; })()}
-        </div>
-      </div>
-      <div class="proc-card-actions">
-        <button class="btn-word" onclick="generateProcedureWord('${p._id}')" title="Stiahnuť ako Word">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          Word
-        </button>
-        <button class="admin-icon-btn" onclick="openProcedureById('${p._id}')" title="Upraviť">✎</button>
-        <button class="admin-icon-btn danger" onclick="deleteProcedure('${p._id}')" title="Odstrániť">✕</button>
-      </div>`;
-    list.appendChild(card);
+  let items = proceduresData.filter(p => {
+    if (q) {
+      const hay = `${p.title || ''} ${p.department || ''} ${p.author || ''} ${procOwnerOf(p)}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    if (statusF && (p.status || 'active') !== statusF) return false;
+    if (revF) {
+      const r = procRevisionStatus(p);
+      if (revF === 'none' && r) return false;
+      if (revF === 'over' && !(r && r.level === 'over')) return false;
+      if (revF === 'soon' && !(r && r.level === 'soon')) return false;
+    }
+    return true;
   });
+
+  // Zoradenie
+  const dir = procSort.dir === 'asc' ? 1 : -1;
+  const val = (p) => {
+    switch (procSort.key) {
+      case 'title':      return (p.title || '').toLowerCase();
+      case 'owner':      return procOwnerOf(p).toLowerCase();
+      case 'department': return (p.department || '').toLowerCase();
+      case 'status':     return PROC_STATUS[p.status] || p.status || '';
+      case 'steps':      return procStepCount(p);
+      case 'updatedAt':  return new Date(p.updatedAt || 0).getTime();
+      default:           return '';
+    }
+  };
+  items.sort((a, b) => {
+    if (procSort.key === 'nextRevision') {
+      const ta = (a.validity && a.validity.nextRevision) ? new Date(a.validity.nextRevision).getTime() : null;
+      const tb = (b.validity && b.validity.nextRevision) ? new Date(b.validity.nextRevision).getTime() : null;
+      if (ta === null && tb === null) return 0;
+      if (ta === null) return 1;   // postupy bez revízie vždy naspodok
+      if (tb === null) return -1;
+      return (ta - tb) * dir;
+    }
+    const va = val(a), vb = val(b);
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    return String(va).localeCompare(String(vb), 'sk') * dir;
+  });
+
+  if (items.length === 0) {
+    list.innerHTML = '<div class="proc-empty">Žiadne výsledky pre zadané filtre.</div>';
+    return;
+  }
+
+  const arrow = (key) => procSort.key === key ? (procSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
+  const th = (key, label, cls = '') => `<th class="proc-th${cls ? ' ' + cls : ''}${procSort.key === key ? ' active' : ''}" onclick="setProcSort('${key}')">${label}${arrow(key)}</th>`;
+
+  let html = `<div class="proc-table-wrap"><table class="proc-table">
+    <thead><tr>
+      ${th('title', 'Názov')}
+      ${th('owner', 'Vlastník')}
+      ${th('department', 'Oddelenie')}
+      ${th('status', 'Stav')}
+      ${th('steps', 'Operácie', 'num')}
+      ${th('nextRevision', 'Ďalšia revízia')}
+      ${th('updatedAt', 'Aktualizované')}
+      <th class="proc-th-actions">Akcie</th>
+    </tr></thead><tbody>`;
+
+  items.forEach(p => {
+    const owner = procOwnerOf(p);
+    const r = procRevisionStatus(p);
+    const nr = p.validity && p.validity.nextRevision;
+    const revCell = nr
+      ? `${fmtDate(nr)}${(r && r.level !== 'ok') ? ` <span class="pdv-rev-flag pdv-rev-${r.level}">${r.level === 'over' ? 'po termíne' : 'čoskoro'}</span>` : ''}`
+      : '<span class="pdv-muted">—</span>';
+    html += `<tr class="proc-tr" onclick="openProcedureById('${p._id}')">
+        <td class="proc-td-title">${escHtml(p.title)}</td>
+        <td>${owner ? escHtml(owner) : '<span class="pdv-muted">—</span>'}</td>
+        <td>${p.department ? escHtml(p.department) : '<span class="pdv-muted">—</span>'}</td>
+        <td><span class="proc-status-badge proc-status-${p.status}">${PROC_STATUS[p.status] || p.status}</span></td>
+        <td class="proc-td-num">${procStepCount(p)}</td>
+        <td class="proc-td-rev">${revCell}</td>
+        <td class="proc-td-date">${fmtDate(p.updatedAt)}</td>
+        <td class="proc-td-actions" onclick="event.stopPropagation()">
+          <button class="admin-icon-btn" onclick="generateProcedureWord('${p._id}')" title="Stiahnuť ako Word">⬇</button>
+          <button class="admin-icon-btn" onclick="openProcedureById('${p._id}')" title="Upraviť">✎</button>
+          <button class="admin-icon-btn danger" onclick="deleteProcedure('${p._id}')" title="Odstrániť">✕</button>
+        </td>
+      </tr>`;
+  });
+  html += `</tbody></table></div>`;
+  list.innerHTML = html;
 }
 
 function generateProcedureWord(id) {
@@ -2729,6 +2793,7 @@ function renderProcedureDetailHtml(p) {
   const meta = [];
   if (p.department) meta.push(`<span>🏢 ${escHtml(p.department)}</span>`);
   if (p.author)     meta.push(`<span>👤 ${escHtml(p.author)}</span>`);
+  if (p.owner)      meta.push(`<span>🛡️ Vlastník: ${escHtml(p.owner)}</span>`);
   if (p.date)       meta.push(`<span>📅 ${fmtDate(p.date)}</span>`);
   meta.push(`<span class="proc-status-badge proc-status-${p.status || 'active'}">${PROC_STATUS[p.status] || p.status || ''}</span>`);
 
@@ -3052,6 +3117,7 @@ function collectProcedureForm() {
     title:      document.getElementById('prTitle').value.trim(),
     department: document.getElementById('prDepartment').value.trim(),
     author:     document.getElementById('prAuthor').value.trim(),
+    owner:      document.getElementById('prOwner').value.trim(),
     date:       document.getElementById('prDate').value || undefined,
     purpose:    document.getElementById('prPurpose').value.trim(),
     status:     document.querySelector('input[name="prStatus"]:checked')?.value || 'active',
@@ -3093,6 +3159,7 @@ async function openProcedureModal(proc = null) {
   document.getElementById('prTitle').value      = isEdit ? (proc.title || '') : '';
   document.getElementById('prDepartment').value = isEdit ? (proc.department || '') : '';
   document.getElementById('prAuthor').value     = isEdit ? (proc.author || '') : '';
+  document.getElementById('prOwner').value      = isEdit ? (proc.owner || '') : '';
   document.getElementById('prDate').value       = isEdit && proc.date ? String(proc.date).slice(0, 10) : calYmd(new Date());
   document.getElementById('prPurpose').value    = isEdit ? (proc.purpose || '') : '';
   document.getElementById('prRisks').value      = isEdit ? (proc.risks || []).join('\n') : '';

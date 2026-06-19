@@ -1996,6 +1996,16 @@ body {
 }
 .proc-sub { font-size: 0.8rem; color: rgba(255,255,255,0.32); }
 
+.proc-toolbar { display: flex; gap: 10px; margin-bottom: 18px; align-items: center; flex-wrap: wrap; }
+.proc-toolbar .proc-search-wrap { margin-bottom: 0; flex: 1; min-width: 220px; }
+.proc-filter {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius);
+  padding: 9px 12px; color: #e2e8f0; font-family: var(--font); font-size: 0.85rem;
+  outline: none; cursor: pointer;
+}
+.proc-filter option { background: #1e293b; color: #e2e8f0; }
 .proc-search-wrap {
   display: flex; align-items: center; gap: 8px;
   background: rgba(255,255,255,0.05);
@@ -2011,6 +2021,43 @@ body {
 .proc-search-wrap input::placeholder { color: rgba(255,255,255,0.35); }
 
 .proc-list { display: flex; flex-direction: column; gap: 10px; }
+
+/* Tabuľkový prehľad postupov */
+.proc-table-wrap {
+  overflow-x: auto;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-lg);
+}
+.proc-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.proc-table thead th {
+  position: sticky; top: 0;
+  text-align: left; padding: 11px 14px;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+  background: rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  white-space: nowrap;
+}
+.proc-table th.proc-th { cursor: pointer; user-select: none; transition: color var(--transition); }
+.proc-table th.proc-th:hover { color: #e2e8f0; }
+.proc-table th.proc-th.active { color: var(--accent); }
+.proc-table th.num, .proc-table td.proc-td-num { text-align: center; }
+.proc-table th.proc-th-actions { text-align: right; }
+.proc-table tbody td {
+  padding: 10px 14px; color: #cbd5e1;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  vertical-align: middle;
+}
+.proc-table tbody tr:last-child td { border-bottom: none; }
+.proc-tr { cursor: pointer; transition: background var(--transition); }
+.proc-tr:hover td { background: rgba(255,255,255,0.05); }
+.proc-td-title { font-weight: 600; color: #f1f5f9; }
+.proc-td-date, .proc-td-rev { white-space: nowrap; color: rgba(255,255,255,0.7); }
+.proc-td-actions { text-align: right; white-space: nowrap; }
+.proc-td-actions .admin-icon-btn { margin-left: 4px; }
+.proc-table .pdv-rev-flag { font-size: 0.66rem; padding: 1px 6px; }
+
 .proc-card {
   display: flex; align-items: center; gap: 14px;
   background: rgba(255,255,255,0.05);

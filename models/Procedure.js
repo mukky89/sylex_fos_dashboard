@@ -4,6 +4,7 @@ const procedureSchema = new mongoose.Schema({
   title:       { type: String, required: true, trim: true },
   department:  { type: String, default: '', trim: true },   // oddelenie / kategória
   author:      { type: String, default: '', trim: true },
+  owner:       { type: String, default: '', trim: true },    // vlastník postupu (zodpovedná osoba, môže byť viac mien)
   date:        { type: Date,   default: Date.now },
   purpose:     { type: String, default: '' },               // cieľ / účel
   tools:       [{ name: String, note: String }],            // pomôcky / nástroje
