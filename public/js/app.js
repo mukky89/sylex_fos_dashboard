@@ -2848,13 +2848,19 @@ function renderProcedureDetailHtml(p) {
     html += `<div class="pdv-section">${sh('Príprava pracoviska a zariadení')}<ul class="pdv-checklist">${prep.map(x => `<li>${escHtml(x)}</li>`).join('')}</ul></div>`;
 
   if (steps.length) {
-    html += `<div class="pdv-section">${sh('Postup')}<div class="pdv-steps">`;
-    let curSection = null;
+    html += `<div class="pdv-section">${sh('Postup montáže')}<div class="pdv-steps">`;
+    let curSection = null, subPrefix = null, subCount = 0, globalNo = 0;
     steps.forEach((s, i) => {
       if ((s.section || '') && s.section !== curSection) {
         curSection = s.section;
+        const mm = curSection.match(/^\s*(\d+(?:\.\d+)*)/);
+        subPrefix = mm ? mm[1] : null;
+        subCount = 0;
         html += `<h4 class="pdv-substep">${escHtml(curSection)}</h4>`;
       }
+      let numLabel;
+      if (subPrefix) { subCount++; numLabel = subPrefix + '.' + subCount; }
+      else { globalNo++; numLabel = String(globalNo); }
       const warns = (s.warnings || []).map(k => wm[k] ? `<span class="pdv-badge pdv-warn">${wm[k].icon} ${escHtml(wm[k].label)}</span>` : '').join('');
       const ppes  = (s.ppe || []).map(k => pm[k] ? `<span class="pdv-badge pdv-ppe">${pm[k].icon} ${escHtml(pm[k].label)}</span>` : '').join('');
       const pos = s.image ? (s.imagePos || 'below') : 'below';
@@ -2863,7 +2869,7 @@ function renderProcedureDetailHtml(p) {
         ? `<figure class="pdv-fig pdv-fig-${pos}"><img src="${escHtml(s.image)}" alt=""><figcaption>Obrázok ${figN}${s.caption ? ': ' + escHtml(s.caption) : ''}</figcaption></figure>`
         : '';
       html += `<div class="pdv-step">
-        <div class="pdv-step-num">${i + 1}</div>
+        <div class="pdv-step-num">${numLabel}</div>
         <div class="pdv-step-body">
           ${pos === 'right' || pos === 'left' ? imgHtml : ''}
           <div class="pdv-step-text">${s.text || ''}</div>

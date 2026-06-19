@@ -329,9 +329,9 @@ function bookmarkedHeading(text, anchor, ctx, level = 1) {
   const runs = [];
   if (m) {
     runs.push(new TextRun({ text: m[1] + '  ', bold: true, color: LIME, size: 28, font: FONT }));
-    runs.push(new Bookmark({ id: anchor, children: [new TextRun({ text: m[2], bold: true, color: NAVY, size: 28, font: FONT })] }));
+    runs.push(new Bookmark({ id: anchor, children: [new TextRun({ text: m[2].toUpperCase(), bold: true, color: NAVY, size: 28, font: FONT })] }));
   } else {
-    runs.push(new Bookmark({ id: anchor, children: [new TextRun({ text, bold: true, color: NAVY, size: 28, font: FONT })] }));
+    runs.push(new Bookmark({ id: anchor, children: [new TextRun({ text: String(text).toUpperCase(), bold: true, color: NAVY, size: 28, font: FONT })] }));
   }
   return new Paragraph({
     spacing: { before: 300, after: 140 },
@@ -431,20 +431,26 @@ function buildDoc(p) {
   // Postup
   const steps = (p.steps || []).filter(s => stripHtml(s.text) || /<img/i.test(s.text || '') || s.image || (s.note || '').trim() || (s.warnings && s.warnings.length) || (s.ppe && s.ppe.length));
   if (steps.length) {
-    body.push(numHeading('Postup', 'sec_steps'));
-    let curSection = null;
+    body.push(numHeading('Postup montáže', 'sec_steps'));
+    let curSection = null, subPrefix = null, subCount = 0, globalNo = 0;
     steps.forEach((s, i) => {
       const num = i + 1;
       if ((s.section || '') && s.section !== curSection) {
         curSection = s.section;
+        const mm = curSection.match(/^\s*(\d+(?:\.\d+)*)/);
+        subPrefix = mm ? mm[1] : null;
+        subCount = 0;
         body.push(new Paragraph({ spacing: { before: 220, after: 60 }, border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: LIME, space: 4 } }, children: [new TextRun({ text: curSection, bold: true, color: NAVY, size: 24, font: FONT })] }));
       }
-      const label = firstHeadingText(s.text) || 'Operácia ' + num;
-      ctx.toc.push({ label: `Krok ${num} — ${label}`, anchor: 'op_' + num, level: 2 });
-      body.push(new Paragraph({ spacing: { before: 180, after: 50 },
+      // Normálne číslovanie operácie: hierarchické podľa podsekcie (napr. 8.1.1), inak sekvenčné
+      let numLabel;
+      if (subPrefix) { subCount++; numLabel = subPrefix + '.' + subCount; }
+      else { globalNo++; numLabel = String(globalNo); }
+      const label = firstHeadingText(s.text) || 'Operácia ' + numLabel;
+      ctx.toc.push({ label: `${numLabel} — ${label}`, anchor: 'op_' + num, level: 2 });
+      body.push(new Paragraph({ spacing: { before: 160, after: 40 },
         children: [new Bookmark({ id: 'op_' + num, children: [
-          new TextRun({ text: `${num}  `, bold: true, color: LIME, size: 26, font: FONT }),
-          new TextRun({ text: `Krok ${num}`, bold: true, color: NAVY, size: 24, font: FONT })
+          new TextRun({ text: numLabel, bold: true, color: NAVY, size: 22, font: FONT })
         ] })] }));
 
       const pos = s.image ? (s.imagePos || 'below') : 'below';

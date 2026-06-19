@@ -2377,10 +2377,10 @@ body {
 .pdv-steps { display: flex; flex-direction: column; gap: 18px; }
 .pdv-step { display: flex; gap: 14px; }
 .pdv-step-num {
-  flex-shrink: 0; width: 30px; height: 30px;
-  background: var(--accent); color: #fff; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 0.95rem;
+  flex-shrink: 0; min-width: 30px; height: 26px; padding: 0 9px;
+  background: var(--accent); color: #fff; border-radius: 13px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 0.82rem; white-space: nowrap;
 }
 .pdv-step-body { flex: 1; min-width: 0; }
 .pdv-step-text { padding: 0 !important; font-size: 0.92rem; color: #1e293b; }
