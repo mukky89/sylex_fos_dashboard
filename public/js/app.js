@@ -2861,8 +2861,8 @@ function renderProcedureDetailHtml(p) {
       let numLabel;
       if (subPrefix) { subCount++; numLabel = subPrefix + '.' + subCount; }
       else { globalNo++; numLabel = String(globalNo); }
-      const warns = (s.warnings || []).map(k => wm[k] ? `<span class="pdv-badge pdv-warn">${wm[k].icon} ${escHtml(wm[k].label)}</span>` : '').join('');
-      const ppes  = (s.ppe || []).map(k => pm[k] ? `<span class="pdv-badge pdv-ppe">${pm[k].icon} ${escHtml(pm[k].label)}</span>` : '').join('');
+      const warns = (s.warnings || []).map(k => wm[k] ? `<span class="pdv-badge pdv-warn"><img class="pdv-picto" src="/assets/pictograms/warn_${k}.png" alt=""> ${escHtml(wm[k].label)}</span>` : '').join('');
+      const ppes  = (s.ppe || []).map(k => pm[k] ? `<span class="pdv-badge pdv-ppe"><img class="pdv-picto" src="/assets/pictograms/ppe_${k}.png" alt=""> ${escHtml(pm[k].label)}</span>` : '').join('');
       const pos = s.image ? (s.imagePos || 'below') : 'below';
       const figN = s.image ? ++figCounter.n : 0;
       const imgHtml = s.image

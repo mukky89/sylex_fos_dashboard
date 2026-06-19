@@ -2396,6 +2396,7 @@ body {
 }
 .pdv-warn { background: #fdecea; color: #c0392b; border: 1px solid #f5c6cb; }
 .pdv-ppe  { background: #e8f5ec; color: #1f6f3d; border: 1px solid #b7e0c4; }
+.pdv-picto { width: 18px; height: 18px; vertical-align: middle; object-fit: contain; }
 
 @media (max-width: 560px) {
   .pdv-card { padding: 20px 16px; }
