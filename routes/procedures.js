@@ -9,7 +9,8 @@ const {
   Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle,
   ImageRun, ExternalHyperlink, Bookmark, InternalHyperlink,
   HorizontalPositionAlign, HorizontalPositionRelativeFrom,
-  VerticalPositionRelativeFrom, TextWrappingType, TextWrappingSide
+  VerticalPositionRelativeFrom, TextWrappingType, TextWrappingSide,
+  Header, Footer, PageNumber, TabStopType, TabStopPosition
 } = require('docx');
 
 // Konverzia CSS farby na docx hex (RRGGBB)
@@ -89,8 +90,17 @@ router.delete('/:id', async (req, res) => {
 
 // ── WORD export ─────────────────────────────────────────────────────────────
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-const ACCENT = '0891B2';
-const LINK_COLOR = '0563C1';
+// Firemná paleta SYLEX (podľa vzoru PP FOS OS3155)
+const NAVY = '1A1A2E';   // tmavá navy — titul, hlavičky tabuliek, názvy sekcií
+const LIME = '97BF0D';   // limetková — čísla sekcií, akcenty
+const BODY = '333333';   // text
+const ZEBRA = 'F7FAF0';  // svetlozelený pruh (zebra v tabuľkách)
+const SECBAR = 'F4F8EB'; // pruh nadpisu sekcie
+const GRIDLINE = 'EEEEEE';
+const FONT = 'Arial';
+const ACCENT = LIME;
+const LINK_COLOR = '3B6D11';
+const LOGO_PATH = path.join(PUBLIC_DIR, 'assets', 'guides', 'sylex-logo.png');
 
 const fmtDate = (d) => {
   try { return new Date(d).toLocaleDateString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
@@ -98,22 +108,33 @@ const fmtDate = (d) => {
 };
 const stripHtml = (html) => String(html || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
 
+// Tenké sivé orámovanie pre dátové tabuľky
+const gridBorders = (color = GRIDLINE) => ({
+  top: { style: BorderStyle.SINGLE, size: 2, color },
+  bottom: { style: BorderStyle.SINGLE, size: 2, color },
+  left: { style: BorderStyle.SINGLE, size: 2, color },
+  right: { style: BorderStyle.SINGLE, size: 2, color },
+  insideHorizontal: { style: BorderStyle.SINGLE, size: 2, color },
+  insideVertical: { style: BorderStyle.SINGLE, size: 2, color },
+});
+
 const sectionHeading = (text) => new Paragraph({
   heading: HeadingLevel.HEADING_2,
   spacing: { before: 260, after: 100 },
-  children: [new TextRun({ text, bold: true, color: ACCENT })]
+  children: [new TextRun({ text, bold: true, color: ACCENT, font: FONT })]
 });
 
 function metaRow(label, value) {
   const cell = (children, opts = {}) => new TableCell({
     width: { size: opts.w || 50, type: WidthType.PERCENTAGE },
+    shading: opts.head ? { fill: SECBAR } : undefined,
     margins: { top: 60, bottom: 60, left: 120, right: 120 },
     children
   });
   return new TableRow({
     children: [
-      cell([new Paragraph({ children: [new TextRun({ text: label, bold: true })] })], { w: 28 }),
-      cell([new Paragraph(value || '—')], { w: 72 })
+      cell([new Paragraph({ children: [new TextRun({ text: label, bold: true, color: NAVY, font: FONT, size: 19 })] })], { w: 30, head: true }),
+      cell([new Paragraph({ children: [new TextRun({ text: String(value || '—'), color: BODY, font: FONT, size: 19 })] })], { w: 70 })
     ]
   });
 }
@@ -303,10 +324,25 @@ const NO_BORDERS = {
 
 function bookmarkedHeading(text, anchor, ctx, level = 1) {
   ctx.toc.push({ label: text, anchor, level });
+  // Číslo sekcie (napr. „5.") zvýrazni limetkovou, názov navy — pruh v svetlozelenej
+  const m = String(text).match(/^(\d+\.)\s*(.*)$/);
+  const runs = [];
+  if (m) {
+    runs.push(new TextRun({ text: m[1] + '  ', bold: true, color: LIME, size: 28, font: FONT }));
+    runs.push(new Bookmark({ id: anchor, children: [new TextRun({ text: m[2], bold: true, color: NAVY, size: 28, font: FONT })] }));
+  } else {
+    runs.push(new Bookmark({ id: anchor, children: [new TextRun({ text, bold: true, color: NAVY, size: 28, font: FONT })] }));
+  }
   return new Paragraph({
-    heading: level === 1 ? HeadingLevel.HEADING_1 : HeadingLevel.HEADING_2,
-    spacing: { before: 260, after: 100 },
-    children: [new Bookmark({ id: anchor, children: [new TextRun({ text, bold: true, color: ACCENT })] })]
+    spacing: { before: 300, after: 140 },
+    shading: { fill: SECBAR },
+    border: {
+      left: { style: BorderStyle.SINGLE, size: 28, color: LIME, space: 10 },
+      top: { style: BorderStyle.SINGLE, size: 10, color: SECBAR, space: 6 },
+      bottom: { style: BorderStyle.SINGLE, size: 10, color: SECBAR, space: 6 },
+      right: { style: BorderStyle.SINGLE, size: 10, color: SECBAR, space: 6 },
+    },
+    children: runs
   });
 }
 
@@ -315,11 +351,11 @@ function buildDoc(p) {
   const body = [];
 
   // ── Pomocníci ──
-  const headCell = (text) => new TableCell({ shading: { fill: 'EEF2F6' }, margins: { top: 60, bottom: 60, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: String(text || ''), bold: true })] })] });
-  const cell = (text) => new TableCell({ margins: { top: 60, bottom: 60, left: 120, right: 120 }, children: [new Paragraph(String(text || ''))] });
-  const dataTable = (headers, rows) => new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [
+  const headCell = (text) => new TableCell({ shading: { fill: NAVY }, margins: { top: 70, bottom: 70, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: String(text || ''), bold: true, color: 'FFFFFF', size: 18, font: FONT })] })] });
+  const cell = (text, zebra) => new TableCell({ shading: zebra ? { fill: ZEBRA } : undefined, margins: { top: 55, bottom: 55, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: String(text || ''), size: 18, color: BODY, font: FONT })] })] });
+  const dataTable = (headers, rows) => new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: gridBorders(), rows: [
     new TableRow({ tableHeader: true, children: headers.map(headCell) }),
-    ...rows.map(r => new TableRow({ children: r.map(cell) }))
+    ...rows.map((r, i) => new TableRow({ children: r.map(c => cell(c, i % 2 === 1)) }))
   ] });
   const filled = (arr, keys) => (arr || []).filter(o => keys.some(k => (o[k] || '').toString().trim()));
   let secNo = 0;
@@ -401,12 +437,15 @@ function buildDoc(p) {
       const num = i + 1;
       if ((s.section || '') && s.section !== curSection) {
         curSection = s.section;
-        body.push(new Paragraph({ spacing: { before: 200, after: 40 }, children: [new TextRun({ text: curSection, bold: true, color: ACCENT, size: 26 })] }));
+        body.push(new Paragraph({ spacing: { before: 220, after: 60 }, border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: LIME, space: 4 } }, children: [new TextRun({ text: curSection, bold: true, color: NAVY, size: 24, font: FONT })] }));
       }
       const label = firstHeadingText(s.text) || 'Operácia ' + num;
       ctx.toc.push({ label: `Krok ${num} — ${label}`, anchor: 'op_' + num, level: 2 });
-      body.push(new Paragraph({ spacing: { before: 160, after: 40 },
-        children: [new Bookmark({ id: 'op_' + num, children: [new TextRun({ text: `Krok ${num}`, bold: true, color: ACCENT, size: 24 })] })] }));
+      body.push(new Paragraph({ spacing: { before: 180, after: 50 },
+        children: [new Bookmark({ id: 'op_' + num, children: [
+          new TextRun({ text: `${num}  `, bold: true, color: LIME, size: 26, font: FONT }),
+          new TextRun({ text: `Krok ${num}`, bold: true, color: NAVY, size: 24, font: FONT })
+        ] })] }));
 
       const pos = s.image ? (s.imagePos || 'below') : 'below';
 
@@ -500,30 +539,75 @@ function buildDoc(p) {
 
   // ── Zostavenie dokumentu: titul + OBSAH + telo ──
   const children = [];
-  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [new TextRun({ text: 'PRACOVNÝ POSTUP', bold: true, size: 28, color: ACCENT, characterSpacing: 30 })] }));
-  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: p.title || '', bold: true, size: 36 })] }));
+
+  // Logo SYLEX (ak existuje)
+  let logoRun = null;
+  try {
+    if (fs.existsSync(LOGO_PATH)) {
+      logoRun = new ImageRun({ data: fs.readFileSync(LOGO_PATH), transformation: { width: 178, height: 45 }, type: 'png' });
+    }
+  } catch (e) {}
+  if (logoRun) children.push(new Paragraph({ spacing: { after: 160 }, children: [logoRun] }));
+
+  // Titulný pruh — navy s bielym názvom
+  children.push(new Paragraph({
+    spacing: { before: 0, after: 80 },
+    shading: { fill: NAVY },
+    border: {
+      left: { style: BorderStyle.SINGLE, size: 30, color: LIME, space: 12 },
+      top: { style: BorderStyle.SINGLE, size: 30, color: NAVY, space: 10 },
+      bottom: { style: BorderStyle.SINGLE, size: 30, color: NAVY, space: 10 },
+      right: { style: BorderStyle.SINGLE, size: 30, color: NAVY, space: 10 },
+    },
+    children: [new TextRun({ text: p.title || 'Pracovný postup', bold: true, size: 40, color: 'FFFFFF', font: FONT })]
+  }));
+  const eyebrow = ['PRACOVNÝ POSTUP'];
+  if (p.procNumber) eyebrow.push(p.procNumber);
+  if (p.edition) eyebrow.push('Vydanie ' + p.edition);
+  if (p.validity && p.validity.revision) eyebrow.push('Revízia ' + p.validity.revision);
+  children.push(new Paragraph({ spacing: { after: 240 }, children: [new TextRun({ text: eyebrow.join('   ·   '), bold: true, size: 18, color: LIME, characterSpacing: 16, font: FONT })] }));
 
   // Obsah dokumentu (prelinkované odrážky)
   if (ctx.toc.length) {
-    children.push(new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { after: 80 }, children: [new TextRun({ text: 'Obsah', bold: true, color: ACCENT })] }));
+    children.push(new Paragraph({ spacing: { before: 60, after: 100 }, children: [new TextRun({ text: 'OBSAH', bold: true, size: 24, color: NAVY, characterSpacing: 20, font: FONT })] }));
     ctx.toc.forEach(t => {
       children.push(new Paragraph({
         indent: { left: t.level === 2 ? 480 : 120 }, spacing: { after: 20 },
-        children: [new InternalHyperlink({ anchor: t.anchor, children: [new TextRun({ text: (t.level === 2 ? '– ' : '• ') + t.label, color: LINK_COLOR, underline: {} })] })]
+        children: [new InternalHyperlink({ anchor: t.anchor, children: [new TextRun({ text: (t.level === 2 ? '– ' : '• ') + t.label, color: LINK_COLOR, underline: {}, font: FONT })] })]
       }));
     });
-    children.push(new Paragraph({ spacing: { after: 120 }, border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'D6DCE4' } }, children: [new TextRun('')] }));
+    children.push(new Paragraph({ spacing: { after: 120 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: LIME } }, children: [new TextRun('')] }));
   }
 
   body.forEach(x => children.push(x));
 
-  children.push(new Paragraph({ spacing: { before: 360 }, border: { top: { style: BorderStyle.SINGLE, size: 4, color: 'D6DCE4' } }, children: [new TextRun({ text: `Vygenerované z FOS Dashboard · ${fmtDate(new Date())}`, italics: true, size: 16, color: '94A3B8' })] }));
+  children.push(new Paragraph({ spacing: { before: 360 }, border: { top: { style: BorderStyle.SINGLE, size: 4, color: GRIDLINE } }, children: [new TextRun({ text: `Vygenerované z FOS Dashboard · ${fmtDate(new Date())}`, italics: true, size: 16, color: '888888', font: FONT })] }));
+
+  // Hlavička a pätička dokumentu
+  const header = new Header({ children: [new Paragraph({
+    tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+    border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: GRIDLINE, space: 4 } },
+    children: [
+      new TextRun({ text: (p.procNumber || 'Pracovný postup') + (p.validity && p.validity.revision ? '   ·   Revízia ' + p.validity.revision : ''), size: 16, color: '888888', font: FONT }),
+      new TextRun({ text: '\tSensors and Sensing Systems', size: 16, color: '97BF0D', bold: true, font: FONT }),
+    ]
+  })] });
+  const footer = new Footer({ children: [new Paragraph({
+    alignment: AlignmentType.CENTER,
+    border: { top: { style: BorderStyle.SINGLE, size: 4, color: GRIDLINE, space: 4 } },
+    children: [
+      new TextRun({ text: 'Strana ', size: 16, color: '888888', font: FONT }),
+      new TextRun({ children: [PageNumber.CURRENT], size: 16, color: '888888', font: FONT }),
+      new TextRun({ text: ' z ', size: 16, color: '888888', font: FONT }),
+      new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 16, color: '888888', font: FONT }),
+    ]
+  })] });
 
   return new Document({
     creator: 'FOS Dashboard',
     title: p.title || 'Pracovný postup',
-    styles: { default: { document: { run: { font: 'Calibri', size: 22 } } } },
-    sections: [{ properties: {}, children }]
+    styles: { default: { document: { run: { font: FONT, size: 20, color: BODY } } } },
+    sections: [{ properties: {}, headers: { default: header }, footers: { default: footer }, children }]
   });
 }
 
