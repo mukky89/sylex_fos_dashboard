@@ -587,33 +587,46 @@ function buildDoc(p) {
   if (p.procNumber) eyebrow.push(p.procNumber);
   if (p.edition) eyebrow.push('Vydanie ' + p.edition);
   if (p.validity && p.validity.revision) eyebrow.push('Revízia ' + p.validity.revision);
-  children.push(new Paragraph({ spacing: { after: 240 }, children: [new TextRun({ text: eyebrow.join('   ·   '), bold: true, size: 18, color: LIME, characterSpacing: 16, font: FONT })] }));
+  children.push(new Paragraph({ spacing: { after: 300 }, children: [new TextRun({ text: eyebrow.join('   ·   '), bold: true, size: 17, color: LIME, characterSpacing: 14, font: FONT })] }));
 
-  // Obsah dokumentu (prelinkované odrážky)
+  // Obsah dokumentu — čistý, prelinkovaný
   if (ctx.toc.length) {
-    children.push(new Paragraph({ spacing: { before: 60, after: 100 }, children: [new TextRun({ text: 'OBSAH', bold: true, size: 24, color: NAVY, characterSpacing: 20, font: FONT })] }));
+    children.push(new Paragraph({
+      spacing: { before: 40, after: 140 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 14, color: LIME, space: 6 } },
+      children: [new TextRun({ text: 'OBSAH', bold: true, size: 26, color: NAVY, characterSpacing: 28, font: FONT })]
+    }));
     ctx.toc.forEach(t => {
+      const lvl2 = t.level === 2;
       children.push(new Paragraph({
-        indent: { left: t.level === 2 ? 480 : 120 }, spacing: { after: 20 },
-        children: [new InternalHyperlink({ anchor: t.anchor, children: [new TextRun({ text: (t.level === 2 ? '– ' : '• ') + t.label, color: LINK_COLOR, underline: {}, font: FONT })] })]
+        indent: { left: lvl2 ? 560 : 0 },
+        spacing: { before: lvl2 ? 0 : 70, after: lvl2 ? 10 : 0 },
+        children: [new InternalHyperlink({ anchor: t.anchor, children: [
+          new TextRun({ text: t.label, color: lvl2 ? '666666' : NAVY, bold: !lvl2, size: lvl2 ? 18 : 21, font: FONT })
+        ] })]
       }));
     });
-    children.push(new Paragraph({ spacing: { after: 120 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: LIME } }, children: [new TextRun('')] }));
+    children.push(new Paragraph({ spacing: { before: 160, after: 0 }, pageBreakBefore: false, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: GRIDLINE } }, children: [new TextRun('')] }));
   }
 
   body.forEach(x => children.push(x));
 
   children.push(new Paragraph({ spacing: { before: 360 }, border: { top: { style: BorderStyle.SINGLE, size: 4, color: GRIDLINE } }, children: [new TextRun({ text: `Vygenerované z FOS Dashboard · ${fmtDate(new Date())}`, italics: true, size: 16, color: '888888', font: FONT })] }));
 
-  // Hlavička a pätička dokumentu
+  // ── Hlavička (presne podľa dokumentu): vľavo Číslo PP, vpravo Revízia/Zmena; čierny text, spodná linka ──
+  // Prvá (titulná) strana má vlastnú prázdnu hlavičku.
+  const headerLeft = p.procNumber || (p.title || 'Pracovný postup');
+  const headerRight = (p.validity && p.validity.revision) ? ('Revízia ' + p.validity.revision)
+                    : (p.edition ? ('Vydanie ' + p.edition) : '');
   const header = new Header({ children: [new Paragraph({
     tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
-    border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: GRIDLINE, space: 4 } },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '000000', space: 4 } },
     children: [
-      new TextRun({ text: (p.procNumber || 'Pracovný postup') + (p.validity && p.validity.revision ? '   ·   Revízia ' + p.validity.revision : ''), size: 16, color: '888888', font: FONT }),
-      new TextRun({ text: '\tSensors and Sensing Systems', size: 16, color: '97BF0D', bold: true, font: FONT }),
+      new TextRun({ text: headerLeft, size: 20, color: '000000', font: FONT }),
+      new TextRun({ text: '\t' + headerRight, size: 20, color: '000000', font: FONT }),
     ]
   })] });
+  const firstHeader = new Header({ children: [new Paragraph({ children: [new TextRun('')] })] });
   const footer = new Footer({ children: [new Paragraph({
     alignment: AlignmentType.CENTER,
     border: { top: { style: BorderStyle.SINGLE, size: 4, color: GRIDLINE, space: 4 } },
@@ -629,7 +642,12 @@ function buildDoc(p) {
     creator: 'FOS Dashboard',
     title: p.title || 'Pracovný postup',
     styles: { default: { document: { run: { font: FONT, size: 20, color: BODY } } } },
-    sections: [{ properties: {}, headers: { default: header }, footers: { default: footer }, children }]
+    sections: [{
+      properties: { titlePage: true },
+      headers: { default: header, first: firstHeader },
+      footers: { default: footer, first: footer },
+      children
+    }]
   });
 }
 
