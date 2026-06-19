@@ -184,9 +184,11 @@ async function sendDocx(res, g, opts) {
   const doc = buildGuideDoc(g, opts);
   const buffer = await Packer.toBuffer(doc);
   const revStr = opts && opts.revision ? '_r' + opts.revision.rev : '';
-  const safe = (g.title || 'navod').replace(/[^a-zA-Z0-9áäčďéíĺľňóôŕšťúýžÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽ _-]/g, '').trim().replace(/\s+/g, '_') || 'navod';
+  // ASCII fallback bez diakritiky (Content-Disposition musí byť latin1) + plný UTF-8 názov cez RFC 5987
+  const ascii = ((g.title || 'navod').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9 _-]/g, '').trim().replace(/\s+/g, '_') || 'navod');
+  const utf8 = encodeURIComponent(`Navod_${(g.title || 'navod').replace(/\s+/g, '_')}${revStr}.docx`);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-  res.setHeader('Content-Disposition', `attachment; filename="Navod_${safe}${revStr}.docx"`);
+  res.setHeader('Content-Disposition', `attachment; filename="Navod_${ascii}${revStr}.docx"; filename*=UTF-8''${utf8}`);
   res.send(buffer);
 }
 
