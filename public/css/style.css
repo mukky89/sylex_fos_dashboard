@@ -2105,13 +2105,26 @@ body {
 .proc-rows-hdr { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .proc-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
 .proc-row { display: flex; align-items: flex-start; gap: 6px; }
-.proc-row input[type="text"] {
+.proc-row input[type="text"], .proc-row-multi input {
   flex: 1; min-width: 0;
   padding: 7px 10px; border-radius: var(--radius);
   background: var(--card-bg); border: 1px solid var(--border);
   color: var(--text); font-family: var(--font); font-size: 0.84rem; outline: none;
 }
-.proc-row input[type="text"]:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(8,145,178,0.1); }
+.proc-row input[type="text"]:focus, .proc-row-multi input:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(8,145,178,0.1); }
+
+/* Sekčné rozdeľovače vo formulári postupu */
+.proc-form-section {
+  font-size: 0.82rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--accent); margin: 24px 0 4px;
+  padding-bottom: 6px; border-bottom: 2px solid var(--accent-light);
+}
+.proc-step-subsection {
+  width: 100%; padding: 7px 10px; border-radius: var(--radius);
+  background: var(--accent-light); border: 1px dashed var(--border-focus);
+  color: var(--text); font-family: var(--font); font-size: 0.84rem; font-weight: 600; outline: none;
+  margin-bottom: 6px;
+}
 .proc-row-step { align-items: stretch; }
 .proc-step-handle { display: flex; flex-direction: column; gap: 2px; padding-top: 2px; }
 .proc-step-fields { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -2332,7 +2345,17 @@ body {
   border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 12px;
 }
 .pdv-purpose { font-size: 0.92rem; line-height: 1.6; color: #334155; }
-.pdv-tools, .pdv-risks, .pdv-atts { margin: 0; padding-left: 20px; font-size: 0.9rem; line-height: 1.7; color: #334155; }
+.pdv-tools, .pdv-risks, .pdv-atts, .pdv-checklist { margin: 0; padding-left: 20px; font-size: 0.9rem; line-height: 1.7; color: #334155; }
+.pdv-checklist { list-style: none; padding-left: 4px; }
+.pdv-checklist li::before { content: "☐"; margin-right: 8px; color: var(--accent); }
+
+/* Dátové tabuľky v detaile postupu */
+.pdv-table-wrap { overflow-x: auto; margin: 4px 0; }
+.pdv-dtable { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.pdv-dtable th, .pdv-dtable td { text-align: left; padding: 7px 10px; border: 1px solid var(--border); vertical-align: top; color: #334155; }
+.pdv-dtable th { background: #f1f5f9; font-weight: 700; color: #1e293b; white-space: nowrap; }
+.pdv-dtable tr:nth-child(even) td { background: #f8fafc; }
+.pdv-substep { font-size: 1rem; font-weight: 700; color: var(--accent); margin: 18px 0 8px; }
 .pdv-att-url { font-family: 'Courier New', monospace; font-size: 0.82rem; color: var(--text-dim); }
 
 /* Platnosť pracovného postupu */

@@ -2799,23 +2799,62 @@ function renderProcedureDetailHtml(p) {
   if (p.date)       meta.push(`<span>📅 ${fmtDate(p.date)}</span>`);
   meta.push(`<span class="proc-status-badge proc-status-${p.status || 'active'}">${PROC_STATUS[p.status] || p.status || ''}</span>`);
 
+  const idLine = [];
+  if (p.procNumber) idLine.push(escHtml(p.procNumber));
+  if (p.edition)    idLine.push('Vydanie ' + escHtml(p.edition));
+  if (p.validity && p.validity.revision) idLine.push('Rev. ' + escHtml(p.validity.revision));
+
   let html = `
     <div class="pdv-head">
-      <div class="pdv-eyebrow">PRACOVNÝ POSTUP</div>
+      <div class="pdv-eyebrow">PRACOVNÝ POSTUP${idLine.length ? ' · ' + idLine.join(' · ') : ''}</div>
       <h1 class="pdv-title">${escHtml(p.title || '(bez názvu)')}</h1>
       <div class="pdv-meta">${meta.join('')}</div>
     </div>`;
 
+  // Pomocníci na vykreslenie
+  let sec = 0;
+  const sh = (t) => `<h3>${++sec}. ${escHtml(t)}</h3>`;
+  const textSec = (val) => `<p class="pdv-purpose">${escHtml(val).replace(/\n/g, '<br>')}</p>`;
+  const dtable = (headers, rows) => `<div class="pdv-table-wrap"><table class="pdv-dtable"><thead><tr>${headers.map(h => `<th>${escHtml(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${escHtml(c || '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const filled = (arr, keys) => (arr || []).filter(o => keys.some(k => (o[k] || '').toString().trim()));
+
   if ((p.purpose || '').trim())
-    html += `<div class="pdv-section"><h3>Cieľ / Účel</h3><p class="pdv-purpose">${escHtml(p.purpose).replace(/\n/g, '<br>')}</p></div>`;
+    html += `<div class="pdv-section">${sh('Účel')}${textSec(p.purpose)}</div>`;
+
+  if ((p.scope || '').trim())
+    html += `<div class="pdv-section">${sh('Rozsah platnosti')}${textSec(p.scope)}</div>`;
+
+  const relatedDocs = filled(p.relatedDocs, ['document', 'description', 'reference']);
+  if (relatedDocs.length)
+    html += `<div class="pdv-section">${sh('Súvisiace dokumenty a normy')}${dtable(['Dokument / Norma', 'Popis', 'Číslo / Odkaz'], relatedDocs.map(d => [d.document, d.description, d.reference]))}</div>`;
+
+  if ((p.definitions || '').trim())
+    html += `<div class="pdv-section">${sh('Definície a skratky')}${textSec(p.definitions)}</div>`;
+
+  const equipment = filled(p.equipment, ['no', 'name', 'description', 'calibration']);
+  if (equipment.length)
+    html += `<div class="pdv-section">${sh('Špeciálne vybavenie')}${dtable(['č.', 'Názov položky', 'Popis / P/N', 'Kalibrácia'], equipment.map(e => [e.no, e.name, e.description, e.calibration]))}</div>`;
+
+  const materials = filled(p.materials, ['no', 'name', 'description', 'partNumber', 'quantity']);
+  if (materials.length)
+    html += `<div class="pdv-section">${sh('Materiály a spotrebný materiál')}${dtable(['č.', 'Názov', 'Popis', 'Sylex PN', 'Množstvo'], materials.map(m => [m.no, m.name, m.description, m.partNumber, m.quantity]))}</div>`;
 
   const tools = (p.tools || []).filter(t => (t.name || '').trim());
   if (tools.length)
     html += `<div class="pdv-section"><h3>Potrebné pomôcky / nástroje</h3><ul class="pdv-tools">${tools.map(t => `<li><strong>${escHtml(t.name)}</strong>${t.note ? ` — ${escHtml(t.note)}` : ''}</li>`).join('')}</ul></div>`;
 
+  const prep = (p.prepChecklist || []).filter(x => (x || '').trim());
+  if (prep.length)
+    html += `<div class="pdv-section">${sh('Príprava pracoviska a zariadení')}<ul class="pdv-checklist">${prep.map(x => `<li>${escHtml(x)}</li>`).join('')}</ul></div>`;
+
   if (steps.length) {
-    html += `<div class="pdv-section"><h3>Postup</h3><div class="pdv-steps">`;
+    html += `<div class="pdv-section">${sh('Postup')}<div class="pdv-steps">`;
+    let curSection = null;
     steps.forEach((s, i) => {
+      if ((s.section || '') && s.section !== curSection) {
+        curSection = s.section;
+        html += `<h4 class="pdv-substep">${escHtml(curSection)}</h4>`;
+      }
       const warns = (s.warnings || []).map(k => wm[k] ? `<span class="pdv-badge pdv-warn">${wm[k].icon} ${escHtml(wm[k].label)}</span>` : '').join('');
       const ppes  = (s.ppe || []).map(k => pm[k] ? `<span class="pdv-badge pdv-ppe">${pm[k].icon} ${escHtml(pm[k].label)}</span>` : '').join('');
       const pos = s.image ? (s.imagePos || 'below') : 'below';
@@ -2838,13 +2877,33 @@ function renderProcedureDetailHtml(p) {
     html += `</div></div>`;
   }
 
+  const safety = filled(p.safety, ['risk', 'source', 'measure']);
+  if (safety.length)
+    html += `<div class="pdv-section">${sh('Bezpečnosť pri práci (BOZP)')}${dtable(['Riziko', 'Zdroj', 'Opatrenie'], safety.map(s => [s.risk, s.source, s.measure]))}</div>`;
+
   const risks = (p.risks || []).filter(r => (r || '').trim());
   if (risks.length)
-    html += `<div class="pdv-section"><h3>Riziká / Upozornenia</h3><ul class="pdv-risks">${risks.map(r => `<li>${escHtml(r)}</li>`).join('')}</ul></div>`;
+    html += `<div class="pdv-section"><h3>Ďalšie riziká / upozornenia</h3><ul class="pdv-risks">${risks.map(r => `<li>${escHtml(r)}</li>`).join('')}</ul></div>`;
+
+  const waste = filled(p.waste, ['waste', 'category', 'disposal']);
+  if (waste.length)
+    html += `<div class="pdv-section">${sh('Nakladanie s odpadmi')}${dtable(['Odpad', 'Kategória', 'Likvidácia'], waste.map(w => [w.waste, w.category, w.disposal]))}</div>`;
+
+  const maintenance = filled(p.maintenance, ['equipment', 'interval', 'task', 'responsible']);
+  if (maintenance.length)
+    html += `<div class="pdv-section">${sh('Údržba zariadení a prípravku')}${dtable(['Zariadenie', 'Interval', 'Úkon', 'Zodpovedný'], maintenance.map(m => [m.equipment, m.interval, m.task, m.responsible]))}</div>`;
+
+  const troubleshooting = filled(p.troubleshooting, ['problem', 'cause', 'solution']);
+  if (troubleshooting.length)
+    html += `<div class="pdv-section">${sh('Riešenie problémov')}${dtable(['Problém', 'Príčina', 'Riešenie'], troubleshooting.map(t => [t.problem, t.cause, t.solution]))}</div>`;
 
   const atts = (p.attachments || []).filter(a => (a.label || a.url || '').trim());
   if (atts.length)
     html += `<div class="pdv-section"><h3>Prílohy / Odkazy</h3><ul class="pdv-atts">${atts.map(a => `<li>${escHtml(a.label || a.url)}${a.label && a.url ? ` <span class="pdv-att-url">${escHtml(a.url)}</span>` : ''}</li>`).join('')}</ul></div>`;
+
+  const changeLog = filled(p.changeLog, ['version', 'change', 'date', 'reason', 'author']);
+  if (changeLog.length)
+    html += `<div class="pdv-section"><h3>História zmien</h3>${dtable(['Verzia', 'Zmena', 'Dátum', 'Dôvod zmeny', 'Vypracoval'], changeLog.map(c => [c.version, c.change, c.date ? fmtDate(c.date) : '', c.reason, c.author]))}</div>`;
 
   const v = p.validity || {};
   if (v.preparedBy || v.approvedBy || v.validFrom || v.nextRevision || v.unit || v.revision || p.author) {
@@ -2941,6 +3000,42 @@ function addAttachmentRow(att = {}) {
   c.appendChild(row);
 }
 
+// ── Generické tabuľkové sekcie (história zmien, dokumenty, vybavenie, …) ───────
+// Každý stĺpec: [kľúč, placeholder, šírka(flex), type]
+const PROC_TABLES = {
+  changeLog:   [['version', 'Verzia', 0.6], ['change', 'Zmena', 0.6], ['date', 'Dátum', 1, 'date'], ['reason', 'Dôvod zmeny', 2], ['author', 'Vypracoval', 1.4]],
+  relatedDocs: [['document', 'Dokument / Norma', 1.6], ['description', 'Popis', 2], ['reference', 'Číslo / Odkaz', 1.4]],
+  equipment:   [['no', 'č.', 0.5], ['name', 'Názov položky', 1.8], ['description', 'Popis / P/N', 2], ['calibration', 'Kalibrácia', 1]],
+  materials:   [['no', 'č.', 0.5], ['name', 'Názov', 1.6], ['description', 'Popis', 1.8], ['partNumber', 'Sylex PN', 1], ['quantity', 'Množstvo', 0.9]],
+  safety:      [['risk', 'Riziko', 1.4], ['source', 'Zdroj', 2], ['measure', 'Opatrenie', 2]],
+  waste:       [['waste', 'Odpad', 1.6], ['category', 'Kategória', 1.4], ['disposal', 'Likvidácia', 2]],
+  maintenance: [['equipment', 'Zariadenie', 1.6], ['interval', 'Interval', 1], ['task', 'Úkon', 2.2], ['responsible', 'Zodpovedný', 1.2]],
+  troubleshooting: [['problem', 'Problém', 1.6], ['cause', 'Príčina', 2], ['solution', 'Riešenie', 2]],
+};
+
+function addProcTableRow(key, data = {}) {
+  const cols = PROC_TABLES[key];
+  const c = document.getElementById('pt_' + key);
+  if (!cols || !c) return;
+  const row = document.createElement('div');
+  row.className = 'proc-row proc-row-multi';
+  row.innerHTML = cols.map(([k, ph, flex, type]) => {
+    const v = (type === 'date' && data[k]) ? String(data[k]).slice(0, 10) : (data[k] || '');
+    return `<input type="${type || 'text'}" data-col="${k}" style="flex:${flex || 1}" placeholder="${escHtml(ph)}" value="${escHtml(v)}">`;
+  }).join('') + `<button type="button" class="proc-row-del" onclick="procRemoveRow(this)" title="Odstrániť">✕</button>`;
+  c.appendChild(row);
+}
+
+function collectProcTable(key) {
+  const cols = PROC_TABLES[key];
+  if (!cols) return [];
+  return [...document.querySelectorAll('#pt_' + key + ' .proc-row')].map(r => {
+    const o = {};
+    cols.forEach(([k]) => { o[k] = (r.querySelector(`[data-col="${k}"]`)?.value || '').trim(); });
+    return o;
+  }).filter(o => Object.values(o).some(v => v));
+}
+
 // ── Operácie (rich karty) ─────────────────────────────────────────────────────
 function procMoveStep(btn, dir) {
   const card = btn.closest('.proc-step-card');
@@ -3017,6 +3112,7 @@ function addStepRow(step = {}) {
         <button type="button" class="proc-row-del" onclick="procRemoveStep(this)" title="Odstrániť">✕</button>
       </div>
     </div>
+    <input type="text" class="proc-step-subsection" placeholder="Podsekcia (napr. 8.1 Príprava vlákna) — voliteľné" value="${escHtml(step.section || '')}">
     <div class="proc-step-editor" id="${sid}_ed"></div>
     <input type="text" class="proc-step-note" placeholder="Krátka poznámka (voliteľné)" value="${escHtml(step.note || '')}">
     <div class="proc-step-section">
@@ -3062,6 +3158,7 @@ function addStepRow(step = {}) {
 function stepDataFromCard(card) {
   const ed = stepEditors[card.dataset.sid];
   return {
+    section:  card.querySelector('.proc-step-subsection')?.value.trim() || '',
     text:     ed ? ed.getHTML() : '',
     note:     card.querySelector('.proc-step-note').value.trim(),
     image:    card._image || '',
@@ -3094,6 +3191,7 @@ function collectSteps() {
   return [...document.querySelectorAll('#prStepsRows .proc-step-card')].map(card => {
     const ed = stepEditors[card.dataset.sid];
     return {
+      section:  card.querySelector('.proc-step-subsection')?.value.trim() || '',
       text:     ed ? ed.getHTML() : '',
       note:     card.querySelector('.proc-step-note').value.trim(),
       image:    card._image || '',
@@ -3102,7 +3200,7 @@ function collectSteps() {
       warnings: card._warnings || [],
       ppe:      card._ppe || []
     };
-  }).filter(s => stripHtmlText(s.text) || s.image || s.note || (s.warnings && s.warnings.length) || (s.ppe && s.ppe.length));
+  }).filter(s => stripHtmlText(s.text) || s.image || s.note || s.section || (s.warnings && s.warnings.length) || (s.ppe && s.ppe.length));
 }
 
 function collectProcedureForm() {
@@ -3115,14 +3213,28 @@ function collectProcedureForm() {
     url:   r.querySelector('.proc-att-url').value.trim()
   })).filter(a => a.label || a.url);
   const risks = document.getElementById('prRisks').value.split('\n').map(s => s.trim()).filter(Boolean);
+  const prepChecklist = document.getElementById('prPrepChecklist').value.split('\n').map(s => s.trim()).filter(Boolean);
   return {
     title:      document.getElementById('prTitle').value.trim(),
+    procNumber: document.getElementById('prProcNumber').value.trim(),
+    edition:    document.getElementById('prEdition').value.trim(),
     department: document.getElementById('prDepartment').value.trim(),
     author:     document.getElementById('prAuthor').value.trim(),
     owner:      document.getElementById('prOwner').value.trim(),
     date:       document.getElementById('prDate').value || undefined,
     purpose:    document.getElementById('prPurpose').value.trim(),
+    scope:      document.getElementById('prScope').value.trim(),
+    definitions: document.getElementById('prDefinitions').value.trim(),
     status:     document.querySelector('input[name="prStatus"]:checked')?.value || 'active',
+    changeLog:       collectProcTable('changeLog'),
+    relatedDocs:     collectProcTable('relatedDocs'),
+    equipment:       collectProcTable('equipment'),
+    materials:       collectProcTable('materials'),
+    prepChecklist,
+    safety:          collectProcTable('safety'),
+    waste:           collectProcTable('waste'),
+    maintenance:     collectProcTable('maintenance'),
+    troubleshooting: collectProcTable('troubleshooting'),
     validity: {
       preparedBy:   document.getElementById('prValPreparedBy').value.trim(),
       approvedBy:   document.getElementById('prValApprovedBy').value.trim(),
@@ -3159,11 +3271,16 @@ async function openProcedureModal(proc = null) {
   document.getElementById('procModalTitle').textContent = isEdit ? 'Upraviť postup' : 'Nový postup';
   document.getElementById('prId').value         = isEdit ? proc._id : '';
   document.getElementById('prTitle').value      = isEdit ? (proc.title || '') : '';
+  document.getElementById('prProcNumber').value = isEdit ? (proc.procNumber || '') : '';
+  document.getElementById('prEdition').value    = isEdit ? (proc.edition || '') : '';
   document.getElementById('prDepartment').value = isEdit ? (proc.department || '') : '';
   document.getElementById('prAuthor').value     = isEdit ? (proc.author || '') : '';
   document.getElementById('prOwner').value      = isEdit ? (proc.owner || '') : '';
   document.getElementById('prDate').value       = isEdit && proc.date ? String(proc.date).slice(0, 10) : calYmd(new Date());
   document.getElementById('prPurpose').value    = isEdit ? (proc.purpose || '') : '';
+  document.getElementById('prScope').value      = isEdit ? (proc.scope || '') : '';
+  document.getElementById('prDefinitions').value = isEdit ? (proc.definitions || '') : '';
+  document.getElementById('prPrepChecklist').value = isEdit ? (proc.prepChecklist || []).join('\n') : '';
   document.getElementById('prRisks').value      = isEdit ? (proc.risks || []).join('\n') : '';
   const statusVal = isEdit ? (proc.status || 'active') : 'active';
   const statusRadio = document.querySelector(`input[name="prStatus"][value="${statusVal}"]`);
@@ -3182,12 +3299,14 @@ async function openProcedureModal(proc = null) {
   document.getElementById('prToolsRows').innerHTML = '';
   document.getElementById('prStepsRows').innerHTML = '';
   document.getElementById('prAttRows').innerHTML   = '';
+  Object.keys(PROC_TABLES).forEach(k => { const c = document.getElementById('pt_' + k); if (c) c.innerHTML = ''; });
   const tools = (isEdit && proc.tools && proc.tools.length) ? proc.tools : [{}];
   const steps = (isEdit && proc.steps && proc.steps.length) ? proc.steps : [{}];
   const atts  = (isEdit && proc.attachments && proc.attachments.length) ? proc.attachments : [];
   tools.forEach(addToolRow);
   steps.forEach(addStepRow);
   atts.forEach(addAttachmentRow);
+  Object.keys(PROC_TABLES).forEach(k => { ((isEdit && proc[k]) || []).forEach(row => addProcTableRow(k, row)); });
 
   // Plnostránkový editor
   document.getElementById('procListView').classList.add('hidden');
