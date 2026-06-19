@@ -2813,7 +2813,7 @@ function renderProcedureDetailHtml(p) {
 
   // Pomocníci na vykreslenie
   let sec = 0;
-  const sh = (t) => `<h3>${++sec}. ${escHtml(t)}</h3>`;
+  const sh = (t) => `<h3><span class="pdv-secno">${++sec}.</span> ${escHtml(t)}</h3>`;
   const textSec = (val) => `<p class="pdv-purpose">${escHtml(val).replace(/\n/g, '<br>')}</p>`;
   const dtable = (headers, rows) => `<div class="pdv-table-wrap"><table class="pdv-dtable"><thead><tr>${headers.map(h => `<th>${escHtml(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${escHtml(c || '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   const filled = (arr, keys) => (arr || []).filter(o => keys.some(k => (o[k] || '').toString().trim()));
@@ -2954,6 +2954,7 @@ async function showProcedureDetail(id) {
     <div class="pdv-toolbar">
       <button class="btn-secondary" onclick="backToProcedureList()">← Späť na zoznam</button>
       <div class="pdv-toolbar-actions">
+        <button class="btn-word" onclick="printProcedurePdf(currentDetailProcedure)">⬇ PDF</button>
         <button class="btn-word" onclick="generateProcedureWord('${p._id}')">⬇ Word</button>
         <button class="btn-edit" onclick="editDetailProcedure()">✎ Upraviť</button>
         <button class="btn-delete" onclick="deleteProcedure('${p._id}')">🗑 Odstrániť</button>
@@ -2974,12 +2975,50 @@ function backToProcedureList() {
 }
 
 // ── Náhľad počas editácie (z modalu) ──────────────────────────────────────────
+let currentPreviewProc = null;
 function openProcedurePreview() {
-  const p = collectProcedureForm();
-  document.getElementById('procPreviewBody').innerHTML = renderProcedureDetailHtml(p);
+  currentPreviewProc = collectProcedureForm();
+  document.getElementById('procPreviewBody').innerHTML = `<div class="pdv-card">${renderProcedureDetailHtml(currentPreviewProc)}</div>`;
   document.getElementById('procPreviewModal').classList.remove('hidden');
 }
 function closeProcedurePreview() { document.getElementById('procPreviewModal').classList.add('hidden'); }
+
+// ── Generovanie PDF z náhľadu (cez tlač prehliadača) ──────────────────────────
+function buildProcedurePrintDoc(p) {
+  const inner = renderProcedureDetailHtml(p);
+  const title = escHtml(p.title || 'Pracovný postup');
+  return `<!doctype html><html lang="sk"><head><meta charset="utf-8"><title>${title}</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  @page { size: A4; margin: 15mm 13mm 16mm; }
+  html, body { background:#fff; margin:0; padding:0; }
+  body { font-family: var(--font), Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .proc-detail { padding: 22px; max-width: 900px; margin: 0 auto; }
+  .proc-detail .pdv-card { box-shadow:none; border-radius:0; max-width:none; margin:0; }
+  .pdv-section, .pdv-step, .pdv-table-wrap, .pdv-validity { break-inside: avoid; }
+  .pdv-substep { break-after: avoid; }
+  .pp-bar { position: sticky; top:0; z-index:10; display:flex; gap:10px; justify-content:center; padding:12px; background:#1a1a2e; }
+  .pp-bar button { background:#97bf0d; color:#1a1a2e; border:0; border-radius:8px; padding:10px 20px; font-weight:800; font-family:inherit; font-size:14px; cursor:pointer; }
+  .pp-bar button.sec { background:rgba(255,255,255,.16); color:#fff; }
+  @media print { .pp-noprint { display:none !important; } .proc-detail { padding:0; } }
+</style></head>
+<body>
+  <div class="pp-bar pp-noprint">
+    <button onclick="window.print()">⬇ Uložiť ako PDF / Tlačiť</button>
+    <button class="sec" onclick="window.close()">Zavrieť</button>
+  </div>
+  <div class="proc-detail"><div class="pdv-card">${inner}</div></div>
+</body></html>`;
+}
+function printProcedurePdf(p) {
+  if (!p) { toast('Najprv otvor náhľad postupu', 'warn'); return; }
+  const w = window.open('', '_blank');
+  if (!w) { toast('Povoľ vyskakovacie okná pre generovanie PDF', 'warn'); return; }
+  w.document.open();
+  w.document.write(buildProcedurePrintDoc(p));
+  w.document.close();
+  w.onload = () => { setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 400); };
+}
 
 // ── Dynamické riadky (pomôcky, prílohy) ───────────────────────────────────────
 function procRemoveRow(btn) { btn.closest('.proc-row')?.remove(); }
