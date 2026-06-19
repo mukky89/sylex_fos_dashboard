@@ -1063,6 +1063,41 @@
             </div>
             <div id="prAttRows" class="proc-rows"></div>
           </div>
+
+          <!-- Platnosť pracovného postupu -->
+          <div class="form-group proc-validity-block">
+            <label class="proc-validity-hdr">Platnosť pracovného postupu <span class="form-hint">(schvaľovanie a revízie)</span></label>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Vypracoval</label>
+                <input type="text" id="prValPreparedBy" placeholder="Meno – funkcia, oddelenie">
+              </div>
+              <div class="form-group">
+                <label>Schválil</label>
+                <input type="text" id="prValApprovedBy" placeholder="Meno vedúceho výroby">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Platnosť od</label>
+                <input type="date" id="prValValidFrom" onchange="procSuggestNextRevision()">
+              </div>
+              <div class="form-group">
+                <label>Nasledujúca revízia <span class="form-hint">(max. 2 roky od vydania)</span></label>
+                <input type="date" id="prValNextRevision">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Útvar</label>
+                <input type="text" id="prValUnit" placeholder="napr. Výroba FOS, SYLEX s.r.o., Bratislava">
+              </div>
+              <div class="form-group">
+                <label>Revízia / Zmena</label>
+                <input type="text" id="prValRevision" placeholder="napr. A / 00">
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="proc-edit-foot">

@@ -2702,6 +2702,7 @@ function renderProcedures() {
           ${p.author ? `<span>👤 ${escHtml(p.author)}</span>` : ''}
           <span>🪜 ${stepCount} ${stepCount === 1 ? 'operácia' : (stepCount >= 2 && stepCount <= 4 ? 'operácie' : 'operácií')}</span>
           <span>🕒 ${fmtDate(p.updatedAt)}</span>
+          ${(() => { const r = procRevisionStatus(p); return (r && r.level !== 'ok') ? `<span class="pdv-rev-flag pdv-rev-${r.level}">📋 ${r.label}</span>` : ''; })()}
         </div>
       </div>
       <div class="proc-card-actions">
@@ -2778,7 +2779,36 @@ function renderProcedureDetailHtml(p) {
   if (atts.length)
     html += `<div class="pdv-section"><h3>Prílohy / Odkazy</h3><ul class="pdv-atts">${atts.map(a => `<li>${escHtml(a.label || a.url)}${a.label && a.url ? ` <span class="pdv-att-url">${escHtml(a.url)}</span>` : ''}</li>`).join('')}</ul></div>`;
 
+  const v = p.validity || {};
+  if (v.preparedBy || v.approvedBy || v.validFrom || v.nextRevision || v.unit || v.revision || p.author) {
+    const revInfo = procRevisionStatus(p);
+    const nextRevCell = v.nextRevision
+      ? `${fmtDate(v.nextRevision)}${revInfo ? ` <span class="pdv-rev-flag pdv-rev-${revInfo.level}">${revInfo.label}</span>` : ''}`
+      : '<span class="pdv-muted">— (max. 2 roky od vydania)</span>';
+    const row = (label, value) => `<tr><th>${label}</th><td>${value || '<span class="pdv-muted">—</span>'}</td></tr>`;
+    html += `<div class="pdv-section"><h3>Platnosť pracovného postupu</h3>
+      <table class="pdv-validity">
+        ${row('Vypracoval', escHtml(v.preparedBy || p.author || ''))}
+        ${row('Schválil', escHtml(v.approvedBy || ''))}
+        ${row('Platnosť od', v.validFrom ? fmtDate(v.validFrom) : '')}
+        ${row('Nasledujúca revízia', nextRevCell)}
+        ${row('Útvar', escHtml(v.unit || ''))}
+        ${row('Revízia / Zmena', escHtml(v.revision || ''))}
+      </table></div>`;
+  }
+
   return html;
+}
+
+// Stav revízie postupu: vráti {level, label, days} ak má nastavenú nasledujúcu revíziu.
+// level: 'over' (po termíne), 'soon' (≤30 dní), 'ok' (viac než 30 dní).
+function procRevisionStatus(p) {
+  const nr = p && p.validity && p.validity.nextRevision;
+  if (!nr) return null;
+  const days = Math.ceil((new Date(nr) - new Date()) / 864e5);
+  if (days < 0)  return { level: 'over', label: `Revízia po termíne (${-days} dní)`, days };
+  if (days <= 30) return { level: 'soon', label: `Revízia o ${days} dní`, days };
+  return { level: 'ok', label: `Platí do ${fmtDate(nr)}`, days };
 }
 
 async function showProcedureDetail(id) {
@@ -3025,8 +3055,26 @@ function collectProcedureForm() {
     date:       document.getElementById('prDate').value || undefined,
     purpose:    document.getElementById('prPurpose').value.trim(),
     status:     document.querySelector('input[name="prStatus"]:checked')?.value || 'active',
+    validity: {
+      preparedBy:   document.getElementById('prValPreparedBy').value.trim(),
+      approvedBy:   document.getElementById('prValApprovedBy').value.trim(),
+      validFrom:    document.getElementById('prValValidFrom').value || undefined,
+      nextRevision: document.getElementById('prValNextRevision').value || undefined,
+      unit:         document.getElementById('prValUnit').value.trim(),
+      revision:     document.getElementById('prValRevision').value.trim()
+    },
     tools, steps: collectSteps(), risks, attachments
   };
+}
+
+// Po zadaní „Platnosť od" navrhne nasledujúcu revíziu o 2 roky (ak nie je vyplnená).
+function procSuggestNextRevision() {
+  const from = document.getElementById('prValValidFrom').value;
+  const next = document.getElementById('prValNextRevision');
+  if (!from || next.value) return;
+  const d = new Date(from);
+  d.setFullYear(d.getFullYear() + 2);
+  next.value = calYmd(d);
 }
 
 // ── Editor (plnostránkový) ────────────────────────────────────────────────────
@@ -3051,6 +3099,13 @@ async function openProcedureModal(proc = null) {
   const statusVal = isEdit ? (proc.status || 'active') : 'active';
   const statusRadio = document.querySelector(`input[name="prStatus"][value="${statusVal}"]`);
   if (statusRadio) statusRadio.checked = true;
+  const v = (isEdit && proc.validity) ? proc.validity : {};
+  document.getElementById('prValPreparedBy').value   = v.preparedBy || '';
+  document.getElementById('prValApprovedBy').value   = v.approvedBy || '';
+  document.getElementById('prValValidFrom').value    = v.validFrom ? String(v.validFrom).slice(0, 10) : '';
+  document.getElementById('prValNextRevision').value = v.nextRevision ? String(v.nextRevision).slice(0, 10) : '';
+  document.getElementById('prValUnit').value         = v.unit || '';
+  document.getElementById('prValRevision').value     = v.revision || '';
   document.getElementById('prDeleteBtn').style.display = isEdit ? '' : 'none';
 
   // Reset dynamických častí
@@ -4035,11 +4090,12 @@ let notifData = { newAnns: [], todayEvs: [] };
 async function loadNotif() {
   try {
     const key = calYmd(new Date());
-    const [anns, evs, instr, tasks] = await Promise.all([
+    const [anns, evs, instr, tasks, procs] = await Promise.all([
       fetch('/api/announcements').then(r => r.json()).catch(() => []),
       fetch(`/api/calendar?from=${key}&to=${key}`).then(r => r.json()).catch(() => []),
       fetch('/api/instruments').then(r => r.json()).catch(() => []),
       fetch('/api/tasks').then(r => r.json()).catch(() => []),
+      fetch('/api/procedures').then(r => r.json()).catch(() => []),
     ]);
     const weekAgo = new Date(Date.now() - 7 * 864e5);
     const newAnns = (Array.isArray(anns) ? anns : []).filter(a => new Date(a.date || a.createdAt) >= weekAgo);
@@ -4053,8 +4109,15 @@ async function loadNotif() {
     // Nedokončené úlohy po termíne / dnes
     const todayEnd = new Date(new Date().toDateString()); todayEnd.setHours(23, 59, 59);
     const tasksDue = (Array.isArray(tasks) ? tasks : []).filter(t => !t.done && t.due && new Date(t.due) <= todayEnd);
-    notifData = { newAnns, todayEvs, calDue, tasksDue };
-    const count = newAnns.length + todayEvs.length + calDue.length + tasksDue.length;
+    // Pracovné postupy s nasledujúcou revíziou po termíne alebo do 30 dní (okrem archivovaných)
+    const procRevDue = (Array.isArray(procs) ? procs : []).filter(p => {
+      if (p.status === 'archived') return false;
+      const nr = p.validity && p.validity.nextRevision;
+      if (!nr) return false;
+      return Math.ceil((new Date(nr) - new Date()) / 864e5) <= 30;
+    });
+    notifData = { newAnns, todayEvs, calDue, tasksDue, procRevDue };
+    const count = newAnns.length + todayEvs.length + calDue.length + tasksDue.length + procRevDue.length;
     const b = document.getElementById('notifBadge');
     if (b) { b.textContent = count > 9 ? '9+' : count; b.classList.toggle('hidden', count === 0); }
   } catch (e) {}
@@ -4087,6 +4150,14 @@ function renderNotif() {
       const days = Math.ceil((new Date(i.nextCalibration) - new Date()) / 864e5);
       const lbl = days < 0 ? 'po termíne' : `o ${days} dní`;
       h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('dev');setTimeout(()=>switchDevTab('instruments'),100)"><span>📐</span><span>${escHtml(i.name)} — ${lbl}</span></div>`;
+    });
+  }
+  if ((notifData.procRevDue || []).length) {
+    h += '<div class="notif-group">Pracovné postupy — revízia (≤30 dní / po termíne)</div>';
+    notifData.procRevDue.forEach(p => {
+      const days = Math.ceil((new Date(p.validity.nextRevision) - new Date()) / 864e5);
+      const lbl = days < 0 ? 'po termíne' : `o ${days} dní`;
+      h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('procedures');setTimeout(()=>openProcedureById('${p._id}'),250)"><span>📋</span><span>${escHtml(p.title)} — revízia ${lbl}</span></div>`;
     });
   }
   if (notifData.newAnns.length) {
