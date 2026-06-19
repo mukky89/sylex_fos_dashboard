@@ -2771,9 +2771,11 @@ function renderProcedures() {
         <td class="proc-td-rev">${revCell}</td>
         <td class="proc-td-date">${fmtDate(p.updatedAt)}</td>
         <td class="proc-td-actions" onclick="event.stopPropagation()">
-          <button class="admin-icon-btn" onclick="generateProcedureWord('${p._id}')" title="Stiahnuť ako Word">⬇</button>
-          <button class="admin-icon-btn" onclick="openProcedureById('${p._id}')" title="Upraviť">✎</button>
-          <button class="admin-icon-btn danger" onclick="deleteProcedure('${p._id}')" title="Odstrániť">✕</button>
+          <div class="proc-actions-row">
+            <button class="admin-icon-btn" onclick="generateProcedureWord('${p._id}')" title="Stiahnuť ako Word">⬇</button>
+            <button class="admin-icon-btn" onclick="openProcedureById('${p._id}')" title="Upraviť">✎</button>
+            <button class="admin-icon-btn danger" onclick="deleteProcedure('${p._id}')" title="Odstrániť">✕</button>
+          </div>
         </td>
       </tr>`;
   });
