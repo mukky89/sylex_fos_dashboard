@@ -2054,8 +2054,9 @@ body {
 .proc-tr:hover td { background: rgba(255,255,255,0.05); }
 .proc-td-title { font-weight: 600; color: #f1f5f9; }
 .proc-td-date, .proc-td-rev { white-space: nowrap; color: rgba(255,255,255,0.7); }
-.proc-td-actions { text-align: right; white-space: nowrap; }
-.proc-td-actions .admin-icon-btn { margin-left: 4px; }
+.proc-td-actions { white-space: nowrap; }
+.proc-td-actions .proc-actions-row { display: flex; gap: 6px; justify-content: flex-end; }
+.proc-td-actions .admin-icon-btn { flex: 0 0 auto; }
 .proc-table .pdv-rev-flag { font-size: 0.66rem; padding: 1px 6px; }
 
 .proc-card {
