@@ -2784,7 +2784,7 @@ function renderProcedures() {
 }
 
 function generateProcedureWord(id) {
-  window.location.href = `/api/procedures/${id}/docx`;
+  window.location.href = `/api/procedures/${id}/docx` + tokenQS();
 }
 
 // ── Detail / náhľad (read-only) ───────────────────────────────────────────────
