@@ -620,9 +620,12 @@ router.get('/:id/docx', async (req, res) => {
     const doc = buildDoc(p);
     const buffer = await Packer.toBuffer(doc);
 
-    const safe = (p.title || 'postup').replace(/[^a-zA-Z0-9áäčďéíĺľňóôŕšťúýžÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽ _-]/g, '').trim().replace(/\s+/g, '_') || 'postup';
+    // ASCII fallback bez diakritiky (Content-Disposition musí byť latin1) + plný UTF-8 názov cez RFC 5987
+    const base = (p.title || 'postup').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+    const ascii = (base.replace(/[^a-zA-Z0-9 _-]/g, '').trim().replace(/\s+/g, '_') || 'postup');
+    const utf8 = encodeURIComponent(`Postup_${(p.title || 'postup').replace(/\s+/g, '_')}.docx`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Disposition', `attachment; filename="Postup_${safe}.docx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="Postup_${ascii}.docx"; filename*=UTF-8''${utf8}`);
     res.send(buffer);
   } catch (err) {
     res.status(500).json({ error: err.message });
