@@ -16,6 +16,7 @@ const Interrogator = require('../models/Interrogator');
 const Datasheet    = require('../models/Datasheet');
 const Contact      = require('../models/Contact');
 const CalendarEvent = require('../models/CalendarEvent');
+const SensorType   = require('../models/SensorType');
 
 const now = Date.now();
 const dPlus = (days) => new Date(now + days * 864e5);
@@ -377,7 +378,7 @@ const SENSOR_TYPES = [
 ];
 
 async function seedSamples() {
-  const result = { announcements: 0, categories: 0, products: 0, procedures: 0, projects: 0, instruments: 0, tests: 0, prototypes: 0, interrogators: 0, datasheets: 0, contacts: 0, vacations: 0 };
+  const result = { announcements: 0, categories: 0, products: 0, procedures: 0, projects: 0, instruments: 0, tests: 0, prototypes: 0, interrogators: 0, datasheets: 0, contacts: 0, vacations: 0, sensorTypes: 0 };
 
   // Novinky
   for (const a of ANNOUNCEMENTS) {
