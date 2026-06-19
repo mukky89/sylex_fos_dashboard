@@ -2287,6 +2287,22 @@ body {
 .pdv-tools, .pdv-risks, .pdv-atts { margin: 0; padding-left: 20px; font-size: 0.9rem; line-height: 1.7; color: #334155; }
 .pdv-att-url { font-family: 'Courier New', monospace; font-size: 0.82rem; color: var(--text-dim); }
 
+/* Platnosť pracovného postupu */
+.pdv-validity { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.pdv-validity th, .pdv-validity td {
+  text-align: left; padding: 8px 12px; border: 1px solid var(--border); vertical-align: top;
+}
+.pdv-validity th { width: 32%; font-weight: 700; color: #1e293b; background: #f1f5f9; }
+.pdv-validity td { color: #334155; }
+.pdv-muted { color: var(--text-dim); }
+.pdv-rev-flag {
+  display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 10px;
+  font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+}
+.pdv-rev-ok   { background: #dcfce7; color: #166534; }
+.pdv-rev-soon { background: #fef3c7; color: #92400e; }
+.pdv-rev-over { background: #fee2e2; color: #991b1b; }
+
 .pdv-steps { display: flex; flex-direction: column; gap: 18px; }
 .pdv-step { display: flex; gap: 14px; }
 .pdv-step-num {

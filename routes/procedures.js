@@ -392,6 +392,24 @@ function buildDoc(p) {
     });
   }
 
+  // Platnosť pracovného postupu (schvaľovanie + revízie)
+  const v = p.validity || {};
+  const hasValidity = v.preparedBy || v.approvedBy || v.validFrom || v.nextRevision || v.unit || v.revision || p.author;
+  if (hasValidity) {
+    body.push(bookmarkedHeading('Platnosť pracovného postupu', 'sec_validity', ctx, 1));
+    body.push(new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        metaRow('Vypracoval', v.preparedBy || p.author || '—'),
+        metaRow('Schválil', v.approvedBy || '—'),
+        metaRow('Platnosť od', v.validFrom ? fmtDate(v.validFrom) : '—'),
+        metaRow('Nasledujúca revízia', v.nextRevision ? fmtDate(v.nextRevision) : '— (max. 2 roky od vydania)'),
+        metaRow('Útvar', v.unit || '—'),
+        metaRow('Revízia / Zmena', v.revision || '—')
+      ]
+    }));
+  }
+
   // Zoznam obrázkov (krížové odkazy)
   if (ctx.figures.length) {
     body.push(bookmarkedHeading('Zoznam obrázkov', 'sec_figs', ctx, 1));

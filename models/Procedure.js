@@ -18,7 +18,16 @@ const procedureSchema = new mongoose.Schema({
     ppe:      [String]                                       // kľúče ochranných pomôcok
   }],
   attachments: [{ label: String, url: String }],            // prílohy / odkazy
-  status:      { type: String, enum: ['active', 'draft', 'archived'], default: 'active' }
+  status:      { type: String, enum: ['active', 'draft', 'archived'], default: 'active' },
+  // Platnosť pracovného postupu (sekcia 17 — schvaľovanie a revízie)
+  validity: {
+    preparedBy:   { type: String, default: '' },            // Vypracoval (meno + funkcia / oddelenie)
+    approvedBy:   { type: String, default: '' },            // Schválil (meno vedúceho výroby)
+    validFrom:    { type: Date },                            // Platnosť od (dátum schválenia)
+    nextRevision: { type: Date },                            // Nasledujúca revízia (max. 2 roky od vydania)
+    unit:         { type: String, default: '' },            // Útvar (napr. Výroba FOS, SYLEX s.r.o., Bratislava)
+    revision:     { type: String, default: '' }             // Revízia / Zmena (napr. A / 00)
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Procedure', procedureSchema);
