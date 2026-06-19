@@ -200,6 +200,123 @@ const PROCEDURES = [
       { text: '<p>Zaeviduj príjem do systému.</p>', note: '', imagePos: 'below', warnings: [], ppe: [] },
     ],
     risks: [], attachments: [] },
+
+  // ── Plne štruktúrovaný montážny postup (vzor PP FOS OS3155) ──
+  { title: 'Montážny postup výroby snímača OS3155', department: 'Výroba FOS', author: 'Marek Múčka',
+    owner: 'Marek Múčka', status: 'active', procNumber: 'PP FOS 98/2024', edition: '2026',
+    date: dPlus(0),
+    purpose: 'Opísať postup zostavenia tenzometrických FBG snímačov OS3155 vrátane prípravy rámu, sklenného spájkovania, kabeláže a finálnej optickej kontroly.',
+    scope: 'Platí pre výrobu snímačov OS3155 na pracovisku Výroba FOS.',
+    definitions: 'FBG = Fiber Bragg Grating (vláknová Braggova mriežka)\nWL = vlnová dĺžka (wavelength)\nPP = pracovný postup',
+    changeLog: [
+      { version: '01', change: '00', date: dPlus(0), reason: 'Prvé vydanie', author: 'Marek Múčka' },
+    ],
+    relatedDocs: [
+      { document: 'SOP101119', description: 'Originálny postup zostavenia OS3155 (Micron Optics)', reference: 'Micron Optics Rev.3' },
+      { document: 'SOP131203', description: 'Meranie optickej straty a vlnovej dĺžky', reference: 'Micron Optics' },
+      { document: 'Výkres senzora OS3155', description: 'Technický výkres rámu a zostavy', reference: 'P/N 222984' },
+      { document: 'STN EN ISO 9001:2015', description: 'Systém manažérstva kvality', reference: 'ISO 9001' },
+    ],
+    equipment: [
+      { no: '5.1', name: 'Stanica na sklenné spájkovanie', description: 'Micron Optics – 3-zónový ohrev', calibration: 'Ročne' },
+      { no: '5.6', name: 'Vyhrievacia doska (hotplate)', description: '100 °C ± 5 °C', calibration: 'Ročne' },
+      { no: '5.7', name: 'Optický interrogátor', description: 'Micron Optics Si155/Si255', calibration: 'Ročne' },
+      { no: '5.10', name: 'Fusion splicer + fiber cleaver', description: '', calibration: 'Podľa výrobcu' },
+    ],
+    materials: [
+      { no: '6.1', name: 'Rám senzora', description: 'Tenzometer – zváraný', partNumber: '222984', quantity: '1' },
+      { no: '6.2', name: 'FBG pole', description: 'Fiber Bragg Grating Array', partNumber: '223037', quantity: '1' },
+      { no: '6.3', name: 'Sklenená preforma', description: 'Glass Solder Preform', partNumber: '222078', quantity: '3' },
+      { no: '6.7', name: 'Epoxid Loctite Hysol E-05MR', description: 'Dvojzložkový', partNumber: '223177', quantity: 'malé mn.' },
+      { no: '6.9', name: 'IPA ≥ 99,5 %', description: 'Izopropylalkohol', partNumber: 'C00110', quantity: '~5 ml' },
+    ],
+    prepChecklist: [
+      'Čistota pracoviska – plocha čistá, bez prachu a mastných škvŕn',
+      'Spájkovacia stanica – cyklovanie naprázdno vykonané; teploty Z1/Z2/Z3 overené',
+      'Hotplate zapnutý – ustálená teplota 100 °C (min. 10 min pred použitím)',
+      'Optický interrogátor – kanál zapojený a funkčný, konektory vyčistené',
+      'Materiál – skontrolovať či boli všetky materiály správne vyskladnené podľa objednávky',
+      'DBFOS – objednávka vytvorená v databáze',
+    ],
+    tools: [{ name: 'Antistatické pinzety (2 ks)', note: 'C00229' }, { name: 'Lupa 5×', note: 'C00059' }],
+    steps: [
+      { section: '8.1 Príprava vlákna a záznamy',
+        text: '<p>Vytlačte barcode štítok so sériovým číslom a nalepte ho cca 5 cm za konektor pigtailu navareného na vlákne.</p>', note: '', imagePos: 'below', warnings: [], ppe: ['rukavice'] },
+      { section: '8.1 Príprava vlákna a záznamy',
+        text: '<p>Pripojte konektor pigtailu k meraciemu zariadeniu (Interrogator) a zaznamenajte vlnovú dĺžku oboch FBG pri nulovom namáhaní do DBFOS. Vzdialenosť medzi FBG má byť 38 ±3 mm.</p>', note: 'Bez záznamu nie je možné vyhodnotiť WL po montáži.', imagePos: 'below', warnings: ['general'], ppe: [] },
+      { section: '8.2 Vloženie FBG do prípravku a čistenie',
+        text: '<p>Rám snímača vyčistite v ultrazvukovej čističke s čistým acetónom (15 min / 25 °C) a vložte do prípravku s drážkou hore.</p>', note: '', imagePos: 'below', warnings: ['chemikalia'], ppe: ['rukavice', 'okuliare'] },
+      { section: '8.4 Spájkovací cyklus 1 – preforma B',
+        text: '<p>Pripevnite záťaž [STRAIN] k vláknu tesne pod kladkou na pravej strane, zatvorte kryt a stlačte [Cycle Start 1]. Roztaví sa preforma B.</p>', note: 'Počas cyklu do prípravku nezasahujte.', imagePos: 'below', warnings: ['horuce'], ppe: [] },
+      { section: '8.6 Meranie a hodnotenie po spájkovaní',
+        text: '<p>Nechajte senzor vychladnúť a zaznamenajte WL oboch FBG do denníka senzorov. Denník automaticky vyhodnotí pretenzáciu Δλ (PASS/FAIL).</p>', note: '', imagePos: 'below', warnings: [], ppe: [] },
+      { section: '8.8 Kabeláž a upevnenie',
+        text: '<p>Naneste epoxid E-05MR na oblasť drôtovania a ľavú stranu buffer tube. Umiestnite na hotplate 100 °C na 5–10 min.</p>', note: '', imagePos: 'below', warnings: ['chemikalia', 'horuce'], ppe: ['rukavice'] },
+    ],
+    safety: [
+      { risk: 'Rezné zranenie', source: 'Sklenné optické vlákno – ostré okraje pri štiepení', measure: 'Rukavice; úlomky do nádoby SKLENÉ VLÁKNO' },
+      { risk: 'Popálenie', source: 'Hotplate 100 °C; spájkovacia stanica až 550 °C', measure: 'Nedotýkať sa počas cyklu; chladiť pod 100 °C' },
+      { risk: 'IPA (horľavina)', source: 'Izopropylalkohol – horľavá kvapalina, výpary', measure: 'Vetranie; bez zdrojov ohňa; uzatvorená nádoba' },
+      { risk: 'Poškodenie zraku', source: 'Štiepenie vlákna, brúsenie SiC papierom', measure: 'Ochranné okuliare pri splicer-i a brúsení' },
+    ],
+    risks: [],
+    waste: [
+      { waste: 'Úlomky skleneného vlákna', category: 'Nebezpečný – ostrý odpad', disposal: 'Uzatvorená nádoba; zmluvná odpadová firma' },
+      { waste: 'Utierky s IPA', category: 'Horľavý odpad', disposal: 'Kovová uzatvorená nádoba; odpadová firma' },
+      { waste: 'Zvyšky epoxidu E-05MR', category: 'Chemický odpad', disposal: 'Podľa SDS Loctite; odpadová firma' },
+    ],
+    maintenance: [
+      { equipment: 'Spájkovacia stanica', interval: 'Pred každou zmenou', task: 'Vizuálna kontrola čistoty; overenie teplôt Z1/Z2/Z3', responsible: 'Operátor' },
+      { equipment: 'Hotplate', interval: 'Ročne', task: 'Kalibrácia kalibrovaným teplomerom; zápis do karty zariadenia', responsible: 'Vedúci výroby' },
+      { equipment: 'Optický interrogátor', interval: 'Ročne', task: 'Kalibrácia u výrobcu / autorizovanom servise', responsible: 'Vedúci výroby' },
+    ],
+    troubleshooting: [
+      { problem: 'Vlákno sa zlomilo počas napínania', cause: 'Mikrotrhlina; príliš rýchle spúšťanie záťaže', solution: 'Nové FBG pole; záťaž spúšťať pomaly a plynulo' },
+      { problem: 'Optická strata > 0,5 dB', cause: 'Nečistý konektor; poškodenie vlákna; zlý fúzny zvar', solution: 'Vyčistiť konektor; skontrolovať vlákno lupou 5×; overiť zvar' },
+      { problem: 'Pretenzácia mimo tolerancie – FAIL', cause: 'Zamenená orientácia FBG; nesprávna záťaž', solution: 'Overiť záznamy WL pred zostavením; senzor označiť FAIL' },
+    ],
+    attachments: [{ label: 'Denník senzorov (Sensor Log)', url: 'Interný formulár SYLEX' }],
+    validity: {
+      preparedBy: 'Marek Múčka – Projektový inžinier, Oddelenie senzorov a snímacích systémov, SYLEX s.r.o.',
+      approvedBy: '', validFrom: dPlus(0), nextRevision: dPlus(730),
+      unit: 'Výroba FOS, SYLEX s.r.o., Bratislava', revision: 'A / 00',
+    } },
+
+  // ── Postup s blížiacou sa revíziou (test notifikácie) ──
+  { title: 'Konektorizácia FC/APC (FlexPatch)', department: 'Výroba FOS', author: 'J. Novák',
+    owner: 'J. Novák', status: 'active', procNumber: 'PP FOS 45/2023', edition: '2024',
+    purpose: 'Štandardný postup ukončenia optického vlákna konektorom FC/APC.',
+    relatedDocs: [{ document: 'SOP_FlexPatchTermination_FC-APC', description: 'Postup konektorizácie FC/APC', reference: 'Micron Optics interný SOP' }],
+    equipment: [{ no: '1', name: 'Leštička konektorov', description: 'rotačná, s podložkami', calibration: 'Ročne' }],
+    materials: [{ no: '1', name: 'Konektor FC/APC', description: 'FlexPatch', partNumber: '220130', quantity: '1' }],
+    tools: [{ name: 'Mikroskop na konektory', note: '200×' }],
+    steps: [
+      { text: '<p>Odizolujte a očistite vlákno, naneste epoxid a nasaďte konektor.</p>', note: '', imagePos: 'below', warnings: ['chemikalia'], ppe: ['rukavice', 'okuliare'] },
+      { text: '<p>Vlákno vyleštite a skontrolujte čelo konektora mikroskopom.</p>', note: '', imagePos: 'below', warnings: [], ppe: [] },
+    ],
+    safety: [{ risk: 'Vdýchnutie výparov', source: 'Epoxid', measure: 'Vetranie; rukavice' }],
+    risks: [],
+    validity: {
+      preparedBy: 'J. Novák', approvedBy: 'Vedúci výroby', validFrom: dPlus(-700), nextRevision: dPlus(20),
+      unit: 'Výroba FOS, SYLEX s.r.o., Bratislava', revision: 'A / 01',
+    } },
+
+  // ── Postup s revíziou po termíne (test notifikácie / príznaku) ──
+  { title: 'Žíhanie optického vlákna', department: 'Výroba FOS', author: 'P. Kováč',
+    owner: 'P. Kováč', status: 'active', procNumber: 'PP FOS 12/2022', edition: '2022',
+    purpose: 'Tepelné vyžíhanie optického vlákna pred montážou senzora.',
+    equipment: [{ no: '1', name: 'Žíhacia pec / komora', description: '150 °C', calibration: 'Ročne' }],
+    prepChecklist: ['Pec ustálená na 150 °C', 'Vlákno označené LOT číslom'],
+    steps: [
+      { text: '<p>Vlákno umiestnite na kovovú platňu, prichyťte kaptonovou páskou a označte LOT číslom.</p>', note: '', imagePos: 'below', warnings: ['horuce'], ppe: ['rukavice'] },
+      { text: '<p>Vložte do žíhacej pece (150 °C) a žíhajte nepretržite 15 hodín. Po vychladnutí pokračujte v ďalšom kroku.</p>', note: 'Nechať voľne vychladnúť na izbovú teplotu.', imagePos: 'below', warnings: ['horuce'], ppe: ['rukavice'] },
+    ],
+    safety: [{ risk: 'Popálenie', source: 'Žíhacia pec 150 °C', measure: 'Tepelne odolné rukavice; manipulácia až po vychladnutí' }],
+    risks: [],
+    validity: {
+      preparedBy: 'P. Kováč', approvedBy: 'Vedúci výroby', validFrom: dPlus(-800), nextRevision: dPlus(-40),
+      unit: 'Výroba FOS, SYLEX s.r.o., Bratislava', revision: 'A / 02',
+    } },
 ];
 
 const INTERROGATORS = [
