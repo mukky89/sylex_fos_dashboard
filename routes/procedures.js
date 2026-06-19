@@ -310,12 +310,12 @@ function pictogramRun(kind, key, px = 16) {
 function warnPpeParagraphs(s) {
   const out = [];
   const row = (keys, kind, map, label, fill, color) => {
-    const runs = [new TextRun({ text: label, bold: true, color, font: FONT, size: 18 })];
+    const runs = [new TextRun({ text: label, bold: true, color, font: FONT, size: 19 })];
     keys.forEach(k => {
-      const icon = pictogramRun(kind, k, 16);
-      runs.push(new TextRun({ text: '   ', font: FONT, size: 18 }));
-      if (icon) { runs.push(icon); runs.push(new TextRun({ text: ' ', font: FONT, size: 18 })); }
-      runs.push(new TextRun({ text: (map[k] ? map[k].label : k), font: FONT, size: 18, color: BODY }));
+      const icon = pictogramRun(kind, k, 28);
+      runs.push(new TextRun({ text: '   ', font: FONT, size: 19 }));
+      if (icon) { runs.push(icon); runs.push(new TextRun({ text: '  ', font: FONT, size: 19 })); }
+      runs.push(new TextRun({ text: (map[k] ? map[k].label : k), font: FONT, size: 19, color: BODY }));
     });
     out.push(new Paragraph({
       shading: { fill },

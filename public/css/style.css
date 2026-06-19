@@ -2319,8 +2319,8 @@ body {
 }
 .proc-icon-btn .pi-emoji { font-size: 0.95rem; }
 
-/* ── Detail / náhľad (read-only "papier") ── */
-.proc-detail { }
+/* ── Detail / náhľad (moderný „papier" pre PDF) ── */
+.proc-detail { --pp-navy:#1a1a2e; --pp-navy2:#2a2a4a; --pp-lime:#97bf0d; --pp-ink:#2b2f3a; --pp-soft:#f5f7fa; }
 .pdv-toolbar {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; margin-bottom: 16px; flex-wrap: wrap;
@@ -2328,79 +2328,132 @@ body {
 .pdv-toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .pdv-card {
-  background: #fff; color: #1e293b;
-  border-radius: var(--radius-lg);
-  padding: 32px 38px; box-shadow: var(--shadow-lg);
-  max-width: 820px; margin: 0 auto;
+  background: #fff; color: var(--pp-ink);
+  border-radius: 16px; overflow: hidden;
+  box-shadow: 0 18px 50px rgba(15,18,40,0.18);
+  max-width: 860px; margin: 0 auto;
+  font-size: 14px; line-height: 1.6;
 }
-.pdv-head { text-align: center; border-bottom: 2px solid var(--accent-light); padding-bottom: 16px; margin-bottom: 20px; }
-.pdv-eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.2em; color: var(--accent); }
-.pdv-title { font-family: var(--font-title); font-size: 1.7rem; font-weight: 700; color: #0f172a; margin: 6px 0 10px; }
-.pdv-meta { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; font-size: 0.82rem; color: var(--text-dim); }
 
-.pdv-section { margin-bottom: 22px; }
+/* Hlavička — navy pruh s limetkovým akcentom */
+.pdv-head {
+  background: linear-gradient(135deg, var(--pp-navy) 0%, var(--pp-navy2) 100%);
+  color: #fff; padding: 38px 44px 30px; position: relative;
+  border-bottom: 5px solid var(--pp-lime); text-align: left;
+}
+.pdv-head::after {
+  content: ''; position: absolute; right: -40px; top: -40px;
+  width: 180px; height: 180px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(151,191,13,0.22), transparent 70%);
+}
+.pdv-eyebrow { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.22em; color: var(--pp-lime); position: relative; }
+.pdv-title { font-family: var(--font-title); font-size: 2rem; font-weight: 800; color: #fff; margin: 8px 0 14px; line-height: 1.15; position: relative; }
+.pdv-meta { display: flex; justify-content: flex-start; flex-wrap: wrap; gap: 8px; position: relative; }
+.pdv-meta span {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(255,255,255,0.12); color: #e9ecf5;
+  padding: 5px 11px; border-radius: 20px; font-size: 0.76rem; font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.pdv-meta .proc-status-badge { background: var(--pp-lime); color: var(--pp-navy); border: none; }
+
+/* Telo */
+.pdv-head ~ * { margin-left: 44px; margin-right: 44px; }
+.pdv-head + * { margin-top: 28px; }
+.pdv-card > *:last-child { margin-bottom: 36px; }
+
+.pdv-section { margin-bottom: 26px; }
 .pdv-section h3 {
-  font-size: 0.95rem; font-weight: 700; color: var(--accent);
-  text-transform: uppercase; letter-spacing: 0.04em;
-  border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 11px;
+  font-size: 1rem; font-weight: 800; color: var(--pp-navy);
+  text-transform: uppercase; letter-spacing: 0.03em;
+  border: 0; padding: 0 0 8px; margin: 0 0 14px;
+  border-bottom: 2px solid #eef1f5;
 }
-.pdv-purpose { font-size: 0.92rem; line-height: 1.6; color: #334155; }
-.pdv-tools, .pdv-risks, .pdv-atts, .pdv-checklist { margin: 0; padding-left: 20px; font-size: 0.9rem; line-height: 1.7; color: #334155; }
-.pdv-checklist { list-style: none; padding-left: 4px; }
-.pdv-checklist li::before { content: "☐"; margin-right: 8px; color: var(--accent); }
+.pdv-section h3::before {
+  content: ''; flex-shrink: 0; width: 6px; height: 20px;
+  background: var(--pp-lime); border-radius: 3px;
+}
+.pdv-secno { color: var(--pp-lime); font-weight: 800; }
+.pdv-purpose { font-size: 0.95rem; line-height: 1.7; color: #3a3f4c; }
+.pdv-tools, .pdv-risks, .pdv-atts { margin: 0; padding-left: 22px; font-size: 0.92rem; line-height: 1.8; color: #3a3f4c; }
+.pdv-checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.pdv-checklist li {
+  position: relative; padding: 8px 12px 8px 38px; font-size: 0.92rem; color: #3a3f4c;
+  background: var(--pp-soft); border-radius: 8px; border-left: 3px solid var(--pp-lime);
+}
+.pdv-checklist li::before {
+  content: "✓"; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--pp-lime); font-weight: 900;
+}
 
-/* Dátové tabuľky v detaile postupu */
-.pdv-table-wrap { overflow-x: auto; margin: 4px 0; }
-.pdv-dtable { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-.pdv-dtable th, .pdv-dtable td { text-align: left; padding: 7px 10px; border: 1px solid var(--border); vertical-align: top; color: #334155; }
-.pdv-dtable th { background: #f1f5f9; font-weight: 700; color: #1e293b; white-space: nowrap; }
-.pdv-dtable tr:nth-child(even) td { background: #f8fafc; }
-.pdv-substep { font-size: 1rem; font-weight: 700; color: var(--accent); margin: 18px 0 8px; }
+/* Dátové tabuľky */
+.pdv-table-wrap { overflow-x: auto; margin: 6px 0; border-radius: 10px; box-shadow: 0 0 0 1px #e7ebf0; }
+.pdv-dtable { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.pdv-dtable th, .pdv-dtable td { text-align: left; padding: 9px 12px; vertical-align: top; color: #3a3f4c; }
+.pdv-dtable th { background: var(--pp-navy); font-weight: 700; color: #fff; white-space: nowrap; letter-spacing: 0.02em; }
+.pdv-dtable th:first-child { border-top-left-radius: 10px; }
+.pdv-dtable th:last-child { border-top-right-radius: 10px; }
+.pdv-dtable tbody tr { border-top: 1px solid #eceff3; }
+.pdv-dtable tr:nth-child(even) td { background: #f7faf0; }
+.pdv-substep {
+  font-size: 1.02rem; font-weight: 800; color: var(--pp-navy);
+  margin: 22px 0 12px; padding: 7px 14px; border-radius: 8px;
+  background: linear-gradient(90deg, #f4f8eb, transparent);
+  border-left: 4px solid var(--pp-lime);
+}
 .pdv-att-url { font-family: 'Courier New', monospace; font-size: 0.82rem; color: var(--text-dim); }
 
-/* Platnosť pracovného postupu */
-.pdv-validity { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-.pdv-validity th, .pdv-validity td {
-  text-align: left; padding: 8px 12px; border: 1px solid var(--border); vertical-align: top;
-}
-.pdv-validity th { width: 32%; font-weight: 700; color: #1e293b; background: #f1f5f9; }
-.pdv-validity td { color: #334155; }
-.pdv-muted { color: var(--text-dim); }
-.pdv-rev-flag {
-  display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 10px;
-  font-size: 0.72rem; font-weight: 700; white-space: nowrap;
-}
+/* Platnosť */
+.pdv-validity { width: 100%; border-collapse: collapse; font-size: 0.9rem; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 1px #e7ebf0; }
+.pdv-validity th, .pdv-validity td { text-align: left; padding: 10px 14px; vertical-align: top; border-top: 1px solid #eceff3; }
+.pdv-validity th { width: 32%; font-weight: 700; color: var(--pp-navy); background: #f4f8eb; }
+.pdv-validity td { color: #3a3f4c; }
+.pdv-muted { color: #9aa1ad; }
+.pdv-rev-flag { display: inline-block; margin-left: 6px; padding: 2px 9px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
 .pdv-rev-ok   { background: #dcfce7; color: #166534; }
 .pdv-rev-soon { background: #fef3c7; color: #92400e; }
 .pdv-rev-over { background: #fee2e2; color: #991b1b; }
 
-.pdv-steps { display: flex; flex-direction: column; gap: 18px; }
-.pdv-step { display: flex; gap: 14px; }
+/* Operácie */
+.pdv-steps { display: flex; flex-direction: column; gap: 16px; }
+.pdv-step {
+  display: flex; gap: 16px; padding: 16px 18px;
+  background: #fff; border: 1px solid #eceff3; border-radius: 12px;
+  border-left: 4px solid var(--pp-lime);
+  box-shadow: 0 2px 8px rgba(15,18,40,0.04);
+}
 .pdv-step-num {
-  flex-shrink: 0; min-width: 30px; height: 26px; padding: 0 9px;
-  background: var(--accent); color: #fff; border-radius: 13px;
+  flex-shrink: 0; min-width: 34px; height: 28px; padding: 0 11px;
+  background: var(--pp-navy); color: #fff; border-radius: 14px;
   display: inline-flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 0.82rem; white-space: nowrap;
+  font-weight: 800; font-size: 0.85rem; white-space: nowrap;
 }
 .pdv-step-body { flex: 1; min-width: 0; }
-.pdv-step-text { padding: 0 !important; font-size: 0.92rem; color: #1e293b; }
-.pdv-step-text img { max-width: 100%; border-radius: 6px; }
-.pdv-step-note { font-size: 0.84rem; color: #64748b; font-style: italic; margin-top: 6px; }
-.pdv-step-img { margin-top: 10px; }
-.pdv-step-img img { max-width: 100%; max-height: 320px; border-radius: 8px; border: 1px solid var(--border); }
-
-.pdv-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.pdv-badge {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 4px 10px; border-radius: 8px; font-size: 0.78rem; font-weight: 600;
+.pdv-step-text { padding: 0 !important; font-size: 0.94rem; color: var(--pp-ink); }
+.pdv-step-text img { max-width: 100%; border-radius: 8px; }
+.pdv-step-note {
+  font-size: 0.86rem; color: #5a6472; margin-top: 8px;
+  padding: 7px 12px; background: var(--pp-soft); border-radius: 8px;
 }
-.pdv-warn { background: #fdecea; color: #c0392b; border: 1px solid #f5c6cb; }
-.pdv-ppe  { background: #e8f5ec; color: #1f6f3d; border: 1px solid #b7e0c4; }
-.pdv-picto { width: 18px; height: 18px; vertical-align: middle; object-fit: contain; }
+.pdv-step-img { margin-top: 12px; }
+.pdv-step-img img { max-width: 100%; max-height: 340px; border-radius: 10px; border: 1px solid #e7ebf0; }
+.pdv-fig figcaption { font-size: 0.78rem; color: #9aa1ad; font-style: italic; margin-top: 4px; }
+
+/* Upozornenia / OOPP — väčšie piktogramy */
+.pdv-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.pdv-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 13px; border-radius: 10px; font-size: 0.85rem; font-weight: 600;
+}
+.pdv-warn { background: #fdecea; color: #b3341f; border: 1px solid #f3c4bd; }
+.pdv-ppe  { background: #eaf4ee; color: #1f6f3d; border: 1px solid #bfe2cb; }
+.pdv-picto { width: 30px; height: 30px; vertical-align: middle; object-fit: contain; flex-shrink: 0; }
 
 @media (max-width: 560px) {
-  .pdv-card { padding: 20px 16px; }
-  .pdv-title { font-size: 1.3rem; }
+  .pdv-head { padding: 26px 20px 22px; }
+  .pdv-head ~ * { margin-left: 18px; margin-right: 18px; }
+  .pdv-title { font-size: 1.4rem; }
 }
 
 /* =============================================
