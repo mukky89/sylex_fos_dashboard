@@ -320,6 +320,7 @@ function buildDoc(p) {
     rows: [
       metaRow('Oddelenie / kategória', p.department),
       metaRow('Autor', p.author),
+      metaRow('Vlastník', p.owner),
       metaRow('Dátum', fmtDate(p.date)),
       metaRow('Stav', { active: 'Aktívny', draft: 'Koncept', archived: 'Archivovaný' }[p.status] || p.status)
     ]

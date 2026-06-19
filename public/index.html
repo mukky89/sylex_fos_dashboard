@@ -974,9 +974,23 @@
           </button>
         </div>
 
-        <div class="proc-search-wrap">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="procSearch" placeholder="Hľadať postup..." oninput="renderProcedures()" autocomplete="off">
+        <div class="proc-toolbar">
+          <div class="proc-search-wrap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="procSearch" placeholder="Hľadať postup..." oninput="renderProcedures()" autocomplete="off">
+          </div>
+          <select id="procStatusFilter" class="proc-filter" onchange="renderProcedures()" title="Filter podľa stavu">
+            <option value="">Všetky stavy</option>
+            <option value="active">Aktívne</option>
+            <option value="draft">Koncepty</option>
+            <option value="archived">Archivované</option>
+          </select>
+          <select id="procRevFilter" class="proc-filter" onchange="renderProcedures()" title="Filter podľa revízie">
+            <option value="">Všetky revízie</option>
+            <option value="over">Po termíne</option>
+            <option value="soon">Do 30 dní</option>
+            <option value="none">Bez revízie</option>
+          </select>
         </div>
 
         <div id="procList" class="proc-list">
@@ -1014,9 +1028,16 @@
               <input type="text" id="prAuthor" placeholder="Meno autora">
             </div>
             <div class="form-group">
+              <label>Vlastník <span class="form-hint">(zodpovedná osoba)</span></label>
+              <input type="text" id="prOwner" placeholder="Meno vlastníka / -ov">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
               <label>Dátum</label>
               <input type="date" id="prDate">
             </div>
+            <div class="form-group"></div>
           </div>
           <div class="form-group">
             <label>Stav</label>
