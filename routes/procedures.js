@@ -299,17 +299,33 @@ function firstHeadingText(html) {
   return t ? t.slice(0, 60) : '';
 }
 
-// Farebné bloky upozornení / pomôcok
+// Vlastný PNG piktogram (warn_* / ppe_*) ako inline obrázok do Wordu
+function pictogramRun(kind, key, px = 16) {
+  const im = readImageData(`/assets/pictograms/${kind}_${key}.png`, 256);
+  if (!im) return null;
+  return new ImageRun({ data: im.data, transformation: { width: px, height: px }, type: im.type });
+}
+
+// Farebné bloky upozornení / pomôcok — s vlastnými piktogramami
 function warnPpeParagraphs(s) {
   const out = [];
-  if (s.warnings && s.warnings.length) {
-    const labels = s.warnings.map(k => WARN_MAP[k] ? `${WARN_MAP[k].icon} ${WARN_MAP[k].label}` : k).join('    ');
-    out.push(new Paragraph({ shading: { fill: 'FDECEA' }, spacing: { before: 40, after: 40 }, children: [new TextRun({ text: 'Upozornenia:  ', bold: true, color: 'C0392B' }), new TextRun({ text: labels })] }));
-  }
-  if (s.ppe && s.ppe.length) {
-    const labels = s.ppe.map(k => PPE_MAP[k] ? `${PPE_MAP[k].icon} ${PPE_MAP[k].label}` : k).join('    ');
-    out.push(new Paragraph({ shading: { fill: 'E8F5EC' }, spacing: { before: 40, after: 100 }, children: [new TextRun({ text: 'Ochranné pomôcky:  ', bold: true, color: '1F6F3D' }), new TextRun({ text: labels })] }));
-  }
+  const row = (keys, kind, map, label, fill, color) => {
+    const runs = [new TextRun({ text: label, bold: true, color, font: FONT, size: 18 })];
+    keys.forEach(k => {
+      const icon = pictogramRun(kind, k, 16);
+      runs.push(new TextRun({ text: '   ', font: FONT, size: 18 }));
+      if (icon) { runs.push(icon); runs.push(new TextRun({ text: ' ', font: FONT, size: 18 })); }
+      runs.push(new TextRun({ text: (map[k] ? map[k].label : k), font: FONT, size: 18, color: BODY }));
+    });
+    out.push(new Paragraph({
+      shading: { fill },
+      border: { left: { style: BorderStyle.SINGLE, size: 18, color, space: 8 }, top: { style: BorderStyle.SINGLE, size: 8, color: fill, space: 4 }, bottom: { style: BorderStyle.SINGLE, size: 8, color: fill, space: 4 }, right: { style: BorderStyle.SINGLE, size: 8, color: fill, space: 4 } },
+      spacing: { before: 60, after: 60 },
+      children: runs
+    }));
+  };
+  if (s.warnings && s.warnings.length) row(s.warnings, 'warn', WARN_MAP, 'Upozornenia:', 'FDECEA', 'C0392B');
+  if (s.ppe && s.ppe.length) row(s.ppe, 'ppe', PPE_MAP, 'Ochranné pomôcky:', 'E8F5EC', '1F6F3D');
   return out;
 }
 
