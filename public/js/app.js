@@ -3000,7 +3000,12 @@ function buildProcedurePrintDoc(p) {
   .pp-bar { position: sticky; top:0; z-index:10; display:flex; gap:10px; justify-content:center; padding:12px; background:#1a1a2e; }
   .pp-bar button { background:#97bf0d; color:#1a1a2e; border:0; border-radius:8px; padding:10px 20px; font-weight:800; font-family:inherit; font-size:14px; cursor:pointer; }
   .pp-bar button.sec { background:rgba(255,255,255,.16); color:#fff; }
-  @media print { .pp-noprint { display:none !important; } .proc-detail { padding:0; } }
+  @media print {
+    .pp-noprint { display:none !important; }
+    .proc-detail { padding:0; }
+    /* zruš globálne app pravidlo (kalendár), ktoré skrýva body * pri tlači */
+    html, body, body * { visibility: visible !important; }
+  }
 </style></head>
 <body>
   <div class="pp-bar pp-noprint">
@@ -3008,6 +3013,9 @@ function buildProcedurePrintDoc(p) {
     <button class="sec" onclick="window.close()">Zavrieť</button>
   </div>
   <div class="proc-detail"><div class="pdv-card">${inner}</div></div>
+  <script>
+    window.addEventListener('load', function(){ setTimeout(function(){ try { window.focus(); window.print(); } catch(e){} }, 500); });
+  <\/script>
 </body></html>`;
 }
 function printProcedurePdf(p) {
@@ -3017,7 +3025,6 @@ function printProcedurePdf(p) {
   w.document.open();
   w.document.write(buildProcedurePrintDoc(p));
   w.document.close();
-  w.onload = () => { setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 400); };
 }
 
 // ── Dynamické riadky (pomôcky, prílohy) ───────────────────────────────────────
