@@ -314,10 +314,23 @@ function buildDoc(p) {
   const ctx = { figNo: 0, figures: [], toc: [] };
   const body = [];
 
+  // ── Pomocníci ──
+  const headCell = (text) => new TableCell({ shading: { fill: 'EEF2F6' }, margins: { top: 60, bottom: 60, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: String(text || ''), bold: true })] })] });
+  const cell = (text) => new TableCell({ margins: { top: 60, bottom: 60, left: 120, right: 120 }, children: [new Paragraph(String(text || ''))] });
+  const dataTable = (headers, rows) => new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [
+    new TableRow({ tableHeader: true, children: headers.map(headCell) }),
+    ...rows.map(r => new TableRow({ children: r.map(cell) }))
+  ] });
+  const filled = (arr, keys) => (arr || []).filter(o => keys.some(k => (o[k] || '').toString().trim()));
+  let secNo = 0;
+  const numHeading = (title, anchor) => bookmarkedHeading(`${++secNo}. ${title}`, anchor, ctx, 1);
+
   // Metadáta
   body.push(new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
+      ...(p.procNumber ? [metaRow('Číslo PP', p.procNumber)] : []),
+      ...(p.edition ? [metaRow('Vydanie', p.edition)] : []),
       metaRow('Oddelenie / kategória', p.department),
       metaRow('Autor', p.author),
       metaRow('Vlastník', p.owner),
@@ -326,28 +339,70 @@ function buildDoc(p) {
     ]
   }));
 
+  // História zmien
+  const changeLog = filled(p.changeLog, ['version', 'change', 'date', 'reason', 'author']);
+  if (changeLog.length) {
+    body.push(bookmarkedHeading('História zmien', 'sec_changelog', ctx, 1));
+    body.push(dataTable(['Verzia', 'Zmena', 'Dátum', 'Dôvod zmeny', 'Vypracoval'],
+      changeLog.map(c => [c.version, c.change, c.date ? fmtDate(c.date) : '', c.reason, c.author])));
+  }
+
   if (p.purpose && p.purpose.trim()) {
-    body.push(bookmarkedHeading('Cieľ / Účel', 'sec_purpose', ctx, 1));
+    body.push(numHeading('Účel', 'sec_purpose'));
     p.purpose.split('\n').forEach(line => body.push(new Paragraph({ children: [new TextRun(line)] })));
+  }
+
+  if (p.scope && p.scope.trim()) {
+    body.push(numHeading('Rozsah platnosti', 'sec_scope'));
+    p.scope.split('\n').forEach(line => body.push(new Paragraph({ children: [new TextRun(line)] })));
+  }
+
+  const relatedDocs = filled(p.relatedDocs, ['document', 'description', 'reference']);
+  if (relatedDocs.length) {
+    body.push(numHeading('Súvisiace dokumenty a normy', 'sec_reldocs'));
+    body.push(dataTable(['Dokument / Norma', 'Popis', 'Číslo / Odkaz'], relatedDocs.map(d => [d.document, d.description, d.reference])));
+  }
+
+  if (p.definitions && p.definitions.trim()) {
+    body.push(numHeading('Definície a skratky', 'sec_defs'));
+    p.definitions.split('\n').forEach(line => body.push(new Paragraph({ children: [new TextRun(line)] })));
+  }
+
+  const equipment = filled(p.equipment, ['no', 'name', 'description', 'calibration']);
+  if (equipment.length) {
+    body.push(numHeading('Špeciálne vybavenie', 'sec_equip'));
+    body.push(dataTable(['č.', 'Názov položky', 'Popis / P/N', 'Kalibrácia'], equipment.map(e => [e.no, e.name, e.description, e.calibration])));
+  }
+
+  const materials = filled(p.materials, ['no', 'name', 'description', 'partNumber', 'quantity']);
+  if (materials.length) {
+    body.push(numHeading('Materiály a spotrebný materiál', 'sec_mat'));
+    body.push(dataTable(['č.', 'Názov', 'Popis', 'Sylex PN', 'Množstvo'], materials.map(m => [m.no, m.name, m.description, m.partNumber, m.quantity])));
   }
 
   const tools = (p.tools || []).filter(t => (t.name || '').trim());
   if (tools.length) {
     body.push(bookmarkedHeading('Potrebné pomôcky / nástroje', 'sec_tools', ctx, 1));
-    const headCell = (text) => new TableCell({ shading: { fill: 'EEF2F6' }, margins: { top: 60, bottom: 60, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text, bold: true })] })] });
-    const cell = (text) => new TableCell({ margins: { top: 60, bottom: 60, left: 120, right: 120 }, children: [new Paragraph(text || '')] });
-    body.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [
-      new TableRow({ tableHeader: true, children: [headCell('Pomôcka / nástroj'), headCell('Poznámka')] }),
-      ...tools.map(t => new TableRow({ children: [cell(t.name), cell(t.note)] }))
-    ] }));
+    body.push(dataTable(['Pomôcka / nástroj', 'Poznámka'], tools.map(t => [t.name, t.note])));
+  }
+
+  const prep = (p.prepChecklist || []).filter(x => (x || '').trim());
+  if (prep.length) {
+    body.push(numHeading('Príprava pracoviska a zariadení', 'sec_prep'));
+    prep.forEach(x => body.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun('☐  ' + x)] })));
   }
 
   // Postup
   const steps = (p.steps || []).filter(s => stripHtml(s.text) || /<img/i.test(s.text || '') || s.image || (s.note || '').trim() || (s.warnings && s.warnings.length) || (s.ppe && s.ppe.length));
   if (steps.length) {
-    body.push(bookmarkedHeading('Postup', 'sec_steps', ctx, 1));
+    body.push(numHeading('Postup', 'sec_steps'));
+    let curSection = null;
     steps.forEach((s, i) => {
       const num = i + 1;
+      if ((s.section || '') && s.section !== curSection) {
+        curSection = s.section;
+        body.push(new Paragraph({ spacing: { before: 200, after: 40 }, children: [new TextRun({ text: curSection, bold: true, color: ACCENT, size: 26 })] }));
+      }
       const label = firstHeadingText(s.text) || 'Operácia ' + num;
       ctx.toc.push({ label: `Krok ${num} — ${label}`, anchor: 'op_' + num, level: 2 });
       body.push(new Paragraph({ spacing: { before: 160, after: 40 },
@@ -377,10 +432,34 @@ function buildDoc(p) {
     });
   }
 
+  const safety = filled(p.safety, ['risk', 'source', 'measure']);
+  if (safety.length) {
+    body.push(numHeading('Bezpečnosť pri práci (BOZP)', 'sec_safety'));
+    body.push(dataTable(['Riziko', 'Zdroj', 'Opatrenie'], safety.map(s => [s.risk, s.source, s.measure])));
+  }
+
   const risks = (p.risks || []).filter(r => (r || '').trim());
   if (risks.length) {
-    body.push(bookmarkedHeading('Riziká / Upozornenia', 'sec_risks', ctx, 1));
+    body.push(bookmarkedHeading('Ďalšie riziká / upozornenia', 'sec_risks', ctx, 1));
     risks.forEach(r => body.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun(r)] })));
+  }
+
+  const waste = filled(p.waste, ['waste', 'category', 'disposal']);
+  if (waste.length) {
+    body.push(numHeading('Nakladanie s odpadmi', 'sec_waste'));
+    body.push(dataTable(['Odpad', 'Kategória', 'Likvidácia'], waste.map(w => [w.waste, w.category, w.disposal])));
+  }
+
+  const maintenance = filled(p.maintenance, ['equipment', 'interval', 'task', 'responsible']);
+  if (maintenance.length) {
+    body.push(numHeading('Údržba zariadení a prípravku', 'sec_maint'));
+    body.push(dataTable(['Zariadenie', 'Interval', 'Úkon', 'Zodpovedný'], maintenance.map(m => [m.equipment, m.interval, m.task, m.responsible])));
+  }
+
+  const troubleshooting = filled(p.troubleshooting, ['problem', 'cause', 'solution']);
+  if (troubleshooting.length) {
+    body.push(numHeading('Riešenie problémov', 'sec_trouble'));
+    body.push(dataTable(['Problém', 'Príčina', 'Riešenie'], troubleshooting.map(t => [t.problem, t.cause, t.solution])));
   }
 
   const atts = (p.attachments || []).filter(a => (a.label || a.url || '').trim());
