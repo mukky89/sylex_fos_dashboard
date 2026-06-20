@@ -2807,30 +2807,30 @@ function renderProcedureDetailHtml(p) {
   let html = `
     <div class="pdv-head" data-seg="identifikacia">
       <div class="pdv-eyebrow">PRACOVNÝ POSTUP${idLine.length ? ' · ' + idLine.join(' · ') : ''}</div>
-      <h1 class="pdv-title">${escHtml(p.title || '(bez názvu)')}</h1>
+      <h1 class="pdv-title" data-edit="prTitle">${escHtml(p.title || '(bez názvu)')}</h1>
       <div class="pdv-meta">${meta.join('')}</div>
     </div>`;
 
   // Pomocníci na vykreslenie
   let sec = 0;
   const sh = (t) => `<h3><span class="pdv-secno">${++sec}.</span> ${escHtml(t)}</h3>`;
-  const textSec = (val) => `<p class="pdv-purpose">${escHtml(val).replace(/\n/g, '<br>')}</p>`;
+  const textSec = (val, bind) => `<p class="pdv-purpose"${bind ? ` data-edit="${bind}"` : ''}>${escHtml(val).replace(/\n/g, '<br>')}</p>`;
   const dtable = (headers, rows) => `<div class="pdv-table-wrap"><table class="pdv-dtable"><thead><tr>${headers.map(h => `<th>${escHtml(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${escHtml(c || '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   const filled = (arr, keys) => (arr || []).filter(o => keys.some(k => (o[k] || '').toString().trim()));
   const off = new Set(p.disabledSegments || []);
 
   if ((p.purpose || '').trim() && !off.has('purpose'))
-    html += `<div class="pdv-section" data-seg="purpose">${sh('Účel')}${textSec(p.purpose)}</div>`;
+    html += `<div class="pdv-section" data-seg="purpose">${sh('Účel')}${textSec(p.purpose, 'prPurpose')}</div>`;
 
   if ((p.scope || '').trim() && !off.has('purpose'))
-    html += `<div class="pdv-section" data-seg="purpose">${sh('Rozsah platnosti')}${textSec(p.scope)}</div>`;
+    html += `<div class="pdv-section" data-seg="purpose">${sh('Rozsah platnosti')}${textSec(p.scope, 'prScope')}</div>`;
 
   const relatedDocs = filled(p.relatedDocs, ['document', 'description', 'reference']);
   if (relatedDocs.length && !off.has('resources'))
     html += `<div class="pdv-section" data-seg="resources">${sh('Súvisiace dokumenty a normy')}${dtable(['Dokument / Norma', 'Popis', 'Číslo / Odkaz'], relatedDocs.map(d => [d.document, d.description, d.reference]))}</div>`;
 
   if ((p.definitions || '').trim() && !off.has('purpose'))
-    html += `<div class="pdv-section" data-seg="purpose">${sh('Definície a skratky')}${textSec(p.definitions)}</div>`;
+    html += `<div class="pdv-section" data-seg="purpose">${sh('Definície a skratky')}${textSec(p.definitions, 'prDefinitions')}</div>`;
 
   const equipment = filled(p.equipment, ['no', 'name', 'description', 'calibration']);
   if (equipment.length && !off.has('resources'))
@@ -2846,7 +2846,7 @@ function renderProcedureDetailHtml(p) {
 
   const prep = (p.prepChecklist || []).filter(x => (x || '').trim());
   if (prep.length && !off.has('procedure'))
-    html += `<div class="pdv-section" data-seg="procedure">${sh('Príprava pracoviska a zariadení')}<ul class="pdv-checklist">${prep.map(x => `<li>${escHtml(x)}</li>`).join('')}</ul></div>`;
+    html += `<div class="pdv-section" data-seg="procedure">${sh('Príprava pracoviska a zariadení')}<ul class="pdv-checklist" data-editlist="prPrepChecklist">${prep.map(x => `<li>${escHtml(x)}</li>`).join('')}</ul></div>`;
 
   if (steps.length && !off.has('procedure')) {
     html += `<div class="pdv-section" data-seg="procedure">${sh('Postup montáže')}<div class="pdv-steps">`;
@@ -2866,8 +2866,9 @@ function renderProcedureDetailHtml(p) {
       const ppes  = (s.ppe || []).map(k => pm[k] ? `<span class="pdv-badge pdv-ppe"><img class="pdv-picto" src="/assets/pictograms/ppe_${k}.png" alt=""> ${escHtml(pm[k].label)}</span>` : '').join('');
       const pos = s.image ? (s.imagePos || 'below') : 'below';
       const figN = s.image ? ++figCounter.n : 0;
+      const imgStyle = s.imgWidth ? ` style="width:${Math.max(15, Math.min(100, s.imgWidth))}%"` : '';
       const imgHtml = s.image
-        ? `<figure class="pdv-fig pdv-fig-${pos}"><img src="${escHtml(s.image)}" alt=""><figcaption>Obrázok ${figN}${s.caption ? ': ' + escHtml(s.caption) : ''}</figcaption></figure>`
+        ? `<figure class="pdv-fig pdv-fig-${pos}"${imgStyle}><img src="${escHtml(s.image)}" alt=""><figcaption>Obrázok ${figN}${s.caption ? ': ' + escHtml(s.caption) : ''}</figcaption><span class="pdv-resize"></span></figure>`
         : '';
       html += `<div class="pdv-step">
         <div class="pdv-step-num">${numLabel}</div>
@@ -2890,7 +2891,7 @@ function renderProcedureDetailHtml(p) {
 
   const risks = (p.risks || []).filter(r => (r || '').trim());
   if (risks.length && !off.has('safety'))
-    html += `<div class="pdv-section" data-seg="safety"><h3>Ďalšie riziká / upozornenia</h3><ul class="pdv-risks">${risks.map(r => `<li>${escHtml(r)}</li>`).join('')}</ul></div>`;
+    html += `<div class="pdv-section" data-seg="safety"><h3>Ďalšie riziká / upozornenia</h3><ul class="pdv-risks" data-editlist="prRisks">${risks.map(r => `<li>${escHtml(r)}</li>`).join('')}</ul></div>`;
 
   const waste = filled(p.waste, ['waste', 'category', 'disposal']);
   if (waste.length && !off.has('waste'))
@@ -3153,6 +3154,7 @@ function addStepRow(step = {}) {
   card.className = 'proc-step-card';
   card.dataset.sid = sid;
   card._image    = step.image || '';
+  card._imgWidth = step.imgWidth || null;
   card._warnings = [...(step.warnings || [])];
   card._ppe      = [...(step.ppe || [])];
   card.innerHTML = `
@@ -3216,6 +3218,7 @@ function stepDataFromCard(card) {
     note:     card.querySelector('.proc-step-note').value.trim(),
     image:    card._image || '',
     imagePos: card.querySelector('.proc-img-pos')?.value || 'below',
+    imgWidth: card._imgWidth || undefined,
     caption:  card.querySelector('.proc-img-caption')?.value.trim() || '',
     warnings: [...(card._warnings || [])],
     ppe:      [...(card._ppe || [])]
@@ -3249,6 +3252,7 @@ function collectSteps() {
       note:     card.querySelector('.proc-step-note').value.trim(),
       image:    card._image || '',
       imagePos: card.querySelector('.proc-img-pos')?.value || 'below',
+      imgWidth: card._imgWidth || undefined,
       caption:  card.querySelector('.proc-img-caption')?.value.trim() || '',
       warnings: card._warnings || [],
       ppe:      card._ppe || []
@@ -3394,40 +3398,184 @@ function fitProcA4Preview() {
   paper.style.zoom = Math.max(0.3, Math.min(1, avail / 794));
 }
 function updateProcLivePreview() {
+  if (_procInlineEditing) return;   // počas inline úprav neprekresľuj (nezahodí kurzor)
   const el = document.getElementById('procLivePreview');
   if (!el || el.offsetParent === null) return;
   try { el.innerHTML = renderProcedureDetailHtml(collectProcedureForm()); } catch (e) {}
   fitProcA4Preview();
   applyPreviewHighlight();
+  makePreviewInteractive();
+}
+
+// Karty operácií, ktoré sa reálne renderujú do náhľadu (rovnaký filter ako render)
+function activeStepCards() {
+  return [...document.querySelectorAll('#prStepsRows .proc-step-card')].filter(card => {
+    const ed = stepEditors[card.dataset.sid];
+    const text = ed ? ed.getHTML() : '';
+    const note = (card.querySelector('.proc-step-note')?.value || '').trim();
+    return stripHtmlText(text) || card._image || note || (card._warnings && card._warnings.length) || (card._ppe && card._ppe.length);
+  });
+}
+
+// Sprístupní náhľad na priame úpravy (text, poradie, obrázky)
+function makePreviewInteractive() {
+  const paper = document.getElementById('procLivePreview');
+  if (!paper) return;
+  const editFlag = (el) => {
+    el.addEventListener('focus', () => { _procInlineEditing = true; });
+    el.addEventListener('focusin', () => { _procInlineEditing = true; });
+    el.addEventListener('blur',  () => { _procInlineEditing = false; });
+  };
+
+  // 1) jednoduché textové polia
+  paper.querySelectorAll('[data-edit]').forEach(el => {
+    if (el.dataset.wired) return; el.dataset.wired = '1';
+    el.setAttribute('contenteditable', 'true'); el.classList.add('pdv-editable');
+    editFlag(el);
+    el.addEventListener('input', () => {
+      const f = document.getElementById(el.dataset.edit);
+      if (f) f.value = el.innerText.replace(/\u00a0/g, ' ').trim();
+    });
+  });
+  // editovateľné zoznamy (kontrolný zoznam, riziká)
+  paper.querySelectorAll('[data-editlist]').forEach(ul => {
+    if (ul.dataset.wired) return; ul.dataset.wired = '1';
+    ul.classList.add('pdv-editable');
+    ul.querySelectorAll('li').forEach(li => li.setAttribute('contenteditable', 'true'));
+    editFlag(ul);
+    ul.addEventListener('input', () => {
+      const f = document.getElementById(ul.dataset.editlist);
+      if (f) f.value = [...ul.querySelectorAll('li')].map(li => li.innerText.trim()).filter(Boolean).join('\n');
+    });
+  });
+
+  // 2) operácie — text, poznámka, obrázok, drag (mapovanie na karty cez sid)
+  const cards = activeStepCards();
+  const steps = [...paper.querySelectorAll('.pdv-step')];
+  steps.forEach((stepEl, i) => {
+    const card = cards[i]; if (!card) return;
+    const sid = card.dataset.sid; stepEl.dataset.sid = sid;
+
+    const tx = stepEl.querySelector('.pdv-step-text');
+    if (tx && !tx.dataset.wired) {
+      tx.dataset.wired = '1'; tx.setAttribute('contenteditable', 'true'); tx.classList.add('pdv-editable');
+      editFlag(tx);
+      tx.addEventListener('blur', () => {
+        _procInlineEditing = false;
+        const ed = stepEditors[sid];
+        if (ed && ed.setHTML) { try { ed.setHTML(tx.innerHTML); } catch (e) {} }
+        else { const ta = card.querySelector('.proc-step-editor textarea'); if (ta) ta.value = tx.innerText; }
+      });
+    }
+    const nt = stepEl.querySelector('.pdv-step-note');
+    if (nt && !nt.dataset.wired) {
+      nt.dataset.wired = '1'; nt.setAttribute('contenteditable', 'true'); nt.classList.add('pdv-editable');
+      editFlag(nt);
+      nt.addEventListener('input', () => {
+        const inp = card.querySelector('.proc-step-note');
+        if (inp) inp.value = nt.innerText.replace(/^\s*📝\s*/, '').trim();
+      });
+    }
+    const fig = stepEl.querySelector('.pdv-fig');
+    if (fig && !fig.dataset.wired) {
+      fig.dataset.wired = '1'; fig.classList.add('pdv-img-edit');
+      fig.title = 'Klik: zmena pozície (pod textom → vpravo → vľavo) · roh: zmena veľkosti';
+      fig.addEventListener('click', (e) => { if (e.target.closest('.pdv-resize')) return; cycleStepImagePos(card); });
+      addImgResize(fig, card);
+    }
+  });
+
+  setupStepDrag(paper);
+}
+
+function cycleStepImagePos(card) {
+  const sel = card.querySelector('.proc-img-pos'); if (!sel) return;
+  const order = ['below', 'right', 'left'];
+  sel.value = order[(order.indexOf(sel.value || 'below') + 1) % order.length];
+  updateProcLivePreview();
+}
+
+function addImgResize(fig, card) {
+  const handle = fig.querySelector('.pdv-resize');
+  if (!handle || handle.dataset.wired) return; handle.dataset.wired = '1';
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const body = fig.closest('.pdv-step-body') || fig.parentElement;
+    const bodyW = body.getBoundingClientRect().width;
+    const startX = e.clientX, startW = fig.getBoundingClientRect().width;
+    _procInlineEditing = true;
+    const onMove = (ev) => {
+      let pct = Math.round(((startW + (ev.clientX - startX)) / bodyW) * 100);
+      pct = Math.max(15, Math.min(100, pct));
+      fig.style.width = pct + '%'; card._imgWidth = pct;
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp);
+      _procInlineEditing = false; updateProcLivePreview();
+    };
+    document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
+  });
+}
+
+// Drag-reorder operácií v náhľade (úchyt ⠿), zmení poradie kariet vo formulári
+function setupStepDrag(paper) {
+  let dragSid = null;
+  paper.querySelectorAll('.pdv-step').forEach(stepEl => {
+    let h = stepEl.querySelector('.pdv-drag');
+    if (!h) {
+      h = document.createElement('span');
+      h.className = 'pdv-drag'; h.textContent = '⠿'; h.title = 'Ťahaj pre zmenu poradia';
+      h.setAttribute('draggable', 'true');
+      stepEl.insertBefore(h, stepEl.firstChild);
+    }
+    if (!h.dataset.wired) {
+      h.dataset.wired = '1';
+      h.addEventListener('dragstart', (e) => { dragSid = stepEl.dataset.sid; stepEl.classList.add('pdv-dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', dragSid); } catch (_) {} });
+      h.addEventListener('dragend', () => { stepEl.classList.remove('pdv-dragging'); paper.querySelectorAll('.pdv-step').forEach(s => s.classList.remove('pdv-drop-before', 'pdv-drop-after')); dragSid = null; });
+    }
+    if (!stepEl.dataset.dropWired) {
+      stepEl.dataset.dropWired = '1';
+      stepEl.addEventListener('dragover', (e) => {
+        if (!dragSid) return; e.preventDefault();
+        const r = stepEl.getBoundingClientRect();
+        const after = (e.clientY - r.top) > r.height / 2;
+        stepEl.classList.toggle('pdv-drop-after', after);
+        stepEl.classList.toggle('pdv-drop-before', !after);
+      });
+      stepEl.addEventListener('dragleave', () => stepEl.classList.remove('pdv-drop-before', 'pdv-drop-after'));
+      stepEl.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const dstSid = stepEl.dataset.sid, after = stepEl.classList.contains('pdv-drop-after');
+        stepEl.classList.remove('pdv-drop-before', 'pdv-drop-after');
+        if (dragSid && dragSid !== dstSid) {
+          const cont = document.getElementById('prStepsRows');
+          const src = cont.querySelector('.proc-step-card[data-sid="' + dragSid + '"]');
+          const dst = cont.querySelector('.proc-step-card[data-sid="' + dstSid + '"]');
+          if (src && dst) { dst.insertAdjacentElement(after ? 'afterend' : 'beforebegin', src); updateProcLivePreview(); }
+        }
+        dragSid = null;
+      });
+    }
+  });
 }
 function scheduleProcLivePreview() { clearTimeout(_procPrevTimer); _procPrevTimer = setTimeout(updateProcLivePreview, 250); }
 
 // ── Prepojenie editor ↔ náhľad: zvýraznenie aktívnej kategórie ──
-let _procActiveSeg = null, _procSyncSuspend = false;
+let _procActiveSeg = null, _procSyncSuspend = false, _procInlineEditing = false;
 function applyPreviewHighlight() {
   const paper = document.getElementById('procLivePreview');
   if (!paper) return null;
   paper.querySelectorAll('.pdv-hl').forEach(e => e.classList.remove('pdv-hl'));
   if (!_procActiveSeg) return null;
-  let secs = [...paper.querySelectorAll('[data-seg="' + _procActiveSeg + '"]')];
+  const secs = [...paper.querySelectorAll('[data-seg="' + _procActiveSeg + '"]')];
   secs.forEach(s => s.classList.add('pdv-hl'));
   return secs[0] || null;
 }
 function focusPreviewSeg(segKey, segTitle) {
   _procActiveSeg = segKey;
-  // názov kategórie v hlavičke náhľadu
   const lbl = document.querySelector('.proc-preview-label');
   if (lbl) lbl.innerHTML = 'ŽIVÝ NÁHĽAD · A4' + (segTitle ? ' &nbsp;·&nbsp; <span class="ppl-cat">' + escHtml(segTitle) + '</span>' : '');
-  const pane = document.querySelector('.proc-edit-preview');
-  if (!pane || pane.offsetParent === null) return;
-  const target = applyPreviewHighlight();
-  if (target) {
-    _procSyncSuspend = true;
-    const tr = target.getBoundingClientRect(), pr = pane.getBoundingClientRect();
-    pane.scrollTo({ top: Math.max(0, pane.scrollTop + (tr.top - pr.top) - 18), behavior: 'smooth' });
-    clearTimeout(focusPreviewSeg._t);
-    focusPreviewSeg._t = setTimeout(() => { _procSyncSuspend = false; }, 700);
-  }
+  applyPreviewHighlight();   // len zvýrazni — bez automatického scrollovania
 }
 
 // Rozbalenie / zbalenie segmentu (kategórie)

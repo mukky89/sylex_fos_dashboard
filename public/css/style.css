@@ -2592,10 +2592,32 @@ body {
 }
 .ppl-cat { color: #b6e05a; letter-spacing: 0.04em; }
 
-/* Zvýraznenie aktívnej kategórie v náhľade (prepojenie s editorom) */
-.pdv-hl { outline: 2.5px solid #97bf0d; outline-offset: 4px; border-radius: 8px; animation: pdvHlIn 0.45s ease; }
-.pdv-section.pdv-hl { background: rgba(151,191,13,0.07); }
-@keyframes pdvHlIn { from { outline-color: rgba(151,191,13,0); } to { outline-color: #97bf0d; } }
+/* Výrazné zvýraznenie aktívnej kategórie v náhľade (prepojenie s editorom) */
+.pdv-hl { outline: 3px solid #97bf0d; outline-offset: 5px; border-radius: 8px; box-shadow: 0 0 0 6px rgba(151,191,13,0.16); animation: pdvHlIn 0.4s ease; }
+.pdv-section.pdv-hl { background: rgba(151,191,13,0.09); }
+@keyframes pdvHlIn { from { box-shadow: 0 0 0 0 rgba(151,191,13,0); } }
+
+/* Priame úpravy v náhľade (len živý náhľad) */
+#procLivePreview .pdv-editable { cursor: text; border-radius: 5px; transition: background .15s, box-shadow .15s; }
+#procLivePreview .pdv-editable:hover { background: rgba(151,191,13,0.10); box-shadow: inset 0 0 0 1px rgba(151,191,13,0.45); }
+#procLivePreview .pdv-editable:focus { outline: none; background: #fff; box-shadow: 0 0 0 2px #97bf0d; }
+
+/* Úchyt na presúvanie operácií */
+.pdv-drag { display: none; }
+#procLivePreview .pdv-step { position: relative; }
+#procLivePreview .pdv-drag { display: inline-flex; align-items: flex-start; justify-content: center; width: 22px; flex-shrink: 0; cursor: grab; color: #b6c2cf; font-size: 1.15rem; padding-top: 2px; user-select: none; }
+#procLivePreview .pdv-drag:active { cursor: grabbing; }
+#procLivePreview .pdv-drag:hover { color: #1a1a2e; }
+#procLivePreview .pdv-step.pdv-dragging { opacity: .5; }
+#procLivePreview .pdv-step.pdv-drop-before { box-shadow: 0 -3px 0 #97bf0d; }
+#procLivePreview .pdv-step.pdv-drop-after { box-shadow: 0 3px 0 #97bf0d; }
+
+/* Obrázok operácie — zmena pozície (klik) a veľkosti (roh) */
+.pdv-resize { display: none; }
+#procLivePreview .pdv-fig { position: relative; }
+#procLivePreview .pdv-img-edit { cursor: pointer; outline: 1px dashed transparent; outline-offset: 2px; transition: outline-color .15s; }
+#procLivePreview .pdv-img-edit:hover { outline-color: #97bf0d; }
+#procLivePreview .pdv-resize { display: block; position: absolute; right: -7px; bottom: -7px; width: 16px; height: 16px; background: #97bf0d; border: 2px solid #fff; border-radius: 50%; cursor: nwse-resize; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
 .pp-a4-frame { display: flex; justify-content: center; }
 /* A4 papier (210×297 mm @ ~96dpi = 794×1123 px), zmenšuje sa cez zoom v JS */
 .pp-a4 {
