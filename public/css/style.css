@@ -2592,10 +2592,11 @@ body {
 }
 .ppl-cat { color: #b6e05a; letter-spacing: 0.04em; }
 
-/* Výrazné zvýraznenie aktívnej kategórie v náhľade (prepojenie s editorom) */
-.pdv-hl { outline: 3px solid #97bf0d; outline-offset: 5px; border-radius: 8px; box-shadow: 0 0 0 6px rgba(151,191,13,0.16); animation: pdvHlIn 0.4s ease; }
-.pdv-section.pdv-hl { background: rgba(151,191,13,0.09); }
-@keyframes pdvHlIn { from { box-shadow: 0 0 0 0 rgba(151,191,13,0); } }
+/* Výrazné ČERVENÉ zvýraznenie aktívneho objektu v náhľade (klik v editore) */
+.pdv-hl { outline: 3px solid #e11d48; outline-offset: 5px; border-radius: 8px; box-shadow: 0 0 0 6px rgba(225,29,72,0.20); animation: pdvHlIn 0.45s ease; }
+.pdv-section.pdv-hl { background: rgba(225,29,72,0.07); }
+@keyframes pdvHlIn { 0% { box-shadow: 0 0 0 0 rgba(225,29,72,0.5); } 100% { box-shadow: 0 0 0 6px rgba(225,29,72,0.20); } }
+.ppl-cat { color: #fb7185 !important; }
 
 /* Priame úpravy v náhľade (len živý náhľad) */
 #procLivePreview .pdv-editable { cursor: text; border-radius: 5px; transition: background .15s, box-shadow .15s; }

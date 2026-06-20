@@ -3575,7 +3575,15 @@ function focusPreviewSeg(segKey, segTitle) {
   _procActiveSeg = segKey;
   const lbl = document.querySelector('.proc-preview-label');
   if (lbl) lbl.innerHTML = 'ŽIVÝ NÁHĽAD · A4' + (segTitle ? ' &nbsp;·&nbsp; <span class="ppl-cat">' + escHtml(segTitle) + '</span>' : '');
-  applyPreviewHighlight();   // len zvýrazni — bez automatického scrollovania
+  const target = applyPreviewHighlight();
+  // cielený posun náhľadu na zvýraznený objekt (len pri kliku, nie priebežný sync)
+  const pane = document.querySelector('.proc-edit-preview');
+  if (pane && target && pane.offsetParent !== null) {
+    const tr = target.getBoundingClientRect(), pr = pane.getBoundingClientRect();
+    if (tr.top < pr.top + 8 || tr.bottom > pr.bottom - 8) {
+      pane.scrollTo({ top: Math.max(0, pane.scrollTop + (tr.top - pr.top) - 18), behavior: 'smooth' });
+    }
+  }
 }
 
 // Rozbalenie / zbalenie segmentu (kategórie)
@@ -3610,30 +3618,7 @@ function wireProcLivePreview() {
   };
   root.addEventListener('focusin', segOf);
   root.addEventListener('click', segOf);
-
-  // Synchronizovaný scroll: stránka s formulárom (vľavo) ↔ sticky náhľad (vpravo)
-  const right = root.querySelector('.proc-edit-preview');
-  if (right) {
-    let lock = false;
-    const fromWindow = () => {
-      if (lock || _procSyncSuspend || right.offsetParent === null) return;
-      lock = true;
-      const ms = document.documentElement.scrollHeight - window.innerHeight;
-      const frac = ms > 0 ? window.scrollY / ms : 0;
-      right.scrollTop = frac * (right.scrollHeight - right.clientHeight);
-      requestAnimationFrame(() => { lock = false; });
-    };
-    const fromPreview = () => {
-      if (lock || _procSyncSuspend || right.offsetParent === null) return;
-      lock = true;
-      const md = right.scrollHeight - right.clientHeight;
-      const frac = md > 0 ? right.scrollTop / md : 0;
-      window.scrollTo(0, frac * (document.documentElement.scrollHeight - window.innerHeight));
-      requestAnimationFrame(() => { lock = false; });
-    };
-    window.addEventListener('scroll', fromWindow, { passive: true });
-    right.addEventListener('scroll', fromPreview, { passive: true });
-  }
+  // (žiadny priebežný synchronizovaný scroll — náhľad sa posunie len pri kliku na pole)
   _procPrevWired = true;
 }
 
