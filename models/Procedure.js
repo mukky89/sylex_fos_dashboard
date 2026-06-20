@@ -43,6 +43,7 @@ const procedureSchema = new mongoose.Schema({
   }],
   attachments: [{ label: String, url: String }],            // prílohy / odkazy
   status:      { type: String, enum: ['active', 'draft', 'archived'], default: 'active' },
+  disabledSegments: [String],                                // vypnuté kategórie (vynechané z výstupu, dáta sa zachovajú)
   // Platnosť pracovného postupu (sekcia 17 — schvaľovanie a revízie)
   validity: {
     preparedBy:   { type: String, default: '' },            // Vypracoval (meno + funkcia / oddelenie)

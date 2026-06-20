@@ -2119,6 +2119,58 @@ body {
   color: var(--accent); margin: 24px 0 4px;
   padding-bottom: 6px; border-bottom: 2px solid var(--accent-light);
 }
+
+/* ── Segmenty editora (kategórie) ── */
+.proc-edit-split .proc-edit-body { background: transparent; box-shadow: none; padding: 0 4px 0 0; gap: 14px; }
+.proc-seg {
+  background: #fff; border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(15,18,40,0.05); overflow: hidden;
+  transition: opacity var(--transition);
+}
+.proc-seg-hd {
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 12px 4px 6px;
+  background: linear-gradient(180deg, #f8fafc, #eef2f7);
+  border-bottom: 1px solid var(--border);
+}
+.proc-seg-toggle {
+  flex: 1; display: flex; align-items: center; gap: 11px; min-width: 0;
+  background: none; border: 0; cursor: pointer; font-family: var(--font);
+  padding: 10px 6px; text-align: left;
+}
+.proc-seg-ico {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 8px;
+  background: var(--accent); color: #fff; font-weight: 800; font-size: 0.85rem;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.proc-seg-title { font-weight: 700; font-size: 0.95rem; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proc-seg-caret-btn { background: none; border: 0; cursor: pointer; color: var(--text-dim); padding: 6px; }
+.proc-seg-caret { display: inline-block; transition: transform 0.2s; font-size: 0.8rem; }
+.proc-seg.collapsed .proc-seg-caret { transform: rotate(-90deg); }
+.proc-seg.collapsed .proc-seg-hd { border-bottom: 0; }
+.proc-seg-body { padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+.proc-seg.collapsed .proc-seg-body { display: none; }
+
+/* Prepínač zahrnutia kategórie */
+.proc-seg-switch { flex-shrink: 0; display: inline-flex; align-items: center; cursor: pointer; }
+.proc-seg-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.proc-seg-switch-track {
+  width: 38px; height: 21px; border-radius: 11px; background: #cbd5e1;
+  position: relative; transition: background 0.2s;
+}
+.proc-seg-switch-track::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px;
+  border-radius: 50%; background: #fff; transition: transform 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+.proc-seg-switch input:checked + .proc-seg-switch-track { background: var(--accent); }
+.proc-seg-switch input:checked + .proc-seg-switch-track::after { transform: translateX(17px); }
+
+/* Vypnutá kategória */
+.proc-seg.disabled { opacity: 0.55; }
+.proc-seg.disabled .proc-seg-ico { background: #94a3b8; }
+.proc-seg.disabled .proc-seg-body { display: none; }
+.proc-seg.disabled .proc-seg-title::after { content: ' · vynechané'; color: #94a3b8; font-weight: 500; font-size: 0.8rem; }
+
 .proc-step-subsection {
   width: 100%; padding: 7px 10px; border-radius: var(--radius);
   background: var(--accent-light); border: 1px dashed var(--border-focus);

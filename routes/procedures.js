@@ -374,6 +374,7 @@ function buildDoc(p) {
     ...rows.map((r, i) => new TableRow({ children: r.map(c => cell(c, i % 2 === 1)) }))
   ] });
   const filled = (arr, keys) => (arr || []).filter(o => keys.some(k => (o[k] || '').toString().trim()));
+  const off = new Set(p.disabledSegments || []);
   let secNo = 0;
   const numHeading = (title, anchor) => bookmarkedHeading(`${++secNo}. ${title}`, anchor, ctx, 1);
 
@@ -393,60 +394,60 @@ function buildDoc(p) {
 
   // História zmien
   const changeLog = filled(p.changeLog, ['version', 'change', 'date', 'reason', 'author']);
-  if (changeLog.length) {
+  if (changeLog.length && !off.has('changelog')) {
     body.push(bookmarkedHeading('História zmien', 'sec_changelog', ctx, 1));
     body.push(dataTable(['Verzia', 'Zmena', 'Dátum', 'Dôvod zmeny', 'Vypracoval'],
       changeLog.map(c => [c.version, c.change, c.date ? fmtDate(c.date) : '', c.reason, c.author])));
   }
 
-  if (p.purpose && p.purpose.trim()) {
+  if (p.purpose && p.purpose.trim() && !off.has('purpose')) {
     body.push(numHeading('Účel', 'sec_purpose'));
     p.purpose.split('\n').forEach(line => body.push(new Paragraph({ children: [new TextRun(line)] })));
   }
 
-  if (p.scope && p.scope.trim()) {
+  if (p.scope && p.scope.trim() && !off.has('purpose')) {
     body.push(numHeading('Rozsah platnosti', 'sec_scope'));
     p.scope.split('\n').forEach(line => body.push(new Paragraph({ children: [new TextRun(line)] })));
   }
 
   const relatedDocs = filled(p.relatedDocs, ['document', 'description', 'reference']);
-  if (relatedDocs.length) {
+  if (relatedDocs.length && !off.has('resources')) {
     body.push(numHeading('Súvisiace dokumenty a normy', 'sec_reldocs'));
     body.push(dataTable(['Dokument / Norma', 'Popis', 'Číslo / Odkaz'], relatedDocs.map(d => [d.document, d.description, d.reference])));
   }
 
-  if (p.definitions && p.definitions.trim()) {
+  if (p.definitions && p.definitions.trim() && !off.has('purpose')) {
     body.push(numHeading('Definície a skratky', 'sec_defs'));
     p.definitions.split('\n').forEach(line => body.push(new Paragraph({ children: [new TextRun(line)] })));
   }
 
   const equipment = filled(p.equipment, ['no', 'name', 'description', 'calibration']);
-  if (equipment.length) {
+  if (equipment.length && !off.has('resources')) {
     body.push(numHeading('Špeciálne vybavenie', 'sec_equip'));
     body.push(dataTable(['č.', 'Názov položky', 'Popis / P/N', 'Kalibrácia'], equipment.map(e => [e.no, e.name, e.description, e.calibration])));
   }
 
   const materials = filled(p.materials, ['no', 'name', 'description', 'partNumber', 'quantity']);
-  if (materials.length) {
+  if (materials.length && !off.has('resources')) {
     body.push(numHeading('Materiály a spotrebný materiál', 'sec_mat'));
     body.push(dataTable(['č.', 'Názov', 'Popis', 'Sylex PN', 'Množstvo'], materials.map(m => [m.no, m.name, m.description, m.partNumber, m.quantity])));
   }
 
   const tools = (p.tools || []).filter(t => (t.name || '').trim());
-  if (tools.length) {
+  if (tools.length && !off.has('resources')) {
     body.push(bookmarkedHeading('Potrebné pomôcky / nástroje', 'sec_tools', ctx, 1));
     body.push(dataTable(['Pomôcka / nástroj', 'Poznámka'], tools.map(t => [t.name, t.note])));
   }
 
   const prep = (p.prepChecklist || []).filter(x => (x || '').trim());
-  if (prep.length) {
+  if (prep.length && !off.has('procedure')) {
     body.push(numHeading('Príprava pracoviska a zariadení', 'sec_prep'));
     prep.forEach(x => body.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun('☐  ' + x)] })));
   }
 
   // Postup
   const steps = (p.steps || []).filter(s => stripHtml(s.text) || /<img/i.test(s.text || '') || s.image || (s.note || '').trim() || (s.warnings && s.warnings.length) || (s.ppe && s.ppe.length));
-  if (steps.length) {
+  if (steps.length && !off.has('procedure')) {
     body.push(numHeading('Postup montáže', 'sec_steps'));
     let curSection = null, subPrefix = null, subCount = 0, globalNo = 0;
     steps.forEach((s, i) => {
@@ -494,37 +495,37 @@ function buildDoc(p) {
   }
 
   const safety = filled(p.safety, ['risk', 'source', 'measure']);
-  if (safety.length) {
+  if (safety.length && !off.has('safety')) {
     body.push(numHeading('Bezpečnosť pri práci (BOZP)', 'sec_safety'));
     body.push(dataTable(['Riziko', 'Zdroj', 'Opatrenie'], safety.map(s => [s.risk, s.source, s.measure])));
   }
 
   const risks = (p.risks || []).filter(r => (r || '').trim());
-  if (risks.length) {
+  if (risks.length && !off.has('safety')) {
     body.push(bookmarkedHeading('Ďalšie riziká / upozornenia', 'sec_risks', ctx, 1));
     risks.forEach(r => body.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun(r)] })));
   }
 
   const waste = filled(p.waste, ['waste', 'category', 'disposal']);
-  if (waste.length) {
+  if (waste.length && !off.has('waste')) {
     body.push(numHeading('Nakladanie s odpadmi', 'sec_waste'));
     body.push(dataTable(['Odpad', 'Kategória', 'Likvidácia'], waste.map(w => [w.waste, w.category, w.disposal])));
   }
 
   const maintenance = filled(p.maintenance, ['equipment', 'interval', 'task', 'responsible']);
-  if (maintenance.length) {
+  if (maintenance.length && !off.has('waste')) {
     body.push(numHeading('Údržba zariadení a prípravku', 'sec_maint'));
     body.push(dataTable(['Zariadenie', 'Interval', 'Úkon', 'Zodpovedný'], maintenance.map(m => [m.equipment, m.interval, m.task, m.responsible])));
   }
 
   const troubleshooting = filled(p.troubleshooting, ['problem', 'cause', 'solution']);
-  if (troubleshooting.length) {
+  if (troubleshooting.length && !off.has('waste')) {
     body.push(numHeading('Riešenie problémov', 'sec_trouble'));
     body.push(dataTable(['Problém', 'Príčina', 'Riešenie'], troubleshooting.map(t => [t.problem, t.cause, t.solution])));
   }
 
   const atts = (p.attachments || []).filter(a => (a.label || a.url || '').trim());
-  if (atts.length) {
+  if (atts.length && !off.has('attachments')) {
     body.push(bookmarkedHeading('Prílohy / Odkazy', 'sec_atts', ctx, 1));
     atts.forEach(a => {
       const parts = [new TextRun({ text: a.label || a.url })];
@@ -536,7 +537,7 @@ function buildDoc(p) {
   // Platnosť pracovného postupu (schvaľovanie + revízie)
   const v = p.validity || {};
   const hasValidity = v.preparedBy || v.approvedBy || v.validFrom || v.nextRevision || v.unit || v.revision || p.author;
-  if (hasValidity) {
+  if (hasValidity && !off.has('validity')) {
     body.push(bookmarkedHeading('Platnosť pracovného postupu', 'sec_validity', ctx, 1));
     body.push(new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
