@@ -2818,6 +2818,9 @@ function renderProcedureDetailHtml(p) {
   const dtable = (headers, rows, tbl) => `<div class="pdv-table-wrap"><table class="pdv-dtable"${tbl ? ` data-tbl="${tbl}"` : ''}><thead><tr>${headers.map(h => `<th>${escHtml(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${escHtml(c || '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   const filled = (arr, keys) => (arr || []).filter(o => keys.some(k => (o[k] || '').toString().trim()));
   const off = new Set(p.disabledSegments || []);
+  const colsFor = (key) => (p.tableCols && Array.isArray(p.tableCols[key]) && p.tableCols[key].length) ? p.tableCols[key] : ((PROC_META.tableDefs && PROC_META.tableDefs[key]) || PROC_TABLE_FALLBACK[key] || []);
+  const tdata = (key) => { const cols = colsFor(key); const rows = (p[key] || []).filter(r => cols.some(c => (r[c.key] || '').toString().trim())); return { cols, rows }; };
+  const dtableDyn = (key) => { const { cols, rows } = tdata(key); return dtable(cols.map(c => c.label), rows.map(r => cols.map(c => { const v = r[c.key]; return (c.type === 'date' && v) ? fmtDate(v) : (v || ''); })), key); };
 
   if ((p.purpose || '').trim() && !off.has('purpose'))
     html += `<div class="pdv-section" data-seg="purpose">${sh('Účel')}${textSec(p.purpose, 'prPurpose')}</div>`;
@@ -2825,20 +2828,20 @@ function renderProcedureDetailHtml(p) {
   if ((p.scope || '').trim() && !off.has('purpose'))
     html += `<div class="pdv-section" data-seg="purpose">${sh('Rozsah platnosti')}${textSec(p.scope, 'prScope')}</div>`;
 
-  const relatedDocs = filled(p.relatedDocs, ['document', 'description', 'reference']);
+  const relatedDocs = tdata('relatedDocs').rows;
   if (relatedDocs.length && !off.has('resources'))
-    html += `<div class="pdv-section" data-seg="resources">${sh('Súvisiace dokumenty a normy')}${dtable(['Dokument / Norma', 'Popis', 'Číslo / Odkaz'], relatedDocs.map(d => [d.document, d.description, d.reference]), 'relatedDocs')}</div>`;
+    html += `<div class="pdv-section" data-seg="resources">${sh('Súvisiace dokumenty a normy')}${dtableDyn('relatedDocs')}</div>`;
 
   if ((p.definitions || '').trim() && !off.has('purpose'))
     html += `<div class="pdv-section" data-seg="purpose">${sh('Definície a skratky')}${textSec(p.definitions, 'prDefinitions')}</div>`;
 
-  const equipment = filled(p.equipment, ['no', 'name', 'description', 'calibration']);
+  const equipment = tdata('equipment').rows;
   if (equipment.length && !off.has('resources'))
-    html += `<div class="pdv-section" data-seg="resources">${sh('Špeciálne vybavenie')}${dtable(['č.', 'Názov položky', 'Popis / P/N', 'Kalibrácia'], equipment.map(e => [e.no, e.name, e.description, e.calibration]), 'equipment')}</div>`;
+    html += `<div class="pdv-section" data-seg="resources">${sh('Špeciálne vybavenie')}${dtableDyn('equipment')}</div>`;
 
-  const materials = filled(p.materials, ['no', 'name', 'description', 'partNumber', 'quantity']);
+  const materials = tdata('materials').rows;
   if (materials.length && !off.has('resources'))
-    html += `<div class="pdv-section" data-seg="resources">${sh('Materiály a spotrebný materiál')}${dtable(['č.', 'Názov', 'Popis', 'Sylex PN', 'Množstvo'], materials.map(m => [m.no, m.name, m.description, m.partNumber, m.quantity]), 'materials')}</div>`;
+    html += `<div class="pdv-section" data-seg="resources">${sh('Materiály a spotrebný materiál')}${dtableDyn('materials')}</div>`;
 
   const tools = (p.tools || []).filter(t => (t.name || '').trim());
   if (tools.length && !off.has('resources'))
@@ -2885,33 +2888,33 @@ function renderProcedureDetailHtml(p) {
     html += `</div></div>`;
   }
 
-  const safety = filled(p.safety, ['risk', 'source', 'measure']);
+  const safety = tdata('safety').rows;
   if (safety.length && !off.has('safety'))
-    html += `<div class="pdv-section" data-seg="safety">${sh('Bezpečnosť pri práci (BOZP)')}${dtable(['Riziko', 'Zdroj', 'Opatrenie'], safety.map(s => [s.risk, s.source, s.measure]), 'safety')}</div>`;
+    html += `<div class="pdv-section" data-seg="safety">${sh('Bezpečnosť pri práci (BOZP)')}${dtableDyn('safety')}</div>`;
 
   const risks = (p.risks || []).filter(r => (r || '').trim());
   if (risks.length && !off.has('safety'))
     html += `<div class="pdv-section" data-seg="safety"><h3>Ďalšie riziká / upozornenia</h3><ul class="pdv-risks" data-editlist="prRisks">${risks.map(r => `<li>${escHtml(r)}</li>`).join('')}</ul></div>`;
 
-  const waste = filled(p.waste, ['waste', 'category', 'disposal']);
+  const waste = tdata('waste').rows;
   if (waste.length && !off.has('waste'))
-    html += `<div class="pdv-section" data-seg="waste">${sh('Nakladanie s odpadmi')}${dtable(['Odpad', 'Kategória', 'Likvidácia'], waste.map(w => [w.waste, w.category, w.disposal]), 'waste')}</div>`;
+    html += `<div class="pdv-section" data-seg="waste">${sh('Nakladanie s odpadmi')}${dtableDyn('waste')}</div>`;
 
-  const maintenance = filled(p.maintenance, ['equipment', 'interval', 'task', 'responsible']);
+  const maintenance = tdata('maintenance').rows;
   if (maintenance.length && !off.has('waste'))
-    html += `<div class="pdv-section" data-seg="waste">${sh('Údržba zariadení a prípravku')}${dtable(['Zariadenie', 'Interval', 'Úkon', 'Zodpovedný'], maintenance.map(m => [m.equipment, m.interval, m.task, m.responsible]), 'maintenance')}</div>`;
+    html += `<div class="pdv-section" data-seg="waste">${sh('Údržba zariadení a prípravku')}${dtableDyn('maintenance')}</div>`;
 
-  const troubleshooting = filled(p.troubleshooting, ['problem', 'cause', 'solution']);
+  const troubleshooting = tdata('troubleshooting').rows;
   if (troubleshooting.length && !off.has('waste'))
-    html += `<div class="pdv-section" data-seg="waste">${sh('Riešenie problémov')}${dtable(['Problém', 'Príčina', 'Riešenie'], troubleshooting.map(t => [t.problem, t.cause, t.solution]), 'troubleshooting')}</div>`;
+    html += `<div class="pdv-section" data-seg="waste">${sh('Riešenie problémov')}${dtableDyn('troubleshooting')}</div>`;
 
   const atts = (p.attachments || []).filter(a => (a.label || a.url || '').trim());
   if (atts.length && !off.has('attachments'))
     html += `<div class="pdv-section" data-seg="attachments"><h3>Prílohy / Odkazy</h3><ul class="pdv-atts">${atts.map(a => `<li>${escHtml(a.label || a.url)}${a.label && a.url ? ` <span class="pdv-att-url">${escHtml(a.url)}</span>` : ''}</li>`).join('')}</ul></div>`;
 
-  const changeLog = filled(p.changeLog, ['version', 'change', 'date', 'reason', 'author']);
+  const changeLog = tdata('changeLog').rows;
   if (changeLog.length && !off.has('changelog'))
-    html += `<div class="pdv-section" data-seg="changelog"><h3>História zmien</h3>${dtable(['Verzia', 'Zmena', 'Dátum', 'Dôvod zmeny', 'Vypracoval'], changeLog.map(c => [c.version, c.change, c.date ? fmtDate(c.date) : '', c.reason, c.author]), 'changeLog')}</div>`;
+    html += `<div class="pdv-section" data-seg="changelog"><h3>História zmien</h3>${dtableDyn('changeLog')}</div>`;
 
   const v = p.validity || {};
   if (!off.has('validity') && (v.preparedBy || v.approvedBy || v.validFrom || v.nextRevision || v.unit || v.revision || p.author)) {
@@ -3056,38 +3059,97 @@ function addAttachmentRow(att = {}) {
 
 // ── Generické tabuľkové sekcie (história zmien, dokumenty, vybavenie, …) ───────
 // Každý stĺpec: [kľúč, placeholder, šírka(flex), type]
-const PROC_TABLES = {
-  changeLog:   [['version', 'Verzia', 0.6], ['change', 'Zmena', 0.6], ['date', 'Dátum', 1, 'date'], ['reason', 'Dôvod zmeny', 2], ['author', 'Vypracoval', 1.4]],
-  relatedDocs: [['document', 'Dokument / Norma', 1.6], ['description', 'Popis', 2], ['reference', 'Číslo / Odkaz', 1.4]],
-  equipment:   [['no', 'č.', 0.5], ['name', 'Názov položky', 1.8], ['description', 'Popis / P/N', 2], ['calibration', 'Kalibrácia', 1]],
-  materials:   [['no', 'č.', 0.5], ['name', 'Názov', 1.6], ['description', 'Popis', 1.8], ['partNumber', 'Sylex PN', 1], ['quantity', 'Množstvo', 0.9]],
-  safety:      [['risk', 'Riziko', 1.4], ['source', 'Zdroj', 2], ['measure', 'Opatrenie', 2]],
-  waste:       [['waste', 'Odpad', 1.6], ['category', 'Kategória', 1.4], ['disposal', 'Likvidácia', 2]],
-  maintenance: [['equipment', 'Zariadenie', 1.6], ['interval', 'Interval', 1], ['task', 'Úkon', 2.2], ['responsible', 'Zodpovedný', 1.2]],
-  troubleshooting: [['problem', 'Problém', 1.6], ['cause', 'Príčina', 2], ['solution', 'Riešenie', 2]],
+// Predvolené stĺpce (fallback ak /meta nedobehne)
+const PROC_TABLE_FALLBACK = {
+  changeLog:   [{ key: 'version', label: 'Verzia', flex: 0.6 }, { key: 'change', label: 'Zmena', flex: 0.6 }, { key: 'date', label: 'Dátum', flex: 1, type: 'date' }, { key: 'reason', label: 'Dôvod zmeny', flex: 2 }, { key: 'author', label: 'Vypracoval', flex: 1.4 }],
+  relatedDocs: [{ key: 'document', label: 'Dokument / Norma', flex: 1.6 }, { key: 'description', label: 'Popis', flex: 2 }, { key: 'reference', label: 'Číslo / Odkaz', flex: 1.4 }],
+  equipment:   [{ key: 'no', label: 'č.', flex: 0.5 }, { key: 'name', label: 'Názov položky', flex: 1.8 }, { key: 'description', label: 'Popis / P/N', flex: 2 }, { key: 'calibration', label: 'Kalibrácia', flex: 1 }],
+  materials:   [{ key: 'no', label: 'č.', flex: 0.5 }, { key: 'name', label: 'Názov', flex: 1.6 }, { key: 'description', label: 'Popis', flex: 1.8 }, { key: 'partNumber', label: 'Sylex PN', flex: 1 }, { key: 'quantity', label: 'Množstvo', flex: 0.9 }],
+  safety:      [{ key: 'risk', label: 'Riziko', flex: 1.4 }, { key: 'source', label: 'Zdroj', flex: 2 }, { key: 'measure', label: 'Opatrenie', flex: 2 }],
+  waste:       [{ key: 'waste', label: 'Odpad', flex: 1.6 }, { key: 'category', label: 'Kategória', flex: 1.4 }, { key: 'disposal', label: 'Likvidácia', flex: 2 }],
+  maintenance: [{ key: 'equipment', label: 'Zariadenie', flex: 1.6 }, { key: 'interval', label: 'Interval', flex: 1 }, { key: 'task', label: 'Úkon', flex: 2.2 }, { key: 'responsible', label: 'Zodpovedný', flex: 1.2 }],
+  troubleshooting: [{ key: 'problem', label: 'Problém', flex: 1.6 }, { key: 'cause', label: 'Príčina', flex: 2 }, { key: 'solution', label: 'Riešenie', flex: 2 }],
 };
-
-function addProcTableRow(key, data = {}) {
-  const cols = PROC_TABLES[key];
+const PROC_TABLE_KEYS = Object.keys(PROC_TABLE_FALLBACK);
+let procTableCols = {};   // aktuálne stĺpce v editore: { key: [{key,label,flex,type}] }
+function procTableDefaults(key) {
+  const d = (PROC_META.tableDefs && PROC_META.tableDefs[key]) || PROC_TABLE_FALLBACK[key] || [];
+  return d.map(c => ({ ...c }));
+}
+// Inicializuje editor tabuľky (hlavička so stĺpcami + riadky)
+function initProcTable(key, cols, rows) {
   const c = document.getElementById('pt_' + key);
-  if (!cols || !c) return;
+  if (!c) return;
+  const src = (cols && cols.length) ? cols : procTableDefaults(key);
+  procTableCols[key] = src.map(x => ({ key: x.key || ('col_' + Math.random().toString(36).slice(2, 7)), label: x.label || '', flex: x.flex || 1, type: x.type }));
+  c.innerHTML = '<div class="pt-head"></div><div class="pt-rows"></div>';
+  renderProcTableHead(key);
+  (rows || []).forEach(r => addProcTableRow(key, r));
+}
+function renderProcTableHead(key) {
+  const head = document.querySelector('#pt_' + key + ' .pt-head');
+  if (!head) return;
+  const cols = procTableCols[key] || [];
+  head.innerHTML = cols.map((col, i) =>
+    `<div class="pt-col" style="flex:${col.flex || 1}">` +
+      `<input class="pt-collabel" value="${escHtml(col.label || '')}" placeholder="Názov stĺpca" title="Hlavička stĺpca" oninput="procRenameCol('${key}',${i},this.value)">` +
+      `<button type="button" class="pt-coldel" title="Odobrať stĺpec" onclick="procDelCol('${key}',${i})">×</button>` +
+    `</div>`).join('') +
+    `<button type="button" class="pt-coladd" title="Pridať stĺpec" onclick="procAddCol('${key}')">＋</button>`;
+}
+function addProcTableRow(key, data = {}) {
+  const cols = procTableCols[key];
+  const rowsC = document.querySelector('#pt_' + key + ' .pt-rows');
+  if (!cols || !rowsC) return;
   const row = document.createElement('div');
   row.className = 'proc-row proc-row-multi';
-  row.innerHTML = cols.map(([k, ph, flex, type]) => {
-    const v = (type === 'date' && data[k]) ? String(data[k]).slice(0, 10) : (data[k] || '');
-    return `<input type="${type || 'text'}" data-col="${k}" style="flex:${flex || 1}" placeholder="${escHtml(ph)}" value="${escHtml(v)}">`;
-  }).join('') + `<button type="button" class="proc-row-del" onclick="procRemoveRow(this)" title="Odstrániť">✕</button>`;
-  c.appendChild(row);
+  row.innerHTML = cols.map(col => {
+    const v = (col.type === 'date' && data[col.key]) ? String(data[col.key]).slice(0, 10) : (data[col.key] || '');
+    return `<input type="${col.type || 'text'}" data-col="${col.key}" style="flex:${col.flex || 1}" placeholder="${escHtml(col.label || '')}" value="${escHtml(v)}">`;
+  }).join('') + `<button type="button" class="proc-row-del" onclick="procRemoveRow(this)" title="Odstrániť riadok">✕</button>`;
+  rowsC.appendChild(row);
 }
-
+function procRenameCol(key, i, label) {
+  if (procTableCols[key] && procTableCols[key][i]) procTableCols[key][i].label = label;
+  document.querySelectorAll('#pt_' + key + ' .pt-rows .proc-row').forEach(r => {
+    const inp = r.children[i]; if (inp && inp.tagName === 'INPUT') inp.placeholder = label;
+  });
+  scheduleProcLivePreview();
+}
+function procAddCol(key) {
+  if (!procTableCols[key]) return;
+  const nk = 'col_' + Math.random().toString(36).slice(2, 8);
+  procTableCols[key].push({ key: nk, label: 'Nový stĺpec', flex: 1 });
+  renderProcTableHead(key);
+  document.querySelectorAll('#pt_' + key + ' .pt-rows .proc-row').forEach(r => {
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.setAttribute('data-col', nk); inp.style.flex = '1'; inp.placeholder = 'Nový stĺpec';
+    r.insertBefore(inp, r.querySelector('.proc-row-del'));
+  });
+  scheduleProcLivePreview();
+}
+function procDelCol(key, i) {
+  const cols = procTableCols[key];
+  if (!cols || cols.length <= 1) { toast('Tabuľka musí mať aspoň jeden stĺpec', 'warn'); return; }
+  cols.splice(i, 1);
+  renderProcTableHead(key);
+  document.querySelectorAll('#pt_' + key + ' .pt-rows .proc-row').forEach(r => {
+    const inp = r.children[i]; if (inp && inp.tagName === 'INPUT') inp.remove();
+  });
+  scheduleProcLivePreview();
+}
 function collectProcTable(key) {
-  const cols = PROC_TABLES[key];
-  if (!cols) return [];
-  return [...document.querySelectorAll('#pt_' + key + ' .proc-row')].map(r => {
+  const cols = procTableCols[key] || [];
+  return [...document.querySelectorAll('#pt_' + key + ' .pt-rows .proc-row')].map(r => {
     const o = {};
-    cols.forEach(([k]) => { o[k] = (r.querySelector(`[data-col="${k}"]`)?.value || '').trim(); });
+    cols.forEach(col => { o[col.key] = (r.querySelector(`[data-col="${col.key}"]`)?.value || '').trim(); });
     return o;
   }).filter(o => Object.values(o).some(v => v));
+}
+function collectProcTableColsAll() {
+  const out = {};
+  PROC_TABLE_KEYS.forEach(k => { if (procTableCols[k]) out[k] = procTableCols[k].map(c => ({ key: c.key, label: c.label, flex: c.flex, type: c.type })); });
+  return out;
 }
 
 // ── Operácie (rich karty) ─────────────────────────────────────────────────────
@@ -3301,7 +3363,8 @@ function collectProcedureForm() {
       revision:     document.getElementById('prValRevision').value.trim()
     },
     tools, steps: collectSteps(), risks, attachments,
-    disabledSegments: collectDisabledSegments()
+    disabledSegments: collectDisabledSegments(),
+    tableCols: collectProcTableColsAll()
   };
 }
 
@@ -3357,14 +3420,14 @@ async function openProcedureModal(proc = null) {
   document.getElementById('prToolsRows').innerHTML = '';
   document.getElementById('prStepsRows').innerHTML = '';
   document.getElementById('prAttRows').innerHTML   = '';
-  Object.keys(PROC_TABLES).forEach(k => { const c = document.getElementById('pt_' + k); if (c) c.innerHTML = ''; });
   const tools = (isEdit && proc.tools && proc.tools.length) ? proc.tools : [{}];
   const steps = (isEdit && proc.steps && proc.steps.length) ? proc.steps : [{}];
   const atts  = (isEdit && proc.attachments && proc.attachments.length) ? proc.attachments : [];
   tools.forEach(addToolRow);
   steps.forEach(addStepRow);
   atts.forEach(addAttachmentRow);
-  Object.keys(PROC_TABLES).forEach(k => { ((isEdit && proc[k]) || []).forEach(row => addProcTableRow(k, row)); });
+  procTableCols = {};
+  PROC_TABLE_KEYS.forEach(k => initProcTable(k, (isEdit && proc.tableCols && proc.tableCols[k]), (isEdit && proc[k]) || []));
 
   // Obnov stav zapnutia/vypnutia kategórií
   const disSet = new Set((isEdit && proc.disabledSegments) || []);
@@ -3584,15 +3647,18 @@ function focusPreviewFromForm(el) {
   const has = (sel) => paper && paper.querySelector(sel);
   if (card && has('.pdv-step[data-sid="' + card.dataset.sid + '"]')) {
     selector = '.pdv-step[data-sid="' + card.dataset.sid + '"]';            // konkrétna operácia
-  } else if (trow && trow.parentElement && trow.parentElement.id.startsWith('pt_')) {
-    const key = trow.parentElement.id.slice(3);
-    const rows = [...trow.parentElement.querySelectorAll('.proc-row')];
+  } else if (trow && trow.closest('[id^="pt_"]')) {
+    const cont = trow.closest('[id^="pt_"]');
+    const key = cont.id.slice(3);
+    const rows = [...cont.querySelectorAll('.pt-rows .proc-row')];
     const nonEmpty = rows.filter(r => [...r.querySelectorAll('[data-col]')].some(i => i.value.trim()));
     const idx = nonEmpty.indexOf(trow);
     if (idx >= 0 && has('[data-tbl="' + key + '"] tbody tr:nth-child(' + (idx + 1) + ')'))
       selector = '[data-tbl="' + key + '"] tbody tr:nth-child(' + (idx + 1) + ')';   // konkrétny riadok
     else if (has('[data-tbl="' + key + '"]'))
       selector = '[data-tbl="' + key + '"]';                                          // celá tabuľka (prázdny riadok)
+  } else if (el.closest('.pt-head') && el.closest('[id^="pt_"]') && has('[data-tbl="' + el.closest('[id^="pt_"]').id.slice(3) + '"]')) {
+    selector = '[data-tbl="' + el.closest('[id^="pt_"]').id.slice(3) + '"]';          // editácia hlavičky → celá tabuľka
   } else if (fid && has('[data-edit="' + fid + '"], [data-editlist="' + fid + '"]')) {
     selector = '[data-edit="' + fid + '"], [data-editlist="' + fid + '"]';            // konkrétne textové pole
   } else if (el.closest('#prToolsRows') && has('.pdv-tools')) {

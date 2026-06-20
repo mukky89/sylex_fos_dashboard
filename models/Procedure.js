@@ -11,26 +11,21 @@ const procedureSchema = new mongoose.Schema({
   purpose:     { type: String, default: '' },               // 1. Účel / cieľ
   scope:       { type: String, default: '' },               // 2. Rozsah platnosti
   definitions: { type: String, default: '' },               // 4. Definície a skratky
-  // História zmien (Verzia / Zmena / Dátum / Dôvod zmeny / Vypracoval)
-  changeLog:   [{ version: String, change: String, date: String, reason: String, author: String }],
-  // 3. Súvisiace dokumenty a normy
-  relatedDocs: [{ document: String, description: String, reference: String }],
-  // 5. Špeciálne vybavenie
-  equipment:   [{ no: String, name: String, description: String, calibration: String }],
-  // 6. Materiály a spotrebný materiál
-  materials:   [{ no: String, name: String, description: String, partNumber: String, quantity: String }],
+  // Štruktúrované tabuľky — riadky ako voľné objekty (stĺpce sú editovateľné, viď tableCols)
+  changeLog:   [mongoose.Schema.Types.Mixed],   // História zmien
+  relatedDocs: [mongoose.Schema.Types.Mixed],   // 3. Súvisiace dokumenty a normy
+  equipment:   [mongoose.Schema.Types.Mixed],   // 5. Špeciálne vybavenie
+  materials:   [mongoose.Schema.Types.Mixed],   // 6. Materiály a spotrebný materiál
   // 7.1 Kontrolný zoznam pred začatím výroby
   prepChecklist: [String],
   tools:       [{ name: String, note: String }],            // pomôcky / nástroje
   risks:       [String],                                     // riziká / upozornenia (jednoduchý zoznam)
-  // 12. Bezpečnosť pri práci (BOZP) — Riziko / Zdroj / Opatrenie
-  safety:      [{ risk: String, source: String, measure: String }],
-  // 13. Nakladanie s odpadmi — Odpad / Kategória / Likvidácia
-  waste:       [{ waste: String, category: String, disposal: String }],
-  // 14. Údržba zariadení a prípravku — Zariadenie / Interval / Úkon / Zodpovedný
-  maintenance: [{ equipment: String, interval: String, task: String, responsible: String }],
-  // 15. Riešenie problémov — Problém / Príčina / Riešenie
-  troubleshooting: [{ problem: String, cause: String, solution: String }],
+  safety:      [mongoose.Schema.Types.Mixed],   // 12. BOZP
+  waste:       [mongoose.Schema.Types.Mixed],   // 13. Nakladanie s odpadmi
+  maintenance: [mongoose.Schema.Types.Mixed],   // 14. Údržba zariadení
+  troubleshooting: [mongoose.Schema.Types.Mixed], // 15. Riešenie problémov
+  // Editovateľné definície stĺpcov tabuliek: { <kľúč tabuľky>: [{ key, label, flex, type }] }
+  tableCols:   { type: mongoose.Schema.Types.Mixed, default: {} },
   steps:       [{
     section:  { type: String, default: '' },                // názov podsekcie (napr. „8.1 Príprava vlákna")
     text:     { type: String, default: '' },                // rich HTML popis operácie

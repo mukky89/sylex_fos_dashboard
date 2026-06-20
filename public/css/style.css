@@ -2153,7 +2153,30 @@ body {
 .proc-seg-body { padding: 18px 18px 20px; display: flex; flex-direction: column; gap: 18px; }
 .proc-seg.collapsed .proc-seg-body { display: none; }
 
+/* Editovateľné hlavičky/stĺpce štruktúrovaných tabuliek */
+.pt-head { display: flex; align-items: stretch; gap: 6px; margin-bottom: 6px; }
+.pt-col { display: flex; align-items: center; min-width: 0; gap: 2px; }
+.pt-collabel {
+  flex: 1; min-width: 0; padding: 6px 8px; border-radius: var(--radius) 0 0 var(--radius);
+  background: #eef2f7; border: 1px solid var(--border); border-right: 0;
+  color: #1e293b; font-family: var(--font); font-size: 0.78rem; font-weight: 700; outline: none;
+}
+.pt-collabel:focus { background: #fff; border-color: var(--border-focus); }
+.pt-coldel {
+  width: 22px; align-self: stretch; flex-shrink: 0; cursor: pointer;
+  background: #eef2f7; border: 1px solid var(--border); border-left: 0; border-radius: 0 var(--radius) var(--radius) 0;
+  color: #94a3b8; font-size: 0.85rem;
+}
+.pt-coldel:hover { background: #fee2e2; color: #ef4444; }
+.pt-coladd {
+  flex-shrink: 0; width: 32px; cursor: pointer; border-radius: var(--radius);
+  background: var(--accent-light); border: 1px dashed var(--border-focus); color: var(--accent); font-weight: 700;
+}
+.pt-coladd:hover { background: var(--accent); color: #fff; }
+.pt-rows { display: flex; flex-direction: column; gap: 6px; }
+
 /* Prázdny zoznam položiek — náznak namiesto „prázdnej" karty */
+.pt-rows:empty::after,
 .proc-rows:empty::after {
   content: 'Zatiaľ žiadne položky — pridajte tlačidlom „+ Pridať".';
   display: block; padding: 10px 12px; border: 1px dashed #d6dce6; border-radius: 8px;

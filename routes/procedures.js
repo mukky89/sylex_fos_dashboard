@@ -3,7 +3,7 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const Procedure = require('../models/Procedure');
-const { WARNING_TYPES, PPE_TYPES } = require('../config/procedureMeta');
+const { WARNING_TYPES, PPE_TYPES, TABLE_DEFS } = require('../config/procedureMeta');
 const {
   Document, Packer, Paragraph, TextRun, HeadingLevel,
   Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle,
@@ -45,7 +45,7 @@ const PPE_MAP  = Object.fromEntries(PPE_TYPES.map(w => [w.key, w]));
 
 // ── META (typy upozornení + ochranných pomôcok) — MUSÍ byť pred /:id ──────────
 router.get('/meta', (req, res) => {
-  res.json({ warnings: WARNING_TYPES, ppe: PPE_TYPES });
+  res.json({ warnings: WARNING_TYPES, ppe: PPE_TYPES, tableDefs: TABLE_DEFS });
 });
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
@@ -395,6 +395,9 @@ function buildDoc(p) {
   const off = new Set(p.disabledSegments || []);
   let secNo = 0;
   const numHeading = (title, anchor) => bookmarkedHeading(`${++secNo}. ${title}`, anchor, ctx, 1);
+  const colsOf = (key) => (p.tableCols && Array.isArray(p.tableCols[key]) && p.tableCols[key].length) ? p.tableCols[key] : (TABLE_DEFS[key] || []);
+  const tblRows = (key) => { const cols = colsOf(key); return (p[key] || []).filter(o => cols.some(c => (o[c.key] || '').toString().trim())); };
+  const dataTableFor = (key, rows) => { const cols = colsOf(key); return dataTable(cols.map(c => c.label), rows.map(r => cols.map(c => { const v = r[c.key]; return (c.type === 'date' && v) ? fmtDate(v) : (v || ''); }))); };
 
   // Metadáta
   body.push(new Table({
@@ -411,11 +414,10 @@ function buildDoc(p) {
   }));
 
   // História zmien
-  const changeLog = filled(p.changeLog, ['version', 'change', 'date', 'reason', 'author']);
+  const changeLog = tblRows('changeLog');
   if (changeLog.length && !off.has('changelog')) {
     body.push(bookmarkedHeading('História zmien', 'sec_changelog', ctx, 1));
-    body.push(dataTable(['Verzia', 'Zmena', 'Dátum', 'Dôvod zmeny', 'Vypracoval'],
-      changeLog.map(c => [c.version, c.change, c.date ? fmtDate(c.date) : '', c.reason, c.author])));
+    body.push(dataTableFor('changeLog', changeLog));
   }
 
   if (p.purpose && p.purpose.trim() && !off.has('purpose')) {
@@ -428,10 +430,10 @@ function buildDoc(p) {
     p.scope.split('\n').forEach(line => body.push(new Paragraph({ children: [new TextRun(line)] })));
   }
 
-  const relatedDocs = filled(p.relatedDocs, ['document', 'description', 'reference']);
+  const relatedDocs = tblRows('relatedDocs');
   if (relatedDocs.length && !off.has('resources')) {
     body.push(numHeading('Súvisiace dokumenty a normy', 'sec_reldocs'));
-    body.push(dataTable(['Dokument / Norma', 'Popis', 'Číslo / Odkaz'], relatedDocs.map(d => [d.document, d.description, d.reference])));
+    body.push(dataTableFor('relatedDocs', relatedDocs));
   }
 
   if (p.definitions && p.definitions.trim() && !off.has('purpose')) {
@@ -439,16 +441,16 @@ function buildDoc(p) {
     p.definitions.split('\n').forEach(line => body.push(new Paragraph({ children: [new TextRun(line)] })));
   }
 
-  const equipment = filled(p.equipment, ['no', 'name', 'description', 'calibration']);
+  const equipment = tblRows('equipment');
   if (equipment.length && !off.has('resources')) {
     body.push(numHeading('Špeciálne vybavenie', 'sec_equip'));
-    body.push(dataTable(['č.', 'Názov položky', 'Popis / P/N', 'Kalibrácia'], equipment.map(e => [e.no, e.name, e.description, e.calibration])));
+    body.push(dataTableFor('equipment', equipment));
   }
 
-  const materials = filled(p.materials, ['no', 'name', 'description', 'partNumber', 'quantity']);
+  const materials = tblRows('materials');
   if (materials.length && !off.has('resources')) {
     body.push(numHeading('Materiály a spotrebný materiál', 'sec_mat'));
-    body.push(dataTable(['č.', 'Názov', 'Popis', 'Sylex PN', 'Množstvo'], materials.map(m => [m.no, m.name, m.description, m.partNumber, m.quantity])));
+    body.push(dataTableFor('materials', materials));
   }
 
   const tools = (p.tools || []).filter(t => (t.name || '').trim());
@@ -512,10 +514,10 @@ function buildDoc(p) {
     });
   }
 
-  const safety = filled(p.safety, ['risk', 'source', 'measure']);
+  const safety = tblRows('safety');
   if (safety.length && !off.has('safety')) {
     body.push(numHeading('Bezpečnosť pri práci (BOZP)', 'sec_safety'));
-    body.push(dataTable(['Riziko', 'Zdroj', 'Opatrenie'], safety.map(s => [s.risk, s.source, s.measure])));
+    body.push(dataTableFor('safety', safety));
   }
 
   const risks = (p.risks || []).filter(r => (r || '').trim());
@@ -524,22 +526,22 @@ function buildDoc(p) {
     risks.forEach(r => body.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun(r)] })));
   }
 
-  const waste = filled(p.waste, ['waste', 'category', 'disposal']);
+  const waste = tblRows('waste');
   if (waste.length && !off.has('waste')) {
     body.push(numHeading('Nakladanie s odpadmi', 'sec_waste'));
-    body.push(dataTable(['Odpad', 'Kategória', 'Likvidácia'], waste.map(w => [w.waste, w.category, w.disposal])));
+    body.push(dataTableFor('waste', waste));
   }
 
-  const maintenance = filled(p.maintenance, ['equipment', 'interval', 'task', 'responsible']);
+  const maintenance = tblRows('maintenance');
   if (maintenance.length && !off.has('waste')) {
     body.push(numHeading('Údržba zariadení a prípravku', 'sec_maint'));
-    body.push(dataTable(['Zariadenie', 'Interval', 'Úkon', 'Zodpovedný'], maintenance.map(m => [m.equipment, m.interval, m.task, m.responsible])));
+    body.push(dataTableFor('maintenance', maintenance));
   }
 
-  const troubleshooting = filled(p.troubleshooting, ['problem', 'cause', 'solution']);
+  const troubleshooting = tblRows('troubleshooting');
   if (troubleshooting.length && !off.has('waste')) {
     body.push(numHeading('Riešenie problémov', 'sec_trouble'));
-    body.push(dataTable(['Problém', 'Príčina', 'Riešenie'], troubleshooting.map(t => [t.problem, t.cause, t.solution])));
+    body.push(dataTableFor('troubleshooting', troubleshooting));
   }
 
   const atts = (p.attachments || []).filter(a => (a.label || a.url || '').trim());
