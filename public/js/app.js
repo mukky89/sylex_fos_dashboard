@@ -3131,7 +3131,7 @@ function renderStepThumb(card) {
     ? `<div class="proc-thumb"><img src="${escHtml(card._image)}" alt=""><button type="button" class="proc-thumb-del" onclick="removeStepImage(this)" title="Odstrániť obrázok">✕</button></div>`
     : '<span class="proc-thumb-empty">Žiadny obrázok</span>';
 }
-function removeStepImage(btn) { const card = btn.closest('.proc-step-card'); if (card) { card._image = ''; renderStepThumb(card); } }
+function removeStepImage(btn) { const card = btn.closest('.proc-step-card'); if (card) { card._image = ''; renderStepThumb(card); scheduleProcLivePreview(); } }
 
 async function importStepImage(btn) {
   const card = btn.closest('.proc-step-card');
@@ -3140,7 +3140,7 @@ async function importStepImage(btn) {
   input.onchange = async () => {
     const f = input.files[0]; if (!f) return;
     const url = await uploadImage(f);
-    if (url) { card._image = url; renderStepThumb(card); }
+    if (url) { card._image = url; renderStepThumb(card); scheduleProcLivePreview(); }
   };
   input.click();
 }
@@ -3200,7 +3200,7 @@ function addStepRow(step = {}) {
   card.querySelector('.proc-img-caption').value = step.caption || '';
   renderStepThumb(card);
   enableFileDrop(card.querySelector('.proc-step-img'), (files) =>
-    dropImagesTo(files, (url) => { card._image = url; renderStepThumb(card); }));
+    dropImagesTo(files, (url) => { card._image = url; renderStepThumb(card); scheduleProcLivePreview(); }));
   renderIconPicker(document.getElementById(sid + '_warn'), PROC_META.warnings, card._warnings, document.getElementById(sid + '_warnc'));
   renderIconPicker(document.getElementById(sid + '_ppe'),  PROC_META.ppe,      card._ppe,      document.getElementById(sid + '_ppec'));
   return card;
@@ -3366,6 +3366,35 @@ async function openProcedureModal(proc = null) {
   if (det) det.classList.add('hidden');
   document.getElementById('procEditView').classList.remove('hidden');
   window.scrollTo({ top: 0, behavior: 'auto' });
+  wireProcLivePreview();
+  setTimeout(updateProcLivePreview, 80);
+}
+
+// ── Živý A4 náhľad vedľa editora ──────────────────────────────────────────────
+let _procPrevTimer = null, _procPrevWired = false;
+function fitProcA4Preview() {
+  const pane = document.querySelector('.proc-edit-preview');
+  const paper = document.getElementById('procLivePreview');
+  if (!pane || !paper || pane.offsetParent === null) return;
+  const avail = pane.clientWidth - 32;
+  paper.style.zoom = Math.max(0.3, Math.min(1, avail / 794));
+}
+function updateProcLivePreview() {
+  const el = document.getElementById('procLivePreview');
+  if (!el || el.offsetParent === null) return;
+  try { el.innerHTML = renderProcedureDetailHtml(collectProcedureForm()); } catch (e) {}
+  fitProcA4Preview();
+}
+function scheduleProcLivePreview() { clearTimeout(_procPrevTimer); _procPrevTimer = setTimeout(updateProcLivePreview, 250); }
+function wireProcLivePreview() {
+  if (_procPrevWired) return;
+  const root = document.getElementById('procEditView');
+  if (!root) return;
+  root.addEventListener('input', scheduleProcLivePreview);
+  root.addEventListener('change', scheduleProcLivePreview);
+  root.addEventListener('click', (e) => { if (e.target.closest('button, .proc-icon-btn')) scheduleProcLivePreview(); });
+  window.addEventListener('resize', fitProcA4Preview);
+  _procPrevWired = true;
 }
 
 function closeProcedureModal() {
