@@ -1014,216 +1014,289 @@
         <div class="proc-edit-body">
           <input type="hidden" id="prId">
 
-          <div class="proc-form-section">Identifikácia</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Názov *</label>
-              <input type="text" id="prTitle" placeholder="napr. Montážny postup výroby snímača OS3155">
+          <!-- SEGMENT 1: Identifikácia -->
+          <div class="proc-seg" data-seg="identifikacia">
+            <div class="proc-seg-hd">
+              <button type="button" class="proc-seg-toggle" onclick="toggleProcSeg(this)">
+                <span class="proc-seg-ico">1</span><span class="proc-seg-title">Identifikácia</span>
+              </button>
+              <button type="button" class="proc-seg-caret-btn" onclick="toggleProcSeg(this)"><span class="proc-seg-caret">▾</span></button>
             </div>
-            <div class="form-group">
-              <label>Oddelenie / kategória</label>
-              <input type="text" id="prDepartment" placeholder="napr. Výroba FOS">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Číslo PP</label>
-              <input type="text" id="prProcNumber" placeholder="napr. PP FOS 98/2024">
-            </div>
-            <div class="form-group">
-              <label>Vydanie <span class="form-hint">(rok)</span></label>
-              <input type="text" id="prEdition" placeholder="napr. 2026">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Autor</label>
-              <input type="text" id="prAuthor" placeholder="Meno autora">
-            </div>
-            <div class="form-group">
-              <label>Vlastník <span class="form-hint">(zodpovedná osoba)</span></label>
-              <input type="text" id="prOwner" placeholder="Meno vlastníka / -ov">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Dátum</label>
-              <input type="date" id="prDate">
-            </div>
-            <div class="form-group">
-              <label>Stav</label>
-              <div class="status-select">
-                <label class="status-opt"><input type="radio" name="prStatus" value="active" checked> Aktívny</label>
-                <label class="status-opt"><input type="radio" name="prStatus" value="draft"> Koncept</label>
-                <label class="status-opt"><input type="radio" name="prStatus" value="archived"> Archív</label>
+            <div class="proc-seg-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Názov *</label>
+                  <input type="text" id="prTitle" placeholder="napr. Montážny postup výroby snímača OS3155">
+                </div>
+                <div class="form-group">
+                  <label>Oddelenie / kategória</label>
+                  <input type="text" id="prDepartment" placeholder="napr. Výroba FOS">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Číslo PP</label>
+                  <input type="text" id="prProcNumber" placeholder="napr. PP FOS 98/2024">
+                </div>
+                <div class="form-group">
+                  <label>Vydanie <span class="form-hint">(rok)</span></label>
+                  <input type="text" id="prEdition" placeholder="napr. 2026">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Autor</label>
+                  <input type="text" id="prAuthor" placeholder="Meno autora">
+                </div>
+                <div class="form-group">
+                  <label>Vlastník <span class="form-hint">(zodpovedná osoba)</span></label>
+                  <input type="text" id="prOwner" placeholder="Meno vlastníka / -ov">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Dátum</label>
+                  <input type="date" id="prDate">
+                </div>
+                <div class="form-group">
+                  <label>Stav</label>
+                  <div class="status-select">
+                    <label class="status-opt"><input type="radio" name="prStatus" value="active" checked> Aktívny</label>
+                    <label class="status-opt"><input type="radio" name="prStatus" value="draft"> Koncept</label>
+                    <label class="status-opt"><input type="radio" name="prStatus" value="archived"> Archív</label>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- História zmien -->
-          <div class="form-group">
-            <div class="proc-rows-hdr">
-              <label>História zmien <span class="form-hint">(Verzia / Zmena / Dátum / Dôvod / Vypracoval)</span></label>
-              <button type="button" class="btn-sm" onclick="addProcTableRow('changeLog')">+ Pridať</button>
+          <!-- SEGMENT 2: História zmien -->
+          <div class="proc-seg" data-seg="changelog">
+            <div class="proc-seg-hd">
+              <button type="button" class="proc-seg-toggle" onclick="toggleProcSeg(this)">
+                <span class="proc-seg-ico">2</span><span class="proc-seg-title">História zmien</span>
+              </button>
+              <label class="proc-seg-switch" title="Zahrnúť kategóriu do postupu" onclick="event.stopPropagation()"><input type="checkbox" class="proc-seg-en" checked onchange="toggleProcSegEnabled(this)"><span class="proc-seg-switch-track"></span></label>
+              <button type="button" class="proc-seg-caret-btn" onclick="toggleProcSeg(this)"><span class="proc-seg-caret">▾</span></button>
             </div>
-            <div id="pt_changeLog" class="proc-rows"></div>
-          </div>
-
-          <div class="proc-form-section">Obsah postupu</div>
-
-          <!-- 1. Účel -->
-          <div class="form-group">
-            <label>1. Účel / Cieľ</label>
-            <textarea id="prPurpose" rows="2" placeholder="Účelom tohto pracovného postupu je opísať…"></textarea>
-          </div>
-
-          <!-- 2. Rozsah platnosti -->
-          <div class="form-group">
-            <label>2. Rozsah platnosti <span class="form-hint">(voliteľné)</span></label>
-            <textarea id="prScope" rows="2" placeholder="Na ktoré výrobky / pracoviská sa postup vzťahuje"></textarea>
-          </div>
-
-          <!-- 3. Súvisiace dokumenty a normy -->
-          <div class="form-group">
-            <div class="proc-rows-hdr">
-              <label>3. Súvisiace dokumenty a normy</label>
-              <button type="button" class="btn-sm" onclick="addProcTableRow('relatedDocs')">+ Pridať</button>
-            </div>
-            <div id="pt_relatedDocs" class="proc-rows"></div>
-          </div>
-
-          <!-- 4. Definície a skratky -->
-          <div class="form-group">
-            <label>4. Definície a skratky <span class="form-hint">(voliteľné)</span></label>
-            <textarea id="prDefinitions" rows="2" placeholder="Vysvetlenie pojmov a skratiek"></textarea>
-          </div>
-
-          <!-- 5. Špeciálne vybavenie -->
-          <div class="form-group">
-            <div class="proc-rows-hdr">
-              <label>5. Špeciálne vybavenie</label>
-              <button type="button" class="btn-sm" onclick="addProcTableRow('equipment')">+ Pridať</button>
-            </div>
-            <div id="pt_equipment" class="proc-rows"></div>
-          </div>
-
-          <!-- 6. Materiály a spotrebný materiál -->
-          <div class="form-group">
-            <div class="proc-rows-hdr">
-              <label>6. Materiály a spotrebný materiál</label>
-              <button type="button" class="btn-sm" onclick="addProcTableRow('materials')">+ Pridať</button>
-            </div>
-            <div id="pt_materials" class="proc-rows"></div>
-          </div>
-
-          <!-- Pomôcky / nástroje -->
-          <div class="form-group">
-            <div class="proc-rows-hdr">
-              <label>Potrebné pomôcky / nástroje</label>
-              <button type="button" class="btn-sm" onclick="addToolRow()">+ Pridať</button>
-            </div>
-            <div id="prToolsRows" class="proc-rows"></div>
-          </div>
-
-          <!-- 7.1 Kontrolný zoznam pred začatím -->
-          <div class="form-group">
-            <label>7. Kontrolný zoznam pred začatím výroby <span class="form-hint">(každá položka na nový riadok)</span></label>
-            <textarea id="prPrepChecklist" rows="4" placeholder="Čistota pracoviska – plocha čistá, bez prachu&#10;Spájkovacia stanica – teploty overené&#10;Materiál – vyskladnený podľa objednávky"></textarea>
-          </div>
-
-          <!-- Kroky / operácie -->
-          <div class="form-group">
-            <div class="proc-rows-hdr">
-              <label>8. Postup — operácie <span class="form-hint">(podsekcia, rich text, obrázok, upozornenia, ochranné pomôcky)</span></label>
-              <button type="button" class="btn-sm" onclick="addStepRow()">+ Pridať operáciu</button>
-            </div>
-            <div id="prStepsRows" class="proc-steps"></div>
-          </div>
-
-          <div class="proc-form-section">Bezpečnosť, údržba a riešenie problémov</div>
-
-          <!-- 12. BOZP -->
-          <div class="form-group">
-            <div class="proc-rows-hdr">
-              <label>12. Bezpečnosť pri práci (BOZP) <span class="form-hint">(Riziko / Zdroj / Opatrenie)</span></label>
-              <button type="button" class="btn-sm" onclick="addProcTableRow('safety')">+ Pridať</button>
-            </div>
-            <div id="pt_safety" class="proc-rows"></div>
-          </div>
-
-          <!-- Riziká (jednoduchý zoznam) -->
-          <div class="form-group">
-            <label>Ďalšie riziká / upozornenia <span class="form-hint">(každé na nový riadok)</span></label>
-            <textarea id="prRisks" rows="2" placeholder="Jedno riziko / upozornenie na riadok"></textarea>
-          </div>
-
-          <!-- 13. Nakladanie s odpadmi -->
-          <div class="form-group">
-            <div class="proc-rows-hdr">
-              <label>13. Nakladanie s odpadmi <span class="form-hint">(Odpad / Kategória / Likvidácia)</span></label>
-              <button type="button" class="btn-sm" onclick="addProcTableRow('waste')">+ Pridať</button>
-            </div>
-            <div id="pt_waste" class="proc-rows"></div>
-          </div>
-
-          <!-- 14. Údržba zariadení -->
-          <div class="form-group">
-            <div class="proc-rows-hdr">
-              <label>14. Údržba zariadení a prípravku <span class="form-hint">(Zariadenie / Interval / Úkon / Zodpovedný)</span></label>
-              <button type="button" class="btn-sm" onclick="addProcTableRow('maintenance')">+ Pridať</button>
-            </div>
-            <div id="pt_maintenance" class="proc-rows"></div>
-          </div>
-
-          <!-- 15. Riešenie problémov -->
-          <div class="form-group">
-            <div class="proc-rows-hdr">
-              <label>15. Riešenie problémov <span class="form-hint">(Problém / Príčina / Riešenie)</span></label>
-              <button type="button" class="btn-sm" onclick="addProcTableRow('troubleshooting')">+ Pridať</button>
-            </div>
-            <div id="pt_troubleshooting" class="proc-rows"></div>
-          </div>
-
-          <!-- Prílohy -->
-          <div class="form-group">
-            <div class="proc-rows-hdr">
-              <label>Prílohy / Odkazy</label>
-              <button type="button" class="btn-sm" onclick="addAttachmentRow()">+ Pridať</button>
-            </div>
-            <div id="prAttRows" class="proc-rows"></div>
-          </div>
-
-          <!-- Platnosť pracovného postupu -->
-          <div class="form-group proc-validity-block">
-            <label class="proc-validity-hdr">Platnosť pracovného postupu <span class="form-hint">(schvaľovanie a revízie)</span></label>
-            <div class="form-row">
+            <div class="proc-seg-body">
               <div class="form-group">
-                <label>Vypracoval</label>
-                <input type="text" id="prValPreparedBy" placeholder="Meno – funkcia, oddelenie">
-              </div>
-              <div class="form-group">
-                <label>Schválil</label>
-                <input type="text" id="prValApprovedBy" placeholder="Meno vedúceho výroby">
+                <div class="proc-rows-hdr">
+                  <label>Záznamy revízií <span class="form-hint">(Verzia / Zmena / Dátum / Dôvod / Vypracoval)</span></label>
+                  <button type="button" class="btn-sm" onclick="addProcTableRow('changeLog')">+ Pridať</button>
+                </div>
+                <div id="pt_changeLog" class="proc-rows"></div>
               </div>
             </div>
-            <div class="form-row">
+          </div>
+
+          <!-- SEGMENT 3: Účel a rozsah -->
+          <div class="proc-seg" data-seg="purpose">
+            <div class="proc-seg-hd">
+              <button type="button" class="proc-seg-toggle" onclick="toggleProcSeg(this)">
+                <span class="proc-seg-ico">3</span><span class="proc-seg-title">Účel a rozsah</span>
+              </button>
+              <label class="proc-seg-switch" title="Zahrnúť kategóriu do postupu" onclick="event.stopPropagation()"><input type="checkbox" class="proc-seg-en" checked onchange="toggleProcSegEnabled(this)"><span class="proc-seg-switch-track"></span></label>
+              <button type="button" class="proc-seg-caret-btn" onclick="toggleProcSeg(this)"><span class="proc-seg-caret">▾</span></button>
+            </div>
+            <div class="proc-seg-body">
               <div class="form-group">
-                <label>Platnosť od</label>
-                <input type="date" id="prValValidFrom" onchange="procSuggestNextRevision()">
+                <label>1. Účel / Cieľ</label>
+                <textarea id="prPurpose" rows="2" placeholder="Účelom tohto pracovného postupu je opísať…"></textarea>
               </div>
               <div class="form-group">
-                <label>Nasledujúca revízia <span class="form-hint">(max. 2 roky od vydania)</span></label>
-                <input type="date" id="prValNextRevision">
+                <label>2. Rozsah platnosti <span class="form-hint">(voliteľné)</span></label>
+                <textarea id="prScope" rows="2" placeholder="Na ktoré výrobky / pracoviská sa postup vzťahuje"></textarea>
+              </div>
+              <div class="form-group">
+                <label>4. Definície a skratky <span class="form-hint">(voliteľné)</span></label>
+                <textarea id="prDefinitions" rows="2" placeholder="Vysvetlenie pojmov a skratiek"></textarea>
               </div>
             </div>
-            <div class="form-row">
+          </div>
+
+          <!-- SEGMENT 4: Dokumenty, vybavenie, materiál -->
+          <div class="proc-seg" data-seg="resources">
+            <div class="proc-seg-hd">
+              <button type="button" class="proc-seg-toggle" onclick="toggleProcSeg(this)">
+                <span class="proc-seg-ico">4</span><span class="proc-seg-title">Dokumenty, vybavenie a materiál</span>
+              </button>
+              <label class="proc-seg-switch" title="Zahrnúť kategóriu do postupu" onclick="event.stopPropagation()"><input type="checkbox" class="proc-seg-en" checked onchange="toggleProcSegEnabled(this)"><span class="proc-seg-switch-track"></span></label>
+              <button type="button" class="proc-seg-caret-btn" onclick="toggleProcSeg(this)"><span class="proc-seg-caret">▾</span></button>
+            </div>
+            <div class="proc-seg-body">
               <div class="form-group">
-                <label>Útvar</label>
-                <input type="text" id="prValUnit" placeholder="napr. Výroba FOS, SYLEX s.r.o., Bratislava">
+                <div class="proc-rows-hdr">
+                  <label>3. Súvisiace dokumenty a normy</label>
+                  <button type="button" class="btn-sm" onclick="addProcTableRow('relatedDocs')">+ Pridať</button>
+                </div>
+                <div id="pt_relatedDocs" class="proc-rows"></div>
               </div>
               <div class="form-group">
-                <label>Revízia / Zmena</label>
-                <input type="text" id="prValRevision" placeholder="napr. A / 00">
+                <div class="proc-rows-hdr">
+                  <label>5. Špeciálne vybavenie</label>
+                  <button type="button" class="btn-sm" onclick="addProcTableRow('equipment')">+ Pridať</button>
+                </div>
+                <div id="pt_equipment" class="proc-rows"></div>
+              </div>
+              <div class="form-group">
+                <div class="proc-rows-hdr">
+                  <label>6. Materiály a spotrebný materiál</label>
+                  <button type="button" class="btn-sm" onclick="addProcTableRow('materials')">+ Pridať</button>
+                </div>
+                <div id="pt_materials" class="proc-rows"></div>
+              </div>
+              <div class="form-group">
+                <div class="proc-rows-hdr">
+                  <label>Potrebné pomôcky / nástroje</label>
+                  <button type="button" class="btn-sm" onclick="addToolRow()">+ Pridať</button>
+                </div>
+                <div id="prToolsRows" class="proc-rows"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SEGMENT 5: Príprava a postup -->
+          <div class="proc-seg" data-seg="procedure">
+            <div class="proc-seg-hd">
+              <button type="button" class="proc-seg-toggle" onclick="toggleProcSeg(this)">
+                <span class="proc-seg-ico">5</span><span class="proc-seg-title">Príprava a postup montáže</span>
+              </button>
+              <label class="proc-seg-switch" title="Zahrnúť kategóriu do postupu" onclick="event.stopPropagation()"><input type="checkbox" class="proc-seg-en" checked onchange="toggleProcSegEnabled(this)"><span class="proc-seg-switch-track"></span></label>
+              <button type="button" class="proc-seg-caret-btn" onclick="toggleProcSeg(this)"><span class="proc-seg-caret">▾</span></button>
+            </div>
+            <div class="proc-seg-body">
+              <div class="form-group">
+                <label>7. Kontrolný zoznam pred začatím výroby <span class="form-hint">(každá položka na nový riadok)</span></label>
+                <textarea id="prPrepChecklist" rows="4" placeholder="Čistota pracoviska – plocha čistá, bez prachu&#10;Spájkovacia stanica – teploty overené&#10;Materiál – vyskladnený podľa objednávky"></textarea>
+              </div>
+              <div class="form-group">
+                <div class="proc-rows-hdr">
+                  <label>8. Postup — operácie <span class="form-hint">(podsekcia, rich text, obrázok, upozornenia, OOPP)</span></label>
+                  <button type="button" class="btn-sm" onclick="addStepRow()">+ Pridať operáciu</button>
+                </div>
+                <div id="prStepsRows" class="proc-steps"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SEGMENT 6: Bezpečnosť (BOZP) -->
+          <div class="proc-seg" data-seg="safety">
+            <div class="proc-seg-hd">
+              <button type="button" class="proc-seg-toggle" onclick="toggleProcSeg(this)">
+                <span class="proc-seg-ico">6</span><span class="proc-seg-title">Bezpečnosť pri práci (BOZP)</span>
+              </button>
+              <label class="proc-seg-switch" title="Zahrnúť kategóriu do postupu" onclick="event.stopPropagation()"><input type="checkbox" class="proc-seg-en" checked onchange="toggleProcSegEnabled(this)"><span class="proc-seg-switch-track"></span></label>
+              <button type="button" class="proc-seg-caret-btn" onclick="toggleProcSeg(this)"><span class="proc-seg-caret">▾</span></button>
+            </div>
+            <div class="proc-seg-body">
+              <div class="form-group">
+                <div class="proc-rows-hdr">
+                  <label>12. Riziká a opatrenia <span class="form-hint">(Riziko / Zdroj / Opatrenie)</span></label>
+                  <button type="button" class="btn-sm" onclick="addProcTableRow('safety')">+ Pridať</button>
+                </div>
+                <div id="pt_safety" class="proc-rows"></div>
+              </div>
+              <div class="form-group">
+                <label>Ďalšie riziká / upozornenia <span class="form-hint">(každé na nový riadok)</span></label>
+                <textarea id="prRisks" rows="2" placeholder="Jedno riziko / upozornenie na riadok"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- SEGMENT 7: Odpady, údržba, riešenie problémov -->
+          <div class="proc-seg" data-seg="waste">
+            <div class="proc-seg-hd">
+              <button type="button" class="proc-seg-toggle" onclick="toggleProcSeg(this)">
+                <span class="proc-seg-ico">7</span><span class="proc-seg-title">Odpady, údržba a riešenie problémov</span>
+              </button>
+              <label class="proc-seg-switch" title="Zahrnúť kategóriu do postupu" onclick="event.stopPropagation()"><input type="checkbox" class="proc-seg-en" checked onchange="toggleProcSegEnabled(this)"><span class="proc-seg-switch-track"></span></label>
+              <button type="button" class="proc-seg-caret-btn" onclick="toggleProcSeg(this)"><span class="proc-seg-caret">▾</span></button>
+            </div>
+            <div class="proc-seg-body">
+              <div class="form-group">
+                <div class="proc-rows-hdr">
+                  <label>13. Nakladanie s odpadmi <span class="form-hint">(Odpad / Kategória / Likvidácia)</span></label>
+                  <button type="button" class="btn-sm" onclick="addProcTableRow('waste')">+ Pridať</button>
+                </div>
+                <div id="pt_waste" class="proc-rows"></div>
+              </div>
+              <div class="form-group">
+                <div class="proc-rows-hdr">
+                  <label>14. Údržba zariadení a prípravku <span class="form-hint">(Zariadenie / Interval / Úkon / Zodpovedný)</span></label>
+                  <button type="button" class="btn-sm" onclick="addProcTableRow('maintenance')">+ Pridať</button>
+                </div>
+                <div id="pt_maintenance" class="proc-rows"></div>
+              </div>
+              <div class="form-group">
+                <div class="proc-rows-hdr">
+                  <label>15. Riešenie problémov <span class="form-hint">(Problém / Príčina / Riešenie)</span></label>
+                  <button type="button" class="btn-sm" onclick="addProcTableRow('troubleshooting')">+ Pridať</button>
+                </div>
+                <div id="pt_troubleshooting" class="proc-rows"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SEGMENT 8: Prílohy -->
+          <div class="proc-seg" data-seg="attachments">
+            <div class="proc-seg-hd">
+              <button type="button" class="proc-seg-toggle" onclick="toggleProcSeg(this)">
+                <span class="proc-seg-ico">8</span><span class="proc-seg-title">Prílohy a odkazy</span>
+              </button>
+              <label class="proc-seg-switch" title="Zahrnúť kategóriu do postupu" onclick="event.stopPropagation()"><input type="checkbox" class="proc-seg-en" checked onchange="toggleProcSegEnabled(this)"><span class="proc-seg-switch-track"></span></label>
+              <button type="button" class="proc-seg-caret-btn" onclick="toggleProcSeg(this)"><span class="proc-seg-caret">▾</span></button>
+            </div>
+            <div class="proc-seg-body">
+              <div class="form-group">
+                <div class="proc-rows-hdr">
+                  <label>Prílohy / Odkazy</label>
+                  <button type="button" class="btn-sm" onclick="addAttachmentRow()">+ Pridať</button>
+                </div>
+                <div id="prAttRows" class="proc-rows"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SEGMENT 9: Platnosť pracovného postupu -->
+          <div class="proc-seg" data-seg="validity">
+            <div class="proc-seg-hd">
+              <button type="button" class="proc-seg-toggle" onclick="toggleProcSeg(this)">
+                <span class="proc-seg-ico">9</span><span class="proc-seg-title">Platnosť pracovného postupu</span>
+              </button>
+              <label class="proc-seg-switch" title="Zahrnúť kategóriu do postupu" onclick="event.stopPropagation()"><input type="checkbox" class="proc-seg-en" checked onchange="toggleProcSegEnabled(this)"><span class="proc-seg-switch-track"></span></label>
+              <button type="button" class="proc-seg-caret-btn" onclick="toggleProcSeg(this)"><span class="proc-seg-caret">▾</span></button>
+            </div>
+            <div class="proc-seg-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Vypracoval</label>
+                  <input type="text" id="prValPreparedBy" placeholder="Meno – funkcia, oddelenie">
+                </div>
+                <div class="form-group">
+                  <label>Schválil</label>
+                  <input type="text" id="prValApprovedBy" placeholder="Meno vedúceho výroby">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Platnosť od</label>
+                  <input type="date" id="prValValidFrom" onchange="procSuggestNextRevision()">
+                </div>
+                <div class="form-group">
+                  <label>Nasledujúca revízia <span class="form-hint">(max. 2 roky od vydania)</span></label>
+                  <input type="date" id="prValNextRevision">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Útvar</label>
+                  <input type="text" id="prValUnit" placeholder="napr. Výroba FOS, SYLEX s.r.o., Bratislava">
+                </div>
+                <div class="form-group">
+                  <label>Revízia / Zmena</label>
+                  <input type="text" id="prValRevision" placeholder="napr. A / 00">
+                </div>
               </div>
             </div>
           </div>
