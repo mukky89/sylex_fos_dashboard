@@ -2409,7 +2409,12 @@ body {
 .proc-icon-btn .pi-emoji { font-size: 0.95rem; }
 
 /* ── Detail / náhľad (moderný „papier" pre PDF) ── */
-.proc-detail { --pp-navy:#1a1a2e; --pp-navy2:#2a2a4a; --pp-lime:#97bf0d; --pp-ink:#2b2f3a; --pp-soft:#f5f7fa; }
+.proc-detail { --pp-navy:#1a1a2e; --pp-navy2:#2a2a4a; --pp-lime:#97bf0d; --pp-ink:#2b2f3a; --pp-soft:#f5f7fa; --pp-zebra:#f7faf0; --pp-secbar:#f4f8eb; }
+/* Dizajnové témy postupu (prepínateľné pre každý postup) */
+.pp-theme-sylex    { --pp-navy:#1a1a2e; --pp-navy2:#2a2a4a; --pp-lime:#97bf0d; --pp-ink:#2b2f3a; --pp-soft:#f5f7fa; --pp-zebra:#f7faf0; --pp-secbar:#f4f8eb; }
+.pp-theme-ocean    { --pp-navy:#0e3a5f; --pp-navy2:#1b5e8c; --pp-lime:#d89b2c; --pp-ink:#2b3440; --pp-soft:#f1f6fb; --pp-zebra:#f1f6fb; --pp-secbar:#e8f1fa; }
+.pp-theme-graphite { --pp-navy:#24292e; --pp-navy2:#3a4148; --pp-lime:#5b6470; --pp-ink:#333333; --pp-soft:#f5f6f7; --pp-zebra:#f5f6f7; --pp-secbar:#eef0f2; }
+.pp-theme-teal     { --pp-navy:#0e4d49; --pp-navy2:#0f766e; --pp-lime:#f59e0b; --pp-ink:#24323a; --pp-soft:#effaf7; --pp-zebra:#effaf7; --pp-secbar:#e4f5f1; }
 .pdv-toolbar {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; margin-bottom: 16px; flex-wrap: wrap;
@@ -2484,11 +2489,11 @@ body {
 .pdv-dtable th:first-child { border-top-left-radius: 10px; }
 .pdv-dtable th:last-child { border-top-right-radius: 10px; }
 .pdv-dtable tbody tr { border-top: 1px solid #eceff3; }
-.pdv-dtable tr:nth-child(even) td { background: #f7faf0; }
+.pdv-dtable tr:nth-child(even) td { background: var(--pp-zebra); }
 .pdv-substep {
   font-size: 1.02rem; font-weight: 800; color: var(--pp-navy);
   margin: 22px 0 12px; padding: 7px 14px; border-radius: 8px;
-  background: linear-gradient(90deg, #f4f8eb, transparent);
+  background: linear-gradient(90deg, var(--pp-secbar), transparent);
   border-left: 4px solid var(--pp-lime);
 }
 .pdv-att-url { font-family: 'Courier New', monospace; font-size: 0.82rem; color: var(--text-dim); }
@@ -2496,7 +2501,7 @@ body {
 /* Platnosť */
 .pdv-validity { width: 100%; border-collapse: collapse; font-size: 0.9rem; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 1px #e7ebf0; }
 .pdv-validity th, .pdv-validity td { text-align: left; padding: 10px 14px; vertical-align: top; border-top: 1px solid #eceff3; }
-.pdv-validity th { width: 32%; font-weight: 700; color: var(--pp-navy); background: #f4f8eb; }
+.pdv-validity th { width: 32%; font-weight: 700; color: var(--pp-navy); background: var(--pp-secbar); }
 .pdv-validity td { color: #3a3f4c; }
 .pdv-muted { color: #9aa1ad; }
 .pdv-rev-flag { display: inline-block; margin-left: 6px; padding: 2px 9px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
