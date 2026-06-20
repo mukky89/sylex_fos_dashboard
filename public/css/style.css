@@ -2597,6 +2597,10 @@ body {
 .pdv-section.pdv-hl { background: rgba(225,29,72,0.07); }
 @keyframes pdvHlIn { 0% { box-shadow: 0 0 0 0 rgba(225,29,72,0.5); } 100% { box-shadow: 0 0 0 6px rgba(225,29,72,0.20); } }
 .ppl-cat { color: #fb7185 !important; }
+/* riadok tabuľky — outline na <tr> nefunguje, použijeme pozadie + ľavý pruh */
+tr.pdv-hl { outline: none; box-shadow: none; }
+.pdv-dtable tr.pdv-hl td { background: rgba(225,29,72,0.14) !important; }
+.pdv-dtable tr.pdv-hl td:first-child { box-shadow: inset 4px 0 0 0 #e11d48; }
 
 /* Priame úpravy v náhľade (len živý náhľad) */
 #procLivePreview .pdv-editable { cursor: text; border-radius: 5px; transition: background .15s, box-shadow .15s; }

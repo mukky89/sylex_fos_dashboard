@@ -3569,9 +3569,7 @@ function applyPreviewHighlight() {
   if (!_procHlSelector) return null;
   let els;
   try { els = [...paper.querySelectorAll(_procHlSelector)]; } catch (e) { els = []; }
-  // zvýrazni najbližší zmysluplný blok
-  els = [...new Set(els.map(e => e.closest('.pdv-step, .pdv-section, .pdv-head, .pdv-dtable, .pdv-tools') || e))];
-  els.forEach(e => e.classList.add('pdv-hl'));
+  els.forEach(e => e.classList.add('pdv-hl'));   // zvýrazni presne vybraný objekt (sekcia / operácia / riadok / tabuľka)
   return els[0] || null;
 }
 // Zameria v náhľade konkrétny objekt podľa práve klikaného poľa v editore
@@ -3586,10 +3584,17 @@ function focusPreviewFromForm(el) {
   const has = (sel) => paper && paper.querySelector(sel);
   if (card && has('.pdv-step[data-sid="' + card.dataset.sid + '"]')) {
     selector = '.pdv-step[data-sid="' + card.dataset.sid + '"]';            // konkrétna operácia
+  } else if (trow && trow.parentElement && trow.parentElement.id.startsWith('pt_')) {
+    const key = trow.parentElement.id.slice(3);
+    const rows = [...trow.parentElement.querySelectorAll('.proc-row')];
+    const nonEmpty = rows.filter(r => [...r.querySelectorAll('[data-col]')].some(i => i.value.trim()));
+    const idx = nonEmpty.indexOf(trow);
+    if (idx >= 0 && has('[data-tbl="' + key + '"] tbody tr:nth-child(' + (idx + 1) + ')'))
+      selector = '[data-tbl="' + key + '"] tbody tr:nth-child(' + (idx + 1) + ')';   // konkrétny riadok
+    else if (has('[data-tbl="' + key + '"]'))
+      selector = '[data-tbl="' + key + '"]';                                          // celá tabuľka (prázdny riadok)
   } else if (fid && has('[data-edit="' + fid + '"], [data-editlist="' + fid + '"]')) {
-    selector = '[data-edit="' + fid + '"], [data-editlist="' + fid + '"]'; // konkrétne textové pole
-  } else if (trow && trow.parentElement && trow.parentElement.id.startsWith('pt_') && has('[data-tbl="' + trow.parentElement.id.slice(3) + '"]')) {
-    selector = '[data-tbl="' + trow.parentElement.id.slice(3) + '"]';      // konkrétna tabuľka
+    selector = '[data-edit="' + fid + '"], [data-editlist="' + fid + '"]';            // konkrétne textové pole
   } else if (el.closest('#prToolsRows') && has('.pdv-tools')) {
     selector = '.pdv-tools';
   }
