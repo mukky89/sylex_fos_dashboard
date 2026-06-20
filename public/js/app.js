@@ -3421,21 +3421,28 @@ function wireProcLivePreview() {
   root.addEventListener('click', (e) => { if (e.target.closest('button, .proc-icon-btn')) scheduleProcLivePreview(); });
   window.addEventListener('resize', fitProcA4Preview);
 
-  // Synchronizovaný scroll: formulár (vľavo) ↔ náhľad (vpravo)
-  const left = root.querySelector('.proc-edit-body');
+  // Synchronizovaný scroll: stránka s formulárom (vľavo) ↔ sticky náhľad (vpravo)
   const right = root.querySelector('.proc-edit-preview');
-  if (left && right) {
+  if (right) {
     let lock = false;
-    const sync = (src, dst) => {
-      if (lock) return;
+    const fromWindow = () => {
+      if (lock || right.offsetParent === null) return;
       lock = true;
-      const ms = src.scrollHeight - src.clientHeight;
-      const frac = ms > 0 ? src.scrollTop / ms : 0;
-      dst.scrollTop = frac * (dst.scrollHeight - dst.clientHeight);
+      const ms = document.documentElement.scrollHeight - window.innerHeight;
+      const frac = ms > 0 ? window.scrollY / ms : 0;
+      right.scrollTop = frac * (right.scrollHeight - right.clientHeight);
       requestAnimationFrame(() => { lock = false; });
     };
-    left.addEventListener('scroll', () => sync(left, right), { passive: true });
-    right.addEventListener('scroll', () => sync(right, left), { passive: true });
+    const fromPreview = () => {
+      if (lock || right.offsetParent === null) return;
+      lock = true;
+      const md = right.scrollHeight - right.clientHeight;
+      const frac = md > 0 ? right.scrollTop / md : 0;
+      window.scrollTo(0, frac * (document.documentElement.scrollHeight - window.innerHeight));
+      requestAnimationFrame(() => { lock = false; });
+    };
+    window.addEventListener('scroll', fromWindow, { passive: true });
+    right.addEventListener('scroll', fromPreview, { passive: true });
   }
   _procPrevWired = true;
 }
