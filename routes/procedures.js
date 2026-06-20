@@ -3,7 +3,7 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const Procedure = require('../models/Procedure');
-const { WARNING_TYPES, PPE_TYPES, TABLE_DEFS } = require('../config/procedureMeta');
+const { WARNING_TYPES, PPE_TYPES, TABLE_DEFS, DESIGN_THEMES } = require('../config/procedureMeta');
 const {
   Document, Packer, Paragraph, TextRun, HeadingLevel,
   Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle,
@@ -45,7 +45,7 @@ const PPE_MAP  = Object.fromEntries(PPE_TYPES.map(w => [w.key, w]));
 
 // ── META (typy upozornení + ochranných pomôcok) — MUSÍ byť pred /:id ──────────
 router.get('/meta', (req, res) => {
-  res.json({ warnings: WARNING_TYPES, ppe: PPE_TYPES, tableDefs: TABLE_DEFS });
+  res.json({ warnings: WARNING_TYPES, ppe: PPE_TYPES, tableDefs: TABLE_DEFS, designs: DESIGN_THEMES });
 });
 
 // ── CRUD ──────────────────────────────────────────────────────────────────────
@@ -90,16 +90,23 @@ router.delete('/:id', async (req, res) => {
 
 // ── WORD export ─────────────────────────────────────────────────────────────
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-// Firemná paleta SYLEX (podľa vzoru PP FOS OS3155)
-const NAVY = '1A1A2E';   // tmavá navy — titul, hlavičky tabuliek, názvy sekcií
-const LIME = '97BF0D';   // limetková — čísla sekcií, akcenty
-const BODY = '333333';   // text
-const ZEBRA = 'F7FAF0';  // svetlozelený pruh (zebra v tabuľkách)
-const SECBAR = 'F4F8EB'; // pruh nadpisu sekcie
+// Aktuálna paleta (nastaví sa podľa dizajnovej témy postupu v buildDoc)
+let NAVY = '1A1A2E';   // tmavá — titul, hlavičky tabuliek, názvy sekcií
+let LIME = '97BF0D';   // akcent — čísla sekcií, akcenty
+let BODY = '333333';   // text
+let ZEBRA = 'F7FAF0';  // pruh (zebra v tabuľkách)
+let SECBAR = 'F4F8EB'; // pruh nadpisu sekcie
 const GRIDLINE = 'EEEEEE';
-const FONT = 'Arial';
-const ACCENT = LIME;
-const LINK_COLOR = '3B6D11';
+let FONT = 'Arial';
+let ACCENT = LIME;
+let LINK_COLOR = '3B6D11';
+let ACCENT_INK = '1A1A2E';  // text na akcentnom podklade
+// Nastaví farby podľa zvolenej dizajnovej témy postupu
+function applyDesignTheme(design) {
+  const t = DESIGN_THEMES[design] || DESIGN_THEMES.sylex;
+  NAVY = t.navy; LIME = t.accent; ACCENT = t.accent; BODY = t.body;
+  ZEBRA = t.zebra; SECBAR = t.secbar; FONT = t.font; LINK_COLOR = t.link; ACCENT_INK = t.accentInk;
+}
 const LOGO_PATH = path.join(PUBLIC_DIR, 'assets', 'guides', 'sylex-logo.png');
 
 const fmtDate = (d) => {
@@ -381,6 +388,7 @@ function bookmarkedHeading(text, anchor, ctx, level = 1) {
 }
 
 function buildDoc(p) {
+  applyDesignTheme(p.design);
   const ctx = { figNo: 0, figures: [], toc: [] };
   const body = [];
 

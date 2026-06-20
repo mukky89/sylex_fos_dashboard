@@ -2965,7 +2965,7 @@ async function showProcedureDetail(id) {
         <button class="btn-delete" onclick="deleteProcedure('${p._id}')">🗑 Odstrániť</button>
       </div>
     </div>
-    <div class="pdv-card">${renderProcedureDetailHtml(p)}</div>`;
+    <div class="pdv-card proc-detail pp-theme-${p.design || 'sylex'}">${renderProcedureDetailHtml(p)}</div>`;
   document.getElementById('procListView').classList.add('hidden');
   det.classList.remove('hidden');
 }
@@ -2983,7 +2983,7 @@ function backToProcedureList() {
 let currentPreviewProc = null;
 function openProcedurePreview() {
   currentPreviewProc = collectProcedureForm();
-  document.getElementById('procPreviewBody').innerHTML = `<div class="pdv-card">${renderProcedureDetailHtml(currentPreviewProc)}</div>`;
+  document.getElementById('procPreviewBody').innerHTML = `<div class="pdv-card proc-detail pp-theme-${currentPreviewProc.design || 'sylex'}">${renderProcedureDetailHtml(currentPreviewProc)}</div>`;
   document.getElementById('procPreviewModal').classList.remove('hidden');
 }
 function closeProcedurePreview() { document.getElementById('procPreviewModal').classList.add('hidden'); }
@@ -3017,7 +3017,7 @@ function buildProcedurePrintDoc(p) {
     <button onclick="window.print()">⬇ Uložiť ako PDF / Tlačiť</button>
     <button class="sec" onclick="window.close()">Zavrieť</button>
   </div>
-  <div class="proc-detail"><div class="pdv-card">${inner}</div></div>
+  <div class="proc-detail pp-theme-${p.design || 'sylex'}"><div class="pdv-card">${inner}</div></div>
   <script>
     window.addEventListener('load', function(){ setTimeout(function(){ try { window.focus(); window.print(); } catch(e){} }, 500); });
   <\/script>
@@ -3345,6 +3345,7 @@ function collectProcedureForm() {
     scope:      document.getElementById('prScope').value.trim(),
     definitions: document.getElementById('prDefinitions').value.trim(),
     status:     document.querySelector('input[name="prStatus"]:checked')?.value || 'active',
+    design:     document.getElementById('prDesign')?.value || 'sylex',
     changeLog:       collectProcTable('changeLog'),
     relatedDocs:     collectProcTable('relatedDocs'),
     equipment:       collectProcTable('equipment'),
@@ -3391,6 +3392,7 @@ async function openProcedureModal(proc = null) {
   const isEdit = proc && typeof proc === 'object';
   document.getElementById('procModalTitle').textContent = isEdit ? 'Upraviť postup' : 'Nový postup';
   document.getElementById('prId').value         = isEdit ? proc._id : '';
+  const prDesignEl = document.getElementById('prDesign'); if (prDesignEl) prDesignEl.value = (isEdit && proc.design) || 'sylex';
   document.getElementById('prTitle').value      = isEdit ? (proc.title || '') : '';
   document.getElementById('prProcNumber').value = isEdit ? (proc.procNumber || '') : '';
   document.getElementById('prEdition').value    = isEdit ? (proc.edition || '') : '';
@@ -3464,11 +3466,15 @@ function updateProcLivePreview() {
   if (_procInlineEditing) return;   // počas inline úprav neprekresľuj (nezahodí kurzor)
   const el = document.getElementById('procLivePreview');
   if (!el || el.offsetParent === null) return;
+  const design = document.getElementById('prDesign')?.value || 'sylex';
+  el.className = 'proc-detail pdv-card pp-a4 pp-theme-' + design;
   try { el.innerHTML = renderProcedureDetailHtml(collectProcedureForm()); } catch (e) {}
   fitProcA4Preview();
   makePreviewInteractive();   // najprv priraď data-sid operáciám…
   applyPreviewHighlight();    // …potom vie highlight nájsť konkrétny objekt
 }
+// Zmena dizajnu → premietni do náhľadu
+function onProcDesignChange() { updateProcLivePreview(); }
 
 // Karty operácií, ktoré sa reálne renderujú do náhľadu (rovnaký filter ako render)
 function activeStepCards() {
