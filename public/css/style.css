@@ -2511,15 +2511,12 @@ body {
   margin-top: 16px; padding-bottom: 8px;
 }
 
-/* Split: vľavo formulár, vpravo živý A4 náhľad */
-.proc-edit-split { display: flex; gap: 22px; align-items: flex-start; }
+/* Split: vľavo formulár, vpravo živý A4 náhľad — synchronizovaný scroll */
+.proc-edit-split { display: flex; gap: 22px; align-items: stretch; }
 .proc-edit-split .proc-edit-body { flex: 1 1 0; min-width: 0; }
 .proc-edit-preview {
   flex: 1 1 0; min-width: 0;
-  position: sticky; top: calc(var(--header-h) + 64px);
-  max-height: calc(100vh - var(--header-h) - 80px);
   overflow: auto; border-radius: 14px;
-  background: #6b7280; /* sivé „stolové" pozadie ako v PDF prehliadači */
   background: linear-gradient(180deg, #4b5566, #3a4151);
   padding: 16px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
 }
@@ -2536,6 +2533,12 @@ body {
 }
 .pp-a4.pdv-card { border-radius: 0; }
 
+/* Na širokých obrazovkách: split má pevnú výšku, obe strany scrollujú interne (a synchrónne) */
+@media (min-width: 1081px) {
+  .proc-edit-split { height: calc(100vh - var(--header-h) - 132px); }
+  .proc-edit-split .proc-edit-body { height: 100%; overflow-y: auto; }
+  .proc-edit-preview { height: 100%; }
+}
 @media (max-width: 1080px) {
   .proc-edit-preview { display: none; }
 }

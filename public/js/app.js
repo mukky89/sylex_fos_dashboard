@@ -3394,6 +3394,23 @@ function wireProcLivePreview() {
   root.addEventListener('change', scheduleProcLivePreview);
   root.addEventListener('click', (e) => { if (e.target.closest('button, .proc-icon-btn')) scheduleProcLivePreview(); });
   window.addEventListener('resize', fitProcA4Preview);
+
+  // Synchronizovaný scroll: formulár (vľavo) ↔ náhľad (vpravo)
+  const left = root.querySelector('.proc-edit-body');
+  const right = root.querySelector('.proc-edit-preview');
+  if (left && right) {
+    let lock = false;
+    const sync = (src, dst) => {
+      if (lock) return;
+      lock = true;
+      const ms = src.scrollHeight - src.clientHeight;
+      const frac = ms > 0 ? src.scrollTop / ms : 0;
+      dst.scrollTop = frac * (dst.scrollHeight - dst.clientHeight);
+      requestAnimationFrame(() => { lock = false; });
+    };
+    left.addEventListener('scroll', () => sync(left, right), { passive: true });
+    right.addEventListener('scroll', () => sync(right, left), { passive: true });
+  }
   _procPrevWired = true;
 }
 
