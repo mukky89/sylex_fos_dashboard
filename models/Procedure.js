@@ -37,6 +37,7 @@ const procedureSchema = new mongoose.Schema({
     note:     { type: String, default: '' },                // krátka poznámka
     image:    { type: String, default: '' },                // URL importovaného obrázka
     imagePos: { type: String, default: 'below' },           // below | left | right (rozloženie obrázka voči textu)
+    imgWidth: { type: Number },                              // šírka obrázka v % (úprava v náhľade)
     caption:  { type: String, default: '' },                // popis obrázka (Obrázok N: ...)
     warnings: [String],                                      // kľúče typov upozornení
     ppe:      [String]                                       // kľúče ochranných pomôcok
