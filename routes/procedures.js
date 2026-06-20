@@ -101,11 +101,21 @@ let FONT = 'Arial';
 let ACCENT = LIME;
 let LINK_COLOR = '3B6D11';
 let ACCENT_INK = '1A1A2E';  // text na akcentnom podklade
-// Nastaví farby podľa zvolenej dizajnovej témy postupu
+let HEADING_STYLE = 'secbar';  // secbar | fillbar | underline | plain
+let TITLE_STYLE = 'band';      // band | center | minimal
+let TITLE_FONT = 'Arial';
+// Nastaví farby a rozloženie podľa zvolenej dizajnovej témy postupu
 function applyDesignTheme(design) {
   const t = DESIGN_THEMES[design] || DESIGN_THEMES.sylex;
   NAVY = t.navy; LIME = t.accent; ACCENT = t.accent; BODY = t.body;
   ZEBRA = t.zebra; SECBAR = t.secbar; FONT = t.font; LINK_COLOR = t.link; ACCENT_INK = t.accentInk;
+  const styles = {
+    sylex:    { h: 'secbar',    t: 'band',    tf: 'Arial' },
+    ocean:    { h: 'underline', t: 'center',  tf: 'Georgia' },
+    graphite: { h: 'plain',     t: 'minimal', tf: 'Arial' },
+    teal:     { h: 'fillbar',   t: 'band',    tf: 'Calibri' },
+  }[design] || { h: 'secbar', t: 'band', tf: t.font };
+  HEADING_STYLE = styles.h; TITLE_STYLE = styles.t; TITLE_FONT = styles.tf;
 }
 const LOGO_PATH = path.join(PUBLIC_DIR, 'assets', 'guides', 'sylex-logo.png');
 
@@ -365,26 +375,30 @@ const NO_BORDERS = {
 
 function bookmarkedHeading(text, anchor, ctx, level = 1) {
   ctx.toc.push({ label: text, anchor, level });
-  // Číslo sekcie (napr. „5.") zvýrazni limetkovou, názov navy — pruh v svetlozelenej
   const m = String(text).match(/^(\d+\.)\s*(.*)$/);
+  const numTxt = m ? (m[1] + '  ') : '';
+  const titleTxt = (m ? m[2] : String(text)).toUpperCase();
+  const fill = HEADING_STYLE === 'fillbar';                 // plný farebný pruh, biely text
+  const titleColor = fill ? 'FFFFFF' : NAVY;
+  const numColor = fill ? LIME : LIME;
   const runs = [];
-  if (m) {
-    runs.push(new TextRun({ text: m[1] + '  ', bold: true, color: LIME, size: 28, font: FONT }));
-    runs.push(new Bookmark({ id: anchor, children: [new TextRun({ text: m[2].toUpperCase(), bold: true, color: NAVY, size: 28, font: FONT })] }));
-  } else {
-    runs.push(new Bookmark({ id: anchor, children: [new TextRun({ text: String(text).toUpperCase(), bold: true, color: NAVY, size: 28, font: FONT })] }));
+  if (numTxt) runs.push(new TextRun({ text: numTxt, bold: true, color: numColor, size: 28, font: FONT }));
+  runs.push(new Bookmark({ id: anchor, children: [new TextRun({ text: titleTxt, bold: true, color: titleColor, size: 28, font: FONT })] }));
+
+  const base = { spacing: { before: 300, after: 140 }, children: runs };
+  if (HEADING_STYLE === 'fillbar') {
+    return new Paragraph({ ...base, shading: { fill: NAVY },
+      border: { left: { style: BorderStyle.SINGLE, size: 30, color: LIME, space: 10 }, top: { style: BorderStyle.SINGLE, size: 12, color: NAVY, space: 6 }, bottom: { style: BorderStyle.SINGLE, size: 12, color: NAVY, space: 6 }, right: { style: BorderStyle.SINGLE, size: 12, color: NAVY, space: 6 } } });
   }
-  return new Paragraph({
-    spacing: { before: 300, after: 140 },
-    shading: { fill: SECBAR },
-    border: {
-      left: { style: BorderStyle.SINGLE, size: 28, color: LIME, space: 10 },
-      top: { style: BorderStyle.SINGLE, size: 10, color: SECBAR, space: 6 },
-      bottom: { style: BorderStyle.SINGLE, size: 10, color: SECBAR, space: 6 },
-      right: { style: BorderStyle.SINGLE, size: 10, color: SECBAR, space: 6 },
-    },
-    children: runs
-  });
+  if (HEADING_STYLE === 'underline') {                      // bez výplne, akcentová linka pod (klasik)
+    return new Paragraph({ ...base, alignment: AlignmentType.CENTER, border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: LIME, space: 4 } } });
+  }
+  if (HEADING_STYLE === 'plain') {                          // minimal — tenká sivá linka pod
+    return new Paragraph({ ...base, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'CCCCCC', space: 4 } } });
+  }
+  // secbar (default) — pruh v svetlej + akcent vľavo
+  return new Paragraph({ ...base, shading: { fill: SECBAR },
+    border: { left: { style: BorderStyle.SINGLE, size: 28, color: LIME, space: 10 }, top: { style: BorderStyle.SINGLE, size: 10, color: SECBAR, space: 6 }, bottom: { style: BorderStyle.SINGLE, size: 10, color: SECBAR, space: 6 }, right: { style: BorderStyle.SINGLE, size: 10, color: SECBAR, space: 6 } } });
 }
 
 function buildDoc(p) {
@@ -600,23 +614,30 @@ function buildDoc(p) {
   } catch (e) {}
   if (logoRun) children.push(new Paragraph({ spacing: { after: 160 }, children: [logoRun] }));
 
-  // Titulný pruh — navy s bielym názvom
-  children.push(new Paragraph({
-    spacing: { before: 0, after: 80 },
-    shading: { fill: NAVY },
-    border: {
-      left: { style: BorderStyle.SINGLE, size: 30, color: LIME, space: 12 },
-      top: { style: BorderStyle.SINGLE, size: 30, color: NAVY, space: 10 },
-      bottom: { style: BorderStyle.SINGLE, size: 30, color: NAVY, space: 10 },
-      right: { style: BorderStyle.SINGLE, size: 30, color: NAVY, space: 10 },
-    },
-    children: [new TextRun({ text: p.title || 'Pracovný postup', bold: true, size: 40, color: 'FFFFFF', font: FONT })]
-  }));
+  // Titulný blok — podľa témy (band / center / minimal)
+  const titleText = p.title || 'Pracovný postup';
+  if (TITLE_STYLE === 'center') {           // klasik — centrovaný titul, dvojitá linka
+    children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 40 }, children: [new TextRun({ text: titleText, bold: true, size: 44, color: NAVY, font: TITLE_FONT })] }));
+    children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 80 }, border: { bottom: { style: BorderStyle.DOUBLE, size: 6, color: NAVY, space: 2 } }, children: [new TextRun('')] }));
+  } else if (TITLE_STYLE === 'minimal') {   // minimal — vľavo, tenká linka
+    children.push(new Paragraph({ spacing: { before: 0, after: 40 }, border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: NAVY, space: 4 } }, children: [new TextRun({ text: titleText, bold: true, size: 44, color: NAVY, font: TITLE_FONT })] }));
+  } else {                                  // band — navy pruh s bielym názvom
+    children.push(new Paragraph({
+      spacing: { before: 0, after: 80 }, shading: { fill: NAVY },
+      border: {
+        left: { style: BorderStyle.SINGLE, size: 30, color: LIME, space: 12 },
+        top: { style: BorderStyle.SINGLE, size: 30, color: NAVY, space: 10 },
+        bottom: { style: BorderStyle.SINGLE, size: 30, color: NAVY, space: 10 },
+        right: { style: BorderStyle.SINGLE, size: 30, color: NAVY, space: 10 },
+      },
+      children: [new TextRun({ text: titleText, bold: true, size: 40, color: 'FFFFFF', font: TITLE_FONT })]
+    }));
+  }
   const eyebrow = ['PRACOVNÝ POSTUP'];
   if (p.procNumber) eyebrow.push(p.procNumber);
   if (p.edition) eyebrow.push('Vydanie ' + p.edition);
   if (p.validity && p.validity.revision) eyebrow.push('Revízia ' + p.validity.revision);
-  children.push(new Paragraph({ spacing: { after: 300 }, children: [new TextRun({ text: eyebrow.join('   ·   '), bold: true, size: 17, color: LIME, characterSpacing: 14, font: FONT })] }));
+  children.push(new Paragraph({ alignment: TITLE_STYLE === 'center' ? AlignmentType.CENTER : AlignmentType.LEFT, spacing: { after: 300 }, children: [new TextRun({ text: eyebrow.join('   ·   '), bold: true, size: 17, color: LIME, characterSpacing: 14, font: FONT })] }));
 
   // Obsah dokumentu — čistý, prelinkovaný
   if (ctx.toc.length) {

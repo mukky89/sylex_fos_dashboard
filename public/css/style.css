@@ -2415,6 +2415,49 @@ body {
 .pp-theme-ocean    { --pp-navy:#0e3a5f; --pp-navy2:#1b5e8c; --pp-lime:#d89b2c; --pp-ink:#2b3440; --pp-soft:#f1f6fb; --pp-zebra:#f1f6fb; --pp-secbar:#e8f1fa; }
 .pp-theme-graphite { --pp-navy:#24292e; --pp-navy2:#3a4148; --pp-lime:#5b6470; --pp-ink:#333333; --pp-soft:#f5f6f7; --pp-zebra:#f5f6f7; --pp-secbar:#eef0f2; }
 .pp-theme-teal     { --pp-navy:#0e4d49; --pp-navy2:#0f766e; --pp-lime:#f59e0b; --pp-ink:#24323a; --pp-soft:#effaf7; --pp-zebra:#effaf7; --pp-secbar:#e4f5f1; }
+
+/* ===== OCEÁN — klasická, centrovaná, serif titul, kruhové čísla ===== */
+.pp-theme-ocean .pdv-head { background: #fff; color: var(--pp-navy); text-align: center; border-bottom: 3px double var(--pp-navy); padding: 32px 44px 22px; }
+.pp-theme-ocean .pdv-head::after { display: none; }
+.pp-theme-ocean .pdv-eyebrow { color: var(--pp-lime); letter-spacing: 0.3em; }
+.pp-theme-ocean .pdv-title { color: var(--pp-navy); font-family: Georgia, 'Times New Roman', serif; }
+.pp-theme-ocean .pdv-meta { justify-content: center; }
+.pp-theme-ocean .pdv-meta span { background: var(--pp-secbar); color: var(--pp-navy); border-color: rgba(0,0,0,0.08); }
+.pp-theme-ocean .pdv-meta .proc-status-badge { background: var(--pp-navy); color: #fff; }
+.pp-theme-ocean .pdv-section h3 { justify-content: center; text-align: center; border-bottom: 2px solid var(--pp-lime); font-family: Georgia, serif; color: var(--pp-navy); }
+.pp-theme-ocean .pdv-section h3::before { display: none; }
+.pp-theme-ocean .pdv-secno { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--pp-navy); color: #fff; font-size: 0.72rem; margin-right: 4px; }
+.pp-theme-ocean .pdv-step-num { border-radius: 50%; }
+.pp-theme-ocean .pdv-dtable th { text-align: center; }
+
+/* ===== GRAFIT — minimal, ploché, monochróm, vlasové linky ===== */
+.pp-theme-graphite .pdv-head { background: #fff; color: #111; border-bottom: 1px solid #111; padding: 26px 44px 16px; }
+.pp-theme-graphite .pdv-head::after { display: none; }
+.pp-theme-graphite .pdv-eyebrow { color: #999; letter-spacing: 0.34em; }
+.pp-theme-graphite .pdv-title { color: #111; font-weight: 800; }
+.pp-theme-graphite .pdv-meta span { background: transparent; border: 1px solid #dcdcdc; color: #555; }
+.pp-theme-graphite .pdv-meta .proc-status-badge { background: #111; color: #fff; }
+.pp-theme-graphite .pdv-section h3 { border-bottom: 1px solid #e4e4e4; color: #111; letter-spacing: 0.1em; }
+.pp-theme-graphite .pdv-section h3::before { display: none; }
+.pp-theme-graphite .pdv-secno { color: #111; margin-right: 8px; }
+.pp-theme-graphite .pdv-step { background: transparent; border: 0; border-bottom: 1px solid #ececec; border-radius: 0; box-shadow: none; padding: 14px 2px; }
+.pp-theme-graphite .pdv-step-num { background: #111; border-radius: 4px; }
+.pp-theme-graphite .pdv-table-wrap { box-shadow: none; border-radius: 0; }
+.pp-theme-graphite .pdv-dtable th { background: #24292e; }
+.pp-theme-graphite .pdv-dtable th, .pp-theme-graphite .pdv-dtable td { border-left: 0; border-right: 0; }
+.pp-theme-graphite .pdv-dtable tr:nth-child(even) td { background: #fafafa; }
+.pp-theme-graphite .pdv-substep { background: transparent; border-left: 0; border-bottom: 2px solid #111; border-radius: 0; padding: 4px 0; }
+.pp-theme-graphite .pdv-checklist li { background: transparent; border-left: 0; padding-left: 30px; }
+
+/* ===== MODERNÁ — výrazné farebné pruhy nadpisov, kruhové čísla ===== */
+.pp-theme-teal .pdv-section h3 { background: var(--pp-navy); color: #fff; padding: 9px 14px; border-radius: 8px; border-bottom: 0; }
+.pp-theme-teal .pdv-section h3::before { background: var(--pp-lime); width: 8px; height: 22px; }
+.pp-theme-teal .pdv-secno { color: var(--pp-lime); }
+.pp-theme-teal .pdv-step { border-left-width: 5px; border-radius: 14px; }
+.pp-theme-teal .pdv-step-num { border-radius: 50%; background: var(--pp-lime); color: var(--pp-navy); }
+.pp-theme-teal .pdv-dtable th { background: var(--pp-navy2); }
+.pp-theme-teal .pdv-substep { background: linear-gradient(90deg, var(--pp-secbar), #fff); border-radius: 8px; }
+
 .pdv-toolbar {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; margin-bottom: 16px; flex-wrap: wrap;
