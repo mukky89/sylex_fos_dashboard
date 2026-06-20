@@ -2805,7 +2805,7 @@ function renderProcedureDetailHtml(p) {
   if (p.validity && p.validity.revision) idLine.push('Rev. ' + escHtml(p.validity.revision));
 
   let html = `
-    <div class="pdv-head">
+    <div class="pdv-head" data-seg="identifikacia">
       <div class="pdv-eyebrow">PRACOVNÝ POSTUP${idLine.length ? ' · ' + idLine.join(' · ') : ''}</div>
       <h1 class="pdv-title">${escHtml(p.title || '(bez názvu)')}</h1>
       <div class="pdv-meta">${meta.join('')}</div>
@@ -2820,36 +2820,36 @@ function renderProcedureDetailHtml(p) {
   const off = new Set(p.disabledSegments || []);
 
   if ((p.purpose || '').trim() && !off.has('purpose'))
-    html += `<div class="pdv-section">${sh('Účel')}${textSec(p.purpose)}</div>`;
+    html += `<div class="pdv-section" data-seg="purpose">${sh('Účel')}${textSec(p.purpose)}</div>`;
 
   if ((p.scope || '').trim() && !off.has('purpose'))
-    html += `<div class="pdv-section">${sh('Rozsah platnosti')}${textSec(p.scope)}</div>`;
+    html += `<div class="pdv-section" data-seg="purpose">${sh('Rozsah platnosti')}${textSec(p.scope)}</div>`;
 
   const relatedDocs = filled(p.relatedDocs, ['document', 'description', 'reference']);
   if (relatedDocs.length && !off.has('resources'))
-    html += `<div class="pdv-section">${sh('Súvisiace dokumenty a normy')}${dtable(['Dokument / Norma', 'Popis', 'Číslo / Odkaz'], relatedDocs.map(d => [d.document, d.description, d.reference]))}</div>`;
+    html += `<div class="pdv-section" data-seg="resources">${sh('Súvisiace dokumenty a normy')}${dtable(['Dokument / Norma', 'Popis', 'Číslo / Odkaz'], relatedDocs.map(d => [d.document, d.description, d.reference]))}</div>`;
 
   if ((p.definitions || '').trim() && !off.has('purpose'))
-    html += `<div class="pdv-section">${sh('Definície a skratky')}${textSec(p.definitions)}</div>`;
+    html += `<div class="pdv-section" data-seg="purpose">${sh('Definície a skratky')}${textSec(p.definitions)}</div>`;
 
   const equipment = filled(p.equipment, ['no', 'name', 'description', 'calibration']);
   if (equipment.length && !off.has('resources'))
-    html += `<div class="pdv-section">${sh('Špeciálne vybavenie')}${dtable(['č.', 'Názov položky', 'Popis / P/N', 'Kalibrácia'], equipment.map(e => [e.no, e.name, e.description, e.calibration]))}</div>`;
+    html += `<div class="pdv-section" data-seg="resources">${sh('Špeciálne vybavenie')}${dtable(['č.', 'Názov položky', 'Popis / P/N', 'Kalibrácia'], equipment.map(e => [e.no, e.name, e.description, e.calibration]))}</div>`;
 
   const materials = filled(p.materials, ['no', 'name', 'description', 'partNumber', 'quantity']);
   if (materials.length && !off.has('resources'))
-    html += `<div class="pdv-section">${sh('Materiály a spotrebný materiál')}${dtable(['č.', 'Názov', 'Popis', 'Sylex PN', 'Množstvo'], materials.map(m => [m.no, m.name, m.description, m.partNumber, m.quantity]))}</div>`;
+    html += `<div class="pdv-section" data-seg="resources">${sh('Materiály a spotrebný materiál')}${dtable(['č.', 'Názov', 'Popis', 'Sylex PN', 'Množstvo'], materials.map(m => [m.no, m.name, m.description, m.partNumber, m.quantity]))}</div>`;
 
   const tools = (p.tools || []).filter(t => (t.name || '').trim());
   if (tools.length && !off.has('resources'))
-    html += `<div class="pdv-section"><h3>Potrebné pomôcky / nástroje</h3><ul class="pdv-tools">${tools.map(t => `<li><strong>${escHtml(t.name)}</strong>${t.note ? ` — ${escHtml(t.note)}` : ''}</li>`).join('')}</ul></div>`;
+    html += `<div class="pdv-section" data-seg="resources"><h3>Potrebné pomôcky / nástroje</h3><ul class="pdv-tools">${tools.map(t => `<li><strong>${escHtml(t.name)}</strong>${t.note ? ` — ${escHtml(t.note)}` : ''}</li>`).join('')}</ul></div>`;
 
   const prep = (p.prepChecklist || []).filter(x => (x || '').trim());
   if (prep.length && !off.has('procedure'))
-    html += `<div class="pdv-section">${sh('Príprava pracoviska a zariadení')}<ul class="pdv-checklist">${prep.map(x => `<li>${escHtml(x)}</li>`).join('')}</ul></div>`;
+    html += `<div class="pdv-section" data-seg="procedure">${sh('Príprava pracoviska a zariadení')}<ul class="pdv-checklist">${prep.map(x => `<li>${escHtml(x)}</li>`).join('')}</ul></div>`;
 
   if (steps.length && !off.has('procedure')) {
-    html += `<div class="pdv-section">${sh('Postup montáže')}<div class="pdv-steps">`;
+    html += `<div class="pdv-section" data-seg="procedure">${sh('Postup montáže')}<div class="pdv-steps">`;
     let curSection = null, subPrefix = null, subCount = 0, globalNo = 0;
     steps.forEach((s, i) => {
       if ((s.section || '') && s.section !== curSection) {
@@ -2886,31 +2886,31 @@ function renderProcedureDetailHtml(p) {
 
   const safety = filled(p.safety, ['risk', 'source', 'measure']);
   if (safety.length && !off.has('safety'))
-    html += `<div class="pdv-section">${sh('Bezpečnosť pri práci (BOZP)')}${dtable(['Riziko', 'Zdroj', 'Opatrenie'], safety.map(s => [s.risk, s.source, s.measure]))}</div>`;
+    html += `<div class="pdv-section" data-seg="safety">${sh('Bezpečnosť pri práci (BOZP)')}${dtable(['Riziko', 'Zdroj', 'Opatrenie'], safety.map(s => [s.risk, s.source, s.measure]))}</div>`;
 
   const risks = (p.risks || []).filter(r => (r || '').trim());
   if (risks.length && !off.has('safety'))
-    html += `<div class="pdv-section"><h3>Ďalšie riziká / upozornenia</h3><ul class="pdv-risks">${risks.map(r => `<li>${escHtml(r)}</li>`).join('')}</ul></div>`;
+    html += `<div class="pdv-section" data-seg="safety"><h3>Ďalšie riziká / upozornenia</h3><ul class="pdv-risks">${risks.map(r => `<li>${escHtml(r)}</li>`).join('')}</ul></div>`;
 
   const waste = filled(p.waste, ['waste', 'category', 'disposal']);
   if (waste.length && !off.has('waste'))
-    html += `<div class="pdv-section">${sh('Nakladanie s odpadmi')}${dtable(['Odpad', 'Kategória', 'Likvidácia'], waste.map(w => [w.waste, w.category, w.disposal]))}</div>`;
+    html += `<div class="pdv-section" data-seg="waste">${sh('Nakladanie s odpadmi')}${dtable(['Odpad', 'Kategória', 'Likvidácia'], waste.map(w => [w.waste, w.category, w.disposal]))}</div>`;
 
   const maintenance = filled(p.maintenance, ['equipment', 'interval', 'task', 'responsible']);
   if (maintenance.length && !off.has('waste'))
-    html += `<div class="pdv-section">${sh('Údržba zariadení a prípravku')}${dtable(['Zariadenie', 'Interval', 'Úkon', 'Zodpovedný'], maintenance.map(m => [m.equipment, m.interval, m.task, m.responsible]))}</div>`;
+    html += `<div class="pdv-section" data-seg="waste">${sh('Údržba zariadení a prípravku')}${dtable(['Zariadenie', 'Interval', 'Úkon', 'Zodpovedný'], maintenance.map(m => [m.equipment, m.interval, m.task, m.responsible]))}</div>`;
 
   const troubleshooting = filled(p.troubleshooting, ['problem', 'cause', 'solution']);
   if (troubleshooting.length && !off.has('waste'))
-    html += `<div class="pdv-section">${sh('Riešenie problémov')}${dtable(['Problém', 'Príčina', 'Riešenie'], troubleshooting.map(t => [t.problem, t.cause, t.solution]))}</div>`;
+    html += `<div class="pdv-section" data-seg="waste">${sh('Riešenie problémov')}${dtable(['Problém', 'Príčina', 'Riešenie'], troubleshooting.map(t => [t.problem, t.cause, t.solution]))}</div>`;
 
   const atts = (p.attachments || []).filter(a => (a.label || a.url || '').trim());
   if (atts.length && !off.has('attachments'))
-    html += `<div class="pdv-section"><h3>Prílohy / Odkazy</h3><ul class="pdv-atts">${atts.map(a => `<li>${escHtml(a.label || a.url)}${a.label && a.url ? ` <span class="pdv-att-url">${escHtml(a.url)}</span>` : ''}</li>`).join('')}</ul></div>`;
+    html += `<div class="pdv-section" data-seg="attachments"><h3>Prílohy / Odkazy</h3><ul class="pdv-atts">${atts.map(a => `<li>${escHtml(a.label || a.url)}${a.label && a.url ? ` <span class="pdv-att-url">${escHtml(a.url)}</span>` : ''}</li>`).join('')}</ul></div>`;
 
   const changeLog = filled(p.changeLog, ['version', 'change', 'date', 'reason', 'author']);
   if (changeLog.length && !off.has('changelog'))
-    html += `<div class="pdv-section"><h3>História zmien</h3>${dtable(['Verzia', 'Zmena', 'Dátum', 'Dôvod zmeny', 'Vypracoval'], changeLog.map(c => [c.version, c.change, c.date ? fmtDate(c.date) : '', c.reason, c.author]))}</div>`;
+    html += `<div class="pdv-section" data-seg="changelog"><h3>História zmien</h3>${dtable(['Verzia', 'Zmena', 'Dátum', 'Dôvod zmeny', 'Vypracoval'], changeLog.map(c => [c.version, c.change, c.date ? fmtDate(c.date) : '', c.reason, c.author]))}</div>`;
 
   const v = p.validity || {};
   if (!off.has('validity') && (v.preparedBy || v.approvedBy || v.validFrom || v.nextRevision || v.unit || v.revision || p.author)) {
@@ -2919,7 +2919,7 @@ function renderProcedureDetailHtml(p) {
       ? `${fmtDate(v.nextRevision)}${revInfo ? ` <span class="pdv-rev-flag pdv-rev-${revInfo.level}">${revInfo.label}</span>` : ''}`
       : '<span class="pdv-muted">— (max. 2 roky od vydania)</span>';
     const row = (label, value) => `<tr><th>${label}</th><td>${value || '<span class="pdv-muted">—</span>'}</td></tr>`;
-    html += `<div class="pdv-section"><h3>Platnosť pracovného postupu</h3>
+    html += `<div class="pdv-section" data-seg="validity"><h3>Platnosť pracovného postupu</h3>
       <table class="pdv-validity">
         ${row('Vypracoval', escHtml(v.preparedBy || p.author || ''))}
         ${row('Schválil', escHtml(v.approvedBy || ''))}
@@ -3377,6 +3377,9 @@ async function openProcedureModal(proc = null) {
   if (det) det.classList.add('hidden');
   document.getElementById('procEditView').classList.remove('hidden');
   window.scrollTo({ top: 0, behavior: 'auto' });
+  _procActiveSeg = null;
+  const ppl = document.querySelector('.proc-preview-label');
+  if (ppl) ppl.textContent = 'ŽIVÝ NÁHĽAD · A4';
   wireProcLivePreview();
   setTimeout(updateProcLivePreview, 80);
 }
@@ -3395,8 +3398,37 @@ function updateProcLivePreview() {
   if (!el || el.offsetParent === null) return;
   try { el.innerHTML = renderProcedureDetailHtml(collectProcedureForm()); } catch (e) {}
   fitProcA4Preview();
+  applyPreviewHighlight();
 }
 function scheduleProcLivePreview() { clearTimeout(_procPrevTimer); _procPrevTimer = setTimeout(updateProcLivePreview, 250); }
+
+// ── Prepojenie editor ↔ náhľad: zvýraznenie aktívnej kategórie ──
+let _procActiveSeg = null, _procSyncSuspend = false;
+function applyPreviewHighlight() {
+  const paper = document.getElementById('procLivePreview');
+  if (!paper) return null;
+  paper.querySelectorAll('.pdv-hl').forEach(e => e.classList.remove('pdv-hl'));
+  if (!_procActiveSeg) return null;
+  let secs = [...paper.querySelectorAll('[data-seg="' + _procActiveSeg + '"]')];
+  secs.forEach(s => s.classList.add('pdv-hl'));
+  return secs[0] || null;
+}
+function focusPreviewSeg(segKey, segTitle) {
+  _procActiveSeg = segKey;
+  // názov kategórie v hlavičke náhľadu
+  const lbl = document.querySelector('.proc-preview-label');
+  if (lbl) lbl.innerHTML = 'ŽIVÝ NÁHĽAD · A4' + (segTitle ? ' &nbsp;·&nbsp; <span class="ppl-cat">' + escHtml(segTitle) + '</span>' : '');
+  const pane = document.querySelector('.proc-edit-preview');
+  if (!pane || pane.offsetParent === null) return;
+  const target = applyPreviewHighlight();
+  if (target) {
+    _procSyncSuspend = true;
+    const tr = target.getBoundingClientRect(), pr = pane.getBoundingClientRect();
+    pane.scrollTo({ top: Math.max(0, pane.scrollTop + (tr.top - pr.top) - 18), behavior: 'smooth' });
+    clearTimeout(focusPreviewSeg._t);
+    focusPreviewSeg._t = setTimeout(() => { _procSyncSuspend = false; }, 700);
+  }
+}
 
 // Rozbalenie / zbalenie segmentu (kategórie)
 function toggleProcSeg(el) { el.closest('.proc-seg')?.classList.toggle('collapsed'); }
@@ -3421,12 +3453,22 @@ function wireProcLivePreview() {
   root.addEventListener('click', (e) => { if (e.target.closest('button, .proc-icon-btn')) scheduleProcLivePreview(); });
   window.addEventListener('resize', fitProcA4Preview);
 
+  // Klik / zameranie poľa → posuň náhľad na kategóriu, zvýrazni a ukáž jej názov
+  const segOf = (e) => {
+    const seg = e.target.closest('.proc-seg');
+    if (!seg || seg.classList.contains('disabled')) return;
+    const title = seg.querySelector('.proc-seg-title')?.textContent || '';
+    focusPreviewSeg(seg.dataset.seg, title);
+  };
+  root.addEventListener('focusin', segOf);
+  root.addEventListener('click', segOf);
+
   // Synchronizovaný scroll: stránka s formulárom (vľavo) ↔ sticky náhľad (vpravo)
   const right = root.querySelector('.proc-edit-preview');
   if (right) {
     let lock = false;
     const fromWindow = () => {
-      if (lock || right.offsetParent === null) return;
+      if (lock || _procSyncSuspend || right.offsetParent === null) return;
       lock = true;
       const ms = document.documentElement.scrollHeight - window.innerHeight;
       const frac = ms > 0 ? window.scrollY / ms : 0;
@@ -3434,7 +3476,7 @@ function wireProcLivePreview() {
       requestAnimationFrame(() => { lock = false; });
     };
     const fromPreview = () => {
-      if (lock || right.offsetParent === null) return;
+      if (lock || _procSyncSuspend || right.offsetParent === null) return;
       lock = true;
       const md = right.scrollHeight - right.clientHeight;
       const frac = md > 0 ? right.scrollTop / md : 0;

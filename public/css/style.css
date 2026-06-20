@@ -2590,6 +2590,12 @@ body {
   font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
   color: rgba(255,255,255,0.6); text-align: center; margin-bottom: 12px;
 }
+.ppl-cat { color: #b6e05a; letter-spacing: 0.04em; }
+
+/* Zvýraznenie aktívnej kategórie v náhľade (prepojenie s editorom) */
+.pdv-hl { outline: 2.5px solid #97bf0d; outline-offset: 4px; border-radius: 8px; animation: pdvHlIn 0.45s ease; }
+.pdv-section.pdv-hl { background: rgba(151,191,13,0.07); }
+@keyframes pdvHlIn { from { outline-color: rgba(151,191,13,0); } to { outline-color: #97bf0d; } }
 .pp-a4-frame { display: flex; justify-content: center; }
 /* A4 papier (210×297 mm @ ~96dpi = 794×1123 px), zmenšuje sa cez zoom v JS */
 .pp-a4 {
