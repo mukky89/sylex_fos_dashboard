@@ -283,6 +283,9 @@ app.use('/api/datasheets', require('./routes/datasheets'));
 app.use('/api/sensor-types', require('./routes/sensorTypes'));
 app.use('/api/questions', require('./routes/questions'));
 app.use('/api/management', require('./routes/management'));
+app.use('/api/photos', require('./routes/photos'));
+app.use('/api/github', require('./routes/github'));
+app.use('/api/remote', require('./routes/remote'));
 app.use('/api/admin', require('./routes/admin')(sensorCfg));
 
 // Credentials endpoint (internal use only)
