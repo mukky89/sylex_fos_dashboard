@@ -90,6 +90,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>
           <span class="nav-lbl">Riadenie</span>
         </a>
+        <a class="nav-link" onclick="showPage('photos')" data-page="photos" title="Fotky z výroby">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span class="nav-lbl">Fotky</span>
+        </a>
         <a class="nav-link" onclick="showPage('tasks')" data-page="tasks" title="Úlohy">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
           <span class="nav-lbl">Úlohy</span>
@@ -101,6 +105,14 @@
         <a class="nav-link" onclick="showPage('mgmt')" data-page="mgmt" title="Manažment">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg>
           <span class="nav-lbl">Mgmt</span>
+        </a>
+        <a class="nav-link" onclick="showPage('github')" data-page="github" title="GitHub — projekty a odkazy">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>
+          <span class="nav-lbl">GitHub</span>
+        </a>
+        <a class="nav-link" onclick="showPage('remote')" data-page="remote" title="Vzdialené pripojenie — RustDesk">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M9 12l6-4M15 8h-4M15 8v4"/></svg>
+          <span class="nav-lbl">RustDesk</span>
         </a>
         <a class="nav-link" onclick="showPage('admin')" data-page="admin" title="Administrácia">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -207,6 +219,10 @@
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg></span>
         <span class="asb-lbl">Riadenie výroby</span>
       </a>
+      <a class="asb-link" data-page="photos" onclick="showPage('photos')" title="Fotky z výroby">
+        <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+        <span class="asb-lbl">Fotky z výroby</span>
+      </a>
 
       <div class="asb-group">Organizácia</div>
       <a class="asb-link" data-page="calendar" onclick="showPage('calendar')" title="Kalendár">
@@ -220,6 +236,16 @@
       <a class="asb-link" data-page="crm" onclick="showPage('crm')" title="CRM — kontakty">
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg></span>
         <span class="asb-lbl">CRM</span>
+      </a>
+
+      <div class="asb-group">IT nástroje</div>
+      <a class="asb-link" data-page="github" onclick="showPage('github')" title="GitHub — projekty a odkazy">
+        <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg></span>
+        <span class="asb-lbl">GitHub projekty</span>
+      </a>
+      <a class="asb-link" data-page="remote" onclick="showPage('remote')" title="Vzdialené pripojenie — RustDesk">
+        <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M9 12l6-4M15 8h-4M15 8v4"/></svg></span>
+        <span class="asb-lbl">Vzdialené PC</span>
       </a>
 
       <div class="asb-group">Vedenie &amp; systém</div>
@@ -2639,6 +2665,202 @@
   </main>
 
   <!-- ===== ADMIN PAGE ===== -->
+  <!-- ===== FOTKY Z VÝROBY ===== -->
+  <main id="page-photos" class="page photos-page">
+    <div class="dev-inner">
+      <div class="admin-hdr">
+        <div>
+          <h1 class="admin-title">Fotky z výroby</h1>
+          <p class="admin-sub">Galéria · kategórie typov produktov · tagy · zdieľanie · odkazy na sieťové foldre</p>
+        </div>
+      </div>
+      <div class="dev-toolbar">
+        <div class="proc-search-wrap" style="margin:0;flex:1;min-width:180px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="phSearch" placeholder="Hľadať názov, tag, autora..." oninput="renderPhotos()" autocomplete="off">
+        </div>
+        <button class="btn-secondary" onclick="openPhotoCatModal()">🗂 Kategórie</button>
+        <button class="btn-primary" onclick="openPhotoModal()">+ Pridať fotky</button>
+      </div>
+      <div id="phCats" class="ph-cats"></div>
+      <div id="phTags" class="ph-tags"></div>
+      <div id="phGrid" class="ph-grid"></div>
+    </div>
+  </main>
+
+  <!-- ===== GITHUB — PROJEKTY A ODKAZY ===== -->
+  <main id="page-github" class="page github-page">
+    <div class="dev-inner">
+      <div class="admin-hdr">
+        <div>
+          <h1 class="admin-title">GitHub — projekty a odkazy</h1>
+          <p class="admin-sub">Evidencia repozitárov tímu · odkazy na dokumentáciu a releases</p>
+        </div>
+      </div>
+      <div class="dev-toolbar">
+        <div class="proc-search-wrap" style="margin:0;flex:1;min-width:180px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="ghSearch" placeholder="Hľadať projekt, jazyk, tag..." oninput="renderGithub()" autocomplete="off">
+        </div>
+        <button class="btn-primary" onclick="openGhModal()">+ Nový projekt</button>
+      </div>
+      <div id="ghList" class="gh-grid"></div>
+    </div>
+  </main>
+
+  <!-- ===== VZDIALENÉ PRIPOJENIE — RUSTDESK ===== -->
+  <main id="page-remote" class="page remote-page">
+    <div class="dev-inner">
+      <div class="admin-hdr">
+        <div>
+          <h1 class="admin-title">Vzdialené pripojenie — RustDesk</h1>
+          <p class="admin-sub">Zoznam PC vo firme · pripojenie jedným klikom cez RustDesk</p>
+        </div>
+      </div>
+      <div class="dev-toolbar">
+        <div class="proc-search-wrap" style="margin:0;flex:1;min-width:180px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="rcSearch" placeholder="Hľadať PC, ID, umiestnenie..." oninput="renderRemote()" autocomplete="off">
+        </div>
+        <a class="btn-secondary" href="https://rustdesk.com/download" target="_blank" rel="noopener" title="Stiahnuť klienta RustDesk">⬇ RustDesk klient</a>
+        <button class="btn-primary" onclick="openRemoteModal()">+ Nové PC</button>
+      </div>
+      <p class="hint" style="margin:0 0 12px">Tlačidlo „Pripojiť" otvorí nainštalovaného RustDesk klienta cez <code>rustdesk://</code> odkaz. ID a heslo vieš skopírovať aj ručne.</p>
+      <div id="rcList" class="rc-grid"></div>
+    </div>
+  </main>
+
+  <!-- Modal: pridanie / úprava fotiek -->
+  <div id="photoModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closePhotoModal()"></div>
+    <div class="modal-box">
+      <div class="modal-header"><h2 id="phModalTitle">Pridať fotky</h2><button class="modal-close" onclick="closePhotoModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="phId">
+        <div class="form-group" id="phDropWrap">
+          <label>Fotky *</label>
+          <div id="phDrop" class="ph-drop" onclick="document.getElementById('phFiles').click()">
+            <div class="ph-drop-ico">📷</div>
+            <div>Klikni alebo pretiahni fotky sem</div>
+            <div class="form-hint">JPG, PNG, WebP… max 30 MB / súbor, viac naraz</div>
+          </div>
+          <input type="file" id="phFiles" accept="image/*" multiple style="display:none" onchange="phFilesPicked(this.files)">
+          <div id="phPickList" class="ph-pick-list"></div>
+        </div>
+        <div class="form-group" id="phConvWrap">
+          <label>Konverzia pri nahratí</label>
+          <select id="phConvert">
+            <option value="1920">Zmenšiť na max 1920 px → JPEG (odporúčané)</option>
+            <option value="1280">Zmenšiť na max 1280 px → JPEG</option>
+            <option value="webp">Zmenšiť na max 1920 px → WebP</option>
+            <option value="orig">Originál bez konverzie</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Názov <span class="form-hint">(prázdne = názov súboru)</span></label><input type="text" id="phTitle"></div>
+          <div class="form-group"><label>Kategória (typ produktu)</label><select id="phCategory"></select></div>
+        </div>
+        <div class="form-group"><label>Tagy <span class="form-hint">(oddelené čiarkou)</span></label><input type="text" id="phTagsInp" placeholder="napr. zvar, konektor, reklamácia"></div>
+        <div class="form-group"><label>Folder na sieti <span class="form-hint">(odkaz na originály, napr. \\server\vyroba\fotky\zakazka-123)</span></label><input type="text" id="phNetPath"></div>
+        <div class="form-group"><label>Poznámka</label><textarea id="phNote" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closePhotoModal()">Zrušiť</button>
+        <button class="btn-primary" id="phSaveBtn" onclick="savePhotos()">Nahrať</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: kategórie fotiek (typy produktov) -->
+  <div id="photoCatModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closePhotoCatModal()"></div>
+    <div class="modal-box" style="max-width:480px">
+      <div class="modal-header"><h2>Kategórie — typy produktov</h2><button class="modal-close" onclick="closePhotoCatModal()">✕</button></div>
+      <div class="modal-body">
+        <div id="phCatList" class="ph-cat-list"></div>
+        <div class="ph-cat-add">
+          <input type="text" id="phCatIcon" placeholder="📦" maxlength="4" title="Ikona (emoji)">
+          <input type="text" id="phCatName" placeholder="Názov kategórie (napr. Strain cable)" onkeydown="if(event.key==='Enter')addPhotoCat()">
+          <input type="color" id="phCatColor" value="#0891b2" title="Farba">
+          <button class="btn-primary" onclick="addPhotoCat()">+ Pridať</button>
+        </div>
+      </div>
+      <div class="modal-footer"><button class="btn-secondary" onclick="closePhotoCatModal()">Zavrieť</button></div>
+    </div>
+  </div>
+
+  <!-- Lightbox: detail fotky -->
+  <div id="photoLightbox" class="ph-lightbox hidden">
+    <button class="ph-lb-close" onclick="closePhotoLightbox()" title="Zavrieť (Esc)">✕</button>
+    <button class="ph-lb-nav ph-lb-prev" onclick="phLbNav(-1)" title="Predchádzajúca">‹</button>
+    <div class="ph-lb-stage"><img id="phLbImg" src="" alt=""></div>
+    <button class="ph-lb-nav ph-lb-next" onclick="phLbNav(1)" title="Ďalšia">›</button>
+    <div class="ph-lb-panel" id="phLbPanel"></div>
+  </div>
+
+  <!-- Modal: GitHub projekt -->
+  <div id="ghModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeGhModal()"></div>
+    <div class="modal-box">
+      <div class="modal-header"><h2 id="ghModalTitle">Nový GitHub projekt</h2><button class="modal-close" onclick="closeGhModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="ghId">
+        <div class="form-row">
+          <div class="form-group"><label>Názov projektu *</label><input type="text" id="ghName" placeholder="napr. sylex_fos_dashboard"></div>
+          <div class="form-group"><label>Hlavný jazyk</label><input type="text" id="ghLang" placeholder="JavaScript, Python..."></div>
+        </div>
+        <div class="form-group"><label>URL repozitára</label><input type="text" id="ghUrl" placeholder="https://github.com/org/repo"></div>
+        <div class="form-group"><label>Popis</label><textarea id="ghDesc" rows="2" placeholder="Na čo projekt slúži..."></textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label>Stav</label><select id="ghStatus"><option value="active">Aktívny</option><option value="planned">Plánovaný</option><option value="archived">Archivovaný</option></select></div>
+          <div class="form-group"><label>Zodpovedný</label><input type="text" id="ghOwner"></div>
+          <div class="form-group" style="align-self:end"><label class="chk-line"><input type="checkbox" id="ghPrivate"> Privátny repozitár</label></div>
+        </div>
+        <div class="form-group"><label>Tagy <span class="form-hint">(oddelené čiarkou)</span></label><input type="text" id="ghTags" placeholder="firmware, web, nástroj"></div>
+        <div class="form-group">
+          <div class="proc-rows-hdr"><label>Ďalšie odkazy</label><button type="button" class="btn-sm" onclick="addGhLinkRow()">+ Pridať</button></div>
+          <div id="ghLinks" class="proc-rows"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="ghDeleteBtn" onclick="deleteGh(document.getElementById('ghId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeGhModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveGh()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: vzdialené PC (RustDesk) -->
+  <div id="remoteModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeRemoteModal()"></div>
+    <div class="modal-box">
+      <div class="modal-header"><h2 id="rcModalTitle">Nové vzdialené PC</h2><button class="modal-close" onclick="closeRemoteModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="rcId">
+        <div class="form-row">
+          <div class="form-group"><label>Názov PC *</label><input type="text" id="rcName" placeholder="napr. Výroba — navíjačka"></div>
+          <div class="form-group"><label>RustDesk ID *</label><input type="text" id="rcRustId" placeholder="123 456 789"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Heslo <span class="form-hint">(trvalé, voliteľné)</span></label><input type="text" id="rcPass" autocomplete="off"></div>
+          <div class="form-group"><label>Umiestnenie</label><input type="text" id="rcLocation" placeholder="dielňa, kancelária..."></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Používateľ PC</label><input type="text" id="rcUser"></div>
+          <div class="form-group"><label>OS</label><select id="rcOs"><option>Windows</option><option>Linux</option><option>macOS</option></select></div>
+          <div class="form-group"><label>Lokálna IP</label><input type="text" id="rcIp" placeholder="10.88.x.x"></div>
+        </div>
+        <div class="form-group"><label>Tagy <span class="form-hint">(oddelené čiarkou)</span></label><input type="text" id="rcTags" placeholder="výroba, meranie, server"></div>
+        <div class="form-group"><label>Poznámka</label><textarea id="rcNote" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="rcDeleteBtn" onclick="deleteRemote(document.getElementById('rcId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" onclick="closeRemoteModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveRemote()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
   <main id="page-admin" class="page admin-page">
     <div class="admin-inner">
 

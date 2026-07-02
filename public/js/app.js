@@ -743,6 +743,9 @@ async function handleHash(hash) {
   if (hash === 'tasks')   { _activatePage('tasks');   loadTasks(); return; }
   if (hash === 'crm')     { _activatePage('crm');     loadCrm(); return; }
   if (hash === 'mgmt')    { _activatePage('mgmt');    loadManagement(); return; }
+  if (hash === 'photos')  { _activatePage('photos');  loadPhotos(); return; }
+  if (hash === 'github')  { _activatePage('github');  loadGithub(); return; }
+  if (hash === 'remote')  { _activatePage('remote');  loadRemote(); return; }
   if (hash === 'admin')   { _activatePage('admin');   switchAdminTab('links'); return; }
   if (hash === 'changelog') { _activatePage('changelog'); renderChangelog(); return; }
   if (hash === 'wiki') { _activatePage('wiki'); await loadWiki(); return; }
@@ -781,6 +784,9 @@ function showPage(name) {
   if (name === 'tasks')   loadTasks();
   if (name === 'crm')     loadCrm();
   if (name === 'mgmt')    loadManagement();
+  if (name === 'photos')  loadPhotos();
+  if (name === 'github')  loadGithub();
+  if (name === 'remote')  loadRemote();
   if (name === 'admin')   switchAdminTab('links');
   if (name === 'changelog') renderChangelog();
   if (name === 'bb')      loadBb();
@@ -9800,6 +9806,586 @@ function bbExportPng() {
     const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = (bbDoc.name || 'backbone') + '.png'; a.click();
   };
   img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FOTKY Z VÝROBY — galéria, kategórie typov produktov, tagy, zdieľanie, konverzia
+// ══════════════════════════════════════════════════════════════════════════════
+let photosData = [], photoCatsData = [];
+let phFilter = { cat: 'all', tag: null };
+let phPickedFiles = [];        // súbory vybrané v modáli (pred nahratím)
+let phLbItems = [], phLbIdx = -1; // lightbox — aktuálne filtrovaný zoznam
+
+// Skopíruj text do schránky (s fallbackom)
+function phCopy(text, okMsg = 'Skopírované do schránky.') {
+  const done = () => toast(okMsg, 'success');
+  if (navigator.clipboard?.writeText) { navigator.clipboard.writeText(text).then(done, () => toast('Kopírovanie zlyhalo — skopíruj ručne: ' + text, 'warn')); return; }
+  const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch { toast('Skopíruj ručne: ' + text, 'warn'); }
+  ta.remove();
+}
+function phFmtBytes(b) {
+  if (!b) return '';
+  if (b > 1048576) return (b / 1048576).toFixed(1) + ' MB';
+  if (b > 1024) return Math.round(b / 1024) + ' kB';
+  return b + ' B';
+}
+function phFmtDate(d) { try { return new Date(d).toLocaleDateString('sk-SK', { day: 'numeric', month: 'numeric', year: 'numeric' }); } catch { return ''; } }
+
+async function loadPhotos() {
+  try {
+    const [cats, list] = await Promise.all([
+      fetch('/api/photos/categories').then(r => r.json()),
+      fetch('/api/photos').then(r => r.json())
+    ]);
+    photoCatsData = Array.isArray(cats) ? cats : [];
+    photosData = Array.isArray(list) ? list : [];
+  } catch { photoCatsData = []; photosData = []; }
+  renderPhotoCats(); renderPhotos();
+}
+
+function renderPhotoCats() {
+  const el = document.getElementById('phCats'); if (!el) return;
+  const cnt = (catId) => photosData.filter(p => (p.category?._id || p.category || null) === catId).length;
+  const chips = [`<button class="ph-chip ${phFilter.cat === 'all' ? 'active' : ''}" onclick="phSetCat('all')">Všetky <span class="ph-chip-n">${photosData.length}</span></button>`];
+  photoCatsData.forEach(c => {
+    chips.push(`<button class="ph-chip ${phFilter.cat === c._id ? 'active' : ''}" style="--chip-c:${escHtml(c.color || '#0891b2')}" onclick="phSetCat('${c._id}')">${escHtml(c.icon || '📦')} ${escHtml(c.name)} <span class="ph-chip-n">${cnt(c._id)}</span></button>`);
+  });
+  const noCat = photosData.filter(p => !p.category).length;
+  if (noCat) chips.push(`<button class="ph-chip ${phFilter.cat === 'none' ? 'active' : ''}" onclick="phSetCat('none')">Bez kategórie <span class="ph-chip-n">${noCat}</span></button>`);
+  el.innerHTML = chips.join('');
+}
+
+function phSetCat(id) { phFilter.cat = id; phFilter.tag = null; renderPhotoCats(); renderPhotos(); }
+function phSetTag(tag) { phFilter.tag = phFilter.tag === tag ? null : tag; renderPhotos(); }
+
+function phFiltered() {
+  const q = (document.getElementById('phSearch')?.value || '').toLowerCase();
+  return photosData.filter(p => {
+    const catId = p.category?._id || p.category || null;
+    if (phFilter.cat === 'none' && catId) return false;
+    if (phFilter.cat !== 'all' && phFilter.cat !== 'none' && catId !== phFilter.cat) return false;
+    if (phFilter.tag && !(p.tags || []).includes(phFilter.tag)) return false;
+    if (q) {
+      const hay = [p.title, p.author, p.note, p.originalName, ...(p.tags || []), p.category?.name].filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function renderPhotos() {
+  const grid = document.getElementById('phGrid'); if (!grid) return;
+  const items = phFiltered();
+
+  // Tag cloud z aktuálnej množiny
+  const tagEl = document.getElementById('phTags');
+  if (tagEl) {
+    const tags = {};
+    items.forEach(p => (p.tags || []).forEach(t => tags[t] = (tags[t] || 0) + 1));
+    const sorted = Object.entries(tags).sort((a, b) => b[1] - a[1]).slice(0, 30);
+    tagEl.innerHTML = sorted.map(([t, n]) => `<button class="ph-tag ${phFilter.tag === t ? 'active' : ''}" onclick="phSetTag(decodeURIComponent('${encodeURIComponent(t)}'))">#${escHtml(t)} <span>${n}</span></button>`).join('');
+  }
+
+  if (!items.length) {
+    grid.innerHTML = `<div class="proc-empty">Žiadne fotky.<div class="proc-empty-actions"><button class="btn-primary" onclick="openPhotoModal()">+ Pridať fotky</button></div></div>`;
+    return;
+  }
+  grid.innerHTML = items.map(p => {
+    const cat = p.category;
+    return `<div class="ph-card" onclick="openPhotoLightbox('${p._id}')">
+      <div class="ph-thumb"><img loading="lazy" src="${escHtml(p.url)}" alt="${escHtml(p.title)}"></div>
+      <div class="ph-card-body">
+        <div class="ph-card-title" title="${escHtml(p.title)}">${escHtml(p.title || p.originalName || 'Bez názvu')}</div>
+        <div class="ph-card-meta">
+          ${cat ? `<span class="ph-badge" style="--chip-c:${escHtml(cat.color || '#0891b2')}">${escHtml(cat.icon || '')} ${escHtml(cat.name)}</span>` : ''}
+          ${(p.tags || []).slice(0, 3).map(t => `<span class="ph-mini-tag">#${escHtml(t)}</span>`).join('')}
+        </div>
+        <div class="ph-card-sub">${escHtml(p.author || '')}${p.author ? ' · ' : ''}${phFmtDate(p.createdAt)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Lightbox ──
+function openPhotoLightbox(id) {
+  phLbItems = phFiltered();
+  phLbIdx = phLbItems.findIndex(p => p._id === id);
+  if (phLbIdx < 0) { phLbItems = photosData; phLbIdx = photosData.findIndex(p => p._id === id); }
+  if (phLbIdx < 0) return;
+  document.getElementById('photoLightbox').classList.remove('hidden');
+  document.addEventListener('keydown', phLbKeys);
+  phLbRender();
+}
+function closePhotoLightbox() {
+  document.getElementById('photoLightbox').classList.add('hidden');
+  document.removeEventListener('keydown', phLbKeys);
+}
+function phLbKeys(e) {
+  if (e.key === 'Escape') closePhotoLightbox();
+  if (e.key === 'ArrowLeft') phLbNav(-1);
+  if (e.key === 'ArrowRight') phLbNav(1);
+}
+function phLbNav(dir) {
+  if (!phLbItems.length) return;
+  phLbIdx = (phLbIdx + dir + phLbItems.length) % phLbItems.length;
+  phLbRender();
+}
+function phLbRender() {
+  const p = phLbItems[phLbIdx]; if (!p) return;
+  document.getElementById('phLbImg').src = p.url;
+  const cat = p.category;
+  const dims = p.width ? `${p.width}×${p.height} px` : '';
+  document.getElementById('phLbPanel').innerHTML = `
+    <div class="ph-lb-title">${escHtml(p.title || p.originalName || 'Bez názvu')}</div>
+    <div class="ph-lb-info">
+      ${cat ? `<span class="ph-badge" style="--chip-c:${escHtml(cat.color || '#0891b2')}">${escHtml(cat.icon || '')} ${escHtml(cat.name)}</span>` : ''}
+      ${(p.tags || []).map(t => `<span class="ph-mini-tag">#${escHtml(t)}</span>`).join('')}
+    </div>
+    <div class="ph-lb-sub">${escHtml(p.author || '—')} · ${phFmtDate(p.createdAt)}${dims ? ' · ' + dims : ''}${p.size ? ' · ' + phFmtBytes(p.size) : ''} <span class="ph-lb-count">${phLbIdx + 1}/${phLbItems.length}</span></div>
+    ${p.note ? `<div class="ph-lb-note">${escHtml(p.note)}</div>` : ''}
+    ${p.networkPath ? `<div class="ph-lb-net" title="Kliknutím skopíruješ cestu" onclick="phCopyNet('${p._id}')">📁 <code>${escHtml(p.networkPath)}</code></div>` : ''}
+    <div class="ph-lb-actions">
+      <button class="btn-sm" onclick="sharePhoto('${p._id}')">🔗 Zdieľať</button>
+      <button class="btn-sm" onclick="phDownload('${p._id}', 'orig')">⬇ Stiahnuť</button>
+      <span class="ph-conv">
+        <select id="phLbConv"><option value="jpeg">JPEG</option><option value="png">PNG</option><option value="webp">WebP</option></select>
+        <button class="btn-sm" onclick="phDownload('${p._id}', document.getElementById('phLbConv').value)">⇄ Konvertovať</button>
+      </span>
+      <button class="btn-sm" onclick="editPhoto('${p._id}')">✎ Upraviť</button>
+      <button class="btn-sm danger" onclick="deletePhoto('${p._id}')">✕ Odstrániť</button>
+    </div>`;
+}
+
+// Skopíruj sieťovú cestu fotky (bezpečne cez ID — cesty obsahujú \ a ')
+function phCopyNet(id) {
+  const p = photosData.find(x => x._id === id);
+  if (p?.networkPath) phCopy(p.networkPath, 'Sieťová cesta skopírovaná.');
+}
+
+// Zdieľanie — Web Share API s fallbackom na kopírovanie odkazu
+async function sharePhoto(id) {
+  const p = photosData.find(x => x._id === id); if (!p) return;
+  const url = location.origin + p.url;
+  if (navigator.share) {
+    try { await navigator.share({ title: p.title || 'Fotka z výroby', url }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  phCopy(url, 'Odkaz na fotku skopírovaný.');
+}
+
+// Stiahnutie / konverzia cez canvas (jpeg/png/webp), 'orig' = pôvodný súbor
+async function phDownload(id, fmt) {
+  const p = photosData.find(x => x._id === id); if (!p) return;
+  const base = (p.title || p.originalName || 'fotka').replace(/[\\/:*?"<>|]+/g, '_').replace(/\.[a-z0-9]+$/i, '');
+  if (fmt === 'orig') {
+    const a = document.createElement('a'); a.href = p.url; a.download = p.originalName || (base + (p.url.match(/\.[a-z0-9]+$/i)?.[0] || '.jpg')); a.click();
+    return;
+  }
+  try {
+    const img = new Image();
+    await new Promise((ok, err) => { img.onload = ok; img.onerror = err; img.src = p.url; });
+    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    c.getContext('2d').drawImage(img, 0, 0);
+    const mime = fmt === 'png' ? 'image/png' : fmt === 'webp' ? 'image/webp' : 'image/jpeg';
+    const blob = await new Promise(ok => c.toBlob(ok, mime, 0.92));
+    if (!blob) throw new Error('Konverzia zlyhala');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = base + (fmt === 'png' ? '.png' : fmt === 'webp' ? '.webp' : '.jpg');
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast(`Fotka konvertovaná do ${fmt.toUpperCase()}.`, 'success');
+  } catch { toast('Konverzia zlyhala.', 'error'); }
+}
+
+// ── Modál: pridanie / úprava ──
+function phFillCatSelect(selectedId) {
+  const sel = document.getElementById('phCategory');
+  sel.innerHTML = '<option value="">— bez kategórie —</option>' +
+    photoCatsData.map(c => `<option value="${c._id}" ${selectedId === c._id ? 'selected' : ''}>${escHtml(c.icon || '')} ${escHtml(c.name)}</option>`).join('');
+}
+
+function openPhotoModal(p = null) {
+  phPickedFiles = [];
+  const e = !!p;
+  document.getElementById('phModalTitle').textContent = e ? 'Upraviť fotku' : 'Pridať fotky';
+  document.getElementById('phId').value = e ? p._id : '';
+  document.getElementById('phTitle').value = e ? (p.title || '') : '';
+  document.getElementById('phTagsInp').value = e ? (p.tags || []).join(', ') : '';
+  document.getElementById('phNetPath').value = e ? (p.networkPath || '') : '';
+  document.getElementById('phNote').value = e ? (p.note || '') : '';
+  phFillCatSelect(e ? (p.category?._id || p.category || '') : '');
+  document.getElementById('phDropWrap').style.display = e ? 'none' : '';
+  document.getElementById('phConvWrap').style.display = e ? 'none' : '';
+  document.getElementById('phPickList').innerHTML = '';
+  document.getElementById('phFiles').value = '';
+  document.getElementById('phSaveBtn').textContent = e ? 'Uložiť' : 'Nahrať';
+  phInitDrop();
+  document.getElementById('photoModal').classList.remove('hidden');
+  modalSnapshot('photoModal');
+}
+function closePhotoModal() { modalGuardClose('photoModal'); }
+
+// Drag & drop na drop zónu (inicializuje sa raz)
+let _phDropInit = false;
+function phInitDrop() {
+  if (_phDropInit) return; _phDropInit = true;
+  const dz = document.getElementById('phDrop');
+  ['dragover', 'dragenter'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+  dz.addEventListener('drop', e => phFilesPicked(e.dataTransfer.files));
+}
+function phFilesPicked(files) {
+  const imgs = Array.from(files || []).filter(f => /^image\//.test(f.type));
+  if (!imgs.length) { toast('Vyber obrázkové súbory.', 'warn'); return; }
+  phPickedFiles = phPickedFiles.concat(imgs);
+  renderPhPickList();
+}
+function renderPhPickList() {
+  document.getElementById('phPickList').innerHTML = phPickedFiles.map((f, i) =>
+    `<span class="ph-pick">${escHtml(f.name)} <em>${phFmtBytes(f.size)}</em> <button onclick="phPickedFiles.splice(${i},1);renderPhPickList()" title="Odobrať">✕</button></span>`
+  ).join('');
+}
+
+// Konverzia na klientovi pred nahratím (canvas — zmenšenie + JPEG/WebP)
+function phConvertFile(file, mode) {
+  if (mode === 'orig') return Promise.resolve(file);
+  const maxDim = mode === '1280' ? 1280 : 1920;
+  const mime = mode === 'webp' ? 'image/webp' : 'image/jpeg';
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+      // Ak sa nemení veľkosť a súbor už je jpeg/webp, netreba konvertovať
+      if (scale === 1 && file.type === mime) { URL.revokeObjectURL(url); resolve(file); return; }
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => {
+        URL.revokeObjectURL(url);
+        if (!b) { resolve(file); return; }
+        const ext = mime === 'image/webp' ? '.webp' : '.jpg';
+        resolve(new File([b], file.name.replace(/\.[^.]+$/, '') + ext, { type: mime }));
+      }, mime, 0.86);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
+async function savePhotos() {
+  const id = document.getElementById('phId').value;
+  const meta = {
+    title: document.getElementById('phTitle').value.trim(),
+    category: document.getElementById('phCategory').value || null,
+    tags: document.getElementById('phTagsInp').value,
+    networkPath: document.getElementById('phNetPath').value.trim(),
+    note: document.getElementById('phNote').value.trim()
+  };
+  const btn = document.getElementById('phSaveBtn');
+  try {
+    if (id) {
+      const r = await fetch('/api/photos/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(meta) });
+      if (!r.ok) throw new Error((await r.json()).error || 'Chyba');
+      toast('Fotka upravená.', 'success');
+    } else {
+      if (!phPickedFiles.length) { toast('Vyber aspoň jednu fotku.', 'warn'); return; }
+      btn.disabled = true; btn.textContent = 'Konvertujem…';
+      const mode = document.getElementById('phConvert').value;
+      const files = [];
+      for (const f of phPickedFiles) files.push(await phConvertFile(f, mode));
+      btn.textContent = 'Nahrávam…';
+      const fd = new FormData();
+      files.forEach(f => fd.append('photos', f));
+      Object.entries(meta).forEach(([k, v]) => { if (v != null) fd.append(k, v); });
+      const r = await fetch('/api/photos/upload', { method: 'POST', body: fd });
+      if (!r.ok) throw new Error((await r.json()).error || 'Chyba nahrávania');
+      toast(`Nahraté: ${files.length} ${files.length === 1 ? 'fotka' : files.length < 5 ? 'fotky' : 'fotiek'}.`, 'success');
+    }
+    delete _modalSnap['photoModal'];
+    document.getElementById('photoModal').classList.add('hidden');
+    closePhotoLightbox();
+    loadPhotos();
+  } catch (e) { toast(e.message || 'Chyba pri ukladaní.', 'error'); }
+  finally { btn.disabled = false; btn.textContent = id ? 'Uložiť' : 'Nahrať'; }
+}
+
+function editPhoto(id) {
+  const p = photosData.find(x => x._id === id); if (!p) return;
+  closePhotoLightbox();
+  openPhotoModal(p);
+}
+
+async function deletePhoto(id) {
+  if (!await uiConfirm('Naozaj odstrániť fotku? Súbor sa zmaže aj z úložiska.')) return;
+  try {
+    await fetch('/api/photos/' + id, { method: 'DELETE' });
+    closePhotoLightbox();
+    toast('Fotka odstránená.', 'success');
+    loadPhotos();
+  } catch { toast('Chyba pri odstraňovaní.', 'error'); }
+}
+
+// ── Kategórie (typy produktov) ──
+function openPhotoCatModal() { renderPhotoCatList(); document.getElementById('photoCatModal').classList.remove('hidden'); }
+function closePhotoCatModal() { document.getElementById('photoCatModal').classList.add('hidden'); }
+function renderPhotoCatList() {
+  const el = document.getElementById('phCatList');
+  if (!photoCatsData.length) { el.innerHTML = '<p class="hint">Zatiaľ žiadne kategórie — pridaj typy produktov nižšie.</p>'; return; }
+  el.innerHTML = photoCatsData.map(c => {
+    const n = photosData.filter(p => (p.category?._id || p.category) === c._id).length;
+    return `<div class="ph-cat-row">
+      <span class="ph-cat-dot" style="background:${escHtml(c.color || '#0891b2')}"></span>
+      <span class="ph-cat-name">${escHtml(c.icon || '📦')} ${escHtml(c.name)}</span>
+      <span class="ph-cat-n">${n} ${n === 1 ? 'fotka' : n > 1 && n < 5 ? 'fotky' : 'fotiek'}</span>
+      <button class="admin-icon-btn danger" onclick="deletePhotoCat('${c._id}')" title="Odstrániť kategóriu">✕</button>
+    </div>`;
+  }).join('');
+}
+async function addPhotoCat() {
+  const name = document.getElementById('phCatName').value.trim();
+  if (!name) { toast('Zadaj názov kategórie.', 'warn'); return; }
+  try {
+    const r = await fetch('/api/photos/categories', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, icon: document.getElementById('phCatIcon').value.trim() || '📦', color: document.getElementById('phCatColor').value })
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Chyba');
+    document.getElementById('phCatName').value = ''; document.getElementById('phCatIcon').value = '';
+    photoCatsData = await fetch('/api/photos/categories').then(x => x.json());
+    renderPhotoCatList(); renderPhotoCats();
+    toast('Kategória pridaná.', 'success');
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function deletePhotoCat(id) {
+  if (!await uiConfirm('Odstrániť kategóriu? Fotky v nej zostanú bez kategórie.')) return;
+  try {
+    await fetch('/api/photos/categories/' + id, { method: 'DELETE' });
+    await loadPhotos(); renderPhotoCatList();
+    toast('Kategória odstránená.', 'success');
+  } catch { toast('Chyba.', 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GITHUB — projekty a odkazy
+// ══════════════════════════════════════════════════════════════════════════════
+let ghData = [];
+const GH_LANG_COLORS = { javascript: '#f1e05a', typescript: '#3178c6', python: '#3572a5', 'c++': '#f34b7d', c: '#555555', 'c#': '#178600', rust: '#dea584', go: '#00add8', java: '#b07219', php: '#4f5d95', html: '#e34c26', css: '#563d7c', shell: '#89e051', matlab: '#e16737', labview: '#fede06' };
+
+async function loadGithub() {
+  try { ghData = await fetch('/api/github').then(r => r.json()); if (!Array.isArray(ghData)) ghData = []; }
+  catch { ghData = []; }
+  renderGithub();
+}
+
+function renderGithub() {
+  const el = document.getElementById('ghList'); if (!el) return;
+  const q = (document.getElementById('ghSearch')?.value || '').toLowerCase();
+  const items = ghData.filter(r => !q || [r.name, r.description, r.language, r.owner, ...(r.tags || [])].filter(Boolean).join(' ').toLowerCase().includes(q));
+  if (!items.length) {
+    el.innerHTML = `<div class="proc-empty">Žiadne GitHub projekty.<div class="proc-empty-actions"><button class="btn-primary" onclick="openGhModal()">+ Nový projekt</button></div></div>`;
+    return;
+  }
+  const stLabel = { active: 'Aktívny', archived: 'Archív', planned: 'Plánovaný' };
+  el.innerHTML = items.map(r => {
+    const langColor = GH_LANG_COLORS[(r.language || '').toLowerCase()] || '#8b949e';
+    return `<div class="gh-card">
+      <div class="gh-card-head">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>
+        ${r.repoUrl ? `<a class="gh-name" href="${escHtml(r.repoUrl)}" target="_blank" rel="noopener">${escHtml(r.name)}</a>` : `<span class="gh-name">${escHtml(r.name)}</span>`}
+        ${r.private ? '<span class="gh-lock" title="Privátny repozitár">🔒</span>' : ''}
+        <span class="gh-status gh-st-${r.status}">${stLabel[r.status] || r.status}</span>
+        <button class="admin-icon-btn" onclick="openGhModal(ghData.find(x=>x._id==='${r._id}'))" title="Upraviť">✎</button>
+      </div>
+      ${r.description ? `<div class="gh-desc">${escHtml(r.description)}</div>` : ''}
+      <div class="gh-meta">
+        ${r.language ? `<span class="gh-lang"><span class="gh-lang-dot" style="background:${langColor}"></span>${escHtml(r.language)}</span>` : ''}
+        ${r.owner ? `<span class="gh-owner">👤 ${escHtml(r.owner)}</span>` : ''}
+        ${(r.tags || []).map(t => `<span class="ph-mini-tag">#${escHtml(t)}</span>`).join('')}
+      </div>
+      ${(r.links || []).length ? `<div class="gh-links">${r.links.filter(l => l.url).map(l => `<a class="gh-link" href="${escHtml(l.url)}" target="_blank" rel="noopener">🔗 ${escHtml(l.label || l.url)}</a>`).join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function addGhLinkRow(l = {}) {
+  const row = document.createElement('div');
+  row.className = 'proc-row gh-link-row';
+  row.innerHTML = `<input type="text" placeholder="Názov odkazu" value="${escHtml(l.label || '')}" data-gh="label">
+    <input type="text" placeholder="https://..." value="${escHtml(l.url || '')}" data-gh="url">
+    <button type="button" class="admin-icon-btn danger" onclick="this.parentElement.remove()" title="Odobrať">✕</button>`;
+  document.getElementById('ghLinks').appendChild(row);
+}
+
+function openGhModal(r = null) {
+  const e = !!r;
+  document.getElementById('ghModalTitle').textContent = e ? 'Upraviť projekt' : 'Nový GitHub projekt';
+  document.getElementById('ghId').value = e ? r._id : '';
+  document.getElementById('ghName').value = e ? (r.name || '') : '';
+  document.getElementById('ghUrl').value = e ? (r.repoUrl || '') : '';
+  document.getElementById('ghDesc').value = e ? (r.description || '') : '';
+  document.getElementById('ghLang').value = e ? (r.language || '') : '';
+  document.getElementById('ghStatus').value = e ? (r.status || 'active') : 'active';
+  document.getElementById('ghOwner').value = e ? (r.owner || '') : '';
+  document.getElementById('ghPrivate').checked = e ? !!r.private : false;
+  document.getElementById('ghTags').value = e ? (r.tags || []).join(', ') : '';
+  document.getElementById('ghLinks').innerHTML = '';
+  (e ? (r.links || []) : []).forEach(l => addGhLinkRow(l));
+  document.getElementById('ghDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('ghModal').classList.remove('hidden');
+  modalSnapshot('ghModal');
+}
+function closeGhModal() { modalGuardClose('ghModal'); }
+
+async function saveGh() {
+  const id = document.getElementById('ghId').value;
+  const name = document.getElementById('ghName').value.trim();
+  if (!name) { toast('Zadaj názov projektu.', 'warn'); return; }
+  const links = Array.from(document.querySelectorAll('#ghLinks .gh-link-row')).map(row => ({
+    label: row.querySelector('[data-gh="label"]').value.trim(),
+    url: row.querySelector('[data-gh="url"]').value.trim()
+  })).filter(l => l.url);
+  const body = {
+    name,
+    repoUrl: document.getElementById('ghUrl').value.trim(),
+    description: document.getElementById('ghDesc').value.trim(),
+    language: document.getElementById('ghLang').value.trim(),
+    status: document.getElementById('ghStatus').value,
+    owner: document.getElementById('ghOwner').value.trim(),
+    private: document.getElementById('ghPrivate').checked,
+    tags: document.getElementById('ghTags').value.split(',').map(t => t.trim()).filter(Boolean),
+    links
+  };
+  try {
+    const r = await fetch(id ? '/api/github/' + id : '/api/github', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error((await r.json()).error || 'Chyba');
+    delete _modalSnap['ghModal'];
+    document.getElementById('ghModal').classList.add('hidden');
+    toast(id ? 'Projekt upravený.' : 'Projekt pridaný.', 'success');
+    loadGithub();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function deleteGh(id) {
+  if (!id || !await uiConfirm('Naozaj odstrániť projekt zo zoznamu?')) return;
+  try {
+    await fetch('/api/github/' + id, { method: 'DELETE' });
+    delete _modalSnap['ghModal'];
+    document.getElementById('ghModal').classList.add('hidden');
+    toast('Projekt odstránený.', 'success');
+    loadGithub();
+  } catch { toast('Chyba.', 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// VZDIALENÉ PRIPOJENIE — RustDesk
+// ══════════════════════════════════════════════════════════════════════════════
+let rcData = [];
+const RC_OS_ICON = { windows: '🪟', linux: '🐧', macos: '🍎' };
+
+async function loadRemote() {
+  try { rcData = await fetch('/api/remote').then(r => r.json()); if (!Array.isArray(rcData)) rcData = []; }
+  catch { rcData = []; }
+  renderRemote();
+}
+
+// Naformátuj RustDesk ID po trojiciach (123 456 789)
+function rcFmtId(id) { return String(id || '').replace(/\s+/g, '').replace(/(\d{3})(?=\d)/g, '$1 '); }
+
+function renderRemote() {
+  const el = document.getElementById('rcList'); if (!el) return;
+  const q = (document.getElementById('rcSearch')?.value || '').toLowerCase();
+  const items = rcData.filter(r => !q || [r.name, r.rustdeskId, r.location, r.user, r.ip, r.note, ...(r.tags || [])].filter(Boolean).join(' ').toLowerCase().includes(q));
+  if (!items.length) {
+    el.innerHTML = `<div class="proc-empty">Žiadne vzdialené PC.<div class="proc-empty-actions"><button class="btn-primary" onclick="openRemoteModal()">+ Nové PC</button></div></div>`;
+    return;
+  }
+  el.innerHTML = items.map(r => {
+    const cleanId = String(r.rustdeskId || '').replace(/\s+/g, '');
+    return `<div class="rc-card">
+      <div class="rc-card-head">
+        <span class="rc-os" title="${escHtml(r.os || '')}">${RC_OS_ICON[(r.os || '').toLowerCase()] || '💻'}</span>
+        <span class="rc-name">${escHtml(r.name)}</span>
+        <button class="admin-icon-btn" onclick="openRemoteModal(rcData.find(x=>x._id==='${r._id}'))" title="Upraviť">✎</button>
+      </div>
+      <div class="rc-id-row">
+        <code class="rc-idc" title="RustDesk ID">${escHtml(rcFmtId(r.rustdeskId))}</code>
+        <button class="btn-sm" onclick="rcCopy('${r._id}', 'id')" title="Kopírovať ID">⧉ ID</button>
+        ${r.password ? `<button class="btn-sm" onclick="rcCopy('${r._id}', 'pass')" title="Kopírovať heslo">⧉ Heslo</button>` : ''}
+        <a class="btn-primary btn-sm rc-connect" href="rustdesk://connection/new/${encodeURIComponent(cleanId)}" title="Otvoriť v RustDesk klientovi">🖥 Pripojiť</a>
+      </div>
+      <div class="rc-meta">
+        ${r.location ? `<span>📍 ${escHtml(r.location)}</span>` : ''}
+        ${r.user ? `<span>👤 ${escHtml(r.user)}</span>` : ''}
+        ${r.ip ? `<span title="Lokálna IP">🌐 <code>${escHtml(r.ip)}</code></span>` : ''}
+      </div>
+      ${(r.tags || []).length ? `<div class="rc-tags">${r.tags.map(t => `<span class="ph-mini-tag">#${escHtml(t)}</span>`).join('')}</div>` : ''}
+      ${r.note ? `<div class="rc-note">${escHtml(r.note)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// Skopíruj ID / heslo PC (bezpečne cez ID záznamu — heslá môžu obsahovať ' a \)
+function rcCopy(id, what) {
+  const r = rcData.find(x => x._id === id); if (!r) return;
+  if (what === 'pass') phCopy(r.password || '', 'Heslo skopírované.');
+  else phCopy(String(r.rustdeskId || '').replace(/\s+/g, ''), 'RustDesk ID skopírované.');
+}
+
+function openRemoteModal(r = null) {
+  const e = !!r;
+  document.getElementById('rcModalTitle').textContent = e ? 'Upraviť PC' : 'Nové vzdialené PC';
+  document.getElementById('rcId').value = e ? r._id : '';
+  document.getElementById('rcName').value = e ? (r.name || '') : '';
+  document.getElementById('rcRustId').value = e ? (r.rustdeskId || '') : '';
+  document.getElementById('rcPass').value = e ? (r.password || '') : '';
+  document.getElementById('rcLocation').value = e ? (r.location || '') : '';
+  document.getElementById('rcUser').value = e ? (r.user || '') : '';
+  document.getElementById('rcOs').value = e ? (r.os || 'Windows') : 'Windows';
+  document.getElementById('rcIp').value = e ? (r.ip || '') : '';
+  document.getElementById('rcTags').value = e ? (r.tags || []).join(', ') : '';
+  document.getElementById('rcNote').value = e ? (r.note || '') : '';
+  document.getElementById('rcDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('remoteModal').classList.remove('hidden');
+  modalSnapshot('remoteModal');
+}
+function closeRemoteModal() { modalGuardClose('remoteModal'); }
+
+async function saveRemote() {
+  const id = document.getElementById('rcId').value;
+  const name = document.getElementById('rcName').value.trim();
+  const rustdeskId = document.getElementById('rcRustId').value.trim();
+  if (!name || !rustdeskId) { toast('Zadaj názov PC a RustDesk ID.', 'warn'); return; }
+  const body = {
+    name, rustdeskId,
+    password: document.getElementById('rcPass').value,
+    location: document.getElementById('rcLocation').value.trim(),
+    user: document.getElementById('rcUser').value.trim(),
+    os: document.getElementById('rcOs').value,
+    ip: document.getElementById('rcIp').value.trim(),
+    tags: document.getElementById('rcTags').value.split(',').map(t => t.trim()).filter(Boolean),
+    note: document.getElementById('rcNote').value.trim()
+  };
+  try {
+    const r = await fetch(id ? '/api/remote/' + id : '/api/remote', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error((await r.json()).error || 'Chyba');
+    delete _modalSnap['remoteModal'];
+    document.getElementById('remoteModal').classList.add('hidden');
+    toast(id ? 'PC upravené.' : 'PC pridané.', 'success');
+    loadRemote();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function deleteRemote(id) {
+  if (!id || !await uiConfirm('Naozaj odstrániť PC zo zoznamu?')) return;
+  try {
+    await fetch('/api/remote/' + id, { method: 'DELETE' });
+    delete _modalSnap['remoteModal'];
+    document.getElementById('remoteModal').classList.add('hidden');
+    toast('PC odstránené.', 'success');
+    loadRemote();
+  } catch { toast('Chyba.', 'error'); }
 }
 
 // Štart: over prihlásenie, potom spusti appku
