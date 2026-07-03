@@ -2798,6 +2798,33 @@
     <div class="ph-lb-panel" id="phLbPanel"></div>
   </div>
 
+  <!-- Editor obrázkov — anotácie pre postupy (kruhy, rámčeky, šípky, popisy, bubliny) -->
+  <div id="imgAnnotatorModal" class="ann-modal hidden">
+    <div class="ann-topbar">
+      <div class="ann-title">✎ Editor obrázka <span class="ann-sub">kruhy · rámčeky · šípky · popisy · bubliny</span></div>
+      <div class="ann-top-actions">
+        <button class="btn-secondary" onclick="annCancel()">Vložiť bez úprav</button>
+        <button class="btn-primary" id="annSaveBtn" onclick="annSave()">💾 Uložiť anotácie</button>
+        <button class="ann-x" onclick="annCancel()" title="Zavrieť (Esc)">✕</button>
+      </div>
+    </div>
+    <div class="ann-body">
+      <div class="ann-tools">
+        <button class="ann-tool active" data-tool="select" onclick="annSetTool('select')" title="Výber / posun">🖐</button>
+        <button class="ann-tool" data-tool="circle" onclick="annSetTool('circle')" title="Kruh">◯</button>
+        <button class="ann-tool" data-tool="rect" onclick="annSetTool('rect')" title="Rámček">▭</button>
+        <button class="ann-tool" data-tool="arrow" onclick="annSetTool('arrow')" title="Šípka">↗</button>
+        <button class="ann-tool" data-tool="text" onclick="annSetTool('text')" title="Popis / text">T</button>
+        <button class="ann-tool" data-tool="bubble" onclick="annSetTool('bubble')" title="Bublina">💬</button>
+        <div class="ann-tsep"></div>
+        <button class="ann-tool" onclick="annUndo()" title="Späť (Ctrl+Z)">↶</button>
+        <button class="ann-tool" onclick="annClear()" title="Vymazať všetko">🧹</button>
+      </div>
+      <div class="ann-stage-wrap"><svg id="annSvg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"></svg></div>
+      <div class="ann-panel" id="annPanel"></div>
+    </div>
+  </div>
+
   <!-- Modal: GitHub projekt -->
   <div id="ghModal" class="modal hidden">
     <div class="modal-backdrop" onclick="closeGhModal()"></div>

@@ -2618,12 +2618,18 @@ let stepEditors = {};
 let stepSeq = 0;
 let currentDetailProcedure = null;
 
-// Vyber obrázok z disku a nahraj → vráti URL (alebo null)
+// Vyber obrázok z disku, nahraj a otvor editor anotácií → vráti URL (alebo null)
 function pickImageUpload() {
   return new Promise(resolve => {
     const input = document.createElement('input');
     input.type = 'file'; input.accept = 'image/*';
-    input.onchange = async () => { const f = input.files[0]; if (!f) { resolve(null); return; } resolve((await uploadImage(f)) || null); };
+    input.onchange = async () => {
+      const f = input.files[0]; if (!f) { resolve(null); return; }
+      const url = await uploadImage(f);
+      if (!url) { resolve(null); return; }
+      const finalUrl = await openImageAnnotator(url);  // kruhy/rámčeky/popisy/bubliny (dá sa preskočiť)
+      resolve(finalUrl || url);
+    };
     input.click();
   });
 }
@@ -5830,7 +5836,7 @@ function renderPtImages() {
   el.innerHTML = '';
   ptImagesData.forEach((img, i) => {
     const d = document.createElement('div'); d.className = 'image-preview-item';
-    d.innerHTML = `<img src="${escHtml(img.url)}" alt=""><button class="image-preview-remove" onclick="removePtImage(${i})">✕</button>`;
+    d.innerHTML = `<img src="${escHtml(img.url)}" alt=""><button class="image-preview-annotate" onclick="reAnnotatePtImage(${i})" title="Anotovať (kruhy, popisy, bubliny)">✎</button><button class="image-preview-remove" onclick="removePtImage(${i})">✕</button>`;
     el.appendChild(d);
   });
 }
@@ -8625,7 +8631,7 @@ function addOrderRow(o = {}) {
 function renderDsImages() {
   const el = document.getElementById('dsImages'); if (!el) return;
   el.innerHTML = '';
-  dsImagesData.forEach((img, i) => { const d = document.createElement('div'); d.className = 'image-preview-item'; d.innerHTML = `<img src="${escHtml(img.url)}" alt=""><button class="image-preview-remove" onclick="removeDsImage(${i})">✕</button>`; el.appendChild(d); });
+  dsImagesData.forEach((img, i) => { const d = document.createElement('div'); d.className = 'image-preview-item'; d.innerHTML = `<img src="${escHtml(img.url)}" alt=""><button class="image-preview-annotate" onclick="reAnnotateDsImage(${i})" title="Anotovať (kruhy, popisy, bubliny)">✎</button><button class="image-preview-remove" onclick="removeDsImage(${i})">✕</button>`; el.appendChild(d); });
 }
 function removeDsImage(i) { dsImagesData.splice(i, 1); renderDsImages(); }
 async function addDatasheetImage() { const url = await pickImageUpload(); if (url) { dsImagesData.push({ url, caption: '' }); renderDsImages(); } }
@@ -10387,6 +10393,305 @@ async function deleteRemote(id) {
     loadRemote();
   } catch { toast('Chyba.', 'error'); }
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EDITOR OBRÁZKOV — anotácie pre pracovné postupy
+// (kruhy, rámčeky, šípky, popisy, bubliny → zapečené do PNG)
+// ══════════════════════════════════════════════════════════════════════════════
+let _ann = null;
+let _annMeasure = null;
+function annMeasureCtx() { if (!_annMeasure) _annMeasure = document.createElement('canvas').getContext('2d'); return _annMeasure; }
+function annStage() { return document.getElementById('annSvg'); }
+function annEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+// Otvor editor nad obrázkom → Promise s URL výsledku (anotovaný alebo pôvodný)
+function openImageAnnotator(srcUrl) {
+  return new Promise(resolve => {
+    if (!srcUrl) { resolve(null); return; }
+    const img = new Image();
+    img.onload = () => {
+      const w = img.naturalWidth || img.width || 800, h = img.naturalHeight || img.height || 600;
+      _ann = {
+        url: srcUrl, img, natW: w, natH: h, shapes: [], sel: null, tool: 'select',
+        color: '#ef4444', sw: Math.max(3, Math.round(w / 260)), fontSize: Math.max(18, Math.round(w / 26)),
+        drag: null, undo: [], resolve
+      };
+      document.getElementById('imgAnnotatorModal').classList.remove('hidden');
+      const svg = annStage();
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      svg.onpointerdown = annDown; svg.onpointermove = annMove; svg.onpointerup = annUp;
+      document.addEventListener('keydown', annKeys);
+      annSetTool('select'); annRender(); annPanel();
+    };
+    img.onerror = () => resolve(srcUrl);
+    img.src = srcUrl;
+  });
+}
+
+function annClose(url) {
+  document.getElementById('imgAnnotatorModal').classList.add('hidden');
+  document.removeEventListener('keydown', annKeys);
+  const r = _ann && _ann.resolve; _ann = null;
+  if (r) r(url);
+}
+function annCancel() { annClose(_ann ? _ann.url : null); }
+
+// ── Nástroje ──
+function annSetTool(t) { if (!_ann) return; _ann.tool = t; if (t !== 'select') _ann.sel = null; annSyncTools(); annRender(); annPanel(); }
+function annSyncTools() { document.querySelectorAll('#imgAnnotatorModal .ann-tool[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === _ann.tool)); }
+
+// ── Undo ──
+function annPush() { _ann.undo.push(JSON.stringify(_ann.shapes)); if (_ann.undo.length > 60) _ann.undo.shift(); }
+function annUndo() { if (_ann && _ann.undo.length) { _ann.shapes = JSON.parse(_ann.undo.pop()); _ann.sel = null; annRender(); annPanel(); } }
+function annClear() { if (!_ann.shapes.length) return; annPush(); _ann.shapes = []; _ann.sel = null; annRender(); annPanel(); }
+function annDeleteSel() { if (_ann && _ann.sel != null) { annPush(); _ann.shapes.splice(_ann.sel, 1); _ann.sel = null; annRender(); annPanel(); } }
+
+function annKeys(e) {
+  if (!_ann) return;
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+  if (e.key === 'Escape') { if (!typing) annCancel(); return; }
+  if (!typing && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); annDeleteSel(); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); annUndo(); }
+}
+
+// ── Geometria ──
+function annCoord(e) {
+  const svg = annStage(), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const m = svg.getScreenCTM(); if (!m) return { x: 0, y: 0 };
+  const q = pt.matrixTransform(m.inverse()); return { x: q.x, y: q.y };
+}
+function annArrowHead(s) {
+  const ang = Math.atan2(s.y2 - s.y1, s.x2 - s.x1), len = Math.max(s.sw * 3.4, 14);
+  const a1 = ang + Math.PI - 0.42, a2 = ang + Math.PI + 0.42;
+  return `${s.x2},${s.y2} ${s.x2 + Math.cos(a1) * len},${s.y2 + Math.sin(a1) * len} ${s.x2 + Math.cos(a2) * len},${s.y2 + Math.sin(a2) * len}`;
+}
+function annWrap(text, maxW, fontPx) {
+  const ctx = annMeasureCtx(); ctx.font = `${fontPx}px sans-serif`; const out = [];
+  String(text || '').split('\n').forEach(par => {
+    const words = par.split(/\s+/); let line = '';
+    words.forEach(w => {
+      const test = line ? line + ' ' + w : w;
+      if (ctx.measureText(test).width > maxW && line) { out.push(line); line = w; } else line = test;
+    });
+    out.push(line);
+  });
+  return out.length ? out : [''];
+}
+function annTextSize(s) {
+  const ctx = annMeasureCtx(); ctx.font = `700 ${s.size}px sans-serif`;
+  const lines = annWrap(s.text, _ann.natW - s.x - 10, s.size); let w = 0;
+  lines.forEach(l => w = Math.max(w, ctx.measureText(l).width));
+  return { w: w || 20, h: lines.length * s.size * 1.2 };
+}
+function annBBox(s) {
+  if (s.type === 'circle') return { x: s.cx - s.rx, y: s.cy - s.ry, w: s.rx * 2, h: s.ry * 2 };
+  if (s.type === 'rect' || s.type === 'bubble') return { x: s.x, y: s.y, w: s.w, h: s.h };
+  if (s.type === 'arrow') return { x: Math.min(s.x1, s.x2), y: Math.min(s.y1, s.y2), w: Math.abs(s.x2 - s.x1) || 1, h: Math.abs(s.y2 - s.y1) || 1 };
+  if (s.type === 'text') { const t = annTextSize(s); return { x: s.x, y: s.y, w: t.w, h: t.h }; }
+  return { x: 0, y: 0, w: 0, h: 0 };
+}
+
+// ── Vykreslenie do SVG ──
+function annShapeSvg(s, i) {
+  if (s.type === 'circle')
+    return `<ellipse data-idx="${i}" cx="${s.cx}" cy="${s.cy}" rx="${Math.max(1, s.rx)}" ry="${Math.max(1, s.ry)}" fill="transparent" stroke="${s.color}" stroke-width="${s.sw}"/>`;
+  if (s.type === 'rect')
+    return `<rect data-idx="${i}" x="${s.x}" y="${s.y}" width="${Math.max(1, s.w)}" height="${Math.max(1, s.h)}" rx="${Math.min(s.w, s.h) * 0.03}" fill="transparent" stroke="${s.color}" stroke-width="${s.sw}"/>`;
+  if (s.type === 'arrow')
+    return `<line data-idx="${i}" x1="${s.x1}" y1="${s.y1}" x2="${s.x2}" y2="${s.y2}" stroke="transparent" stroke-width="${Math.max(s.sw * 3, 18)}"/>`
+      + `<line data-idx="${i}" x1="${s.x1}" y1="${s.y1}" x2="${s.x2}" y2="${s.y2}" stroke="${s.color}" stroke-width="${s.sw}" stroke-linecap="round"/>`
+      + `<polygon data-idx="${i}" points="${annArrowHead(s)}" fill="${s.color}"/>`;
+  if (s.type === 'text') {
+    const lines = annWrap(s.text, _ann.natW - s.x - 10, s.size);
+    const tsp = lines.map((ln, li) => `<tspan x="${s.x}" dy="${li === 0 ? 0 : s.size * 1.2}">${annEsc(ln)}</tspan>`).join('');
+    return `<text data-idx="${i}" x="${s.x}" y="${s.y + s.size * 0.86}" font-family="sans-serif" font-size="${s.size}" font-weight="700" fill="${s.color}" stroke="#ffffff" stroke-width="${s.size * 0.16}" paint-order="stroke" stroke-linejoin="round">${tsp}</text>`;
+  }
+  if (s.type === 'bubble') {
+    const r = Math.min(s.w, s.h) * 0.14;
+    const tail = `${s.x + s.w * 0.24},${s.y + s.h} ${s.x + s.w * 0.44},${s.y + s.h} ${s.tailX},${s.tailY}`;
+    const lines = annWrap(s.text, s.w - 18, s.size);
+    const tsp = lines.map((ln, li) => `<tspan x="${s.x + 10}" dy="${li === 0 ? s.size : s.size * 1.2}">${annEsc(ln)}</tspan>`).join('');
+    return `<polygon data-idx="${i}" points="${tail}" fill="#ffffff" stroke="${s.color}" stroke-width="${s.sw}" stroke-linejoin="round"/>`
+      + `<rect data-idx="${i}" x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" rx="${r}" fill="#ffffff" stroke="${s.color}" stroke-width="${s.sw}"/>`
+      + `<text data-idx="${i}" x="${s.x + 10}" y="${s.y + 4}" font-family="sans-serif" font-size="${s.size}" fill="#111827">${tsp}</text>`;
+  }
+  return '';
+}
+function annHandle(x, y, name, hs) {
+  return `<rect data-handle="${name}" x="${x - hs}" y="${y - hs}" width="${hs * 2}" height="${hs * 2}" rx="${hs * 0.35}" fill="#22d3ee" stroke="#0a0f20" stroke-width="${hs * 0.22}"/>`;
+}
+function annHandles() {
+  if (_ann.sel == null) return '';
+  const s = _ann.shapes[_ann.sel]; if (!s) return '';
+  const hs = Math.max(6, _ann.natW / 95), box = annBBox(s);
+  let out = `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" fill="none" stroke="#22d3ee" stroke-width="${hs * 0.22}" stroke-dasharray="${hs} ${hs * 0.6}" pointer-events="none"/>`;
+  if (s.type === 'arrow') out += annHandle(s.x1, s.y1, 'p1', hs) + annHandle(s.x2, s.y2, 'p2', hs);
+  else if (s.type !== 'text') { out += annHandle(box.x + box.w, box.y + box.h, 'br', hs); if (s.type === 'bubble') out += annHandle(s.tailX, s.tailY, 'tail', hs); }
+  return out;
+}
+function annRender() {
+  const svg = annStage(); if (!svg || !_ann) return;
+  let inner = `<image href="${annEsc(_ann.url)}" xlink:href="${annEsc(_ann.url)}" x="0" y="0" width="${_ann.natW}" height="${_ann.natH}" preserveAspectRatio="none"/>`;
+  _ann.shapes.forEach((s, i) => inner += annShapeSvg(s, i));
+  inner += annHandles();
+  svg.innerHTML = inner;
+}
+
+// ── Interakcia ──
+function annDown(e) {
+  if (!_ann) return; e.preventDefault();
+  const p = annCoord(e);
+  const handle = e.target && e.target.getAttribute && e.target.getAttribute('data-handle');
+  if (_ann.tool === 'select') {
+    if (handle) { annPush(); _ann.drag = { mode: 'handle', handle }; annStage().setPointerCapture(e.pointerId); return; }
+    const idxAttr = e.target && e.target.getAttribute && e.target.getAttribute('data-idx');
+    if (idxAttr != null) {
+      _ann.sel = +idxAttr; annPush();
+      _ann.drag = { mode: 'move', start: p, orig: JSON.parse(JSON.stringify(_ann.shapes[_ann.sel])) };
+      annStage().setPointerCapture(e.pointerId); annRender(); annPanel(); return;
+    }
+    _ann.sel = null; annRender(); annPanel(); return;
+  }
+  annPush();
+  const c = _ann.color, sw = _ann.sw, size = _ann.fontSize; let s;
+  if (_ann.tool === 'circle') s = { type: 'circle', cx: p.x, cy: p.y, rx: 1, ry: 1, color: c, sw };
+  else if (_ann.tool === 'rect') s = { type: 'rect', x: p.x, y: p.y, w: 1, h: 1, color: c, sw };
+  else if (_ann.tool === 'arrow') s = { type: 'arrow', x1: p.x, y1: p.y, x2: p.x, y2: p.y, color: c, sw };
+  else if (_ann.tool === 'text') s = { type: 'text', x: p.x, y: p.y, text: 'Popis', color: c, size };
+  else if (_ann.tool === 'bubble') s = { type: 'bubble', x: p.x, y: p.y, w: Math.max(80, _ann.natW * 0.16), h: Math.max(50, _ann.natH * 0.1), tailX: p.x - _ann.natW * 0.04, tailY: p.y + _ann.natH * 0.18, text: 'Bublina', color: c, sw, size };
+  _ann.shapes.push(s); _ann.sel = _ann.shapes.length - 1;
+  if (_ann.tool === 'text' || _ann.tool === 'bubble') { _ann.tool = 'select'; annSyncTools(); annRender(); annPanel(true); }
+  else { _ann.drag = { mode: 'create', start: p }; annStage().setPointerCapture(e.pointerId); annRender(); }
+}
+function annMove(e) {
+  if (!_ann || !_ann.drag) return;
+  const p = annCoord(e), d = _ann.drag, s = _ann.shapes[_ann.sel];
+  if (!s) return;
+  if (d.mode === 'create') {
+    if (s.type === 'circle') { s.cx = (d.start.x + p.x) / 2; s.cy = (d.start.y + p.y) / 2; s.rx = Math.abs(p.x - d.start.x) / 2; s.ry = Math.abs(p.y - d.start.y) / 2; }
+    else if (s.type === 'rect') { s.x = Math.min(d.start.x, p.x); s.y = Math.min(d.start.y, p.y); s.w = Math.abs(p.x - d.start.x); s.h = Math.abs(p.y - d.start.y); }
+    else if (s.type === 'arrow') { s.x2 = p.x; s.y2 = p.y; }
+  } else if (d.mode === 'move') {
+    const dx = p.x - d.start.x, dy = p.y - d.start.y, o = d.orig;
+    if (s.type === 'circle') { s.cx = o.cx + dx; s.cy = o.cy + dy; }
+    else if (s.type === 'rect') { s.x = o.x + dx; s.y = o.y + dy; }
+    else if (s.type === 'arrow') { s.x1 = o.x1 + dx; s.y1 = o.y1 + dy; s.x2 = o.x2 + dx; s.y2 = o.y2 + dy; }
+    else if (s.type === 'text') { s.x = o.x + dx; s.y = o.y + dy; }
+    else if (s.type === 'bubble') { s.x = o.x + dx; s.y = o.y + dy; s.tailX = o.tailX + dx; s.tailY = o.tailY + dy; }
+  } else if (d.mode === 'handle') {
+    if (d.handle === 'p1') { s.x1 = p.x; s.y1 = p.y; }
+    else if (d.handle === 'p2') { s.x2 = p.x; s.y2 = p.y; }
+    else if (d.handle === 'tail') { s.tailX = p.x; s.tailY = p.y; }
+    else if (d.handle === 'br') {
+      if (s.type === 'circle') { s.rx = Math.max(4, Math.abs(p.x - s.cx)); s.ry = Math.max(4, Math.abs(p.y - s.cy)); }
+      else { s.w = Math.max(12, p.x - s.x); s.h = Math.max(12, p.y - s.y); }
+    }
+  }
+  annRender();
+}
+function annUp(e) {
+  if (!_ann || !_ann.drag) return;
+  if (_ann.drag.mode === 'create') {
+    const s = _ann.shapes[_ann.sel];
+    const tiny = (s.type === 'circle' && s.rx < 3 && s.ry < 3) || (s.type === 'rect' && s.w < 5 && s.h < 5) || (s.type === 'arrow' && Math.hypot(s.x2 - s.x1, s.y2 - s.y1) < 8);
+    if (tiny) { _ann.shapes.splice(_ann.sel, 1); _ann.sel = null; _ann.undo.pop(); }
+    else { _ann.tool = 'select'; annSyncTools(); }
+    annRender(); annPanel();
+  }
+  _ann.drag = null;
+}
+
+// ── Panel vlastností ──
+const ANN_PALETTE = ['#ef4444', '#f59e0b', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#111827', '#ffffff'];
+function annPanel(focusText) {
+  const el = document.getElementById('annPanel'); if (!el) return;
+  const s = _ann.sel != null ? _ann.shapes[_ann.sel] : null;
+  const curColor = s ? s.color : _ann.color;
+  let html = `<div class="ann-p-sec"><div class="ann-p-lbl">Farba</div><div class="ann-swatches">`;
+  ANN_PALETTE.forEach(c => html += `<button class="ann-sw ${curColor === c ? 'active' : ''}" style="background:${c}" onclick="annSetColor('${c}')" title="${c}"></button>`);
+  html += `</div></div>`;
+  const swVal = s && s.sw != null ? s.sw : _ann.sw;
+  const showSw = !s || s.sw != null || ['circle', 'rect', 'arrow', 'bubble'].includes(_ann.tool);
+  if (showSw) html += `<div class="ann-p-sec"><div class="ann-p-lbl">Hrúbka čiary · <b id="annSwVal">${swVal}</b></div><input type="range" min="1" max="60" value="${swVal}" oninput="annSetSw(this.value)"></div>`;
+  const showFont = (s && (s.type === 'text' || s.type === 'bubble')) || _ann.tool === 'text' || _ann.tool === 'bubble';
+  if (showFont) { const fs = s && s.size != null ? s.size : _ann.fontSize; html += `<div class="ann-p-sec"><div class="ann-p-lbl">Veľkosť písma · <b id="annFsVal">${fs}</b></div><input type="range" min="10" max="160" value="${fs}" oninput="annSetFont(this.value)"></div>`; }
+  if (s && (s.type === 'text' || s.type === 'bubble')) html += `<div class="ann-p-sec"><div class="ann-p-lbl">Text</div><textarea id="annTextInp" rows="3" oninput="annSetText(this.value)">${annEsc(s.text)}</textarea></div>`;
+  if (s) html += `<button class="btn-sm ann-del" onclick="annDeleteSel()">🗑 Zmazať objekt</button>`;
+  html += `<div class="ann-p-hint">${s ? 'Ťahaj objekt myšou · tyrkysový uholník mení veľkosť · Del zmaže.' : 'Vyber nástroj vľavo a ťahaj po obrázku. Klikni na objekt pre úpravu.'}</div>`;
+  el.innerHTML = html;
+  if (focusText) { const t = document.getElementById('annTextInp'); if (t) { t.focus(); t.select(); } }
+}
+function annSetColor(c) { if (_ann.sel != null) { annPush(); _ann.shapes[_ann.sel].color = c; } _ann.color = c; annRender(); annPanel(); }
+function annSetSw(v) { v = +v; if (_ann.sel != null && _ann.shapes[_ann.sel].sw != null) _ann.shapes[_ann.sel].sw = v; _ann.sw = v; const b = document.getElementById('annSwVal'); if (b) b.textContent = v; annRender(); }
+function annSetFont(v) { v = +v; if (_ann.sel != null && _ann.shapes[_ann.sel].size != null) _ann.shapes[_ann.sel].size = v; _ann.fontSize = v; const b = document.getElementById('annFsVal'); if (b) b.textContent = v; annRender(); }
+function annSetText(v) { if (_ann.sel != null) { _ann.shapes[_ann.sel].text = v; annRender(); } }
+
+// ── Export: zapečenie anotácií do PNG cez canvas ──
+function annRoundRect(ctx, x, y, w, h, r) {
+  r = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+  ctx.beginPath(); ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function annCanvasText(ctx, s) {
+  const size = s.size, inB = !!s.inBubble;
+  ctx.font = `${inB ? '' : '700 '}${size}px sans-serif`; ctx.textBaseline = 'top'; ctx.lineJoin = 'round';
+  const wrapW = s.wrapW != null ? s.wrapW : (_ann.natW - s.x - 10);
+  const lines = annWrap(s.text, wrapW, size);
+  let y = inB ? s.y + 6 : s.y;
+  lines.forEach(ln => {
+    if (!inB) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = size * 0.32; ctx.strokeText(ln, s.x, y); }
+    ctx.fillStyle = s.color; ctx.fillText(ln, s.x, y); y += size * 1.2;
+  });
+}
+function annDrawCanvas(ctx, s) {
+  ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  if (s.type === 'circle') { ctx.strokeStyle = s.color; ctx.lineWidth = s.sw; ctx.beginPath(); ctx.ellipse(s.cx, s.cy, Math.max(1, s.rx), Math.max(1, s.ry), 0, 0, Math.PI * 2); ctx.stroke(); }
+  else if (s.type === 'rect') { ctx.strokeStyle = s.color; ctx.lineWidth = s.sw; annRoundRect(ctx, s.x, s.y, s.w, s.h, Math.min(s.w, s.h) * 0.03); ctx.stroke(); }
+  else if (s.type === 'arrow') {
+    ctx.strokeStyle = s.color; ctx.fillStyle = s.color; ctx.lineWidth = s.sw;
+    ctx.beginPath(); ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2); ctx.stroke();
+    const pts = annArrowHead(s).split(' ').map(p => p.split(',').map(Number));
+    ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); ctx.lineTo(pts[1][0], pts[1][1]); ctx.lineTo(pts[2][0], pts[2][1]); ctx.closePath(); ctx.fill();
+  }
+  else if (s.type === 'text') annCanvasText(ctx, s);
+  else if (s.type === 'bubble') {
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = s.color; ctx.lineWidth = s.sw;
+    ctx.beginPath(); ctx.moveTo(s.x + s.w * 0.24, s.y + s.h); ctx.lineTo(s.x + s.w * 0.44, s.y + s.h); ctx.lineTo(s.tailX, s.tailY); ctx.closePath(); ctx.fill(); ctx.stroke();
+    annRoundRect(ctx, s.x, s.y, s.w, s.h, Math.min(s.w, s.h) * 0.14); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.strokeStyle = s.color; ctx.lineWidth = s.sw; ctx.stroke();
+    annCanvasText(ctx, { x: s.x + 10, y: s.y, text: s.text, size: s.size, color: '#111827', wrapW: s.w - 18, inBubble: true });
+  }
+  ctx.restore();
+}
+function annFlatten() {
+  return new Promise((resolve, reject) => {
+    const c = document.createElement('canvas'); c.width = _ann.natW; c.height = _ann.natH;
+    const ctx = c.getContext('2d');
+    try { ctx.drawImage(_ann.img, 0, 0, _ann.natW, _ann.natH); } catch (e) { return reject(e); }
+    _ann.shapes.forEach(s => annDrawCanvas(ctx, s));
+    c.toBlob(b => b ? resolve(b) : reject(new Error('blob')), 'image/png');
+  });
+}
+async function annSave() {
+  if (!_ann.shapes.length) { annClose(_ann.url); return; }
+  const btn = document.getElementById('annSaveBtn'); const old = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Ukladám…';
+  try {
+    const blob = await annFlatten();
+    const file = new File([blob], 'anotacia-' + Date.now() + '.png', { type: 'image/png' });
+    const url = await uploadImage(file);
+    annClose(url || _ann.url);
+    toast('Anotovaný obrázok uložený.', 'success');
+  } catch (e) {
+    btn.disabled = false; btn.textContent = old;
+    toast('Uloženie zlyhalo — skús znova.', 'error');
+  }
+}
+
+// Otvor editor nad existujúcim obrázkom v zozname (datasheety/prototypy) a nahraď URL
+async function reAnnotateDsImage(i) { if (!dsImagesData[i]) return; const url = await openImageAnnotator(dsImagesData[i].url); if (url) { dsImagesData[i].url = url; renderDsImages(); } }
+async function reAnnotatePtImage(i) { if (!ptImagesData[i]) return; const url = await openImageAnnotator(ptImagesData[i].url); if (url) { ptImagesData[i].url = url; renderPtImages(); } }
 
 // Štart: over prihlásenie, potom spusti appku
 bootstrap();
