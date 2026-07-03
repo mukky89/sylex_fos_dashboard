@@ -5963,6 +5963,24 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.98.0', date: '3. 7. 2026', tag: 'fix', items: [
+    'Changelog: doplnené chýbajúce záznamy o novinkách za verzie 1.94–1.97 (predtým sa dvíhala len verzia v hlavičke, ale história zmien na tejto stránke sa neaktualizovala).',
+  ] },
+  { v: '1.97.0', date: '3. 7. 2026', tag: 'feat', items: [
+    'Pracovné postupy: pri vkladaní obrázka si vieš vybrať fotku priamo z galérie modulu Fotky (hľadanie + filter podľa kategórie/typu produktu) alebo nahrať novú z disku. Rovnaký výber platí aj pre datasheety a prototypy.',
+  ] },
+  { v: '1.96.0', date: '3. 7. 2026', tag: 'feat', items: [
+    'Editor obrázkov pre postupy: do fotky vieš zakresliť kruhy, rámčeky, šípky, textové popisy a bubliny; nastaviteľná farba, hrúbka čiary a veľkosť písma. Anotácie sa zapečú priamo do obrázka.',
+    'Editor sa otvorí pri vkladaní obrázka (dá sa preskočiť tlačidlom „Vložiť bez úprav") a cez ✎ pri existujúcich obrázkoch v datasheetoch a prototypoch.',
+  ] },
+  { v: '1.95.0', date: '3. 7. 2026', tag: 'fix', items: [
+    'Oprava vzhľadu: stránky Fotky, GitHub a RustDesk mali nečitateľné svetlé texty na svetlom pozadí — zjednotené na tmavý vzhľad ako ostatné moduly.',
+  ] },
+  { v: '1.94.0', date: '3. 7. 2026', tag: 'major', items: [
+    'Nový modul Fotky z výroby: galéria s kategóriami (typy produktov), tagmi, menom autora, konverziou fotiek (zmenšenie / JPEG / WebP), odkazom na sieťový folder a zdieľaním fotky.',
+    'Nový modul GitHub: evidencia projektov/repozitárov tímu s odkazmi, hlavným jazykom, stavom a tagmi.',
+    'Nový modul RustDesk: zoznam vzdialených PC s ID/heslom (kopírovanie) a pripojením jedným klikom cez rustdesk:// odkaz.',
+  ] },
   { v: '1.78.0', date: '18. 6. 2026', tag: 'ui', items: [
     'Plánovanie výroby → Zoznam: hlavička skupiny ukazuje „Zákazka č. XXX" a pod ňou „XX QTY" (spolu kusov). Do vnoreného gridu idú teraz aj zákazky s jedinou objednávkou (rovnaký vzhľad). Pod-objednávky sú farebne odlíšené (tyrkysový nádych).',
   ] },
