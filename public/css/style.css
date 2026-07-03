@@ -5114,3 +5114,28 @@ span.gh-name { color: #eef3fa; }
   .ann-tool { width: 38px; height: 38px; font-size: 1rem; }
   .ann-title .ann-sub { display: none; }
 }
+
+/* Výber obrázka — galéria Fotiek v modáli */
+.pk-box { max-width: 880px; width: 92vw; }
+.pk-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.pk-upload { cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; }
+.pk-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.pk-chip {
+  padding: 4px 11px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--card-bg); color: var(--text);
+  font-size: 0.8rem; font-weight: 600;
+}
+.pk-chip:hover { border-color: var(--accent); }
+.pk-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pk-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;
+  max-height: 52vh; overflow-y: auto; padding: 2px;
+}
+.pk-tile {
+  border: 1px solid var(--border); border-radius: 9px; overflow: hidden; cursor: pointer;
+  background: #0d1225; transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.pk-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--accent); }
+.pk-tile img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
+.pk-tile-cap { padding: 5px 7px; font-size: 0.72rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-empty { grid-column: 1/-1; text-align: center; color: var(--text-dim); padding: 30px 16px; font-size: 0.88rem; }

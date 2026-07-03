@@ -2618,20 +2618,79 @@ let stepEditors = {};
 let stepSeq = 0;
 let currentDetailProcedure = null;
 
-// Vyber obrázok z disku, nahraj a otvor editor anotácií → vráti URL (alebo null)
-function pickImageUpload() {
+// ── Výber obrázka: galéria Fotiek + nahratie z disku → potom anotácie ──
+let _photoPicker = null;
+function openPhotoPicker() {
   return new Promise(resolve => {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'image/*';
-    input.onchange = async () => {
-      const f = input.files[0]; if (!f) { resolve(null); return; }
-      const url = await uploadImage(f);
-      if (!url) { resolve(null); return; }
-      const finalUrl = await openImageAnnotator(url);  // kruhy/rámčeky/popisy/bubliny (dá sa preskočiť)
-      resolve(finalUrl || url);
-    };
-    input.click();
+    _photoPicker = { resolve, cat: 'all', photos: [], cats: [] };
+    document.getElementById('photoPickerModal').classList.remove('hidden');
+    const s = document.getElementById('pkSearch'); if (s) s.value = '';
+    document.getElementById('pkGrid').innerHTML = '<div class="pk-empty">Načítavam fotky…</div>';
+    document.getElementById('pkCats').innerHTML = '';
+    photoPickerLoad();
   });
+}
+async function photoPickerLoad() {
+  try {
+    const [cats, list] = await Promise.all([
+      fetch('/api/photos/categories').then(r => r.json()),
+      fetch('/api/photos').then(r => r.json())
+    ]);
+    if (!_photoPicker) return;
+    _photoPicker.cats = Array.isArray(cats) ? cats : [];
+    _photoPicker.photos = Array.isArray(list) ? list : [];
+  } catch { if (_photoPicker) _photoPicker.photos = []; }
+  if (!_photoPicker) return;
+  renderPhotoPickerCats(); renderPhotoPickerGrid();
+}
+function closePhotoPicker(url) {
+  document.getElementById('photoPickerModal').classList.add('hidden');
+  const r = _photoPicker && _photoPicker.resolve; _photoPicker = null;
+  if (r) r(url || null);
+}
+function photoPickerCancel() { closePhotoPicker(null); }
+function photoPickerSetCat(c) { if (!_photoPicker) return; _photoPicker.cat = c; renderPhotoPickerCats(); renderPhotoPickerGrid(); }
+function photoPickerPick(id) { const p = _photoPicker && _photoPicker.photos.find(x => x._id === id); if (p) closePhotoPicker(p.url); }
+async function photoPickerUpload(input) {
+  const f = input.files[0]; if (!f) return;
+  input.value = '';
+  const btnTxt = document.getElementById('pkGrid'); if (btnTxt) btnTxt.innerHTML = '<div class="pk-empty">Nahrávam…</div>';
+  const url = await uploadImage(f);
+  closePhotoPicker(url);
+}
+function pkFiltered() {
+  if (!_photoPicker) return [];
+  const q = (document.getElementById('pkSearch')?.value || '').toLowerCase();
+  return _photoPicker.photos.filter(p => {
+    const catId = p.category?._id || p.category || null;
+    if (_photoPicker.cat === 'none' && catId) return false;
+    if (_photoPicker.cat !== 'all' && _photoPicker.cat !== 'none' && catId !== _photoPicker.cat) return false;
+    if (q) { const hay = [p.title, p.author, p.note, ...(p.tags || []), p.category?.name].filter(Boolean).join(' ').toLowerCase(); if (!hay.includes(q)) return false; }
+    return true;
+  });
+}
+function renderPhotoPickerCats() {
+  const el = document.getElementById('pkCats'); if (!el) return;
+  const chips = [`<button class="pk-chip ${_photoPicker.cat === 'all' ? 'active' : ''}" onclick="photoPickerSetCat('all')">Všetky</button>`];
+  _photoPicker.cats.forEach(c => chips.push(`<button class="pk-chip ${_photoPicker.cat === c._id ? 'active' : ''}" onclick="photoPickerSetCat('${c._id}')">${escHtml(c.icon || '')} ${escHtml(c.name)}</button>`));
+  el.innerHTML = chips.join('');
+}
+function renderPhotoPickerGrid() {
+  const el = document.getElementById('pkGrid'); if (!el) return;
+  const items = pkFiltered();
+  if (!items.length) { el.innerHTML = '<div class="pk-empty">Žiadne fotky — nahraj novú z disku alebo pridaj fotky v module Fotky.</div>'; return; }
+  el.innerHTML = items.map(p => `<div class="pk-tile" onclick="photoPickerPick('${p._id}')" title="${escHtml(p.title || '')}">
+    <img loading="lazy" src="${escHtml(p.url)}" alt="">
+    <div class="pk-tile-cap">${escHtml(p.title || p.originalName || 'Bez názvu')}</div>
+  </div>`).join('');
+}
+
+// Vloženie obrázka: vyber z galérie/disku → anotačný editor → vráti URL (alebo null)
+async function pickImageUpload() {
+  const url = await openPhotoPicker();
+  if (!url) return null;
+  const finalUrl = await openImageAnnotator(url);  // kruhy/rámčeky/popisy/bubliny (dá sa preskočiť)
+  return finalUrl || url;
 }
 
 // Vytvor editor operácie (TipTap, s fallbackom na textarea ak bundle nie je načítaný)

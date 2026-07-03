@@ -2798,6 +2798,25 @@
     <div class="ph-lb-panel" id="phLbPanel"></div>
   </div>
 
+  <!-- Výber obrázka: galéria Fotiek + nahratie z disku -->
+  <div id="photoPickerModal" class="modal hidden" style="z-index:1100">
+    <div class="modal-backdrop" onclick="photoPickerCancel()"></div>
+    <div class="modal-box pk-box">
+      <div class="modal-header"><h2>Vložiť obrázok</h2><button class="modal-close" onclick="photoPickerCancel()">✕</button></div>
+      <div class="modal-body">
+        <div class="pk-toolbar">
+          <div class="proc-search-wrap" style="margin:0;flex:1">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="pkSearch" placeholder="Hľadať fotku z výroby..." oninput="renderPhotoPickerGrid()" autocomplete="off">
+          </div>
+          <label class="btn-primary pk-upload">⬆ Nahrať z disku<input type="file" accept="image/*" style="display:none" onchange="photoPickerUpload(this)"></label>
+        </div>
+        <div id="pkCats" class="pk-chips"></div>
+        <div id="pkGrid" class="pk-grid"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Editor obrázkov — anotácie pre postupy (kruhy, rámčeky, šípky, popisy, bubliny) -->
   <div id="imgAnnotatorModal" class="ann-modal hidden">
     <div class="ann-topbar">
