@@ -2421,8 +2421,8 @@ function renderCalTimeGrid(vp, days) {
       const w = 100 / it.cols, left = it.lane * w, ev = it.ev, ref = ev._ref || ev, ext = ref.external;
       const conflict = it.cols > 1;
       const sn = calEvSurnames(ev);
-      // 1. riadok: čas + názov (názov sa zalamuje po slovách), pod tým meno používateľa
-      const inner = `<div class="ctg-ev-line"><span class="ctg-ev-time">${escHtml(ev.time)}</span><span class="ctg-ev-title">${escHtml(ev.title)}</span></div>${sn ? `<span class="ctg-ev-owner">${escHtml(sn)}</span>` : ''}`;
+      // pod seba: čas, popis (zalomí sa po slovách), meno používateľa
+      const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span><span class="ctg-ev-title">${escHtml(ev.title)}</span>${sn ? `<span class="ctg-ev-owner">${escHtml(sn)}</span>` : ''}`;
       const cls = `cal-ev ctg-ev${ext ? ' cal-ev-ext' : ''}${conflict ? ' ctg-ev-conflict' : ''}`;
       const ds = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
       return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ext ? '#7c3aed' : '#00d4ff'))};top:${top}px;min-height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${conflict ? '⚠ Prekryv · ' : ''}${calEvTip(ev)}">${conflict ? '<span class="ctg-conf">⚠</span>' : ''}${inner}</div>`;
@@ -6021,6 +6021,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.5.2', date: '6. 7. 2026', tag: 'fix', items: [
+    'Kalendár (týždeň/deň): udalosť má obsah pod sebou v troch riadkoch — čas, popis (zalomí sa po slovách), meno používateľa.',
+    'Opravený vizuálny artefakt „preškrtnutého času" — hodinová čiara mriežky sa už nekreslí cez text udalosti (udalosti sú nad mriežkou).',
+  ] },
   { v: '2.5.1', date: '6. 7. 2026', tag: 'fix', items: [
     'Plánovanie výroby: doplnené tlačidlo „🎲 Ukážkové dáta" v hlavičke stránky (predtým funkcia existovala, ale chýbalo tlačidlo na jej spustenie).',
   ] },
