@@ -28,16 +28,22 @@ async function seedProduction() {
   const year = new Date().getFullYear();
   const docs = [];
 
-  // Rozdelenie fáz — realistickejšie: väčšina aktívnych, časť hotová/expedovaná
-  // (12 expedovaných na naplnenie kalendára expedície a kalibračných listov)
+  // Rozdelenie fáz — väčšina aktívnych, ale výrazná časť expedovaná
+  // (16 expedovaných na naplnenie tabuľky kalibračných listov + kalendára)
   const plan = [
     ...Array(4).fill('plan'), ...Array(4).fill('material'),
-    ...Array(7).fill('production'), ...Array(4).fill('qc'),
-    ...Array(3).fill('done'), ...Array(12).fill('shipped')
+    ...Array(6).fill('production'), ...Array(4).fill('qc'),
+    ...Array(3).fill('done'), ...Array(16).fill('shipped')
   ];
+  // produkty vyžadujúce kalibračný list (aby expedovaných s kalibráciou bolo dosť)
+  const CALIB_PRODUCTS = PRODUCTS.filter(needsCalibration);
+  let shipIdx = 0;
 
   plan.forEach((stage, i) => {
-    const product = pick(PRODUCTS);
+    // pri expedovaných striedaj kalibrované a nekalibrované produkty (cca 3/4 kalibrovaných)
+    let product;
+    if (stage === 'shipped') { product = (shipIdx++ % 4 === 3) ? pick(PRODUCTS) : pick(CALIB_PRODUCTS); }
+    else product = pick(PRODUCTS);
     const qtyPlanned = ri(5, 200);
     let qtyDone = 0;
     if (stage === 'done' || stage === 'shipped') qtyDone = qtyPlanned;
@@ -73,10 +79,12 @@ async function seedProduction() {
     const calibrationRequired = (stage === 'shipped' || stage === 'done') && needsCalibration(product);
     let calibrationStatus = 'pending', calibrationOwner = '', calibrationSentDate = null;
     if (calibrationRequired) {
-      calibrationOwner = pick(SALES);
-      if (stage === 'shipped' && Math.random() < 0.55) {
-        // časť expedovaných už má odoslané kalibračné listy
+      // väčšina má priradeného obchodníka, zopár nechaj neurčených (na priradenie)
+      if (Math.random() < 0.8) calibrationOwner = pick(SALES);
+      if (stage === 'shipped' && Math.random() < 0.45) {
+        // časť expedovaných už má odoslané kalibračné listy (zvyšok čaká)
         calibrationStatus = 'sent';
+        if (!calibrationOwner) calibrationOwner = pick(SALES);   // odoslané → obchodník je známy
         calibrationSentDate = new Date((shippedDate?.getTime() || today) + ri(0, 5) * dayMs);
       }
     }

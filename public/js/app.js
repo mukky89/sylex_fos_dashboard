@@ -2421,8 +2421,8 @@ function renderCalTimeGrid(vp, days) {
       const w = 100 / it.cols, left = it.lane * w, ev = it.ev, ref = ev._ref || ev, ext = ref.external;
       const conflict = it.cols > 1;
       const sn = calEvSurnames(ev);
-      const badge = sn ? `<span class="ctg-ev-owner"> · ${escHtml(sn)}</span>` : '';
-      const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span> ${escHtml(ev.title)}${badge}`;
+      // 1. riadok: čas + názov (názov sa zalamuje po slovách), pod tým meno používateľa
+      const inner = `<div class="ctg-ev-line"><span class="ctg-ev-time">${escHtml(ev.time)}</span><span class="ctg-ev-title">${escHtml(ev.title)}</span></div>${sn ? `<span class="ctg-ev-owner">${escHtml(sn)}</span>` : ''}`;
       const cls = `cal-ev ctg-ev${ext ? ' cal-ev-ext' : ''}${conflict ? ' ctg-ev-conflict' : ''}`;
       const ds = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
       return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ext ? '#7c3aed' : '#00d4ff'))};top:${top}px;min-height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${conflict ? '⚠ Prekryv · ' : ''}${calEvTip(ev)}">${conflict ? '<span class="ctg-conf">⚠</span>' : ''}${inner}</div>`;
@@ -6021,6 +6021,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.5.0', date: '6. 7. 2026', tag: 'feat', items: [
+    'Plánovanie výroby: kalibračné listy k expedovaným objednávkam sú teraz prehľadná tabuľka hneď navrchu — objednávka, produkt, zákazník, množstvo, dátum expedície, stav kalibračného listu, obchodník a tlačidlo „odoslané". Filter „Všetky expedované / Len neodoslané".',
+    'Kalendár (týždeň/deň): čitateľnejšie bloky — 1. riadok čas + názov (zalomí sa po slovách), pod tým meno používateľa; text sa už neláme po písmenách.',
+    'Nové/rozšírené ukážkové dáta výroby — viac expedovaných objednávok s kalibračnými listami (časť odoslaná, časť čaká).',
+  ] },
   { v: '2.4.1', date: '6. 7. 2026', tag: 'ui', items: [
     'Kalendár (týždeň/deň): pri dlhých názvoch sa blok udalosti natiahne a text sa zalomí — vidno celý názov aj priezvisko, nič sa neoreže.',
   ] },
@@ -7128,43 +7133,61 @@ async function prodSaveReason(id, val) {
   catch { toast('Uloženie dôvodu zlyhalo', 'error'); }
 }
 
-// ── Kalibračné listy ────────────────────────────────────────────────────────
-// Expedované výrobky, ku ktorým treba vytvoriť a odoslať kalibračné listy.
-// Označuje sa, či už boli odoslané a ktorý obchodník ich má odoslať.
+// ── Kalibračné listy — TABUĽKA expedovaných objednávok ──────────────────────
+// Prvé, čo v Plánovaní výroby vidno: expedované objednávky a stav ich
+// kalibračných listov (neodoslané / odoslané), s obchodníkom a rýchlym označením.
+let prodCalibOnlyPending = false;   // filter: zobraziť len neodoslané
+function prodSetCalibFilter(only) { prodCalibOnlyPending = only; renderProdCalib(); }
 function renderProdCalib() {
   const el = document.getElementById('prodCalibPanel'); if (!el) return;
-  const items = prodData.filter(o => o.stage === 'shipped' && o.calibrationRequired)
-    .sort((a, b) => (a.calibrationStatus === 'sent') - (b.calibrationStatus === 'sent')
-      || new Date(b.shippedDate || b.due || 0) - new Date(a.shippedDate || a.due || 0));
-  if (!items.length) {
-    el.innerHTML = '<div class="prod-late-ok">📄 Žiadne expedované výrobky nečakajú na kalibračné listy.</div>';
+  const shipped = prodData.filter(o => o.stage === 'shipped' && o.calibrationRequired);
+  const pendingCnt = shipped.filter(o => o.calibrationStatus !== 'sent').length;
+  const sentCnt = shipped.length - pendingCnt;
+
+  if (!shipped.length) {
+    el.innerHTML = `<div class="prod-calib-hd">📄 Kalibračné listy k expedovaným objednávkam</div>
+      <div class="prod-late-ok">Žiadne expedované objednávky nevyžadujú kalibračné listy.</div>`;
     return;
   }
-  const pending = items.filter(o => o.calibrationStatus !== 'sent').length;
+
+  let items = shipped.slice().sort((a, b) =>
+    (a.calibrationStatus === 'sent') - (b.calibrationStatus === 'sent')       // neodoslané hore
+    || new Date(b.shippedDate || b.due || 0) - new Date(a.shippedDate || a.due || 0));
+  if (prodCalibOnlyPending) items = items.filter(o => o.calibrationStatus !== 'sent');
+
   const salesOpts = who => PROD_SALES.map(s => `<option value="${escHtml(s)}"${s === who ? ' selected' : ''}>${escHtml(s)}</option>`).join('');
   const rows = items.map(o => {
     const sent = o.calibrationStatus === 'sent';
-    return `<div class="prod-calib-row ${sent ? 'is-sent' : 'is-pending'}" data-id="${o._id}">
-      <div class="prod-calib-main" onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))">
-        <div class="prod-calib-prod">${escHtml(o.product)}</div>
-        <div class="prod-calib-meta">${escHtml(o.number || '')}${o.customer ? ' · ' + escHtml(o.customer) : ''}${o.shippedDate ? ' · exp. ' + fmtDate(o.shippedDate) : ''}</div>
-      </div>
-      <label class="prod-calib-owner" onclick="event.stopPropagation()">Obchodník
-        <select onchange="prodSetCalibOwner('${o._id}', this.value)">
+    return `<tr class="prod-calib-tr ${sent ? 'is-sent' : 'is-pending'}">
+      <td class="pc-open" onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))">
+        <span class="prod-t-num">${escHtml(o.number || '—')}</span>${o.salesOrder ? `<span class="prod-t-qty">obj. ${escHtml(o.salesOrder)}</span>` : ''}
+      </td>
+      <td class="pc-open" onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))">${escHtml(o.product)}</td>
+      <td>${escHtml(o.customer || '—')}</td>
+      <td>${o.qtyPlanned || 0} ${escHtml(o.unit || 'ks')}</td>
+      <td>${o.shippedDate ? fmtDate(o.shippedDate) : (o.due ? fmtDate(o.due) : '—')}</td>
+      <td><span class="prod-calib-status ${sent ? 'ok' : 'bad'}">${sent ? '✓ Odoslané' : '● Neodoslané'}</span>${sent && o.calibrationSentDate ? `<span class="pc-sentdate">${fmtDate(o.calibrationSentDate)}</span>` : ''}</td>
+      <td><select class="prod-calib-sel" onchange="prodSetCalibOwner('${o._id}', this.value)">
           <option value=""${o.calibrationOwner ? '' : ' selected'}>— priradiť —</option>
           ${salesOpts(o.calibrationOwner)}
-        </select>
-      </label>
-      <button class="prod-calib-btn ${sent ? 'sent' : 'pending'}" onclick="event.stopPropagation(); prodToggleCalib('${o._id}')"
-        title="${sent ? 'Kalibračné listy odoslané — klikni pre zrušenie' : 'Označiť ako odoslané'}">
-        ${sent ? '✓ Odoslané' + (o.calibrationSentDate ? ' · ' + fmtDate(o.calibrationSentDate) : '') : '📤 Označiť odoslané'}
-      </button>
-    </div>`;
+        </select></td>
+      <td><button class="prod-calib-btn ${sent ? 'sent' : 'pending'}" onclick="prodToggleCalib('${o._id}')"
+        title="${sent ? 'Vrátiť na neodoslané' : 'Označiť kalibračné listy ako odoslané'}">
+        ${sent ? '↩ Vrátiť' : '📤 Odoslané'}</button></td>
+    </tr>`;
   }).join('');
-  el.innerHTML = `<div class="prod-calib-hd">📄 Kalibračné listy k expedovaným výrobkom
-      <span class="prod-late-count">${pending} čaká</span>
-      <span class="prod-late-hint">priraď obchodníka a označ, keď sú kalibračné listy odoslané</span>
-    </div>${rows}`;
+
+  el.innerHTML = `<div class="prod-calib-hd">📄 Kalibračné listy k expedovaným objednávkam
+      <span class="prod-late-count">${pendingCnt} čaká na odoslanie</span>
+      <span class="prod-calib-toggle">
+        <button class="pc-filter ${!prodCalibOnlyPending ? 'active' : ''}" onclick="prodSetCalibFilter(false)">Všetky expedované (${shipped.length})</button>
+        <button class="pc-filter ${prodCalibOnlyPending ? 'active' : ''}" onclick="prodSetCalibFilter(true)">Len neodoslané (${pendingCnt})</button>
+      </span>
+    </div>
+    <div class="prod-calib-tablewrap"><table class="prod-calib-table">
+      <thead><tr><th>Objednávka</th><th>Produkt</th><th>Zákazník</th><th>Množstvo</th><th>Expedované</th><th>Kalibračný list</th><th>Obchodník</th><th></th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="8" class="pc-empty">Všetky kalibračné listy sú odoslané ✓</td></tr>`}</tbody>
+    </table></div>`;
 }
 async function prodPatchCalib(id, patch) {
   const o = prodData.find(x => x._id === id); if (!o) return;
