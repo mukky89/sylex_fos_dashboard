@@ -756,6 +756,11 @@
             <option value="homeoffice">Home office</option><option value="pn">PN / Lekár</option>
             <option value="outlook">Outlook</option>
           </select>
+          <select id="calThemeSel" class="util-select" onchange="setCalTheme(this.value)" title="Motív kalendára">
+            <option value="dark">🌙 Tmavý</option>
+            <option value="light">☀️ Svetlý</option>
+            <option value="soft">🔷 Modrý</option>
+          </select>
           <button class="cal-today-btn cal-bh-btn hidden" id="calBhBtn" onclick="toggleCalBh()" title="Zobraziť len pracovné hodiny (7–19)">🕘 Prac. hodiny</button>
           <div class="cal-zoom hidden" id="calZoomCtl">
             <button class="cal-nav-btn" onclick="calZoomBy(-1)" title="Oddialiť">−</button>
