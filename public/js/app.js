@@ -6021,6 +6021,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.5.1', date: '6. 7. 2026', tag: 'fix', items: [
+    'Plánovanie výroby: doplnené tlačidlo „🎲 Ukážkové dáta" v hlavičke stránky (predtým funkcia existovala, ale chýbalo tlačidlo na jej spustenie).',
+  ] },
   { v: '2.5.0', date: '6. 7. 2026', tag: 'feat', items: [
     'Plánovanie výroby: kalibračné listy k expedovaným objednávkam sú teraz prehľadná tabuľka hneď navrchu — objednávka, produkt, zákazník, množstvo, dátum expedície, stav kalibračného listu, obchodník a tlačidlo „odoslané". Filter „Všetky expedované / Len neodoslané".',
     'Kalendár (týždeň/deň): čitateľnejšie bloky — 1. riadok čas + názov (zalomí sa po slovách), pod tým meno používateľa; text sa už neláme po písmenách.',
