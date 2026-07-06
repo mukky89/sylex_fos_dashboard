@@ -4692,9 +4692,11 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .ctg-daycol.ctg-we { background: rgba(255,255,255,0.015); }
 .ctg-daycol.ctg-today { background: rgba(0,212,255,0.035); }
 .ctg-line { position: absolute; left: 0; right: 0; border-top: 1px solid rgba(255,255,255,0.05); pointer-events: none; }
-.ctg-ev { position: absolute; overflow: hidden; white-space: normal; font-size: 0.82rem; line-height: 1.25; padding: 4px 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 1; border-radius: 6px; }
-.ctg-ev:hover { z-index: 2; }
-.ctg-ev-time { font-weight: 600; color: var(--ev-color); display: block; font-size: 0.74rem; }
+/* Blok udalosti: výška podľa trvania (min-height), ale obsah sa neoreže —
+   pri dlhom názve sa blok natiahne, aby bol viditeľný celý text */
+.ctg-ev { position: absolute; height: auto; overflow: visible; white-space: normal; overflow-wrap: anywhere; font-size: 0.82rem; line-height: 1.25; padding: 4px 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 1; border-radius: 6px; }
+.ctg-ev:hover { z-index: 5; box-shadow: 0 3px 10px rgba(0,0,0,0.35); }
+.ctg-ev-time { font-weight: 700; color: var(--ev-color); display: inline; margin-right: 3px; font-size: 0.74rem; }
 
 /* =============================================================================
    BACKBONE EDITOR — optická topológia (interrogátor · splitter · káble · senzory)

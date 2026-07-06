@@ -2425,7 +2425,7 @@ function renderCalTimeGrid(vp, days) {
       const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span> ${escHtml(ev.title)}${badge}`;
       const cls = `cal-ev ctg-ev${ext ? ' cal-ev-ext' : ''}${conflict ? ' ctg-ev-conflict' : ''}`;
       const ds = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
-      return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ext ? '#7c3aed' : '#00d4ff'))};top:${top}px;height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${conflict ? '⚠ Prekryv · ' : ''}${calEvTip(ev)}">${conflict ? '<span class="ctg-conf">⚠</span>' : ''}${inner}</div>`;
+      return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ext ? '#7c3aed' : '#00d4ff'))};top:${top}px;min-height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${conflict ? '⚠ Prekryv · ' : ''}${calEvTip(ev)}">${conflict ? '<span class="ctg-conf">⚠</span>' : ''}${inner}</div>`;
     }).join('');
     cols += `<div class="ctg-daycol${we ? ' ctg-we' : ''}${isToday ? ' ctg-today' : ''}" data-newday="${key}" style="height:${HN * hourH}px">${lines}${evhtml}</div>`;
   });
@@ -6021,6 +6021,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.4.1', date: '6. 7. 2026', tag: 'ui', items: [
+    'Kalendár (týždeň/deň): pri dlhých názvoch sa blok udalosti natiahne a text sa zalomí — vidno celý názov aj priezvisko, nič sa neoreže.',
+  ] },
   { v: '2.4.0', date: '6. 7. 2026', tag: 'ui', items: [
     'Kalendár: priezviská vlastníkov zvýraznené červenou vo všetkých pohľadoch a motívoch.',
     'Týždeň je predvolený pohľad; pracovné hodiny (7–19) predvolene zapnuté; väčšie bloky udalostí, vyššie riadky hodín, väčšie hlavičky dní — optimalizované pre týždňové zobrazenie. Pohľad, zoom aj prac. hodiny sa pamätajú.',
