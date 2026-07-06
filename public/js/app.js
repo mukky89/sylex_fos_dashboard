@@ -743,6 +743,9 @@ async function handleHash(hash) {
   if (hash === 'tasks')   { _activatePage('tasks');   loadTasks(); return; }
   if (hash === 'crm')     { _activatePage('crm');     loadCrm(); return; }
   if (hash === 'mgmt')    { _activatePage('mgmt');    loadManagement(); return; }
+  if (hash === 'photos')  { _activatePage('photos');  loadPhotos(); return; }
+  if (hash === 'github')  { _activatePage('github');  loadGithub(); return; }
+  if (hash === 'remote')  { _activatePage('remote');  loadRemote(); return; }
   if (hash === 'admin')   { _activatePage('admin');   switchAdminTab('links'); return; }
   if (hash === 'changelog') { _activatePage('changelog'); renderChangelog(); return; }
   if (hash === 'wiki') { _activatePage('wiki'); await loadWiki(); return; }
@@ -781,6 +784,9 @@ function showPage(name) {
   if (name === 'tasks')   loadTasks();
   if (name === 'crm')     loadCrm();
   if (name === 'mgmt')    loadManagement();
+  if (name === 'photos')  loadPhotos();
+  if (name === 'github')  loadGithub();
+  if (name === 'remote')  loadRemote();
   if (name === 'admin')   switchAdminTab('links');
   if (name === 'changelog') renderChangelog();
   if (name === 'bb')      loadBb();
@@ -1672,6 +1678,7 @@ function statusLabel(s) {
 const HEADER_GROUP_DEFS = [
   { key: 'files',      label: 'Súbory',     icon: '📁' },  // servery + sablony
   { key: 'custom',     label: 'Nástroje',   icon: '⚙️' },
+  { key: 'jedlo',      label: 'Jedlo',      icon: '🍽️' },  // obedy (Sylex, Fantozzi)
   { key: 'erp',        label: 'ERP',        icon: '📊' },
   { key: 'sharepoint', label: 'SharePoint', icon: '🔗' },
   { key: 'other',      label: 'Odkazy',     icon: '🔖' },
@@ -1679,6 +1686,7 @@ const HEADER_GROUP_DEFS = [
 function groupKeyFor(g) {
   if (g === 'servery' || g === 'sablony') return 'files';
   if (g === 'custom')     return 'custom';
+  if (g === 'jedlo')      return 'jedlo';
   if (g === 'erp')        return 'erp';
   if (g === 'sharepoint') return 'sharepoint';
   return 'other';
@@ -2612,14 +2620,79 @@ let stepEditors = {};
 let stepSeq = 0;
 let currentDetailProcedure = null;
 
-// Vyber obrázok z disku a nahraj → vráti URL (alebo null)
-function pickImageUpload() {
+// ── Výber obrázka: galéria Fotiek + nahratie z disku → potom anotácie ──
+let _photoPicker = null;
+function openPhotoPicker() {
   return new Promise(resolve => {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'image/*';
-    input.onchange = async () => { const f = input.files[0]; if (!f) { resolve(null); return; } resolve((await uploadImage(f)) || null); };
-    input.click();
+    _photoPicker = { resolve, cat: 'all', photos: [], cats: [] };
+    document.getElementById('photoPickerModal').classList.remove('hidden');
+    const s = document.getElementById('pkSearch'); if (s) s.value = '';
+    document.getElementById('pkGrid').innerHTML = '<div class="pk-empty">Načítavam fotky…</div>';
+    document.getElementById('pkCats').innerHTML = '';
+    photoPickerLoad();
   });
+}
+async function photoPickerLoad() {
+  try {
+    const [cats, list] = await Promise.all([
+      fetch('/api/photos/categories').then(r => r.json()),
+      fetch('/api/photos').then(r => r.json())
+    ]);
+    if (!_photoPicker) return;
+    _photoPicker.cats = Array.isArray(cats) ? cats : [];
+    _photoPicker.photos = Array.isArray(list) ? list : [];
+  } catch { if (_photoPicker) _photoPicker.photos = []; }
+  if (!_photoPicker) return;
+  renderPhotoPickerCats(); renderPhotoPickerGrid();
+}
+function closePhotoPicker(url) {
+  document.getElementById('photoPickerModal').classList.add('hidden');
+  const r = _photoPicker && _photoPicker.resolve; _photoPicker = null;
+  if (r) r(url || null);
+}
+function photoPickerCancel() { closePhotoPicker(null); }
+function photoPickerSetCat(c) { if (!_photoPicker) return; _photoPicker.cat = c; renderPhotoPickerCats(); renderPhotoPickerGrid(); }
+function photoPickerPick(id) { const p = _photoPicker && _photoPicker.photos.find(x => x._id === id); if (p) closePhotoPicker(p.url); }
+async function photoPickerUpload(input) {
+  const f = input.files[0]; if (!f) return;
+  input.value = '';
+  const btnTxt = document.getElementById('pkGrid'); if (btnTxt) btnTxt.innerHTML = '<div class="pk-empty">Nahrávam…</div>';
+  const url = await uploadImage(f);
+  closePhotoPicker(url);
+}
+function pkFiltered() {
+  if (!_photoPicker) return [];
+  const q = (document.getElementById('pkSearch')?.value || '').toLowerCase();
+  return _photoPicker.photos.filter(p => {
+    const catId = p.category?._id || p.category || null;
+    if (_photoPicker.cat === 'none' && catId) return false;
+    if (_photoPicker.cat !== 'all' && _photoPicker.cat !== 'none' && catId !== _photoPicker.cat) return false;
+    if (q) { const hay = [p.title, p.author, p.note, ...(p.tags || []), p.category?.name].filter(Boolean).join(' ').toLowerCase(); if (!hay.includes(q)) return false; }
+    return true;
+  });
+}
+function renderPhotoPickerCats() {
+  const el = document.getElementById('pkCats'); if (!el) return;
+  const chips = [`<button class="pk-chip ${_photoPicker.cat === 'all' ? 'active' : ''}" onclick="photoPickerSetCat('all')">Všetky</button>`];
+  _photoPicker.cats.forEach(c => chips.push(`<button class="pk-chip ${_photoPicker.cat === c._id ? 'active' : ''}" onclick="photoPickerSetCat('${c._id}')">${escHtml(c.icon || '')} ${escHtml(c.name)}</button>`));
+  el.innerHTML = chips.join('');
+}
+function renderPhotoPickerGrid() {
+  const el = document.getElementById('pkGrid'); if (!el) return;
+  const items = pkFiltered();
+  if (!items.length) { el.innerHTML = '<div class="pk-empty">Žiadne fotky — nahraj novú z disku alebo pridaj fotky v module Fotky.</div>'; return; }
+  el.innerHTML = items.map(p => `<div class="pk-tile" onclick="photoPickerPick('${p._id}')" title="${escHtml(p.title || '')}">
+    <img loading="lazy" src="${escHtml(p.url)}" alt="">
+    <div class="pk-tile-cap">${escHtml(p.title || p.originalName || 'Bez názvu')}</div>
+  </div>`).join('');
+}
+
+// Vloženie obrázka: vyber z galérie/disku → anotačný editor → vráti URL (alebo null)
+async function pickImageUpload() {
+  const url = await openPhotoPicker();
+  if (!url) return null;
+  const finalUrl = await openImageAnnotator(url);  // kruhy/rámčeky/popisy/bubliny (dá sa preskočiť)
+  return finalUrl || url;
 }
 
 // Vytvor editor operácie (TipTap, s fallbackom na textarea ak bundle nie je načítaný)
@@ -5824,7 +5897,7 @@ function renderPtImages() {
   el.innerHTML = '';
   ptImagesData.forEach((img, i) => {
     const d = document.createElement('div'); d.className = 'image-preview-item';
-    d.innerHTML = `<img src="${escHtml(img.url)}" alt=""><button class="image-preview-remove" onclick="removePtImage(${i})">✕</button>`;
+    d.innerHTML = `<img src="${escHtml(img.url)}" alt=""><button class="image-preview-annotate" onclick="reAnnotatePtImage(${i})" title="Anotovať (kruhy, popisy, bubliny)">✎</button><button class="image-preview-remove" onclick="removePtImage(${i})">✕</button>`;
     el.appendChild(d);
   });
 }
@@ -5892,6 +5965,24 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '1.98.0', date: '3. 7. 2026', tag: 'fix', items: [
+    'Changelog: doplnené chýbajúce záznamy o novinkách za verzie 1.94–1.97 (predtým sa dvíhala len verzia v hlavičke, ale história zmien na tejto stránke sa neaktualizovala).',
+  ] },
+  { v: '1.97.0', date: '3. 7. 2026', tag: 'feat', items: [
+    'Pracovné postupy: pri vkladaní obrázka si vieš vybrať fotku priamo z galérie modulu Fotky (hľadanie + filter podľa kategórie/typu produktu) alebo nahrať novú z disku. Rovnaký výber platí aj pre datasheety a prototypy.',
+  ] },
+  { v: '1.96.0', date: '3. 7. 2026', tag: 'feat', items: [
+    'Editor obrázkov pre postupy: do fotky vieš zakresliť kruhy, rámčeky, šípky, textové popisy a bubliny; nastaviteľná farba, hrúbka čiary a veľkosť písma. Anotácie sa zapečú priamo do obrázka.',
+    'Editor sa otvorí pri vkladaní obrázka (dá sa preskočiť tlačidlom „Vložiť bez úprav") a cez ✎ pri existujúcich obrázkoch v datasheetoch a prototypoch.',
+  ] },
+  { v: '1.95.0', date: '3. 7. 2026', tag: 'fix', items: [
+    'Oprava vzhľadu: stránky Fotky, GitHub a RustDesk mali nečitateľné svetlé texty na svetlom pozadí — zjednotené na tmavý vzhľad ako ostatné moduly.',
+  ] },
+  { v: '1.94.0', date: '3. 7. 2026', tag: 'major', items: [
+    'Nový modul Fotky z výroby: galéria s kategóriami (typy produktov), tagmi, menom autora, konverziou fotiek (zmenšenie / JPEG / WebP), odkazom na sieťový folder a zdieľaním fotky.',
+    'Nový modul GitHub: evidencia projektov/repozitárov tímu s odkazmi, hlavným jazykom, stavom a tagmi.',
+    'Nový modul RustDesk: zoznam vzdialených PC s ID/heslom (kopírovanie) a pripojením jedným klikom cez rustdesk:// odkaz.',
+  ] },
   { v: '1.78.0', date: '18. 6. 2026', tag: 'ui', items: [
     'Plánovanie výroby → Zoznam: hlavička skupiny ukazuje „Zákazka č. XXX" a pod ňou „XX QTY" (spolu kusov). Do vnoreného gridu idú teraz aj zákazky s jedinou objednávkou (rovnaký vzhľad). Pod-objednávky sú farebne odlíšené (tyrkysový nádych).',
   ] },
@@ -6864,6 +6955,8 @@ const PROD_STAGES = [
 ];
 const PROD_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#f59e0b' }, urgent: { l: 'Urgentná', c: '#ef4444' } };
 const prodStageMap = k => PROD_STAGES.find(s => s.key === k) || PROD_STAGES[0];
+const PROD_SALES = ['M. Baláž', 'K. Danišová', 'R. Polák', 'T. Végh'];   // obchodníci (odosielatelia kalibračných listov)
+let prodCalMonth = null;   // prvý deň zobrazeného mesiaca v kalendári expedície
 
 async function loadProd() {
   try { prodData = await fetch('/api/production').then(r => r.json()); if (!Array.isArray(prodData)) prodData = []; }
@@ -6873,6 +6966,7 @@ async function loadProd() {
   if (dl) { const set = [...new Set(prodData.map(o => o.workstation).filter(Boolean))]; dl.innerHTML = set.map(w => `<option value="${escHtml(w)}">`).join(''); }
   renderProdKpis();
   renderProdLate();
+  renderProdCalib();
   setProdView(prodView);   // synchronizuj viditeľnosť pohľadu (default = gantt) + vykresli
   renderProdLines();
 }
@@ -6883,7 +6977,8 @@ function setProdView(v) {
   document.getElementById('prodKanban').classList.toggle('hidden', v !== 'kanban');
   document.getElementById('prodList').classList.toggle('hidden', v !== 'list');
   document.getElementById('prodGantt').classList.toggle('hidden', v !== 'gantt');
-  document.getElementById('prodLinesCard')?.classList.toggle('hidden', v === 'gantt');
+  document.getElementById('prodCalendar')?.classList.toggle('hidden', v !== 'calendar');
+  document.getElementById('prodLinesCard')?.classList.toggle('hidden', v === 'gantt' || v === 'calendar');
   renderProd();
 }
 
@@ -6915,7 +7010,8 @@ async function renderProdKpis() {
     card(s.active, 'Aktívne zákazky', s.total + ' celkom', 'pk-blue') +
     card(s.overdue, '⚠ Meškajú', s.overdue ? 'treba riešiť hneď' : 'OK', s.overdue ? 'pk-red' : 'pk-green') +
     card(s.dueSoon || 0, 'Do expedície ≤ 7 dní', '', (s.dueSoon ? 'pk-amber' : '')) +
-    card(s.inProduction, 'Vo výrobe', '', 'pk-cyan');
+    card(s.inProduction, 'Vo výrobe', '', 'pk-cyan') +
+    card((s.calibPending || 0), '📄 Kalibr. listy neodoslané', (s.calibNeeded ? `${s.calibSent || 0}/${s.calibNeeded} odoslaných` : 'OK'), (s.calibPending ? 'pk-amber' : 'pk-green'));
 }
 
 // Panel meškajúcich zákaziek — treba riešiť hneď + zaznamenať dôvod meškania
@@ -6943,10 +7039,130 @@ async function prodSaveReason(id, val) {
   catch { toast('Uloženie dôvodu zlyhalo', 'error'); }
 }
 
+// ── Kalibračné listy ────────────────────────────────────────────────────────
+// Expedované výrobky, ku ktorým treba vytvoriť a odoslať kalibračné listy.
+// Označuje sa, či už boli odoslané a ktorý obchodník ich má odoslať.
+function renderProdCalib() {
+  const el = document.getElementById('prodCalibPanel'); if (!el) return;
+  const items = prodData.filter(o => o.stage === 'shipped' && o.calibrationRequired)
+    .sort((a, b) => (a.calibrationStatus === 'sent') - (b.calibrationStatus === 'sent')
+      || new Date(b.shippedDate || b.due || 0) - new Date(a.shippedDate || a.due || 0));
+  if (!items.length) {
+    el.innerHTML = '<div class="prod-late-ok">📄 Žiadne expedované výrobky nečakajú na kalibračné listy.</div>';
+    return;
+  }
+  const pending = items.filter(o => o.calibrationStatus !== 'sent').length;
+  const salesOpts = who => PROD_SALES.map(s => `<option value="${escHtml(s)}"${s === who ? ' selected' : ''}>${escHtml(s)}</option>`).join('');
+  const rows = items.map(o => {
+    const sent = o.calibrationStatus === 'sent';
+    return `<div class="prod-calib-row ${sent ? 'is-sent' : 'is-pending'}" data-id="${o._id}">
+      <div class="prod-calib-main" onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))">
+        <div class="prod-calib-prod">${escHtml(o.product)}</div>
+        <div class="prod-calib-meta">${escHtml(o.number || '')}${o.customer ? ' · ' + escHtml(o.customer) : ''}${o.shippedDate ? ' · exp. ' + fmtDate(o.shippedDate) : ''}</div>
+      </div>
+      <label class="prod-calib-owner" onclick="event.stopPropagation()">Obchodník
+        <select onchange="prodSetCalibOwner('${o._id}', this.value)">
+          <option value=""${o.calibrationOwner ? '' : ' selected'}>— priradiť —</option>
+          ${salesOpts(o.calibrationOwner)}
+        </select>
+      </label>
+      <button class="prod-calib-btn ${sent ? 'sent' : 'pending'}" onclick="event.stopPropagation(); prodToggleCalib('${o._id}')"
+        title="${sent ? 'Kalibračné listy odoslané — klikni pre zrušenie' : 'Označiť ako odoslané'}">
+        ${sent ? '✓ Odoslané' + (o.calibrationSentDate ? ' · ' + fmtDate(o.calibrationSentDate) : '') : '📤 Označiť odoslané'}
+      </button>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div class="prod-calib-hd">📄 Kalibračné listy k expedovaným výrobkom
+      <span class="prod-late-count">${pending} čaká</span>
+      <span class="prod-late-hint">priraď obchodníka a označ, keď sú kalibračné listy odoslané</span>
+    </div>${rows}`;
+}
+async function prodPatchCalib(id, patch) {
+  const o = prodData.find(x => x._id === id); if (!o) return;
+  Object.assign(o, patch);
+  try { await fetch('/api/production/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) }); }
+  catch { toast('Uloženie kalibračných listov zlyhalo', 'error'); }
+}
+async function prodSetCalibOwner(id, val) {
+  await prodPatchCalib(id, { calibrationOwner: val });
+}
+async function prodToggleCalib(id) {
+  const o = prodData.find(x => x._id === id); if (!o) return;
+  const sent = o.calibrationStatus !== 'sent';
+  await prodPatchCalib(id, { calibrationStatus: sent ? 'sent' : 'pending', calibrationSentDate: sent ? new Date().toISOString() : null });
+  renderProdCalib();
+  renderProdKpis();
+  if (prodView === 'calendar') renderProdCalendar();
+}
+
+// ── Kalendár expedície ──────────────────────────────────────────────────────
+// Mesačný kalendár: čo bolo/má byť expedované v daný deň (podľa reálneho dátumu
+// expedície, inak podľa termínu). Zvýrazní neodoslané kalibračné listy.
+function prodCalInit() { if (!prodCalMonth) { const d = new Date(); prodCalMonth = new Date(d.getFullYear(), d.getMonth(), 1); } }
+function prodCalShift(dir) { prodCalInit(); prodCalMonth = new Date(prodCalMonth.getFullYear(), prodCalMonth.getMonth() + dir, 1); renderProdCalendar(); }
+function prodCalToday() { const d = new Date(); prodCalMonth = new Date(d.getFullYear(), d.getMonth(), 1); renderProdCalendar(); }
+// dátum, na ktorom sedí zákazka v kalendári expedície
+function prodShipDay(o) {
+  const d = o.stage === 'shipped' ? (o.shippedDate || o.due) : o.due;
+  return d ? new Date(new Date(d).toDateString()) : null;
+}
+function renderProdCalendar() {
+  const el = document.getElementById('prodCalGrid'); if (!el) return;
+  prodCalInit();
+  const y = prodCalMonth.getFullYear(), m = prodCalMonth.getMonth();
+  const lbl = document.getElementById('prodCalLabel');
+  if (lbl) lbl.textContent = prodCalMonth.toLocaleDateString('sk-SK', { month: 'long', year: 'numeric' });
+
+  // zoskup zákazky s termínom/dátumom expedície do dní tohto mesiaca
+  const byDay = {};
+  prodFiltered().forEach(o => {
+    const d = prodShipDay(o);
+    if (!d || d.getFullYear() !== y || d.getMonth() !== m) return;
+    (byDay[d.getDate()] = byDay[d.getDate()] || []).push(o);
+  });
+
+  const first = new Date(y, m, 1);
+  const startDow = (first.getDay() + 6) % 7;   // pondelok = 0
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const todayStr = new Date().toDateString();
+  const dows = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
+
+  // súhrn mesiaca
+  const monthItems = Object.values(byDay).flat();
+  const shippedCnt = monthItems.filter(o => o.stage === 'shipped').length;
+  const planCnt = monthItems.length - shippedCnt;
+  const calibPend = monthItems.filter(o => o.stage === 'shipped' && o.calibrationRequired && o.calibrationStatus !== 'sent').length;
+  const sum = document.getElementById('prodCalSummary');
+  if (sum) sum.innerHTML =
+    `<span class="prod-cal-sum-item"><i style="background:#3b82f6"></i>${shippedCnt} expedovaných</span>` +
+    `<span class="prod-cal-sum-item"><i style="background:#f59e0b"></i>${planCnt} plánovaných</span>` +
+    (calibPend ? `<span class="prod-cal-sum-item"><i style="background:#ef4444"></i>${calibPend} × chýba kalibr. list</span>` : '');
+
+  let cells = dows.map(d => `<div class="prod-cal-dow">${d}</div>`).join('');
+  for (let i = 0; i < startDow; i++) cells += '<div class="prod-cal-cell empty"></div>';
+  for (let day = 1; day <= daysInMonth; day++) {
+    const list = (byDay[day] || []).sort((a, b) => (b.stage === 'shipped') - (a.stage === 'shipped'));
+    const isToday = new Date(y, m, day).toDateString() === todayStr;
+    const chips = list.map(o => {
+      const sh = o.stage === 'shipped';
+      const calibBad = sh && o.calibrationRequired && o.calibrationStatus !== 'sent';
+      const calibOk = sh && o.calibrationRequired && o.calibrationStatus === 'sent';
+      const tag = calibBad ? '📄' : calibOk ? '✅' : '';
+      return `<div class="prod-cal-chip ${sh ? 'shipped' : 'plan'}${calibBad ? ' calib-bad' : ''}" title="${escHtml((o.number ? o.number + ' · ' : '') + o.product + (o.customer ? ' · ' + o.customer : '') + (sh ? ' · expedované' : ' · plán expedície') + (calibBad ? ' · CHÝBA kalibračný list' + (o.calibrationOwner ? ' (' + o.calibrationOwner + ')' : '') : calibOk ? ' · kalibračný list odoslaný' : ''))}" onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))">${tag}${escHtml(o.product)}</div>`;
+    }).join('');
+    cells += `<div class="prod-cal-cell${isToday ? ' today' : ''}${list.length ? ' has' : ''}">
+      <div class="prod-cal-daynum">${day}${list.length ? `<span class="prod-cal-daycount">${list.length}</span>` : ''}</div>
+      <div class="prod-cal-chips">${chips}</div>
+    </div>`;
+  }
+  el.innerHTML = cells;
+}
+
 function renderProd() {
   if (prodView === 'kanban') renderProdKanban();
   else if (prodView === 'list') renderProdList();
   else if (prodView === 'gantt') renderProdGantt();
+  else if (prodView === 'calendar') renderProdCalendar();
 }
 
 function prodCardHtml(o) {
@@ -7065,7 +7281,7 @@ function renderProdList() {
       : `<td><span class="prod-t-num">${escHtml(o.number || '')}</span>${o.salesOrder ? `<span class="prod-t-qty">obj. ${escHtml(o.salesOrder)}</span>` : ''}</td>`;
     return `<tr class="${cls}"${grpAttr} onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))"${reasonHint}>
       ${numCell}
-      <td>${escHtml(o.product)}${o.delayReason ? `<span class="prod-reason-tag" title="Dôvod meškania">💬 ${escHtml(o.delayReason)}</span>` : ''}</td>
+      <td>${escHtml(o.product)}${o.delayReason ? `<span class="prod-reason-tag" title="Dôvod meškania">💬 ${escHtml(o.delayReason)}</span>` : ''}${o.stage === 'shipped' && o.calibrationRequired ? (o.calibrationStatus === 'sent' ? `<span class="prod-calib-tag ok" title="Kalibračné listy odoslané${o.calibrationOwner ? ' — ' + escHtml(o.calibrationOwner) : ''}">📄 kalibr. odoslané</span>` : `<span class="prod-calib-tag bad" title="Kalibračné listy treba odoslať${o.calibrationOwner ? ' — ' + escHtml(o.calibrationOwner) : ''}">📄 kalibr. čaká${o.calibrationOwner ? ' · ' + escHtml(o.calibrationOwner) : ''}</span>`) : ''}</td>
       <td>${escHtml(o.customer || '—')}</td>
       <td>${escHtml(o.workstation || '—')}</td>
       <td><div class="prod-t-qty">${o.qtyPlanned || 0} ${escHtml(o.unit || 'ks')}</div></td>
@@ -7170,9 +7386,21 @@ function openProdModal(o = null) {
   set('poProgress', prog); document.getElementById('poProgressVal').textContent = prog;
   set('poNote', e ? (o.note || '') : '');
   const dr = document.getElementById('poDelayReason'); if (dr) dr.value = e ? (o.delayReason || '') : '';
+  // Kalibračné listy
+  const cReq = document.getElementById('poCalibRequired');
+  if (cReq) { cReq.checked = e ? !!o.calibrationRequired : false; }
+  set('poCalibStatus', e ? (o.calibrationStatus || 'pending') : 'pending');
+  set('poCalibOwner', e ? (o.calibrationOwner || '') : '');
+  set('poCalibNote', e ? (o.calibrationNote || '') : '');
+  prodCalibToggleFields();
   document.getElementById('poDeleteBtn').style.display = e ? '' : 'none';
   document.getElementById('prodModal').classList.remove('hidden');
   modalSnapshot('prodModal');
+}
+// zobraz/schovaj detaily kalibračných listov podľa zaškrtnutia
+function prodCalibToggleFields() {
+  const on = !!document.getElementById('poCalibRequired')?.checked;
+  document.getElementById('poCalibFields')?.classList.toggle('hidden', !on);
 }
 function closeProdModal() { modalGuardClose('prodModal'); }
 async function saveProd() {
@@ -7192,8 +7420,19 @@ async function saveProd() {
     assignee: document.getElementById('poAssignee').value.trim(),
     progress: Number(document.getElementById('poProgress').value) || 0,
     delayReason: (document.getElementById('poDelayReason')?.value || '').trim(),
+    calibrationRequired: !!document.getElementById('poCalibRequired')?.checked,
+    calibrationStatus: document.getElementById('poCalibStatus')?.value || 'pending',
+    calibrationOwner: (document.getElementById('poCalibOwner')?.value || '').trim(),
+    calibrationNote: (document.getElementById('poCalibNote')?.value || '').trim(),
     note: document.getElementById('poNote').value.trim()
   };
+  // dátum odoslania kalibračných listov: nastav pri prechode na "odoslané"
+  if (body.calibrationRequired && body.calibrationStatus === 'sent') {
+    const prev = prodData.find(x => x._id === document.getElementById('poId').value);
+    body.calibrationSentDate = (prev && prev.calibrationSentDate) ? prev.calibrationSentDate : new Date().toISOString();
+  } else if (body.calibrationStatus !== 'sent') {
+    body.calibrationSentDate = null;
+  }
   if (!body.product) { alert('Zadaj produkt'); return; }
   const id = document.getElementById('poId').value;
   try {
@@ -8619,7 +8858,7 @@ function addOrderRow(o = {}) {
 function renderDsImages() {
   const el = document.getElementById('dsImages'); if (!el) return;
   el.innerHTML = '';
-  dsImagesData.forEach((img, i) => { const d = document.createElement('div'); d.className = 'image-preview-item'; d.innerHTML = `<img src="${escHtml(img.url)}" alt=""><button class="image-preview-remove" onclick="removeDsImage(${i})">✕</button>`; el.appendChild(d); });
+  dsImagesData.forEach((img, i) => { const d = document.createElement('div'); d.className = 'image-preview-item'; d.innerHTML = `<img src="${escHtml(img.url)}" alt=""><button class="image-preview-annotate" onclick="reAnnotateDsImage(${i})" title="Anotovať (kruhy, popisy, bubliny)">✎</button><button class="image-preview-remove" onclick="removeDsImage(${i})">✕</button>`; el.appendChild(d); });
 }
 function removeDsImage(i) { dsImagesData.splice(i, 1); renderDsImages(); }
 async function addDatasheetImage() { const url = await pickImageUpload(); if (url) { dsImagesData.push({ url, caption: '' }); renderDsImages(); } }
@@ -9801,6 +10040,959 @@ function bbExportPng() {
   };
   img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FOTKY Z VÝROBY — galéria, kategórie typov produktov, tagy, zdieľanie, konverzia
+// ══════════════════════════════════════════════════════════════════════════════
+let photosData = [], photoCatsData = [];
+let phFilter = { cat: 'all', tag: null };
+let phSelectMode = false;          // režim označovania (hromadné operácie)
+let phSelected = new Set();        // ID označených fotiek
+let phPickedFiles = [];        // súbory vybrané v modáli (pred nahratím)
+let phLbItems = [], phLbIdx = -1; // lightbox — aktuálne filtrovaný zoznam
+
+// Skopíruj text do schránky (s fallbackom)
+function phCopy(text, okMsg = 'Skopírované do schránky.') {
+  const done = () => toast(okMsg, 'success');
+  if (navigator.clipboard?.writeText) { navigator.clipboard.writeText(text).then(done, () => toast('Kopírovanie zlyhalo — skopíruj ručne: ' + text, 'warn')); return; }
+  const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch { toast('Skopíruj ručne: ' + text, 'warn'); }
+  ta.remove();
+}
+function phFmtBytes(b) {
+  if (!b) return '';
+  if (b > 1048576) return (b / 1048576).toFixed(1) + ' MB';
+  if (b > 1024) return Math.round(b / 1024) + ' kB';
+  return b + ' B';
+}
+function phFmtDate(d) { try { return new Date(d).toLocaleDateString('sk-SK', { day: 'numeric', month: 'numeric', year: 'numeric' }); } catch { return ''; } }
+
+async function loadPhotos() {
+  try {
+    const [cats, list] = await Promise.all([
+      fetch('/api/photos/categories').then(r => r.json()),
+      fetch('/api/photos').then(r => r.json())
+    ]);
+    photoCatsData = Array.isArray(cats) ? cats : [];
+    photosData = Array.isArray(list) ? list : [];
+  } catch { photoCatsData = []; photosData = []; }
+  renderPhotoCats(); renderPhotos();
+}
+
+function renderPhotoCats() {
+  const el = document.getElementById('phCats'); if (!el) return;
+  const cnt = (catId) => photosData.filter(p => (p.category?._id || p.category || null) === catId).length;
+  const chips = [`<button class="ph-chip ${phFilter.cat === 'all' ? 'active' : ''}" onclick="phSetCat('all')">Všetky <span class="ph-chip-n">${photosData.length}</span></button>`];
+  photoCatsData.forEach(c => {
+    chips.push(`<button class="ph-chip ${phFilter.cat === c._id ? 'active' : ''}" style="--chip-c:${escHtml(c.color || '#0891b2')}" onclick="phSetCat('${c._id}')">${escHtml(c.icon || '📦')} ${escHtml(c.name)} <span class="ph-chip-n">${cnt(c._id)}</span></button>`);
+  });
+  const noCat = photosData.filter(p => !p.category).length;
+  if (noCat) chips.push(`<button class="ph-chip ${phFilter.cat === 'none' ? 'active' : ''}" onclick="phSetCat('none')">Bez kategórie <span class="ph-chip-n">${noCat}</span></button>`);
+  el.innerHTML = chips.join('');
+}
+
+function phSetCat(id) { phFilter.cat = id; phFilter.tag = null; renderPhotoCats(); renderPhotos(); }
+function phSetTag(tag) { phFilter.tag = phFilter.tag === tag ? null : tag; renderPhotos(); }
+
+function phFiltered() {
+  const q = (document.getElementById('phSearch')?.value || '').toLowerCase();
+  return photosData.filter(p => {
+    const catId = p.category?._id || p.category || null;
+    if (phFilter.cat === 'none' && catId) return false;
+    if (phFilter.cat !== 'all' && phFilter.cat !== 'none' && catId !== phFilter.cat) return false;
+    if (phFilter.tag && !(p.tags || []).includes(phFilter.tag)) return false;
+    if (q) {
+      const hay = [p.title, p.author, p.note, p.originalName, ...(p.tags || []), p.category?.name].filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function renderPhotos() {
+  const grid = document.getElementById('phGrid'); if (!grid) return;
+  const items = phFiltered();
+
+  // Tag cloud z aktuálnej množiny
+  const tagEl = document.getElementById('phTags');
+  if (tagEl) {
+    const tags = {};
+    items.forEach(p => (p.tags || []).forEach(t => tags[t] = (tags[t] || 0) + 1));
+    const sorted = Object.entries(tags).sort((a, b) => b[1] - a[1]).slice(0, 30);
+    tagEl.innerHTML = sorted.map(([t, n]) => `<button class="ph-tag ${phFilter.tag === t ? 'active' : ''}" onclick="phSetTag(decodeURIComponent('${encodeURIComponent(t)}'))">#${escHtml(t)} <span>${n}</span></button>`).join('');
+  }
+
+  if (!items.length) {
+    grid.innerHTML = `<div class="proc-empty">Žiadne fotky.<div class="proc-empty-actions"><button class="btn-primary" onclick="openPhotoModal()">+ Pridať fotky</button></div></div>`;
+    return;
+  }
+  grid.innerHTML = items.map(p => {
+    const cat = p.category;
+    const sel = phSelected.has(p._id);
+    const onClick = phSelectMode ? `phToggleSel('${p._id}')` : `openPhotoLightbox('${p._id}')`;
+    return `<div class="ph-card${phSelectMode ? ' ph-selectable' : ''}${sel ? ' ph-selected' : ''}" onclick="${onClick}">
+      ${phSelectMode ? `<label class="ph-check" onclick="event.stopPropagation();phToggleSel('${p._id}')"><input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation();phToggleSel('${p._id}')"></label>` : ''}
+      <div class="ph-thumb"><img loading="lazy" src="${escHtml(p.url)}" alt="${escHtml(p.title)}"></div>
+      <div class="ph-card-body">
+        <div class="ph-card-title" title="${escHtml(p.title)}">${escHtml(p.title || p.originalName || 'Bez názvu')}</div>
+        <div class="ph-card-meta">
+          ${cat ? `<span class="ph-badge" style="--chip-c:${escHtml(cat.color || '#0891b2')}">${escHtml(cat.icon || '')} ${escHtml(cat.name)}</span>` : ''}
+          ${(p.tags || []).slice(0, 3).map(t => `<span class="ph-mini-tag">#${escHtml(t)}</span>`).join('')}
+        </div>
+        <div class="ph-card-sub">${escHtml(p.author || '')}${p.author ? ' · ' : ''}${phFmtDate(p.createdAt)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  phUpdateBulkBar();
+}
+
+// ── Hromadné operácie s fotkami (režim označovania) ──
+function phToggleSelectMode() {
+  phSelectMode = !phSelectMode;
+  if (!phSelectMode) phSelected.clear();
+  document.getElementById('phBulkBar')?.classList.toggle('hidden', !phSelectMode);
+  const btn = document.getElementById('phSelectBtn');
+  if (btn) { btn.classList.toggle('active', phSelectMode); btn.textContent = phSelectMode ? '✕ Zrušiť označovanie' : '☑ Označiť'; }
+  renderPhotos();
+}
+function phToggleSel(id) {
+  if (phSelected.has(id)) phSelected.delete(id); else phSelected.add(id);
+  renderPhotos();
+}
+function phSelectAll() {
+  phFiltered().forEach(p => phSelected.add(p._id));
+  renderPhotos();
+}
+function phClearSel() { phSelected.clear(); renderPhotos(); }
+function phUpdateBulkBar() {
+  const n = phSelected.size;
+  const el = document.getElementById('phBulkN'); if (el) el.textContent = n;
+}
+async function phBulkDelete() {
+  const ids = [...phSelected];
+  if (!ids.length) { toast('Najprv označ nejaké fotky.', 'info'); return; }
+  if (!await uiConfirm(`Naozaj zmazať ${ids.length} označených fotiek? Táto akcia je nevratná.`)) return;
+  try {
+    const r = await fetch('/api/photos/bulk-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
+    const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    phSelected.clear();
+    await loadPhotos();
+    toast(`Zmazaných ${d.deleted} fotiek.`, 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+function phBulkEdit() {
+  if (!phSelected.size) { toast('Najprv označ nejaké fotky.', 'info'); return; }
+  // naplň selector kategórií
+  const sel = document.getElementById('phBulkCategory');
+  if (sel) sel.innerHTML = `<option value="">— ponechať bez zmeny —</option><option value="none">Bez kategórie</option>` +
+    photoCatsData.map(c => `<option value="${c._id}">${escHtml((c.icon || '') + ' ' + c.name)}</option>`).join('');
+  document.getElementById('phBulkAuthor').value = '';
+  document.getElementById('phBulkTags').value = '';
+  document.getElementById('phBulkReplaceTags').checked = false;
+  const badge = document.getElementById('phBulkModalN'); if (badge) badge.textContent = phSelected.size + ' ks';
+  document.getElementById('photoBulkModal').classList.remove('hidden');
+}
+function closePhotoBulkModal() { document.getElementById('photoBulkModal').classList.add('hidden'); }
+async function phBulkSave() {
+  const ids = [...phSelected];
+  if (!ids.length) return;
+  const body = {
+    ids,
+    category: document.getElementById('phBulkCategory').value,
+    author: document.getElementById('phBulkAuthor').value.trim(),
+    tags: document.getElementById('phBulkTags').value,
+    replaceTags: document.getElementById('phBulkReplaceTags').checked
+  };
+  try {
+    const r = await fetch('/api/photos/bulk-update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    closePhotoBulkModal();
+    await loadPhotos();
+    toast(`Upravených ${d.modified} fotiek.`, 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+
+// ── Lightbox ──
+function openPhotoLightbox(id) {
+  phLbItems = phFiltered();
+  phLbIdx = phLbItems.findIndex(p => p._id === id);
+  if (phLbIdx < 0) { phLbItems = photosData; phLbIdx = photosData.findIndex(p => p._id === id); }
+  if (phLbIdx < 0) return;
+  document.getElementById('photoLightbox').classList.remove('hidden');
+  document.addEventListener('keydown', phLbKeys);
+  phLbRender();
+}
+function closePhotoLightbox() {
+  document.getElementById('photoLightbox').classList.add('hidden');
+  document.removeEventListener('keydown', phLbKeys);
+}
+function phLbKeys(e) {
+  if (e.key === 'Escape') closePhotoLightbox();
+  if (e.key === 'ArrowLeft') phLbNav(-1);
+  if (e.key === 'ArrowRight') phLbNav(1);
+}
+function phLbNav(dir) {
+  if (!phLbItems.length) return;
+  phLbIdx = (phLbIdx + dir + phLbItems.length) % phLbItems.length;
+  phLbRender();
+}
+function phLbRender() {
+  const p = phLbItems[phLbIdx]; if (!p) return;
+  document.getElementById('phLbImg').src = p.url;
+  const cat = p.category;
+  const dims = p.width ? `${p.width}×${p.height} px` : '';
+  document.getElementById('phLbPanel').innerHTML = `
+    <div class="ph-lb-title">${escHtml(p.title || p.originalName || 'Bez názvu')}</div>
+    <div class="ph-lb-info">
+      ${cat ? `<span class="ph-badge" style="--chip-c:${escHtml(cat.color || '#0891b2')}">${escHtml(cat.icon || '')} ${escHtml(cat.name)}</span>` : ''}
+      ${(p.tags || []).map(t => `<span class="ph-mini-tag">#${escHtml(t)}</span>`).join('')}
+    </div>
+    <div class="ph-lb-sub">${escHtml(p.author || '—')} · ${phFmtDate(p.createdAt)}${dims ? ' · ' + dims : ''}${p.size ? ' · ' + phFmtBytes(p.size) : ''} <span class="ph-lb-count">${phLbIdx + 1}/${phLbItems.length}</span></div>
+    ${p.note ? `<div class="ph-lb-note">${escHtml(p.note)}</div>` : ''}
+    ${p.networkPath ? `<div class="ph-lb-net" title="Kliknutím skopíruješ cestu" onclick="phCopyNet('${p._id}')">📁 <code>${escHtml(p.networkPath)}</code></div>` : ''}
+    <div class="ph-lb-actions">
+      <button class="btn-sm" onclick="sharePhoto('${p._id}')">🔗 Zdieľať</button>
+      <button class="btn-sm" onclick="phDownload('${p._id}', 'orig')">⬇ Stiahnuť</button>
+      <span class="ph-conv">
+        <select id="phLbConv"><option value="jpeg">JPEG</option><option value="png">PNG</option><option value="webp">WebP</option></select>
+        <button class="btn-sm" onclick="phDownload('${p._id}', document.getElementById('phLbConv').value)">⇄ Konvertovať</button>
+      </span>
+      <button class="btn-sm" onclick="editPhoto('${p._id}')">✎ Upraviť</button>
+      <button class="btn-sm danger" onclick="deletePhoto('${p._id}')">✕ Odstrániť</button>
+    </div>`;
+}
+
+// Skopíruj sieťovú cestu fotky (bezpečne cez ID — cesty obsahujú \ a ')
+function phCopyNet(id) {
+  const p = photosData.find(x => x._id === id);
+  if (p?.networkPath) phCopy(p.networkPath, 'Sieťová cesta skopírovaná.');
+}
+
+// Zdieľanie — Web Share API s fallbackom na kopírovanie odkazu
+async function sharePhoto(id) {
+  const p = photosData.find(x => x._id === id); if (!p) return;
+  const url = location.origin + p.url;
+  if (navigator.share) {
+    try { await navigator.share({ title: p.title || 'Fotka z výroby', url }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  phCopy(url, 'Odkaz na fotku skopírovaný.');
+}
+
+// Stiahnutie / konverzia cez canvas (jpeg/png/webp), 'orig' = pôvodný súbor
+async function phDownload(id, fmt) {
+  const p = photosData.find(x => x._id === id); if (!p) return;
+  const base = (p.title || p.originalName || 'fotka').replace(/[\\/:*?"<>|]+/g, '_').replace(/\.[a-z0-9]+$/i, '');
+  if (fmt === 'orig') {
+    const a = document.createElement('a'); a.href = p.url; a.download = p.originalName || (base + (p.url.match(/\.[a-z0-9]+$/i)?.[0] || '.jpg')); a.click();
+    return;
+  }
+  try {
+    const img = new Image();
+    await new Promise((ok, err) => { img.onload = ok; img.onerror = err; img.src = p.url; });
+    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    c.getContext('2d').drawImage(img, 0, 0);
+    const mime = fmt === 'png' ? 'image/png' : fmt === 'webp' ? 'image/webp' : 'image/jpeg';
+    const blob = await new Promise(ok => c.toBlob(ok, mime, 0.92));
+    if (!blob) throw new Error('Konverzia zlyhala');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = base + (fmt === 'png' ? '.png' : fmt === 'webp' ? '.webp' : '.jpg');
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast(`Fotka konvertovaná do ${fmt.toUpperCase()}.`, 'success');
+  } catch { toast('Konverzia zlyhala.', 'error'); }
+}
+
+// ── Modál: pridanie / úprava ──
+function phFillCatSelect(selectedId) {
+  const sel = document.getElementById('phCategory');
+  sel.innerHTML = '<option value="">— bez kategórie —</option>' +
+    photoCatsData.map(c => `<option value="${c._id}" ${selectedId === c._id ? 'selected' : ''}>${escHtml(c.icon || '')} ${escHtml(c.name)}</option>`).join('');
+}
+
+function openPhotoModal(p = null) {
+  phPickedFiles = [];
+  const e = !!p;
+  document.getElementById('phModalTitle').textContent = e ? 'Upraviť fotku' : 'Pridať fotky';
+  document.getElementById('phId').value = e ? p._id : '';
+  document.getElementById('phTitle').value = e ? (p.title || '') : '';
+  document.getElementById('phTagsInp').value = e ? (p.tags || []).join(', ') : '';
+  document.getElementById('phNetPath').value = e ? (p.networkPath || '') : '';
+  document.getElementById('phNote').value = e ? (p.note || '') : '';
+  phFillCatSelect(e ? (p.category?._id || p.category || '') : '');
+  document.getElementById('phDropWrap').style.display = e ? 'none' : '';
+  document.getElementById('phConvWrap').style.display = e ? 'none' : '';
+  document.getElementById('phPickList').innerHTML = '';
+  document.getElementById('phFiles').value = '';
+  document.getElementById('phSaveBtn').textContent = e ? 'Uložiť' : 'Nahrať';
+  phInitDrop();
+  document.getElementById('photoModal').classList.remove('hidden');
+  modalSnapshot('photoModal');
+}
+function closePhotoModal() { modalGuardClose('photoModal'); }
+
+// Drag & drop na drop zónu (inicializuje sa raz)
+let _phDropInit = false;
+function phInitDrop() {
+  if (_phDropInit) return; _phDropInit = true;
+  const dz = document.getElementById('phDrop');
+  ['dragover', 'dragenter'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+  dz.addEventListener('drop', e => phFilesPicked(e.dataTransfer.files));
+}
+function phFilesPicked(files) {
+  const imgs = Array.from(files || []).filter(f => /^image\//.test(f.type));
+  if (!imgs.length) { toast('Vyber obrázkové súbory.', 'warn'); return; }
+  phPickedFiles = phPickedFiles.concat(imgs);
+  renderPhPickList();
+}
+function renderPhPickList() {
+  document.getElementById('phPickList').innerHTML = phPickedFiles.map((f, i) =>
+    `<span class="ph-pick">${escHtml(f.name)} <em>${phFmtBytes(f.size)}</em> <button onclick="phPickedFiles.splice(${i},1);renderPhPickList()" title="Odobrať">✕</button></span>`
+  ).join('');
+}
+
+// Konverzia na klientovi pred nahratím (canvas — zmenšenie + JPEG/WebP)
+function phConvertFile(file, mode) {
+  if (mode === 'orig') return Promise.resolve(file);
+  const maxDim = mode === '1280' ? 1280 : 1920;
+  const mime = mode === 'webp' ? 'image/webp' : 'image/jpeg';
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+      // Ak sa nemení veľkosť a súbor už je jpeg/webp, netreba konvertovať
+      if (scale === 1 && file.type === mime) { URL.revokeObjectURL(url); resolve(file); return; }
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => {
+        URL.revokeObjectURL(url);
+        if (!b) { resolve(file); return; }
+        const ext = mime === 'image/webp' ? '.webp' : '.jpg';
+        resolve(new File([b], file.name.replace(/\.[^.]+$/, '') + ext, { type: mime }));
+      }, mime, 0.86);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
+async function savePhotos() {
+  const id = document.getElementById('phId').value;
+  const meta = {
+    title: document.getElementById('phTitle').value.trim(),
+    category: document.getElementById('phCategory').value || null,
+    tags: document.getElementById('phTagsInp').value,
+    networkPath: document.getElementById('phNetPath').value.trim(),
+    note: document.getElementById('phNote').value.trim()
+  };
+  const btn = document.getElementById('phSaveBtn');
+  try {
+    if (id) {
+      const r = await fetch('/api/photos/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(meta) });
+      if (!r.ok) throw new Error((await r.json()).error || 'Chyba');
+      toast('Fotka upravená.', 'success');
+    } else {
+      if (!phPickedFiles.length) { toast('Vyber aspoň jednu fotku.', 'warn'); return; }
+      btn.disabled = true; btn.textContent = 'Konvertujem…';
+      const mode = document.getElementById('phConvert').value;
+      const files = [];
+      for (const f of phPickedFiles) files.push(await phConvertFile(f, mode));
+      btn.textContent = 'Nahrávam…';
+      const fd = new FormData();
+      files.forEach(f => fd.append('photos', f));
+      Object.entries(meta).forEach(([k, v]) => { if (v != null) fd.append(k, v); });
+      const r = await fetch('/api/photos/upload', { method: 'POST', body: fd });
+      if (!r.ok) throw new Error((await r.json()).error || 'Chyba nahrávania');
+      toast(`Nahraté: ${files.length} ${files.length === 1 ? 'fotka' : files.length < 5 ? 'fotky' : 'fotiek'}.`, 'success');
+    }
+    delete _modalSnap['photoModal'];
+    document.getElementById('photoModal').classList.add('hidden');
+    closePhotoLightbox();
+    loadPhotos();
+  } catch (e) { toast(e.message || 'Chyba pri ukladaní.', 'error'); }
+  finally { btn.disabled = false; btn.textContent = id ? 'Uložiť' : 'Nahrať'; }
+}
+
+function editPhoto(id) {
+  const p = photosData.find(x => x._id === id); if (!p) return;
+  closePhotoLightbox();
+  openPhotoModal(p);
+}
+
+async function deletePhoto(id) {
+  if (!await uiConfirm('Naozaj odstrániť fotku? Súbor sa zmaže aj z úložiska.')) return;
+  try {
+    await fetch('/api/photos/' + id, { method: 'DELETE' });
+    closePhotoLightbox();
+    toast('Fotka odstránená.', 'success');
+    loadPhotos();
+  } catch { toast('Chyba pri odstraňovaní.', 'error'); }
+}
+
+// ── Kategórie (typy produktov) ──
+function openPhotoCatModal() { renderPhotoCatList(); document.getElementById('photoCatModal').classList.remove('hidden'); }
+function closePhotoCatModal() { document.getElementById('photoCatModal').classList.add('hidden'); }
+function renderPhotoCatList() {
+  const el = document.getElementById('phCatList');
+  if (!photoCatsData.length) { el.innerHTML = '<p class="hint">Zatiaľ žiadne kategórie — pridaj typy produktov nižšie.</p>'; return; }
+  el.innerHTML = photoCatsData.map(c => {
+    const n = photosData.filter(p => (p.category?._id || p.category) === c._id).length;
+    return `<div class="ph-cat-row">
+      <span class="ph-cat-dot" style="background:${escHtml(c.color || '#0891b2')}"></span>
+      <span class="ph-cat-name">${escHtml(c.icon || '📦')} ${escHtml(c.name)}</span>
+      <span class="ph-cat-n">${n} ${n === 1 ? 'fotka' : n > 1 && n < 5 ? 'fotky' : 'fotiek'}</span>
+      <button class="admin-icon-btn danger" onclick="deletePhotoCat('${c._id}')" title="Odstrániť kategóriu">✕</button>
+    </div>`;
+  }).join('');
+}
+async function addPhotoCat() {
+  const name = document.getElementById('phCatName').value.trim();
+  if (!name) { toast('Zadaj názov kategórie.', 'warn'); return; }
+  try {
+    const r = await fetch('/api/photos/categories', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, icon: document.getElementById('phCatIcon').value.trim() || '📦', color: document.getElementById('phCatColor').value })
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Chyba');
+    document.getElementById('phCatName').value = ''; document.getElementById('phCatIcon').value = '';
+    photoCatsData = await fetch('/api/photos/categories').then(x => x.json());
+    renderPhotoCatList(); renderPhotoCats();
+    toast('Kategória pridaná.', 'success');
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function deletePhotoCat(id) {
+  if (!await uiConfirm('Odstrániť kategóriu? Fotky v nej zostanú bez kategórie.')) return;
+  try {
+    await fetch('/api/photos/categories/' + id, { method: 'DELETE' });
+    await loadPhotos(); renderPhotoCatList();
+    toast('Kategória odstránená.', 'success');
+  } catch { toast('Chyba.', 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GITHUB — projekty a odkazy
+// ══════════════════════════════════════════════════════════════════════════════
+let ghData = [];
+const GH_LANG_COLORS = { javascript: '#f1e05a', typescript: '#3178c6', python: '#3572a5', 'c++': '#f34b7d', c: '#555555', 'c#': '#178600', rust: '#dea584', go: '#00add8', java: '#b07219', php: '#4f5d95', html: '#e34c26', css: '#563d7c', shell: '#89e051', matlab: '#e16737', labview: '#fede06' };
+
+async function loadGithub() {
+  try { ghData = await fetch('/api/github').then(r => r.json()); if (!Array.isArray(ghData)) ghData = []; }
+  catch { ghData = []; }
+  renderGithub();
+}
+
+function renderGithub() {
+  const el = document.getElementById('ghList'); if (!el) return;
+  const q = (document.getElementById('ghSearch')?.value || '').toLowerCase();
+  const items = ghData.filter(r => !q || [r.name, r.description, r.language, r.owner, ...(r.tags || [])].filter(Boolean).join(' ').toLowerCase().includes(q));
+  if (!items.length) {
+    el.innerHTML = `<div class="proc-empty">Žiadne GitHub projekty.<div class="proc-empty-actions"><button class="btn-primary" onclick="openGhModal()">+ Nový projekt</button></div></div>`;
+    return;
+  }
+  const stLabel = { active: 'Aktívny', archived: 'Archív', planned: 'Plánovaný' };
+  el.innerHTML = items.map(r => {
+    const langColor = GH_LANG_COLORS[(r.language || '').toLowerCase()] || '#8b949e';
+    return `<div class="gh-card">
+      <div class="gh-card-head">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>
+        ${r.repoUrl ? `<a class="gh-name" href="${escHtml(r.repoUrl)}" target="_blank" rel="noopener">${escHtml(r.name)}</a>` : `<span class="gh-name">${escHtml(r.name)}</span>`}
+        ${r.private ? '<span class="gh-lock" title="Privátny repozitár">🔒</span>' : ''}
+        <span class="gh-status gh-st-${r.status}">${stLabel[r.status] || r.status}</span>
+        <button class="admin-icon-btn" onclick="openGhModal(ghData.find(x=>x._id==='${r._id}'))" title="Upraviť">✎</button>
+      </div>
+      ${r.description ? `<div class="gh-desc">${escHtml(r.description)}</div>` : ''}
+      <div class="gh-meta">
+        ${r.language ? `<span class="gh-lang"><span class="gh-lang-dot" style="background:${langColor}"></span>${escHtml(r.language)}</span>` : ''}
+        ${r.owner ? `<span class="gh-owner">👤 ${escHtml(r.owner)}</span>` : ''}
+        ${(r.tags || []).map(t => `<span class="ph-mini-tag">#${escHtml(t)}</span>`).join('')}
+      </div>
+      ${(r.links || []).length ? `<div class="gh-links">${r.links.filter(l => l.url).map(l => `<a class="gh-link" href="${escHtml(l.url)}" target="_blank" rel="noopener">🔗 ${escHtml(l.label || l.url)}</a>`).join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function addGhLinkRow(l = {}) {
+  const row = document.createElement('div');
+  row.className = 'proc-row gh-link-row';
+  row.innerHTML = `<input type="text" placeholder="Názov odkazu" value="${escHtml(l.label || '')}" data-gh="label">
+    <input type="text" placeholder="https://..." value="${escHtml(l.url || '')}" data-gh="url">
+    <button type="button" class="admin-icon-btn danger" onclick="this.parentElement.remove()" title="Odobrať">✕</button>`;
+  document.getElementById('ghLinks').appendChild(row);
+}
+
+function openGhModal(r = null) {
+  const e = !!r;
+  document.getElementById('ghModalTitle').textContent = e ? 'Upraviť projekt' : 'Nový GitHub projekt';
+  document.getElementById('ghId').value = e ? r._id : '';
+  document.getElementById('ghName').value = e ? (r.name || '') : '';
+  document.getElementById('ghUrl').value = e ? (r.repoUrl || '') : '';
+  document.getElementById('ghDesc').value = e ? (r.description || '') : '';
+  document.getElementById('ghLang').value = e ? (r.language || '') : '';
+  document.getElementById('ghStatus').value = e ? (r.status || 'active') : 'active';
+  document.getElementById('ghOwner').value = e ? (r.owner || '') : '';
+  document.getElementById('ghPrivate').checked = e ? !!r.private : false;
+  document.getElementById('ghTags').value = e ? (r.tags || []).join(', ') : '';
+  document.getElementById('ghLinks').innerHTML = '';
+  (e ? (r.links || []) : []).forEach(l => addGhLinkRow(l));
+  document.getElementById('ghDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('ghModal').classList.remove('hidden');
+  modalSnapshot('ghModal');
+}
+function closeGhModal() { modalGuardClose('ghModal'); }
+
+async function saveGh() {
+  const id = document.getElementById('ghId').value;
+  const name = document.getElementById('ghName').value.trim();
+  if (!name) { toast('Zadaj názov projektu.', 'warn'); return; }
+  const links = Array.from(document.querySelectorAll('#ghLinks .gh-link-row')).map(row => ({
+    label: row.querySelector('[data-gh="label"]').value.trim(),
+    url: row.querySelector('[data-gh="url"]').value.trim()
+  })).filter(l => l.url);
+  const body = {
+    name,
+    repoUrl: document.getElementById('ghUrl').value.trim(),
+    description: document.getElementById('ghDesc').value.trim(),
+    language: document.getElementById('ghLang').value.trim(),
+    status: document.getElementById('ghStatus').value,
+    owner: document.getElementById('ghOwner').value.trim(),
+    private: document.getElementById('ghPrivate').checked,
+    tags: document.getElementById('ghTags').value.split(',').map(t => t.trim()).filter(Boolean),
+    links
+  };
+  try {
+    const r = await fetch(id ? '/api/github/' + id : '/api/github', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error((await r.json()).error || 'Chyba');
+    delete _modalSnap['ghModal'];
+    document.getElementById('ghModal').classList.add('hidden');
+    toast(id ? 'Projekt upravený.' : 'Projekt pridaný.', 'success');
+    loadGithub();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function deleteGh(id) {
+  if (!id || !await uiConfirm('Naozaj odstrániť projekt zo zoznamu?')) return;
+  try {
+    await fetch('/api/github/' + id, { method: 'DELETE' });
+    delete _modalSnap['ghModal'];
+    document.getElementById('ghModal').classList.add('hidden');
+    toast('Projekt odstránený.', 'success');
+    loadGithub();
+  } catch { toast('Chyba.', 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// VZDIALENÉ PRIPOJENIE — RustDesk
+// ══════════════════════════════════════════════════════════════════════════════
+let rcData = [];
+const RC_OS_ICON = { windows: '🪟', linux: '🐧', macos: '🍎' };
+
+async function loadRemote() {
+  try { rcData = await fetch('/api/remote').then(r => r.json()); if (!Array.isArray(rcData)) rcData = []; }
+  catch { rcData = []; }
+  renderRemote();
+}
+
+// Naformátuj RustDesk ID po trojiciach (123 456 789)
+function rcFmtId(id) { return String(id || '').replace(/\s+/g, '').replace(/(\d{3})(?=\d)/g, '$1 '); }
+
+function renderRemote() {
+  const el = document.getElementById('rcList'); if (!el) return;
+  const q = (document.getElementById('rcSearch')?.value || '').toLowerCase();
+  const items = rcData.filter(r => !q || [r.name, r.rustdeskId, r.location, r.user, r.ip, r.note, ...(r.tags || [])].filter(Boolean).join(' ').toLowerCase().includes(q));
+  if (!items.length) {
+    el.innerHTML = `<div class="proc-empty">Žiadne vzdialené PC.<div class="proc-empty-actions"><button class="btn-primary" onclick="openRemoteModal()">+ Nové PC</button></div></div>`;
+    return;
+  }
+  el.innerHTML = items.map(r => {
+    const cleanId = String(r.rustdeskId || '').replace(/\s+/g, '');
+    return `<div class="rc-card">
+      <div class="rc-card-head">
+        <span class="rc-os" title="${escHtml(r.os || '')}">${RC_OS_ICON[(r.os || '').toLowerCase()] || '💻'}</span>
+        <span class="rc-name">${escHtml(r.name)}</span>
+        <button class="admin-icon-btn" onclick="openRemoteModal(rcData.find(x=>x._id==='${r._id}'))" title="Upraviť">✎</button>
+      </div>
+      <div class="rc-id-row">
+        <code class="rc-idc" title="RustDesk ID">${escHtml(rcFmtId(r.rustdeskId))}</code>
+        <button class="btn-sm" onclick="rcCopy('${r._id}', 'id')" title="Kopírovať ID">⧉ ID</button>
+        ${r.password ? `<button class="btn-sm" onclick="rcCopy('${r._id}', 'pass')" title="Kopírovať heslo">⧉ Heslo</button>` : ''}
+        <a class="btn-primary btn-sm rc-connect" href="rustdesk://connection/new/${encodeURIComponent(cleanId)}" title="Otvoriť v RustDesk klientovi">🖥 Pripojiť</a>
+      </div>
+      <div class="rc-meta">
+        ${r.location ? `<span>📍 ${escHtml(r.location)}</span>` : ''}
+        ${r.user ? `<span>👤 ${escHtml(r.user)}</span>` : ''}
+        ${r.ip ? `<span title="Lokálna IP">🌐 <code>${escHtml(r.ip)}</code></span>` : ''}
+      </div>
+      ${(r.tags || []).length ? `<div class="rc-tags">${r.tags.map(t => `<span class="ph-mini-tag">#${escHtml(t)}</span>`).join('')}</div>` : ''}
+      ${r.note ? `<div class="rc-note">${escHtml(r.note)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// Skopíruj ID / heslo PC (bezpečne cez ID záznamu — heslá môžu obsahovať ' a \)
+function rcCopy(id, what) {
+  const r = rcData.find(x => x._id === id); if (!r) return;
+  if (what === 'pass') phCopy(r.password || '', 'Heslo skopírované.');
+  else phCopy(String(r.rustdeskId || '').replace(/\s+/g, ''), 'RustDesk ID skopírované.');
+}
+
+function openRemoteModal(r = null) {
+  const e = !!r;
+  document.getElementById('rcModalTitle').textContent = e ? 'Upraviť PC' : 'Nové vzdialené PC';
+  document.getElementById('rcId').value = e ? r._id : '';
+  document.getElementById('rcName').value = e ? (r.name || '') : '';
+  document.getElementById('rcRustId').value = e ? (r.rustdeskId || '') : '';
+  document.getElementById('rcPass').value = e ? (r.password || '') : '';
+  document.getElementById('rcLocation').value = e ? (r.location || '') : '';
+  document.getElementById('rcUser').value = e ? (r.user || '') : '';
+  document.getElementById('rcOs').value = e ? (r.os || 'Windows') : 'Windows';
+  document.getElementById('rcIp').value = e ? (r.ip || '') : '';
+  document.getElementById('rcTags').value = e ? (r.tags || []).join(', ') : '';
+  document.getElementById('rcNote').value = e ? (r.note || '') : '';
+  document.getElementById('rcDeleteBtn').style.display = e ? '' : 'none';
+  document.getElementById('remoteModal').classList.remove('hidden');
+  modalSnapshot('remoteModal');
+}
+function closeRemoteModal() { modalGuardClose('remoteModal'); }
+
+async function saveRemote() {
+  const id = document.getElementById('rcId').value;
+  const name = document.getElementById('rcName').value.trim();
+  const rustdeskId = document.getElementById('rcRustId').value.trim();
+  if (!name || !rustdeskId) { toast('Zadaj názov PC a RustDesk ID.', 'warn'); return; }
+  const body = {
+    name, rustdeskId,
+    password: document.getElementById('rcPass').value,
+    location: document.getElementById('rcLocation').value.trim(),
+    user: document.getElementById('rcUser').value.trim(),
+    os: document.getElementById('rcOs').value,
+    ip: document.getElementById('rcIp').value.trim(),
+    tags: document.getElementById('rcTags').value.split(',').map(t => t.trim()).filter(Boolean),
+    note: document.getElementById('rcNote').value.trim()
+  };
+  try {
+    const r = await fetch(id ? '/api/remote/' + id : '/api/remote', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error((await r.json()).error || 'Chyba');
+    delete _modalSnap['remoteModal'];
+    document.getElementById('remoteModal').classList.add('hidden');
+    toast(id ? 'PC upravené.' : 'PC pridané.', 'success');
+    loadRemote();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function deleteRemote(id) {
+  if (!id || !await uiConfirm('Naozaj odstrániť PC zo zoznamu?')) return;
+  try {
+    await fetch('/api/remote/' + id, { method: 'DELETE' });
+    delete _modalSnap['remoteModal'];
+    document.getElementById('remoteModal').classList.add('hidden');
+    toast('PC odstránené.', 'success');
+    loadRemote();
+  } catch { toast('Chyba.', 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EDITOR OBRÁZKOV — anotácie pre pracovné postupy
+// (kruhy, rámčeky, šípky, popisy, bubliny → zapečené do PNG)
+// ══════════════════════════════════════════════════════════════════════════════
+let _ann = null;
+let _annMeasure = null;
+function annMeasureCtx() { if (!_annMeasure) _annMeasure = document.createElement('canvas').getContext('2d'); return _annMeasure; }
+function annStage() { return document.getElementById('annSvg'); }
+function annEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+// Otvor editor nad obrázkom → Promise s URL výsledku (anotovaný alebo pôvodný)
+function openImageAnnotator(srcUrl) {
+  return new Promise(resolve => {
+    if (!srcUrl) { resolve(null); return; }
+    const img = new Image();
+    img.onload = () => {
+      const w = img.naturalWidth || img.width || 800, h = img.naturalHeight || img.height || 600;
+      _ann = {
+        url: srcUrl, img, natW: w, natH: h, shapes: [], sel: null, tool: 'select',
+        color: '#ef4444', sw: Math.max(3, Math.round(w / 260)), fontSize: Math.max(18, Math.round(w / 26)),
+        drag: null, undo: [], resolve
+      };
+      document.getElementById('imgAnnotatorModal').classList.remove('hidden');
+      const svg = annStage();
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      svg.onpointerdown = annDown; svg.onpointermove = annMove; svg.onpointerup = annUp;
+      document.addEventListener('keydown', annKeys);
+      annSetTool('select'); annRender(); annPanel();
+    };
+    img.onerror = () => resolve(srcUrl);
+    img.src = srcUrl;
+  });
+}
+
+function annClose(url) {
+  document.getElementById('imgAnnotatorModal').classList.add('hidden');
+  document.removeEventListener('keydown', annKeys);
+  const r = _ann && _ann.resolve; _ann = null;
+  if (r) r(url);
+}
+function annCancel() { annClose(_ann ? _ann.url : null); }
+
+// ── Nástroje ──
+function annSetTool(t) { if (!_ann) return; _ann.tool = t; if (t !== 'select') _ann.sel = null; annSyncTools(); annRender(); annPanel(); }
+function annSyncTools() { document.querySelectorAll('#imgAnnotatorModal .ann-tool[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === _ann.tool)); }
+
+// ── Undo ──
+function annPush() { _ann.undo.push(JSON.stringify(_ann.shapes)); if (_ann.undo.length > 60) _ann.undo.shift(); }
+function annUndo() { if (_ann && _ann.undo.length) { _ann.shapes = JSON.parse(_ann.undo.pop()); _ann.sel = null; annRender(); annPanel(); } }
+function annClear() { if (!_ann.shapes.length) return; annPush(); _ann.shapes = []; _ann.sel = null; annRender(); annPanel(); }
+function annDeleteSel() { if (_ann && _ann.sel != null) { annPush(); _ann.shapes.splice(_ann.sel, 1); _ann.sel = null; annRender(); annPanel(); } }
+
+function annKeys(e) {
+  if (!_ann) return;
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+  if (e.key === 'Escape') { if (!typing) annCancel(); return; }
+  if (!typing && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); annDeleteSel(); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); annUndo(); }
+}
+
+// ── Geometria ──
+function annCoord(e) {
+  const svg = annStage(), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const m = svg.getScreenCTM(); if (!m) return { x: 0, y: 0 };
+  const q = pt.matrixTransform(m.inverse()); return { x: q.x, y: q.y };
+}
+function annArrowHead(s) {
+  const ang = Math.atan2(s.y2 - s.y1, s.x2 - s.x1), len = Math.max(s.sw * 3.4, 14);
+  const a1 = ang + Math.PI - 0.42, a2 = ang + Math.PI + 0.42;
+  return `${s.x2},${s.y2} ${s.x2 + Math.cos(a1) * len},${s.y2 + Math.sin(a1) * len} ${s.x2 + Math.cos(a2) * len},${s.y2 + Math.sin(a2) * len}`;
+}
+function annWrap(text, maxW, fontPx) {
+  const ctx = annMeasureCtx(); ctx.font = `${fontPx}px sans-serif`; const out = [];
+  String(text || '').split('\n').forEach(par => {
+    const words = par.split(/\s+/); let line = '';
+    words.forEach(w => {
+      const test = line ? line + ' ' + w : w;
+      if (ctx.measureText(test).width > maxW && line) { out.push(line); line = w; } else line = test;
+    });
+    out.push(line);
+  });
+  return out.length ? out : [''];
+}
+function annTextSize(s) {
+  const ctx = annMeasureCtx(); ctx.font = `700 ${s.size}px sans-serif`;
+  const lines = annWrap(s.text, _ann.natW - s.x - 10, s.size); let w = 0;
+  lines.forEach(l => w = Math.max(w, ctx.measureText(l).width));
+  return { w: w || 20, h: lines.length * s.size * 1.2 };
+}
+function annBBox(s) {
+  if (s.type === 'circle') return { x: s.cx - s.rx, y: s.cy - s.ry, w: s.rx * 2, h: s.ry * 2 };
+  if (s.type === 'rect' || s.type === 'bubble') return { x: s.x, y: s.y, w: s.w, h: s.h };
+  if (s.type === 'arrow') return { x: Math.min(s.x1, s.x2), y: Math.min(s.y1, s.y2), w: Math.abs(s.x2 - s.x1) || 1, h: Math.abs(s.y2 - s.y1) || 1 };
+  if (s.type === 'text') { const t = annTextSize(s); return { x: s.x, y: s.y, w: t.w, h: t.h }; }
+  return { x: 0, y: 0, w: 0, h: 0 };
+}
+
+// ── Vykreslenie do SVG ──
+function annShapeSvg(s, i) {
+  if (s.type === 'circle')
+    return `<ellipse data-idx="${i}" cx="${s.cx}" cy="${s.cy}" rx="${Math.max(1, s.rx)}" ry="${Math.max(1, s.ry)}" fill="transparent" stroke="${s.color}" stroke-width="${s.sw}"/>`;
+  if (s.type === 'rect')
+    return `<rect data-idx="${i}" x="${s.x}" y="${s.y}" width="${Math.max(1, s.w)}" height="${Math.max(1, s.h)}" rx="${Math.min(s.w, s.h) * 0.03}" fill="transparent" stroke="${s.color}" stroke-width="${s.sw}"/>`;
+  if (s.type === 'arrow')
+    return `<line data-idx="${i}" x1="${s.x1}" y1="${s.y1}" x2="${s.x2}" y2="${s.y2}" stroke="transparent" stroke-width="${Math.max(s.sw * 3, 18)}"/>`
+      + `<line data-idx="${i}" x1="${s.x1}" y1="${s.y1}" x2="${s.x2}" y2="${s.y2}" stroke="${s.color}" stroke-width="${s.sw}" stroke-linecap="round"/>`
+      + `<polygon data-idx="${i}" points="${annArrowHead(s)}" fill="${s.color}"/>`;
+  if (s.type === 'text') {
+    const lines = annWrap(s.text, _ann.natW - s.x - 10, s.size);
+    const tsp = lines.map((ln, li) => `<tspan x="${s.x}" dy="${li === 0 ? 0 : s.size * 1.2}">${annEsc(ln)}</tspan>`).join('');
+    return `<text data-idx="${i}" x="${s.x}" y="${s.y + s.size * 0.86}" font-family="sans-serif" font-size="${s.size}" font-weight="700" fill="${s.color}" stroke="#ffffff" stroke-width="${s.size * 0.16}" paint-order="stroke" stroke-linejoin="round">${tsp}</text>`;
+  }
+  if (s.type === 'bubble') {
+    const r = Math.min(s.w, s.h) * 0.14;
+    const tail = `${s.x + s.w * 0.24},${s.y + s.h} ${s.x + s.w * 0.44},${s.y + s.h} ${s.tailX},${s.tailY}`;
+    const lines = annWrap(s.text, s.w - 18, s.size);
+    const tsp = lines.map((ln, li) => `<tspan x="${s.x + 10}" dy="${li === 0 ? s.size : s.size * 1.2}">${annEsc(ln)}</tspan>`).join('');
+    return `<polygon data-idx="${i}" points="${tail}" fill="#ffffff" stroke="${s.color}" stroke-width="${s.sw}" stroke-linejoin="round"/>`
+      + `<rect data-idx="${i}" x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" rx="${r}" fill="#ffffff" stroke="${s.color}" stroke-width="${s.sw}"/>`
+      + `<text data-idx="${i}" x="${s.x + 10}" y="${s.y + 4}" font-family="sans-serif" font-size="${s.size}" fill="#111827">${tsp}</text>`;
+  }
+  return '';
+}
+function annHandle(x, y, name, hs) {
+  return `<rect data-handle="${name}" x="${x - hs}" y="${y - hs}" width="${hs * 2}" height="${hs * 2}" rx="${hs * 0.35}" fill="#22d3ee" stroke="#0a0f20" stroke-width="${hs * 0.22}"/>`;
+}
+function annHandles() {
+  if (_ann.sel == null) return '';
+  const s = _ann.shapes[_ann.sel]; if (!s) return '';
+  const hs = Math.max(6, _ann.natW / 95), box = annBBox(s);
+  let out = `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" fill="none" stroke="#22d3ee" stroke-width="${hs * 0.22}" stroke-dasharray="${hs} ${hs * 0.6}" pointer-events="none"/>`;
+  if (s.type === 'arrow') out += annHandle(s.x1, s.y1, 'p1', hs) + annHandle(s.x2, s.y2, 'p2', hs);
+  else if (s.type !== 'text') { out += annHandle(box.x + box.w, box.y + box.h, 'br', hs); if (s.type === 'bubble') out += annHandle(s.tailX, s.tailY, 'tail', hs); }
+  return out;
+}
+function annRender() {
+  const svg = annStage(); if (!svg || !_ann) return;
+  let inner = `<image href="${annEsc(_ann.url)}" xlink:href="${annEsc(_ann.url)}" x="0" y="0" width="${_ann.natW}" height="${_ann.natH}" preserveAspectRatio="none"/>`;
+  _ann.shapes.forEach((s, i) => inner += annShapeSvg(s, i));
+  inner += annHandles();
+  svg.innerHTML = inner;
+}
+
+// ── Interakcia ──
+function annDown(e) {
+  if (!_ann) return; e.preventDefault();
+  const p = annCoord(e);
+  const handle = e.target && e.target.getAttribute && e.target.getAttribute('data-handle');
+  if (_ann.tool === 'select') {
+    if (handle) { annPush(); _ann.drag = { mode: 'handle', handle }; annStage().setPointerCapture(e.pointerId); return; }
+    const idxAttr = e.target && e.target.getAttribute && e.target.getAttribute('data-idx');
+    if (idxAttr != null) {
+      _ann.sel = +idxAttr; annPush();
+      _ann.drag = { mode: 'move', start: p, orig: JSON.parse(JSON.stringify(_ann.shapes[_ann.sel])) };
+      annStage().setPointerCapture(e.pointerId); annRender(); annPanel(); return;
+    }
+    _ann.sel = null; annRender(); annPanel(); return;
+  }
+  annPush();
+  const c = _ann.color, sw = _ann.sw, size = _ann.fontSize; let s;
+  if (_ann.tool === 'circle') s = { type: 'circle', cx: p.x, cy: p.y, rx: 1, ry: 1, color: c, sw };
+  else if (_ann.tool === 'rect') s = { type: 'rect', x: p.x, y: p.y, w: 1, h: 1, color: c, sw };
+  else if (_ann.tool === 'arrow') s = { type: 'arrow', x1: p.x, y1: p.y, x2: p.x, y2: p.y, color: c, sw };
+  else if (_ann.tool === 'text') s = { type: 'text', x: p.x, y: p.y, text: 'Popis', color: c, size };
+  else if (_ann.tool === 'bubble') s = { type: 'bubble', x: p.x, y: p.y, w: Math.max(80, _ann.natW * 0.16), h: Math.max(50, _ann.natH * 0.1), tailX: p.x - _ann.natW * 0.04, tailY: p.y + _ann.natH * 0.18, text: 'Bublina', color: c, sw, size };
+  _ann.shapes.push(s); _ann.sel = _ann.shapes.length - 1;
+  if (_ann.tool === 'text' || _ann.tool === 'bubble') { _ann.tool = 'select'; annSyncTools(); annRender(); annPanel(true); }
+  else { _ann.drag = { mode: 'create', start: p }; annStage().setPointerCapture(e.pointerId); annRender(); }
+}
+function annMove(e) {
+  if (!_ann || !_ann.drag) return;
+  const p = annCoord(e), d = _ann.drag, s = _ann.shapes[_ann.sel];
+  if (!s) return;
+  if (d.mode === 'create') {
+    if (s.type === 'circle') { s.cx = (d.start.x + p.x) / 2; s.cy = (d.start.y + p.y) / 2; s.rx = Math.abs(p.x - d.start.x) / 2; s.ry = Math.abs(p.y - d.start.y) / 2; }
+    else if (s.type === 'rect') { s.x = Math.min(d.start.x, p.x); s.y = Math.min(d.start.y, p.y); s.w = Math.abs(p.x - d.start.x); s.h = Math.abs(p.y - d.start.y); }
+    else if (s.type === 'arrow') { s.x2 = p.x; s.y2 = p.y; }
+  } else if (d.mode === 'move') {
+    const dx = p.x - d.start.x, dy = p.y - d.start.y, o = d.orig;
+    if (s.type === 'circle') { s.cx = o.cx + dx; s.cy = o.cy + dy; }
+    else if (s.type === 'rect') { s.x = o.x + dx; s.y = o.y + dy; }
+    else if (s.type === 'arrow') { s.x1 = o.x1 + dx; s.y1 = o.y1 + dy; s.x2 = o.x2 + dx; s.y2 = o.y2 + dy; }
+    else if (s.type === 'text') { s.x = o.x + dx; s.y = o.y + dy; }
+    else if (s.type === 'bubble') { s.x = o.x + dx; s.y = o.y + dy; s.tailX = o.tailX + dx; s.tailY = o.tailY + dy; }
+  } else if (d.mode === 'handle') {
+    if (d.handle === 'p1') { s.x1 = p.x; s.y1 = p.y; }
+    else if (d.handle === 'p2') { s.x2 = p.x; s.y2 = p.y; }
+    else if (d.handle === 'tail') { s.tailX = p.x; s.tailY = p.y; }
+    else if (d.handle === 'br') {
+      if (s.type === 'circle') { s.rx = Math.max(4, Math.abs(p.x - s.cx)); s.ry = Math.max(4, Math.abs(p.y - s.cy)); }
+      else { s.w = Math.max(12, p.x - s.x); s.h = Math.max(12, p.y - s.y); }
+    }
+  }
+  annRender();
+}
+function annUp(e) {
+  if (!_ann || !_ann.drag) return;
+  if (_ann.drag.mode === 'create') {
+    const s = _ann.shapes[_ann.sel];
+    const tiny = (s.type === 'circle' && s.rx < 3 && s.ry < 3) || (s.type === 'rect' && s.w < 5 && s.h < 5) || (s.type === 'arrow' && Math.hypot(s.x2 - s.x1, s.y2 - s.y1) < 8);
+    if (tiny) { _ann.shapes.splice(_ann.sel, 1); _ann.sel = null; _ann.undo.pop(); }
+    else { _ann.tool = 'select'; annSyncTools(); }
+    annRender(); annPanel();
+  }
+  _ann.drag = null;
+}
+
+// ── Panel vlastností ──
+const ANN_PALETTE = ['#ef4444', '#f59e0b', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#111827', '#ffffff'];
+function annPanel(focusText) {
+  const el = document.getElementById('annPanel'); if (!el) return;
+  const s = _ann.sel != null ? _ann.shapes[_ann.sel] : null;
+  const curColor = s ? s.color : _ann.color;
+  let html = `<div class="ann-p-sec"><div class="ann-p-lbl">Farba</div><div class="ann-swatches">`;
+  ANN_PALETTE.forEach(c => html += `<button class="ann-sw ${curColor === c ? 'active' : ''}" style="background:${c}" onclick="annSetColor('${c}')" title="${c}"></button>`);
+  html += `</div></div>`;
+  const swVal = s && s.sw != null ? s.sw : _ann.sw;
+  const showSw = !s || s.sw != null || ['circle', 'rect', 'arrow', 'bubble'].includes(_ann.tool);
+  if (showSw) html += `<div class="ann-p-sec"><div class="ann-p-lbl">Hrúbka čiary · <b id="annSwVal">${swVal}</b></div><input type="range" min="1" max="60" value="${swVal}" oninput="annSetSw(this.value)"></div>`;
+  const showFont = (s && (s.type === 'text' || s.type === 'bubble')) || _ann.tool === 'text' || _ann.tool === 'bubble';
+  if (showFont) { const fs = s && s.size != null ? s.size : _ann.fontSize; html += `<div class="ann-p-sec"><div class="ann-p-lbl">Veľkosť písma · <b id="annFsVal">${fs}</b></div><input type="range" min="10" max="160" value="${fs}" oninput="annSetFont(this.value)"></div>`; }
+  if (s && (s.type === 'text' || s.type === 'bubble')) html += `<div class="ann-p-sec"><div class="ann-p-lbl">Text</div><textarea id="annTextInp" rows="3" oninput="annSetText(this.value)">${annEsc(s.text)}</textarea></div>`;
+  if (s) html += `<button class="btn-sm ann-del" onclick="annDeleteSel()">🗑 Zmazať objekt</button>`;
+  html += `<div class="ann-p-hint">${s ? 'Ťahaj objekt myšou · tyrkysový uholník mení veľkosť · Del zmaže.' : 'Vyber nástroj vľavo a ťahaj po obrázku. Klikni na objekt pre úpravu.'}</div>`;
+  el.innerHTML = html;
+  if (focusText) { const t = document.getElementById('annTextInp'); if (t) { t.focus(); t.select(); } }
+}
+function annSetColor(c) { if (_ann.sel != null) { annPush(); _ann.shapes[_ann.sel].color = c; } _ann.color = c; annRender(); annPanel(); }
+function annSetSw(v) { v = +v; if (_ann.sel != null && _ann.shapes[_ann.sel].sw != null) _ann.shapes[_ann.sel].sw = v; _ann.sw = v; const b = document.getElementById('annSwVal'); if (b) b.textContent = v; annRender(); }
+function annSetFont(v) { v = +v; if (_ann.sel != null && _ann.shapes[_ann.sel].size != null) _ann.shapes[_ann.sel].size = v; _ann.fontSize = v; const b = document.getElementById('annFsVal'); if (b) b.textContent = v; annRender(); }
+function annSetText(v) { if (_ann.sel != null) { _ann.shapes[_ann.sel].text = v; annRender(); } }
+
+// ── Export: zapečenie anotácií do PNG cez canvas ──
+function annRoundRect(ctx, x, y, w, h, r) {
+  r = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+  ctx.beginPath(); ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function annCanvasText(ctx, s) {
+  const size = s.size, inB = !!s.inBubble;
+  ctx.font = `${inB ? '' : '700 '}${size}px sans-serif`; ctx.textBaseline = 'top'; ctx.lineJoin = 'round';
+  const wrapW = s.wrapW != null ? s.wrapW : (_ann.natW - s.x - 10);
+  const lines = annWrap(s.text, wrapW, size);
+  let y = inB ? s.y + 6 : s.y;
+  lines.forEach(ln => {
+    if (!inB) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = size * 0.32; ctx.strokeText(ln, s.x, y); }
+    ctx.fillStyle = s.color; ctx.fillText(ln, s.x, y); y += size * 1.2;
+  });
+}
+function annDrawCanvas(ctx, s) {
+  ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  if (s.type === 'circle') { ctx.strokeStyle = s.color; ctx.lineWidth = s.sw; ctx.beginPath(); ctx.ellipse(s.cx, s.cy, Math.max(1, s.rx), Math.max(1, s.ry), 0, 0, Math.PI * 2); ctx.stroke(); }
+  else if (s.type === 'rect') { ctx.strokeStyle = s.color; ctx.lineWidth = s.sw; annRoundRect(ctx, s.x, s.y, s.w, s.h, Math.min(s.w, s.h) * 0.03); ctx.stroke(); }
+  else if (s.type === 'arrow') {
+    ctx.strokeStyle = s.color; ctx.fillStyle = s.color; ctx.lineWidth = s.sw;
+    ctx.beginPath(); ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2); ctx.stroke();
+    const pts = annArrowHead(s).split(' ').map(p => p.split(',').map(Number));
+    ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); ctx.lineTo(pts[1][0], pts[1][1]); ctx.lineTo(pts[2][0], pts[2][1]); ctx.closePath(); ctx.fill();
+  }
+  else if (s.type === 'text') annCanvasText(ctx, s);
+  else if (s.type === 'bubble') {
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = s.color; ctx.lineWidth = s.sw;
+    ctx.beginPath(); ctx.moveTo(s.x + s.w * 0.24, s.y + s.h); ctx.lineTo(s.x + s.w * 0.44, s.y + s.h); ctx.lineTo(s.tailX, s.tailY); ctx.closePath(); ctx.fill(); ctx.stroke();
+    annRoundRect(ctx, s.x, s.y, s.w, s.h, Math.min(s.w, s.h) * 0.14); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.strokeStyle = s.color; ctx.lineWidth = s.sw; ctx.stroke();
+    annCanvasText(ctx, { x: s.x + 10, y: s.y, text: s.text, size: s.size, color: '#111827', wrapW: s.w - 18, inBubble: true });
+  }
+  ctx.restore();
+}
+function annFlatten() {
+  return new Promise((resolve, reject) => {
+    const c = document.createElement('canvas'); c.width = _ann.natW; c.height = _ann.natH;
+    const ctx = c.getContext('2d');
+    try { ctx.drawImage(_ann.img, 0, 0, _ann.natW, _ann.natH); } catch (e) { return reject(e); }
+    _ann.shapes.forEach(s => annDrawCanvas(ctx, s));
+    c.toBlob(b => b ? resolve(b) : reject(new Error('blob')), 'image/png');
+  });
+}
+async function annSave() {
+  if (!_ann.shapes.length) { annClose(_ann.url); return; }
+  const btn = document.getElementById('annSaveBtn'); const old = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Ukladám…';
+  try {
+    const blob = await annFlatten();
+    const file = new File([blob], 'anotacia-' + Date.now() + '.png', { type: 'image/png' });
+    const url = await uploadImage(file);
+    annClose(url || _ann.url);
+    toast('Anotovaný obrázok uložený.', 'success');
+  } catch (e) {
+    btn.disabled = false; btn.textContent = old;
+    toast('Uloženie zlyhalo — skús znova.', 'error');
+  }
+}
+
+// Otvor editor nad existujúcim obrázkom v zozname (datasheety/prototypy) a nahraď URL
+async function reAnnotateDsImage(i) { if (!dsImagesData[i]) return; const url = await openImageAnnotator(dsImagesData[i].url); if (url) { dsImagesData[i].url = url; renderDsImages(); } }
+async function reAnnotatePtImage(i) { if (!ptImagesData[i]) return; const url = await openImageAnnotator(ptImagesData[i].url); if (url) { ptImagesData[i].url = url; renderPtImages(); } }
 
 // Štart: over prihlásenie, potom spusti appku
 bootstrap();
