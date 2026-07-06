@@ -6021,6 +6021,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.6.1', date: '6. 7. 2026', tag: 'fix', items: [
+    'Okno so zoznamom objednávok (po kliknutí na KPI dlaždicu) má tmavé pozadie so svetlým, čitateľným textom (predtým svetlý text na svetlom = neviditeľný).',
+  ] },
   { v: '2.6.0', date: '6. 7. 2026', tag: 'feat', items: [
     'Plánovanie výroby: KPI dlaždice (Aktívne zákazky, Meškajú, Do expedície ≤ 7 dní, Vo výrobe, Kalibračné listy) sú klikateľné — otvoria okno so zoznamom konkrétnych objednávok; klik na riadok otvorí detail.',
     'Odstránená sekcia „Vyťaženie pracovísk / liniek".',

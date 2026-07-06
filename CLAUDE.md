@@ -21,7 +21,7 @@ Vrátiť sa späť na vývojovú vetvu a zosynchronizovať ju.
 ## Konvencie
 - UI a komentáre po slovensky.
 - **Hlášky a potvrdenia:** používať `toast(msg, 'success'|'error'|'info'|'warn')` a `await uiConfirm(msg)` namiesto `alert`/`confirm` (natívny `alert` je už presmerovaný na toast). Pri formulárových modaloch volať `modalSnapshot('xModal')` po otvorení a `modalGuardClose('xModal')` pri zatváraní (stráženie neuložených zmien).
-- Tmavé stránky (`background: var(--hdr-bg)`): texty musia mať explicitné svetlé farby (pozor na dark-on-dark).
+- **VŽDY skontrolovať kontrast textu (častá chyba!).** Tmavé stránky (`background: var(--hdr-bg)`): texty musia mať explicitné svetlé farby (dark-on-dark). A naopak: generické modaly (`.modal-box`) majú **svetlé** pozadie (`var(--card-bg)`), takže komponenty stavané pre tmavé pozadie (napr. `.prod-table`, badge so svetlým textom) v nich **zmiznú** — vtedy modal explicitne stmaviť (vzor `#linkModal .modal-box { background:#131c35 }`) alebo textu dať tmavé farby. Po každej UI zmene si predstav, ako to vyzerá na svetlom aj tmavom podklade.
 - Po zmenách overiť: `node --check` na zmenené JS, načítanie modulov, a boot test servera (beží aj bez DB — `app.listen` je nezávislý od mongo pripojenia).
 - `node_modules` a `package-lock.json` (po `npm install`) necommitovať, ak nepribudli závislosti.
 
