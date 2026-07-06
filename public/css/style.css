@@ -4056,7 +4056,14 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 
 /* KPI */
 .prod-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 18px; }
-.prod-kpi { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid #3b82f6; border-radius: 12px; padding: 14px 16px; }
+.prod-kpi { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid #3b82f6; border-radius: 12px; padding: 14px 16px; position: relative; }
+.prod-kpi-click { cursor: pointer; transition: background .12s ease, transform .12s ease; }
+.prod-kpi-click:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
+.prod-kpi-more { position: absolute; top: 10px; right: 12px; font-size: 0.64rem; color: #94a3b8; opacity: 0; transition: opacity .12s ease; }
+.prod-kpi-click:hover .prod-kpi-more { opacity: 1; }
+.prod-kpi-modal-body { max-height: 66vh; overflow: auto; }
+.prod-kpi-modal-body .prod-table tbody tr { cursor: pointer; }
+.prod-kpi-modal-body .prod-table tbody tr:hover td { background: rgba(255,255,255,0.05); }
 .prod-kpi-val { font-family: var(--font-title); font-size: 1.7rem; font-weight: 800; color: #f0f9ff; line-height: 1; }
 .prod-kpi-lbl { font-size: 0.78rem; color: #cbd5e1; margin-top: 6px; }
 .prod-kpi-sub { font-size: 0.68rem; color: #94a3b8; margin-top: 3px; }

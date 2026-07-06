@@ -6021,6 +6021,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.6.0', date: '6. 7. 2026', tag: 'feat', items: [
+    'Plánovanie výroby: KPI dlaždice (Aktívne zákazky, Meškajú, Do expedície ≤ 7 dní, Vo výrobe, Kalibračné listy) sú klikateľné — otvoria okno so zoznamom konkrétnych objednávok; klik na riadok otvorí detail.',
+    'Odstránená sekcia „Vyťaženie pracovísk / liniek".',
+  ] },
   { v: '2.5.2', date: '6. 7. 2026', tag: 'fix', items: [
     'Kalendár (týždeň/deň): udalosť má obsah pod sebou v troch riadkoch — čas, popis (zalomí sa po slovách), meno používateľa.',
     'Opravený vizuálny artefakt „preškrtnutého času" — hodinová čiara mriežky sa už nekreslí cez text udalosti (udalosti sú nad mriežkou).',
@@ -7069,7 +7073,6 @@ async function loadProd() {
   renderProdLate();
   renderProdCalib();
   setProdView(prodView);   // synchronizuj viditeľnosť pohľadu (default = gantt) + vykresli
-  renderProdLines();
 }
 
 function setProdView(v) {
@@ -7079,7 +7082,6 @@ function setProdView(v) {
   document.getElementById('prodList').classList.toggle('hidden', v !== 'list');
   document.getElementById('prodGantt').classList.toggle('hidden', v !== 'gantt');
   document.getElementById('prodCalendar')?.classList.toggle('hidden', v !== 'calendar');
-  document.getElementById('prodLinesCard')?.classList.toggle('hidden', v === 'gantt' || v === 'calendar');
   renderProd();
 }
 
@@ -7106,14 +7108,53 @@ async function renderProdKpis() {
   try { s = await fetch('/api/production/summary').then(r => r.json()); } catch {}
   const el = document.getElementById('prodKpis'); if (!el) return;
   if (!s || s.error) { el.innerHTML = ''; return; }
-  const card = (val, label, sub, cls) => `<div class="prod-kpi ${cls || ''}"><div class="prod-kpi-val">${val}</div><div class="prod-kpi-lbl">${label}</div>${sub ? `<div class="prod-kpi-sub">${sub}</div>` : ''}</div>`;
+  // klik na dlaždicu → modal so zoznamom konkrétnych objednávok (kind = filter)
+  const card = (val, label, sub, cls, kind) => `<div class="prod-kpi ${cls || ''} prod-kpi-click" onclick="openProdKpi('${kind}')" title="Klikni pre zoznam objednávok">
+    <div class="prod-kpi-val">${val}</div><div class="prod-kpi-lbl">${label}</div>${sub ? `<div class="prod-kpi-sub">${sub}</div>` : ''}
+    <span class="prod-kpi-more">zobraziť ›</span></div>`;
   el.innerHTML =
-    card(s.active, 'Aktívne zákazky', s.total + ' celkom', 'pk-blue') +
-    card(s.overdue, '⚠ Meškajú', s.overdue ? 'treba riešiť hneď' : 'OK', s.overdue ? 'pk-red' : 'pk-green') +
-    card(s.dueSoon || 0, 'Do expedície ≤ 7 dní', '', (s.dueSoon ? 'pk-amber' : '')) +
-    card(s.inProduction, 'Vo výrobe', '', 'pk-cyan') +
-    card((s.calibPending || 0), '📄 Kalibr. listy neodoslané', (s.calibNeeded ? `${s.calibSent || 0}/${s.calibNeeded} odoslaných` : 'OK'), (s.calibPending ? 'pk-amber' : 'pk-green'));
+    card(s.active, 'Aktívne zákazky', s.total + ' celkom', 'pk-blue', 'active') +
+    card(s.overdue, '⚠ Meškajú', s.overdue ? 'treba riešiť hneď' : 'OK', s.overdue ? 'pk-red' : 'pk-green', 'overdue') +
+    card(s.dueSoon || 0, 'Do expedície ≤ 7 dní', '', (s.dueSoon ? 'pk-amber' : ''), 'dueSoon') +
+    card(s.inProduction, 'Vo výrobe', '', 'pk-cyan', 'inProduction') +
+    card((s.calibPending || 0), '📄 Kalibr. listy neodoslané', (s.calibNeeded ? `${s.calibSent || 0}/${s.calibNeeded} odoslaných` : 'OK'), (s.calibPending ? 'pk-amber' : 'pk-green'), 'calibPending');
 }
+
+// Zoznam objednávok podľa KPI dlaždice
+const PROD_KPI_DEFS = {
+  active:       { title: 'Aktívne zákazky', filter: o => !['done', 'shipped'].includes(o.stage) },
+  overdue:      { title: '⚠ Meškajúce zákazky', filter: prodOverdue },
+  dueSoon:      { title: 'Do expedície ≤ 7 dní', filter: o => { const si = prodShipInfo(o); return si && si.days !== null && si.days >= 0 && si.days <= 7; } },
+  inProduction: { title: 'Vo výrobe', filter: o => o.stage === 'production' },
+  calibPending: { title: '📄 Kalibračné listy — neodoslané', filter: o => o.stage === 'shipped' && o.calibrationRequired && o.calibrationStatus !== 'sent' }
+};
+function openProdKpi(kind) {
+  const def = PROD_KPI_DEFS[kind]; if (!def) return;
+  const items = prodData.filter(def.filter).sort((a, b) => new Date(a.due || 0) - new Date(b.due || 0));
+  document.getElementById('prodKpiTitle').textContent = `${def.title} — ${items.length}`;
+  const body = document.getElementById('prodKpiBody');
+  if (!items.length) { body.innerHTML = '<div class="proc-empty">Žiadne objednávky.</div>'; }
+  else {
+    const rows = items.map(o => {
+      const st = prodStageMap(o.stage), si = prodShipInfo(o), od = prodOverdue(o);
+      return `<tr onclick="closeProdKpi(); openProdModal(prodData.find(x=>x._id==='${o._id}'))">
+        <td><span class="prod-t-num">${escHtml(o.number || '—')}</span>${o.salesOrder ? `<span class="prod-t-qty">obj. ${escHtml(o.salesOrder)}</span>` : ''}</td>
+        <td>${escHtml(o.product)}</td>
+        <td>${escHtml(o.customer || '—')}</td>
+        <td>${escHtml(o.workstation || '—')}</td>
+        <td>${o.qtyDone || 0}/${o.qtyPlanned || 0} ${escHtml(o.unit || 'ks')}</td>
+        <td><span class="prod-stage-badge" style="background:${st.c}22;color:${st.c};border:1px solid ${st.c}66">${st.label}</span></td>
+        <td class="${od ? 'task-od' : ''}">${o.due ? fmtDate(o.due) : '—'}</td>
+        <td>${si ? `<span class="prod-ship-badge ship-${si.cls}">${si.label}</span>` : '—'}</td>
+      </tr>`;
+    }).join('');
+    body.innerHTML = `<table class="prod-table"><thead><tr>
+      <th>IO / obj.</th><th>Produkt</th><th>Zákazník</th><th>Pracovisko</th><th>Množstvo</th><th>Fáza</th><th>Expedícia</th><th>Do expedície</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  document.getElementById('prodKpiModal').classList.remove('hidden');
+}
+function closeProdKpi() { document.getElementById('prodKpiModal').classList.add('hidden'); }
 
 // Panel meškajúcich zákaziek — treba riešiť hneď + zaznamenať dôvod meškania
 function renderProdLate() {
@@ -7356,7 +7397,7 @@ async function persistProdOrder() {
   });
   payload.forEach(p => { const o = prodData.find(x => x._id === p.id); if (o) { o.order = p.order; o.stage = p.stage; } });
   try { await fetch('/api/production/reorder', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: payload }) }); } catch {}
-  renderProdKpis(); renderProdLines();
+  renderProdKpis();
 }
 
 // Vnorený (nested) zoznam: zákazky zoskupené podľa objednávky (salesOrder),
@@ -7456,25 +7497,6 @@ function prodToggleGroup(safe) {
   document.querySelectorAll(`#prodList tr[data-grp="${safe}"]`).forEach(tr => tr.classList.toggle('hidden', !open));
   const head = document.querySelector(`#prodList tr.prod-grp-row[data-grpkey="${safe}"]`);
   if (head) head.classList.toggle('is-open', open);
-}
-
-function renderProdLines() {
-  const el = document.getElementById('prodLines'); if (!el) return;
-  const lines = {};
-  prodData.filter(o => !['done', 'shipped'].includes(o.stage)).forEach(o => {
-    const k = o.workstation || '— nepriradené —';
-    lines[k] = lines[k] || { name: k, orders: 0, qty: 0 };
-    lines[k].orders++; lines[k].qty += (o.qtyPlanned || 0);
-  });
-  const arr = Object.values(lines).sort((a, b) => b.orders - a.orders);
-  if (!arr.length) { el.innerHTML = '<div class="proc-empty">Žiadne aktívne zákazky.</div>'; return; }
-  const maxOrders = Math.max(...arr.map(l => l.orders), 1);
-  el.innerHTML = arr.map(l => `
-    <div class="prod-line-row">
-      <span class="prod-line-name">${escHtml(l.name)}</span>
-      <div class="prod-line-bar"><div class="prod-line-fill" style="width:${Math.round(l.orders / maxOrders * 100)}%"></div></div>
-      <span class="prod-line-meta">${l.orders} ${l.orders === 1 ? 'zákazka' : (l.orders >= 2 && l.orders <= 4 ? 'zákazky' : 'zákaziek')} · ${l.qty} ks</span>
-    </div>`).join('');
 }
 
 // ── modal ─────────────────────────────────────────────────────────────────────

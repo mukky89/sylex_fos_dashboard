@@ -2256,14 +2256,17 @@
           <span class="pg-leg-note">📄 = čaká na kalibračný list · ✅ = kalibračný list odoslaný · klikni na výrobok pre detail</span>
         </div>
       </div>
-
-      <!-- Vyťaženie pracovísk -->
-      <div class="prod-lines-card hidden" id="prodLinesCard">
-        <h2 class="prod-lines-title">🏭 Vyťaženie pracovísk / liniek</h2>
-        <div id="prodLines" class="prod-lines"></div>
-      </div>
     </div>
   </main>
+
+  <!-- ===== KPI DETAIL MODAL (zoznam objednávok pre dlaždicu) ===== -->
+  <div id="prodKpiModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeProdKpi()"></div>
+    <div class="modal-box modal-lg">
+      <div class="modal-header"><h2 id="prodKpiTitle">Objednávky</h2><button class="modal-close" onclick="closeProdKpi()">✕</button></div>
+      <div class="modal-body"><div id="prodKpiBody" class="prod-kpi-modal-body"></div></div>
+    </div>
+  </div>
 
   <!-- ===== PRODUCTION ORDER MODAL ===== -->
   <div id="prodModal" class="modal hidden">
