@@ -6001,6 +6001,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.1.0', date: '6. 7. 2026', tag: 'fix', items: [
+    'Hlavička: menu „🍽️ Jedlo" má správnu oranžovú farbu textu (predtým nečitateľné na tmavom pozadí).',
+    'Fotky z výroby: v paneli označených fotiek pribudol rýchly výber „📂 Zaradiť do kategórie…" — označené fotky sa zaradia jedným klikom bez otvárania modalu.',
+  ] },
   { v: '2.0.0', date: '6. 7. 2026', tag: 'major', items: [
     'Kalendár prerobený na zdrojovo-centrický: osoby odstránené, entitou sú napojené kalendáre (zdroje).',
     'Zdroje ako farebné prepínacie chipy nad kalendárom — klik zdroj zobrazí/skryje, dvojklik = iba tento zdroj; každý zdroj má vlastnú farbu a počet udalostí.',
@@ -10217,6 +10221,28 @@ function phClearSel() { phSelected.clear(); renderPhotos(); }
 function phUpdateBulkBar() {
   const n = phSelected.size;
   const el = document.getElementById('phBulkN'); if (el) el.textContent = n;
+  // rýchly výber kategórie v paneli (naplniť pri zmene dát, zachovať "placeholder" stav)
+  const sel = document.getElementById('phBulkCatQuick');
+  if (sel) {
+    sel.innerHTML = `<option value="">📂 Zaradiť do kategórie…</option><option value="none">— Bez kategórie —</option>` +
+      photoCatsData.map(c => `<option value="${c._id}">${escHtml((c.icon || '📦') + ' ' + c.name)}</option>`).join('');
+    sel.value = '';
+  }
+}
+// Rýchle zaradenie označených fotiek do kategórie priamo z panela
+async function phBulkSetCat(catId) {
+  const sel = document.getElementById('phBulkCatQuick');
+  if (!catId) return;
+  const ids = [...phSelected];
+  if (!ids.length) { toast('Najprv označ nejaké fotky.', 'info'); if (sel) sel.value = ''; return; }
+  try {
+    const r = await fetch('/api/photos/bulk-update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, category: catId }) });
+    const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    const cat = photoCatsData.find(c => c._id === catId);
+    await loadPhotos();
+    toast(`${d.modified} fotiek zaradených do „${cat ? cat.name : 'Bez kategórie'}".`, 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
 }
 async function phBulkDelete() {
   const ids = [...phSelected];
