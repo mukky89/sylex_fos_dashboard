@@ -68,6 +68,48 @@ router.get('/', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Hromadné operácie (označené fotky) ── musí byť pred /:id ──
+// Hromadné odstránenie (vrátane súborov na disku)
+router.post('/bulk-delete', async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body.ids) ? req.body.ids : [];
+    if (!ids.length) return res.json({ ok: true, deleted: 0 });
+    const docs = await Photo.find({ _id: { $in: ids } });
+    await Photo.deleteMany({ _id: { $in: ids } });
+    docs.forEach(p => {
+      if (p.url && p.url.startsWith('/uploads/photos/')) {
+        fs.unlink(path.join(photosDir, path.basename(p.url)), () => {});
+      }
+    });
+    res.json({ ok: true, deleted: docs.length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Hromadná úprava: kategória, autor, pridanie/nahradenie tagov
+router.post('/bulk-update', async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body.ids) ? req.body.ids : [];
+    if (!ids.length) return res.json({ ok: true, modified: 0 });
+    const set = {};
+    // category: '' = bez zmeny, 'none' = odobrať kategóriu, inak nastaviť
+    if (req.body.category !== undefined && req.body.category !== '') {
+      set.category = req.body.category === 'none' ? null : req.body.category;
+    }
+    if (req.body.author !== undefined && req.body.author !== '') set.author = String(req.body.author).trim();
+    const ops = {};
+    if (Object.keys(set).length) ops.$set = set;
+    // tagy: replaceTags = nahradiť, inak pridať (bez duplicít)
+    const tags = parseTags(req.body.tags);
+    if (tags.length) {
+      if (req.body.replaceTags) { ops.$set = ops.$set || {}; ops.$set.tags = tags; }
+      else ops.$addToSet = { tags: { $each: tags } };
+    }
+    if (!Object.keys(ops).length) return res.json({ ok: true, modified: 0 });
+    const r = await Photo.updateMany({ _id: { $in: ids } }, ops);
+    res.json({ ok: true, modified: r.modifiedCount });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 // ── Nahratie fotiek (viac naraz) + metadáta; autor z JWT ──
 router.post('/upload', (req, res) => {
   upload.array('photos', 30)(req, res, async (err) => {

@@ -2187,6 +2187,9 @@
       <!-- Meškajúce zákazky -->
       <div id="prodLatePanel" class="prod-late-panel"></div>
 
+      <!-- Kalibračné listy k expedovaným výrobkom -->
+      <div id="prodCalibPanel" class="prod-calib-panel"></div>
+
       <div class="prod-toolbar">
         <div class="proc-search-wrap" style="margin:0;flex:1;max-width:340px">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -2194,6 +2197,7 @@
         </div>
         <div class="tasks-viewtoggle">
           <button class="tasks-view active" data-pview="gantt" onclick="setProdView('gantt')">📊 Gantt + AI</button>
+          <button class="tasks-view" data-pview="calendar" onclick="setProdView('calendar')">📅 Kalendár expedície</button>
           <button class="tasks-view" data-pview="kanban" onclick="setProdView('kanban')">▦ Kanban</button>
           <button class="tasks-view" data-pview="list" onclick="setProdView('list')">☰ Zoznam</button>
         </div>
@@ -2228,6 +2232,25 @@
           <span class="pg-leg-item"><i style="background:#10b981"></i>Hotová</span>
           <span class="pg-leg-item"><i style="background:#3b82f6"></i>Expedovaná</span>
           <span class="pg-leg-note">🔴 urgentná · <b style="color:#fca5a5">červený rám</b> = po termíne · biely prúžok = % hotové</span>
+        </div>
+      </div>
+
+      <!-- Kalendár expedície -->
+      <div id="prodCalendar" class="prod-cal-view hidden">
+        <div class="pg-toolbar">
+          <div class="util-nav">
+            <button class="cal-nav-btn" onclick="prodCalShift(-1)" title="Predošlý mesiac">‹</button>
+            <button class="btn-sm" onclick="prodCalToday()">Dnes</button>
+            <button class="cal-nav-btn" onclick="prodCalShift(1)" title="Ďalší mesiac">›</button>
+            <span class="util-range-label" id="prodCalLabel">—</span>
+          </div>
+          <div class="prod-cal-summary" id="prodCalSummary"></div>
+        </div>
+        <div id="prodCalGrid" class="prod-cal-grid"></div>
+        <div class="pg-legend">
+          <span class="pg-leg-item"><i style="background:#3b82f6"></i>Expedované</span>
+          <span class="pg-leg-item"><i style="background:#f59e0b"></i>Plán expedície (termín)</span>
+          <span class="pg-leg-note">📄 = čaká na kalibračný list · ✅ = kalibračný list odoslaný · klikni na výrobok pre detail</span>
         </div>
       </div>
 
@@ -2279,6 +2302,26 @@
             <input type="range" id="poProgress" min="0" max="100" step="5" value="0" oninput="document.getElementById('poProgressVal').textContent=this.value"></div>
         </div>
         <div class="form-group"><label>Dôvod meškania (ak mešká)</label><input type="text" id="poDelayReason" placeholder="napr. čaká na materiál, výpadok pracoviska…"></div>
+
+        <!-- Kalibračné listy -->
+        <div class="form-group po-calib-toggle">
+          <label class="po-check"><input type="checkbox" id="poCalibRequired" onchange="prodCalibToggleFields()"> 📄 Treba vytvoriť a odoslať kalibračné listy</label>
+        </div>
+        <div id="poCalibFields" class="po-calib-fields hidden">
+          <div class="form-row">
+            <div class="form-group"><label>Stav kalibračných listov</label>
+              <select id="poCalibStatus"><option value="pending">Neodoslané (čaká)</option><option value="sent">Odoslané</option></select>
+            </div>
+            <div class="form-group"><label>Odosiela (obchodník)</label>
+              <input type="text" id="poCalibOwner" placeholder="napr. M. Baláž" list="poSalesList">
+              <datalist id="poSalesList">
+                <option value="M. Baláž"><option value="K. Danišová"><option value="R. Polák"><option value="T. Végh">
+              </datalist>
+            </div>
+          </div>
+          <div class="form-group"><label>Poznámka ku kalibračným listom</label><input type="text" id="poCalibNote" placeholder="napr. odoslané e-mailom zákazníkovi…"></div>
+        </div>
+
         <div class="form-group"><label>Poznámka</label><textarea id="poNote" rows="2"></textarea></div>
       </div>
       <div class="modal-footer">
@@ -2679,8 +2722,19 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" id="phSearch" placeholder="Hľadať názov, tag, autora..." oninput="renderPhotos()" autocomplete="off">
         </div>
+        <button class="btn-secondary" id="phSelectBtn" onclick="phToggleSelectMode()">☑ Označiť</button>
         <button class="btn-secondary" onclick="openPhotoCatModal()">🗂 Kategórie</button>
         <button class="btn-primary" onclick="openPhotoModal()">+ Pridať fotky</button>
+      </div>
+      <!-- Panel hromadných operácií (režim označovania) -->
+      <div id="phBulkBar" class="ph-bulkbar hidden">
+        <span class="ph-bulk-count"><b id="phBulkN">0</b> označených</span>
+        <button class="btn-sm" onclick="phSelectAll()">Označiť všetky</button>
+        <button class="btn-sm" onclick="phClearSel()">Zrušiť výber</button>
+        <span class="ph-bulk-spacer"></span>
+        <button class="btn-sm" onclick="phBulkEdit()">✎ Upraviť označené</button>
+        <button class="btn-sm danger" onclick="phBulkDelete()">🗑 Zmazať označené</button>
+        <button class="btn-sm" onclick="phToggleSelectMode()">Hotovo</button>
       </div>
       <div id="phCats" class="ph-cats"></div>
       <div id="phTags" class="ph-tags"></div>
@@ -2786,6 +2840,28 @@
         </div>
       </div>
       <div class="modal-footer"><button class="btn-secondary" onclick="closePhotoCatModal()">Zavrieť</button></div>
+    </div>
+  </div>
+
+  <!-- Modal: hromadná úprava označených fotiek -->
+  <div id="photoBulkModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closePhotoBulkModal()"></div>
+    <div class="modal-box" style="max-width:480px">
+      <div class="modal-header"><h2>Upraviť označené fotky <span id="phBulkModalN" class="ph-bulk-badge"></span></h2><button class="modal-close" onclick="closePhotoBulkModal()">✕</button></div>
+      <div class="modal-body">
+        <p class="form-hint" style="margin-top:0">Vyplň len to, čo chceš zmeniť. Prázdne polia sa nezmenia.</p>
+        <div class="form-group"><label>Kategória (typ produktu)</label><select id="phBulkCategory"></select></div>
+        <div class="form-group"><label>Autor</label><input type="text" id="phBulkAuthor" placeholder="ponechať bez zmeny"></div>
+        <div class="form-group">
+          <label>Tagy <span class="form-hint">(oddelené čiarkou)</span></label>
+          <input type="text" id="phBulkTags" placeholder="napr. zvar, reklamácia">
+          <label class="po-check" style="margin-top:8px"><input type="checkbox" id="phBulkReplaceTags"> Nahradiť existujúce tagy (inak sa pridajú)</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closePhotoBulkModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="phBulkSave()">Uložiť zmeny</button>
+      </div>
     </div>
   </div>
 
@@ -3252,7 +3328,8 @@
             <select id="lmGroup">
               <option value="sharepoint">SharePoint</option>
               <option value="erp">ERP</option>
-              <option value="custom">Vlastná</option>
+              <option value="custom">Nástroje</option>
+              <option value="jedlo">Jedlo</option>
               <option value="servery">Serverové priečinky</option>
               <option value="sablony">Šablóny</option>
             </select>

@@ -4090,6 +4090,52 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .prod-row-late td { background: rgba(239,68,68,0.05); }
 .prod-row-late:hover td { background: rgba(239,68,68,0.1); }
 .prod-reason-tag { display: inline-block; margin-left: 8px; font-size: 0.68rem; color: #fcd34d; background: rgba(245,158,11,0.12); border-radius: 6px; padding: 1px 7px; }
+.prod-calib-tag { display: inline-block; margin-left: 8px; font-size: 0.68rem; border-radius: 6px; padding: 1px 7px; white-space: nowrap; }
+.prod-calib-tag.bad { color: #fcd34d; background: rgba(245,158,11,0.14); border: 1px solid rgba(245,158,11,0.35); }
+.prod-calib-tag.ok { color: #6ee7b7; background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3); }
+
+/* Kalibračné listy — panel k expedovaným výrobkom */
+.prod-calib-panel { margin-bottom: 18px; }
+.prod-calib-hd { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; font-weight: 800; color: #93c5fd; margin-bottom: 8px; }
+.prod-calib-row { display: grid; grid-template-columns: 1fr 200px 210px; gap: 12px; align-items: center; background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.22); border-radius: 10px; padding: 9px 13px; margin-bottom: 7px; }
+.prod-calib-row.is-sent { background: rgba(16,185,129,0.06); border-color: rgba(16,185,129,0.22); }
+.prod-calib-main { cursor: pointer; min-width: 0; }
+.prod-calib-prod { font-size: 0.88rem; font-weight: 600; color: #f0f9ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prod-calib-meta { font-size: 0.72rem; color: #94a3b8; margin-top: 2px; }
+.prod-calib-owner { display: flex; flex-direction: column; gap: 2px; font-size: 0.66rem; color: #94a3b8; }
+.prod-calib-owner select { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; color: #e2e8f0; padding: 6px 8px; font-size: 0.8rem; }
+.prod-calib-owner select:focus { outline: none; border-color: var(--accent); }
+.prod-calib-btn { border: none; border-radius: 8px; padding: 8px 10px; font-size: 0.78rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.prod-calib-btn.pending { background: rgba(245,158,11,0.16); color: #fcd34d; border: 1px solid rgba(245,158,11,0.4); }
+.prod-calib-btn.pending:hover { background: rgba(245,158,11,0.28); }
+.prod-calib-btn.sent { background: rgba(16,185,129,0.16); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.4); }
+.prod-calib-btn.sent:hover { background: rgba(16,185,129,0.28); }
+@media (max-width: 760px) { .prod-calib-row { grid-template-columns: 1fr; gap: 8px; } }
+
+/* Kalibračné listy v modáli */
+.po-check { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; color: #e2e8f0; cursor: pointer; }
+.po-check input { width: 16px; height: 16px; accent-color: var(--accent); }
+.po-calib-fields { background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.18); border-radius: 10px; padding: 12px; margin-top: 4px; }
+
+/* Kalendár expedície */
+.prod-cal-summary { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+.prod-cal-sum-item { display: inline-flex; align-items: center; gap: 6px; font-size: 0.74rem; color: #cbd5e1; }
+.prod-cal-sum-item i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.prod-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.prod-cal-dow { text-align: center; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: #94a3b8; font-weight: 700; padding-bottom: 2px; }
+.prod-cal-cell { min-height: 92px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 5px 6px; display: flex; flex-direction: column; }
+.prod-cal-cell.empty { background: transparent; border: none; }
+.prod-cal-cell.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.prod-cal-cell.has { background: rgba(255,255,255,0.04); }
+.prod-cal-daynum { display: flex; align-items: center; justify-content: space-between; font-size: 0.74rem; font-weight: 700; color: #cbd5e1; margin-bottom: 3px; }
+.prod-cal-daycount { background: rgba(255,255,255,0.12); color: #e2e8f0; border-radius: 100px; padding: 0 6px; font-size: 0.62rem; }
+.prod-cal-chips { display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+.prod-cal-chip { font-size: 0.66rem; line-height: 1.25; padding: 2px 6px; border-radius: 5px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prod-cal-chip.shipped { background: rgba(59,130,246,0.2); color: #bfdbfe; border-left: 2px solid #3b82f6; }
+.prod-cal-chip.plan { background: rgba(245,158,11,0.16); color: #fde68a; border-left: 2px solid #f59e0b; }
+.prod-cal-chip.calib-bad { box-shadow: inset 0 0 0 1px rgba(239,68,68,0.55); }
+.prod-cal-chip:hover { filter: brightness(1.25); }
+@media (max-width: 760px) { .prod-cal-cell { min-height: 70px; } .prod-cal-chip { font-size: 0.6rem; } }
 
 .prod-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
 
@@ -4885,11 +4931,26 @@ select option, select optgroup { background-color: #131c33; color: #e2e8f0; }
 
 .ph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
 .ph-card {
+  position: relative;
   background: #151b30; border: 1px solid rgba(255,255,255,0.09); border-radius: 12px;
   overflow: hidden; cursor: pointer;
   transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
 }
 .ph-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.22); box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
+/* Režim označovania */
+.ph-card.ph-selectable { cursor: pointer; }
+.ph-card.ph-selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.ph-check { position: absolute; top: 7px; left: 7px; z-index: 3; background: rgba(10,15,32,0.72); border-radius: 6px; padding: 4px; display: flex; cursor: pointer; }
+.ph-check input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; margin: 0; }
+.ph-card.ph-selected .ph-check { background: var(--accent); }
+
+/* Panel hromadných operácií */
+.ph-bulkbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: rgba(8,145,178,0.1); border: 1px solid rgba(8,145,178,0.32); border-radius: 10px; padding: 9px 13px; margin-bottom: 12px; }
+.ph-bulk-count { font-size: 0.84rem; color: #cbd5e1; }
+.ph-bulk-count b { color: #38bdf8; font-size: 1rem; }
+.ph-bulk-spacer { flex: 1; }
+.ph-bulk-badge, .ph-bulk-badge:empty { display: inline-block; }
+.ph-bulk-badge { font-size: 0.78rem; font-weight: 600; color: #38bdf8; background: rgba(8,145,178,0.18); border-radius: 100px; padding: 1px 10px; margin-left: 6px; }
 .ph-thumb { aspect-ratio: 4/3; background: #0a0f20; overflow: hidden; }
 .ph-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .25s ease; }
 .ph-card:hover .ph-thumb img { transform: scale(1.04); }

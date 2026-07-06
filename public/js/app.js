@@ -1678,6 +1678,7 @@ function statusLabel(s) {
 const HEADER_GROUP_DEFS = [
   { key: 'files',      label: 'Súbory',     icon: '📁' },  // servery + sablony
   { key: 'custom',     label: 'Nástroje',   icon: '⚙️' },
+  { key: 'jedlo',      label: 'Jedlo',      icon: '🍽️' },  // obedy (Sylex, Fantozzi)
   { key: 'erp',        label: 'ERP',        icon: '📊' },
   { key: 'sharepoint', label: 'SharePoint', icon: '🔗' },
   { key: 'other',      label: 'Odkazy',     icon: '🔖' },
@@ -1685,6 +1686,7 @@ const HEADER_GROUP_DEFS = [
 function groupKeyFor(g) {
   if (g === 'servery' || g === 'sablony') return 'files';
   if (g === 'custom')     return 'custom';
+  if (g === 'jedlo')      return 'jedlo';
   if (g === 'erp')        return 'erp';
   if (g === 'sharepoint') return 'sharepoint';
   return 'other';
@@ -6953,6 +6955,8 @@ const PROD_STAGES = [
 ];
 const PROD_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#f59e0b' }, urgent: { l: 'Urgentná', c: '#ef4444' } };
 const prodStageMap = k => PROD_STAGES.find(s => s.key === k) || PROD_STAGES[0];
+const PROD_SALES = ['M. Baláž', 'K. Danišová', 'R. Polák', 'T. Végh'];   // obchodníci (odosielatelia kalibračných listov)
+let prodCalMonth = null;   // prvý deň zobrazeného mesiaca v kalendári expedície
 
 async function loadProd() {
   try { prodData = await fetch('/api/production').then(r => r.json()); if (!Array.isArray(prodData)) prodData = []; }
@@ -6962,6 +6966,7 @@ async function loadProd() {
   if (dl) { const set = [...new Set(prodData.map(o => o.workstation).filter(Boolean))]; dl.innerHTML = set.map(w => `<option value="${escHtml(w)}">`).join(''); }
   renderProdKpis();
   renderProdLate();
+  renderProdCalib();
   setProdView(prodView);   // synchronizuj viditeľnosť pohľadu (default = gantt) + vykresli
   renderProdLines();
 }
@@ -6972,7 +6977,8 @@ function setProdView(v) {
   document.getElementById('prodKanban').classList.toggle('hidden', v !== 'kanban');
   document.getElementById('prodList').classList.toggle('hidden', v !== 'list');
   document.getElementById('prodGantt').classList.toggle('hidden', v !== 'gantt');
-  document.getElementById('prodLinesCard')?.classList.toggle('hidden', v === 'gantt');
+  document.getElementById('prodCalendar')?.classList.toggle('hidden', v !== 'calendar');
+  document.getElementById('prodLinesCard')?.classList.toggle('hidden', v === 'gantt' || v === 'calendar');
   renderProd();
 }
 
@@ -7004,7 +7010,8 @@ async function renderProdKpis() {
     card(s.active, 'Aktívne zákazky', s.total + ' celkom', 'pk-blue') +
     card(s.overdue, '⚠ Meškajú', s.overdue ? 'treba riešiť hneď' : 'OK', s.overdue ? 'pk-red' : 'pk-green') +
     card(s.dueSoon || 0, 'Do expedície ≤ 7 dní', '', (s.dueSoon ? 'pk-amber' : '')) +
-    card(s.inProduction, 'Vo výrobe', '', 'pk-cyan');
+    card(s.inProduction, 'Vo výrobe', '', 'pk-cyan') +
+    card((s.calibPending || 0), '📄 Kalibr. listy neodoslané', (s.calibNeeded ? `${s.calibSent || 0}/${s.calibNeeded} odoslaných` : 'OK'), (s.calibPending ? 'pk-amber' : 'pk-green'));
 }
 
 // Panel meškajúcich zákaziek — treba riešiť hneď + zaznamenať dôvod meškania
@@ -7032,10 +7039,130 @@ async function prodSaveReason(id, val) {
   catch { toast('Uloženie dôvodu zlyhalo', 'error'); }
 }
 
+// ── Kalibračné listy ────────────────────────────────────────────────────────
+// Expedované výrobky, ku ktorým treba vytvoriť a odoslať kalibračné listy.
+// Označuje sa, či už boli odoslané a ktorý obchodník ich má odoslať.
+function renderProdCalib() {
+  const el = document.getElementById('prodCalibPanel'); if (!el) return;
+  const items = prodData.filter(o => o.stage === 'shipped' && o.calibrationRequired)
+    .sort((a, b) => (a.calibrationStatus === 'sent') - (b.calibrationStatus === 'sent')
+      || new Date(b.shippedDate || b.due || 0) - new Date(a.shippedDate || a.due || 0));
+  if (!items.length) {
+    el.innerHTML = '<div class="prod-late-ok">📄 Žiadne expedované výrobky nečakajú na kalibračné listy.</div>';
+    return;
+  }
+  const pending = items.filter(o => o.calibrationStatus !== 'sent').length;
+  const salesOpts = who => PROD_SALES.map(s => `<option value="${escHtml(s)}"${s === who ? ' selected' : ''}>${escHtml(s)}</option>`).join('');
+  const rows = items.map(o => {
+    const sent = o.calibrationStatus === 'sent';
+    return `<div class="prod-calib-row ${sent ? 'is-sent' : 'is-pending'}" data-id="${o._id}">
+      <div class="prod-calib-main" onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))">
+        <div class="prod-calib-prod">${escHtml(o.product)}</div>
+        <div class="prod-calib-meta">${escHtml(o.number || '')}${o.customer ? ' · ' + escHtml(o.customer) : ''}${o.shippedDate ? ' · exp. ' + fmtDate(o.shippedDate) : ''}</div>
+      </div>
+      <label class="prod-calib-owner" onclick="event.stopPropagation()">Obchodník
+        <select onchange="prodSetCalibOwner('${o._id}', this.value)">
+          <option value=""${o.calibrationOwner ? '' : ' selected'}>— priradiť —</option>
+          ${salesOpts(o.calibrationOwner)}
+        </select>
+      </label>
+      <button class="prod-calib-btn ${sent ? 'sent' : 'pending'}" onclick="event.stopPropagation(); prodToggleCalib('${o._id}')"
+        title="${sent ? 'Kalibračné listy odoslané — klikni pre zrušenie' : 'Označiť ako odoslané'}">
+        ${sent ? '✓ Odoslané' + (o.calibrationSentDate ? ' · ' + fmtDate(o.calibrationSentDate) : '') : '📤 Označiť odoslané'}
+      </button>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div class="prod-calib-hd">📄 Kalibračné listy k expedovaným výrobkom
+      <span class="prod-late-count">${pending} čaká</span>
+      <span class="prod-late-hint">priraď obchodníka a označ, keď sú kalibračné listy odoslané</span>
+    </div>${rows}`;
+}
+async function prodPatchCalib(id, patch) {
+  const o = prodData.find(x => x._id === id); if (!o) return;
+  Object.assign(o, patch);
+  try { await fetch('/api/production/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) }); }
+  catch { toast('Uloženie kalibračných listov zlyhalo', 'error'); }
+}
+async function prodSetCalibOwner(id, val) {
+  await prodPatchCalib(id, { calibrationOwner: val });
+}
+async function prodToggleCalib(id) {
+  const o = prodData.find(x => x._id === id); if (!o) return;
+  const sent = o.calibrationStatus !== 'sent';
+  await prodPatchCalib(id, { calibrationStatus: sent ? 'sent' : 'pending', calibrationSentDate: sent ? new Date().toISOString() : null });
+  renderProdCalib();
+  renderProdKpis();
+  if (prodView === 'calendar') renderProdCalendar();
+}
+
+// ── Kalendár expedície ──────────────────────────────────────────────────────
+// Mesačný kalendár: čo bolo/má byť expedované v daný deň (podľa reálneho dátumu
+// expedície, inak podľa termínu). Zvýrazní neodoslané kalibračné listy.
+function prodCalInit() { if (!prodCalMonth) { const d = new Date(); prodCalMonth = new Date(d.getFullYear(), d.getMonth(), 1); } }
+function prodCalShift(dir) { prodCalInit(); prodCalMonth = new Date(prodCalMonth.getFullYear(), prodCalMonth.getMonth() + dir, 1); renderProdCalendar(); }
+function prodCalToday() { const d = new Date(); prodCalMonth = new Date(d.getFullYear(), d.getMonth(), 1); renderProdCalendar(); }
+// dátum, na ktorom sedí zákazka v kalendári expedície
+function prodShipDay(o) {
+  const d = o.stage === 'shipped' ? (o.shippedDate || o.due) : o.due;
+  return d ? new Date(new Date(d).toDateString()) : null;
+}
+function renderProdCalendar() {
+  const el = document.getElementById('prodCalGrid'); if (!el) return;
+  prodCalInit();
+  const y = prodCalMonth.getFullYear(), m = prodCalMonth.getMonth();
+  const lbl = document.getElementById('prodCalLabel');
+  if (lbl) lbl.textContent = prodCalMonth.toLocaleDateString('sk-SK', { month: 'long', year: 'numeric' });
+
+  // zoskup zákazky s termínom/dátumom expedície do dní tohto mesiaca
+  const byDay = {};
+  prodFiltered().forEach(o => {
+    const d = prodShipDay(o);
+    if (!d || d.getFullYear() !== y || d.getMonth() !== m) return;
+    (byDay[d.getDate()] = byDay[d.getDate()] || []).push(o);
+  });
+
+  const first = new Date(y, m, 1);
+  const startDow = (first.getDay() + 6) % 7;   // pondelok = 0
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const todayStr = new Date().toDateString();
+  const dows = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
+
+  // súhrn mesiaca
+  const monthItems = Object.values(byDay).flat();
+  const shippedCnt = monthItems.filter(o => o.stage === 'shipped').length;
+  const planCnt = monthItems.length - shippedCnt;
+  const calibPend = monthItems.filter(o => o.stage === 'shipped' && o.calibrationRequired && o.calibrationStatus !== 'sent').length;
+  const sum = document.getElementById('prodCalSummary');
+  if (sum) sum.innerHTML =
+    `<span class="prod-cal-sum-item"><i style="background:#3b82f6"></i>${shippedCnt} expedovaných</span>` +
+    `<span class="prod-cal-sum-item"><i style="background:#f59e0b"></i>${planCnt} plánovaných</span>` +
+    (calibPend ? `<span class="prod-cal-sum-item"><i style="background:#ef4444"></i>${calibPend} × chýba kalibr. list</span>` : '');
+
+  let cells = dows.map(d => `<div class="prod-cal-dow">${d}</div>`).join('');
+  for (let i = 0; i < startDow; i++) cells += '<div class="prod-cal-cell empty"></div>';
+  for (let day = 1; day <= daysInMonth; day++) {
+    const list = (byDay[day] || []).sort((a, b) => (b.stage === 'shipped') - (a.stage === 'shipped'));
+    const isToday = new Date(y, m, day).toDateString() === todayStr;
+    const chips = list.map(o => {
+      const sh = o.stage === 'shipped';
+      const calibBad = sh && o.calibrationRequired && o.calibrationStatus !== 'sent';
+      const calibOk = sh && o.calibrationRequired && o.calibrationStatus === 'sent';
+      const tag = calibBad ? '📄' : calibOk ? '✅' : '';
+      return `<div class="prod-cal-chip ${sh ? 'shipped' : 'plan'}${calibBad ? ' calib-bad' : ''}" title="${escHtml((o.number ? o.number + ' · ' : '') + o.product + (o.customer ? ' · ' + o.customer : '') + (sh ? ' · expedované' : ' · plán expedície') + (calibBad ? ' · CHÝBA kalibračný list' + (o.calibrationOwner ? ' (' + o.calibrationOwner + ')' : '') : calibOk ? ' · kalibračný list odoslaný' : ''))}" onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))">${tag}${escHtml(o.product)}</div>`;
+    }).join('');
+    cells += `<div class="prod-cal-cell${isToday ? ' today' : ''}${list.length ? ' has' : ''}">
+      <div class="prod-cal-daynum">${day}${list.length ? `<span class="prod-cal-daycount">${list.length}</span>` : ''}</div>
+      <div class="prod-cal-chips">${chips}</div>
+    </div>`;
+  }
+  el.innerHTML = cells;
+}
+
 function renderProd() {
   if (prodView === 'kanban') renderProdKanban();
   else if (prodView === 'list') renderProdList();
   else if (prodView === 'gantt') renderProdGantt();
+  else if (prodView === 'calendar') renderProdCalendar();
 }
 
 function prodCardHtml(o) {
@@ -7154,7 +7281,7 @@ function renderProdList() {
       : `<td><span class="prod-t-num">${escHtml(o.number || '')}</span>${o.salesOrder ? `<span class="prod-t-qty">obj. ${escHtml(o.salesOrder)}</span>` : ''}</td>`;
     return `<tr class="${cls}"${grpAttr} onclick="openProdModal(prodData.find(x=>x._id==='${o._id}'))"${reasonHint}>
       ${numCell}
-      <td>${escHtml(o.product)}${o.delayReason ? `<span class="prod-reason-tag" title="Dôvod meškania">💬 ${escHtml(o.delayReason)}</span>` : ''}</td>
+      <td>${escHtml(o.product)}${o.delayReason ? `<span class="prod-reason-tag" title="Dôvod meškania">💬 ${escHtml(o.delayReason)}</span>` : ''}${o.stage === 'shipped' && o.calibrationRequired ? (o.calibrationStatus === 'sent' ? `<span class="prod-calib-tag ok" title="Kalibračné listy odoslané${o.calibrationOwner ? ' — ' + escHtml(o.calibrationOwner) : ''}">📄 kalibr. odoslané</span>` : `<span class="prod-calib-tag bad" title="Kalibračné listy treba odoslať${o.calibrationOwner ? ' — ' + escHtml(o.calibrationOwner) : ''}">📄 kalibr. čaká${o.calibrationOwner ? ' · ' + escHtml(o.calibrationOwner) : ''}</span>`) : ''}</td>
       <td>${escHtml(o.customer || '—')}</td>
       <td>${escHtml(o.workstation || '—')}</td>
       <td><div class="prod-t-qty">${o.qtyPlanned || 0} ${escHtml(o.unit || 'ks')}</div></td>
@@ -7259,9 +7386,21 @@ function openProdModal(o = null) {
   set('poProgress', prog); document.getElementById('poProgressVal').textContent = prog;
   set('poNote', e ? (o.note || '') : '');
   const dr = document.getElementById('poDelayReason'); if (dr) dr.value = e ? (o.delayReason || '') : '';
+  // Kalibračné listy
+  const cReq = document.getElementById('poCalibRequired');
+  if (cReq) { cReq.checked = e ? !!o.calibrationRequired : false; }
+  set('poCalibStatus', e ? (o.calibrationStatus || 'pending') : 'pending');
+  set('poCalibOwner', e ? (o.calibrationOwner || '') : '');
+  set('poCalibNote', e ? (o.calibrationNote || '') : '');
+  prodCalibToggleFields();
   document.getElementById('poDeleteBtn').style.display = e ? '' : 'none';
   document.getElementById('prodModal').classList.remove('hidden');
   modalSnapshot('prodModal');
+}
+// zobraz/schovaj detaily kalibračných listov podľa zaškrtnutia
+function prodCalibToggleFields() {
+  const on = !!document.getElementById('poCalibRequired')?.checked;
+  document.getElementById('poCalibFields')?.classList.toggle('hidden', !on);
 }
 function closeProdModal() { modalGuardClose('prodModal'); }
 async function saveProd() {
@@ -7281,8 +7420,19 @@ async function saveProd() {
     assignee: document.getElementById('poAssignee').value.trim(),
     progress: Number(document.getElementById('poProgress').value) || 0,
     delayReason: (document.getElementById('poDelayReason')?.value || '').trim(),
+    calibrationRequired: !!document.getElementById('poCalibRequired')?.checked,
+    calibrationStatus: document.getElementById('poCalibStatus')?.value || 'pending',
+    calibrationOwner: (document.getElementById('poCalibOwner')?.value || '').trim(),
+    calibrationNote: (document.getElementById('poCalibNote')?.value || '').trim(),
     note: document.getElementById('poNote').value.trim()
   };
+  // dátum odoslania kalibračných listov: nastav pri prechode na "odoslané"
+  if (body.calibrationRequired && body.calibrationStatus === 'sent') {
+    const prev = prodData.find(x => x._id === document.getElementById('poId').value);
+    body.calibrationSentDate = (prev && prev.calibrationSentDate) ? prev.calibrationSentDate : new Date().toISOString();
+  } else if (body.calibrationStatus !== 'sent') {
+    body.calibrationSentDate = null;
+  }
   if (!body.product) { alert('Zadaj produkt'); return; }
   const id = document.getElementById('poId').value;
   try {
@@ -9896,6 +10046,8 @@ function bbExportPng() {
 // ══════════════════════════════════════════════════════════════════════════════
 let photosData = [], photoCatsData = [];
 let phFilter = { cat: 'all', tag: null };
+let phSelectMode = false;          // režim označovania (hromadné operácie)
+let phSelected = new Set();        // ID označených fotiek
 let phPickedFiles = [];        // súbory vybrané v modáli (pred nahratím)
 let phLbItems = [], phLbIdx = -1; // lightbox — aktuálne filtrovaný zoznam
 
@@ -9976,7 +10128,10 @@ function renderPhotos() {
   }
   grid.innerHTML = items.map(p => {
     const cat = p.category;
-    return `<div class="ph-card" onclick="openPhotoLightbox('${p._id}')">
+    const sel = phSelected.has(p._id);
+    const onClick = phSelectMode ? `phToggleSel('${p._id}')` : `openPhotoLightbox('${p._id}')`;
+    return `<div class="ph-card${phSelectMode ? ' ph-selectable' : ''}${sel ? ' ph-selected' : ''}" onclick="${onClick}">
+      ${phSelectMode ? `<label class="ph-check" onclick="event.stopPropagation();phToggleSel('${p._id}')"><input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation();phToggleSel('${p._id}')"></label>` : ''}
       <div class="ph-thumb"><img loading="lazy" src="${escHtml(p.url)}" alt="${escHtml(p.title)}"></div>
       <div class="ph-card-body">
         <div class="ph-card-title" title="${escHtml(p.title)}">${escHtml(p.title || p.originalName || 'Bez názvu')}</div>
@@ -9988,6 +10143,75 @@ function renderPhotos() {
       </div>
     </div>`;
   }).join('');
+  phUpdateBulkBar();
+}
+
+// ── Hromadné operácie s fotkami (režim označovania) ──
+function phToggleSelectMode() {
+  phSelectMode = !phSelectMode;
+  if (!phSelectMode) phSelected.clear();
+  document.getElementById('phBulkBar')?.classList.toggle('hidden', !phSelectMode);
+  const btn = document.getElementById('phSelectBtn');
+  if (btn) { btn.classList.toggle('active', phSelectMode); btn.textContent = phSelectMode ? '✕ Zrušiť označovanie' : '☑ Označiť'; }
+  renderPhotos();
+}
+function phToggleSel(id) {
+  if (phSelected.has(id)) phSelected.delete(id); else phSelected.add(id);
+  renderPhotos();
+}
+function phSelectAll() {
+  phFiltered().forEach(p => phSelected.add(p._id));
+  renderPhotos();
+}
+function phClearSel() { phSelected.clear(); renderPhotos(); }
+function phUpdateBulkBar() {
+  const n = phSelected.size;
+  const el = document.getElementById('phBulkN'); if (el) el.textContent = n;
+}
+async function phBulkDelete() {
+  const ids = [...phSelected];
+  if (!ids.length) { toast('Najprv označ nejaké fotky.', 'info'); return; }
+  if (!await uiConfirm(`Naozaj zmazať ${ids.length} označených fotiek? Táto akcia je nevratná.`)) return;
+  try {
+    const r = await fetch('/api/photos/bulk-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
+    const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    phSelected.clear();
+    await loadPhotos();
+    toast(`Zmazaných ${d.deleted} fotiek.`, 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+function phBulkEdit() {
+  if (!phSelected.size) { toast('Najprv označ nejaké fotky.', 'info'); return; }
+  // naplň selector kategórií
+  const sel = document.getElementById('phBulkCategory');
+  if (sel) sel.innerHTML = `<option value="">— ponechať bez zmeny —</option><option value="none">Bez kategórie</option>` +
+    photoCatsData.map(c => `<option value="${c._id}">${escHtml((c.icon || '') + ' ' + c.name)}</option>`).join('');
+  document.getElementById('phBulkAuthor').value = '';
+  document.getElementById('phBulkTags').value = '';
+  document.getElementById('phBulkReplaceTags').checked = false;
+  const badge = document.getElementById('phBulkModalN'); if (badge) badge.textContent = phSelected.size + ' ks';
+  document.getElementById('photoBulkModal').classList.remove('hidden');
+}
+function closePhotoBulkModal() { document.getElementById('photoBulkModal').classList.add('hidden'); }
+async function phBulkSave() {
+  const ids = [...phSelected];
+  if (!ids.length) return;
+  const body = {
+    ids,
+    category: document.getElementById('phBulkCategory').value,
+    author: document.getElementById('phBulkAuthor').value.trim(),
+    tags: document.getElementById('phBulkTags').value,
+    replaceTags: document.getElementById('phBulkReplaceTags').checked
+  };
+  try {
+    const r = await fetch('/api/photos/bulk-update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    closePhotoBulkModal();
+    await loadPhotos();
+    toast(`Upravených ${d.modified} fotiek.`, 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
 }
 
 // ── Lightbox ──

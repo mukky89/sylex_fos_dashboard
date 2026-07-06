@@ -100,6 +100,13 @@ async function autoSeed() {
       const r = await HeaderLink.updateMany({ label: { $in: ['DBFOS', 'ISYS'] } }, { $set: { pinned: true } });
       if (r.modifiedCount) console.log('Migration: DBFOS/ISYS pinned to header');
     }
+    // Migrácia: obedové odkazy do samostatnej skupiny "Jedlo" (Obed Sylex, Obed Fantozzi)
+    const jedloCount = await HeaderLink.countDocuments({ group: 'jedlo' });
+    if (jedloCount === 0) {
+      const r1 = await HeaderLink.updateMany({ label: { $in: ['Obedy', 'Obed Sylex'] } }, { $set: { group: 'jedlo', label: 'Obed Sylex' } });
+      const r2 = await HeaderLink.updateMany({ label: { $in: ['Obedy Fantozzi', 'Obed Fantozzi'] } }, { $set: { group: 'jedlo', label: 'Obed Fantozzi' } });
+      if (r1.modifiedCount || r2.modifiedCount) console.log('Migration: obedové odkazy presunuté do skupiny Jedlo');
+    }
   }
 
   // ── Seed AppConfig (sensor settings) ─────────────────────────────────────
