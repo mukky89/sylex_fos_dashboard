@@ -6021,6 +6021,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.7.0', date: '6. 7. 2026', tag: 'ui', items: [
+    'Plánovanie výroby: panel „Meškajúce zákazky" je rozbaľovací — klik na hlavičku skryje/zobrazí zoznam (predvolene zbalený, stav sa pamätá). Počet meškajúcich vidno aj v zbalenom stave.',
+  ] },
   { v: '2.6.1', date: '6. 7. 2026', tag: 'fix', items: [
     'Okno so zoznamom objednávok (po kliknutí na KPI dlaždicu) má tmavé pozadie so svetlým, čitateľným textom (predtým svetlý text na svetlom = neviditeľný).',
   ] },
@@ -7159,7 +7162,9 @@ function openProdKpi(kind) {
 }
 function closeProdKpi() { document.getElementById('prodKpiModal').classList.add('hidden'); }
 
-// Panel meškajúcich zákaziek — treba riešiť hneď + zaznamenať dôvod meškania
+// Panel meškajúcich zákaziek — rozbaľovací (zoznam sa dá skryť/zobraziť)
+let prodLateOpen = localStorage.getItem('prodLateOpen') === '1';   // predvolene zbalený
+function prodToggleLate() { prodLateOpen = !prodLateOpen; localStorage.setItem('prodLateOpen', prodLateOpen ? '1' : '0'); renderProdLate(); }
 function renderProdLate() {
   const el = document.getElementById('prodLatePanel'); if (!el) return;
   const late = prodData.filter(prodOverdue).sort((a, b) => new Date(a.due) - new Date(b.due));
@@ -7175,7 +7180,11 @@ function renderProdLate() {
       <input class="prod-late-reason" type="text" placeholder="Dôvod meškania…" value="${escHtml(o.delayReason || '')}" onchange="prodSaveReason('${o._id}', this.value)" onclick="event.stopPropagation()">
     </div>`;
   }).join('');
-  el.innerHTML = `<div class="prod-late-hd">⚠ Meškajúce zákazky <span class="prod-late-count">${late.length}</span><span class="prod-late-hint">klikni na zákazku pre detail · zapíš dôvod meškania</span></div>${rows}`;
+  el.innerHTML = `<div class="prod-late-hd prod-late-toggle ${prodLateOpen ? 'is-open' : ''}" onclick="prodToggleLate()" title="${prodLateOpen ? 'Skryť zoznam' : 'Zobraziť zoznam'}">
+      <span class="prod-late-chev">▸</span>⚠ Meškajúce zákazky <span class="prod-late-count">${late.length}</span>
+      <span class="prod-late-hint">${prodLateOpen ? 'klikni na zákazku pre detail · zapíš dôvod meškania' : 'klikni pre zobrazenie zoznamu'}</span>
+    </div>
+    <div class="prod-late-body ${prodLateOpen ? '' : 'hidden'}">${rows}</div>`;
 }
 async function prodSaveReason(id, val) {
   const o = prodData.find(x => x._id === id); if (!o) return;
