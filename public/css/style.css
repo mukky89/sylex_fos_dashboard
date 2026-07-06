@@ -4096,23 +4096,37 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .prod-calib-tag.bad { color: #fcd34d; background: rgba(245,158,11,0.14); border: 1px solid rgba(245,158,11,0.35); }
 .prod-calib-tag.ok { color: #6ee7b7; background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3); }
 
-/* Kalibračné listy — panel k expedovaným výrobkom */
+/* Kalibračné listy — tabuľka expedovaných objednávok */
 .prod-calib-panel { margin-bottom: 18px; }
-.prod-calib-hd { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; font-weight: 800; color: #93c5fd; margin-bottom: 8px; }
-.prod-calib-row { display: grid; grid-template-columns: 1fr 200px 210px; gap: 12px; align-items: center; background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.22); border-radius: 10px; padding: 9px 13px; margin-bottom: 7px; }
-.prod-calib-row.is-sent { background: rgba(16,185,129,0.06); border-color: rgba(16,185,129,0.22); }
-.prod-calib-main { cursor: pointer; min-width: 0; }
-.prod-calib-prod { font-size: 0.88rem; font-weight: 600; color: #f0f9ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.prod-calib-meta { font-size: 0.72rem; color: #94a3b8; margin-top: 2px; }
-.prod-calib-owner { display: flex; flex-direction: column; gap: 2px; font-size: 0.66rem; color: #94a3b8; }
-.prod-calib-owner select { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; color: #e2e8f0; padding: 6px 8px; font-size: 0.8rem; }
-.prod-calib-owner select:focus { outline: none; border-color: var(--accent); }
-.prod-calib-btn { border: none; border-radius: 8px; padding: 8px 10px; font-size: 0.78rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.prod-calib-hd { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.95rem; font-weight: 800; color: #93c5fd; margin-bottom: 8px; }
+.prod-calib-toggle { display: inline-flex; gap: 4px; margin-left: auto; }
+.pc-filter { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); color: #cbd5e1; border-radius: 8px; padding: 5px 11px; font-size: 0.74rem; font-weight: 600; cursor: pointer; }
+.pc-filter:hover { background: rgba(255,255,255,0.1); }
+.pc-filter.active { background: rgba(59,130,246,0.2); border-color: rgba(59,130,246,0.5); color: #bfdbfe; }
+.prod-calib-tablewrap { overflow-x: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
+.prod-calib-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.prod-calib-table th { text-align: left; padding: 10px 12px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: #94a3b8; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
+.prod-calib-table td { padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #e2e8f0; vertical-align: middle; }
+.prod-calib-table tbody tr:last-child td { border-bottom: none; }
+.prod-calib-tr.is-pending { background: rgba(245,158,11,0.06); }
+.prod-calib-tr.is-pending:hover { background: rgba(245,158,11,0.1); }
+.prod-calib-tr.is-sent { background: rgba(16,185,129,0.04); }
+.prod-calib-tr.is-sent:hover { background: rgba(16,185,129,0.08); }
+.prod-calib-table .pc-open { cursor: pointer; }
+.prod-calib-table .prod-t-num { font-weight: 700; color: #f0f9ff; display: block; }
+.prod-calib-table .prod-t-qty { font-size: 0.68rem; color: #94a3b8; }
+.prod-calib-status { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 2px 9px; border-radius: 100px; white-space: nowrap; }
+.prod-calib-status.bad { background: rgba(245,158,11,0.18); color: #fcd34d; border: 1px solid rgba(245,158,11,0.4); }
+.prod-calib-status.ok { background: rgba(16,185,129,0.16); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.4); }
+.pc-sentdate { display: block; font-size: 0.66rem; color: #94a3b8; margin-top: 2px; }
+.pc-empty { text-align: center; color: #6ee7b7; padding: 18px; font-weight: 600; }
+.prod-calib-sel { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; color: #e2e8f0; padding: 6px 8px; font-size: 0.78rem; max-width: 140px; }
+.prod-calib-sel:focus { outline: none; border-color: var(--accent); }
+.prod-calib-btn { border: none; border-radius: 8px; padding: 7px 11px; font-size: 0.76rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
 .prod-calib-btn.pending { background: rgba(245,158,11,0.16); color: #fcd34d; border: 1px solid rgba(245,158,11,0.4); }
 .prod-calib-btn.pending:hover { background: rgba(245,158,11,0.28); }
-.prod-calib-btn.sent { background: rgba(16,185,129,0.16); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.4); }
-.prod-calib-btn.sent:hover { background: rgba(16,185,129,0.28); }
-@media (max-width: 760px) { .prod-calib-row { grid-template-columns: 1fr; gap: 8px; } }
+.prod-calib-btn.sent { background: rgba(255,255,255,0.06); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.16); }
+.prod-calib-btn.sent:hover { background: rgba(255,255,255,0.12); }
 
 /* Kalibračné listy v modáli */
 .po-check { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; color: #e2e8f0; cursor: pointer; }
@@ -4693,10 +4707,14 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .ctg-daycol.ctg-today { background: rgba(0,212,255,0.035); }
 .ctg-line { position: absolute; left: 0; right: 0; border-top: 1px solid rgba(255,255,255,0.05); pointer-events: none; }
 /* Blok udalosti: výška podľa trvania (min-height), ale obsah sa neoreže —
-   pri dlhom názve sa blok natiahne, aby bol viditeľný celý text */
-.ctg-ev { position: absolute; height: auto; overflow: visible; white-space: normal; overflow-wrap: anywhere; font-size: 0.82rem; line-height: 1.25; padding: 4px 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 1; border-radius: 6px; }
+   pri dlhom názve sa blok natiahne. Zalomenie po SLOVÁCH (nie po písmenách). */
+.ctg-ev { position: absolute; height: auto; overflow: visible; font-size: 0.8rem; line-height: 1.28; padding: 4px 7px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 1; border-radius: 6px; }
 .ctg-ev:hover { z-index: 5; box-shadow: 0 3px 10px rgba(0,0,0,0.35); }
-.ctg-ev-time { font-weight: 700; color: var(--ev-color); display: inline; margin-right: 3px; font-size: 0.74rem; }
+/* 1. riadok — čas + názov; názov zalomí po slovách, čas ostáva vľavo */
+.ctg-ev-line { display: flex; align-items: baseline; gap: 4px; }
+.ctg-ev-time { font-weight: 700; color: var(--ev-color); flex: none; font-size: 0.72rem; white-space: nowrap; }
+.ctg-ev-title { flex: 1; min-width: 0; white-space: normal; word-break: normal; overflow-wrap: break-word; hyphens: auto; }
+.ctg-ev-owner { display: block; margin-top: 1px; }
 
 /* =============================================================================
    BACKBONE EDITOR — optická topológia (interrogátor · splitter · káble · senzory)
