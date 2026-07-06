@@ -4705,15 +4705,14 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .ctg-daycol { position: relative; border-left: 1px solid rgba(255,255,255,0.08); }
 .ctg-daycol.ctg-we { background: rgba(255,255,255,0.015); }
 .ctg-daycol.ctg-today { background: rgba(0,212,255,0.035); }
-.ctg-line { position: absolute; left: 0; right: 0; border-top: 1px solid rgba(255,255,255,0.05); pointer-events: none; }
+.ctg-line { position: absolute; left: 0; right: 0; border-top: 1px solid rgba(255,255,255,0.05); pointer-events: none; z-index: 0; }
 /* Blok udalosti: výška podľa trvania (min-height), ale obsah sa neoreže —
    pri dlhom názve sa blok natiahne. Zalomenie po SLOVÁCH (nie po písmenách). */
-.ctg-ev { position: absolute; height: auto; overflow: visible; font-size: 0.8rem; line-height: 1.28; padding: 4px 7px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 1; border-radius: 6px; }
+.ctg-ev { position: absolute; height: auto; overflow: visible; font-size: 0.8rem; line-height: 1.28; padding: 4px 7px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 2; border-radius: 6px; }
 .ctg-ev:hover { z-index: 5; box-shadow: 0 3px 10px rgba(0,0,0,0.35); }
-/* 1. riadok — čas + názov; názov zalomí po slovách, čas ostáva vľavo */
-.ctg-ev-line { display: flex; align-items: baseline; gap: 4px; }
-.ctg-ev-time { font-weight: 700; color: var(--ev-color); flex: none; font-size: 0.72rem; white-space: nowrap; }
-.ctg-ev-title { flex: 1; min-width: 0; white-space: normal; word-break: normal; overflow-wrap: break-word; hyphens: auto; }
+/* pod seba: čas · popis (zalomí po slovách) · meno */
+.ctg-ev-time { display: block; font-weight: 700; color: var(--ev-color); font-size: 0.72rem; white-space: nowrap; text-decoration: none; }
+.ctg-ev-title { display: block; white-space: normal; word-break: normal; overflow-wrap: break-word; hyphens: auto; }
 .ctg-ev-owner { display: block; margin-top: 1px; }
 
 /* =============================================================================
