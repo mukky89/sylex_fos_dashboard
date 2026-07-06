@@ -2150,6 +2150,13 @@ function calMergeEvents(list) {
   });
   return [...groups.values()];
 }
+// priezvisko z názvu zdroja ("Marek Múčka" → "Múčka"; jednoslovné názvy ostávajú celé)
+function calSurname(name) { const w = String(name || '').trim().split(/\s+/); return w[w.length - 1] || ''; }
+// priezviská vlastníkov udalosti (zlúčená = viac zdrojov, oddelené čiarkou); interné = ''
+function calEvSurnames(ev) {
+  const srcs = (ev._owners && ev._owners.length) ? ev._owners : (calEvOwner(ev) ? [calEvOwner(ev)] : []);
+  return srcs.map(calSurname).filter(Boolean).join(', ');
+}
 // tooltip so zdrojom (farba chipu identifikuje zdroj, text netreba v každej udalosti)
 function calEvTip(ev) {
   const srcs = (ev._owners && ev._owners.length) ? ev._owners : (calEvOwner(ev) ? [calEvOwner(ev)] : []);
@@ -2166,7 +2173,8 @@ function calEvChipHtml(ev) {
   const dataAttr = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
   const multi = ev._owners && ev._owners.length > 1;
   const cls = `cal-ev ${allday ? 'cal-ev-allday' : 'cal-ev-timed'}${ext ? ' cal-ev-ext' : ''}${multi ? ' cal-ev-merged' : ''}`;
-  const badge = multi ? `<span class="cal-ev-nsrc" title="Zdroje: ${escHtml(ev._owners.join(', '))}">×${ev._owners.length}</span>` : '';
+  const sn = calEvSurnames(ev);
+  const badge = sn ? `<span class="cal-ev-owner"> · ${escHtml(sn)}</span>` : '';
   const tip = calEvTip(ev);
   if (allday) {
     return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-txt">${escHtml(ev.title)}</span>${badge}</div>`;
@@ -2310,9 +2318,9 @@ function renderCalMonth(vp) {
       const left = seg.startCol / 7 * 100, width = (seg.endCol - seg.startCol + 1) / 7 * 100;
       const data = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
       const cls = `cal-span${seg.contL ? ' cont-l' : ''}${seg.contR ? ' cont-r' : ''}`;
-      const multi = ev._owners && ev._owners.length > 1;
-      const nsrc = multi ? ` <span class="cal-ev-nsrc">×${ev._owners.length}</span>` : '';
-      return `<div class="${cls}" ${data} style="--ev-color:${escHtml(color)};left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${seg.lane * LANE}px" title="${calEvTip(ev)}">${seg.contL ? '◂ ' : ''}${escHtml(ev.title)}${nsrc}${seg.contR ? ' ▸' : ''}</div>`;
+      const sn = calEvSurnames(ev);
+      const snTxt = sn ? ` · ${escHtml(sn)}` : '';
+      return `<div class="${cls}" ${data} style="--ev-color:${escHtml(color)};left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${seg.lane * LANE}px" title="${calEvTip(ev)}">${seg.contL ? '◂ ' : ''}${escHtml(ev.title)}${snTxt}${seg.contR ? ' ▸' : ''}</div>`;
     }).join('');
 
     let cellsHtml = '';
@@ -2400,8 +2408,9 @@ function renderCalTimeGrid(vp, days) {
       const top = Math.max(0, (it.s - H0 * 60) / 60 * hourH);
       const height = Math.max(15, (Math.min(it.e, H1 * 60) - Math.max(it.s, H0 * 60)) / 60 * hourH - 2);
       const w = 100 / it.cols, left = it.lane * w, ev = it.ev, ref = ev._ref || ev, ext = ref.external;
-      const multi = ev._owners && ev._owners.length > 1, conflict = it.cols > 1;
-      const badge = multi ? `<span class="cal-ev-nsrc" title="Zdroje: ${escHtml(ev._owners.join(', '))}">×${ev._owners.length}</span>` : '';
+      const conflict = it.cols > 1;
+      const sn = calEvSurnames(ev);
+      const badge = sn ? `<span class="ctg-ev-owner"> · ${escHtml(sn)}</span>` : '';
       const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span> ${escHtml(ev.title)}${badge}`;
       const cls = `cal-ev ctg-ev${ext ? ' cal-ev-ext' : ''}${conflict ? ' ctg-ev-conflict' : ''}`;
       const ds = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
@@ -6001,6 +6010,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.2.0', date: '6. 7. 2026', tag: 'ui', items: [
+    'Kalendár: pri každej udalosti z napojeného kalendára sa zobrazuje priezvisko vlastníka (z názvu zdroja) — v mesačnom, týždennom aj dennom pohľade, aj na viacdňových pruhoch (dovolenka a pod.).',
+    'Zlúčené udalosti z viacerých kalendárov ukazujú priezviská všetkých (namiesto ×N).',
+  ] },
   { v: '2.1.0', date: '6. 7. 2026', tag: 'fix', items: [
     'Hlavička: menu „🍽️ Jedlo" má správnu oranžovú farbu textu (predtým nečitateľné na tmavom pozadí).',
     'Fotky z výroby: v paneli označených fotiek pribudol rýchly výber „📂 Zaradiť do kategórie…" — označené fotky sa zaradia jedným klikom bez otvárania modalu.',
