@@ -6021,6 +6021,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.7.1', date: '6. 7. 2026', tag: 'ui', items: [
+    'Plánovanie výroby → Gantt: skryté karty „🤖 AI analýza plánu" a „✨ AI optimalizácia" (pohľad premenovaný na 📊 Gantt).',
+  ] },
   { v: '2.7.0', date: '6. 7. 2026', tag: 'ui', items: [
     'Plánovanie výroby: panel „Meškajúce zákazky" je rozbaľovací — klik na hlavičku skryje/zobrazí zoznam (predvolene zbalený, stav sa pamätá). Počet meškajúcich vidno aj v zbalenom stave.',
   ] },
@@ -8487,7 +8490,8 @@ function renderProdGantt() {
   const chart = document.getElementById('prodGanttChart'); if (!chart) return;
   prodGanttInit();
   const sel = document.getElementById('prodGanttRange'); if (sel) sel.value = String(prodGanttDays);
-  renderProdAi();
+  // AI analýza/optimalizácia je skrytá (na želanie) — panel necháme prázdny
+  const aiEl = document.getElementById('prodAi'); if (aiEl) { aiEl.innerHTML = ''; aiEl.classList.add('hidden'); }
   const ws = prodGanttStart.getTime(), winMs = prodGanttDays * 864e5, days = prodGanttDays;
   const lbl = document.getElementById('prodGanttLabel');
   if (lbl) lbl.textContent = `${fmtDate(prodGanttStart)} – ${fmtDate(new Date(ws + winMs - 1))}`;
