@@ -2054,7 +2054,7 @@ let calYear  = new Date().getFullYear();
 let calMonth = new Date().getMonth(); // 0-11
 let calEvents = [];
 let calExternal = [];   // udalosti z napojených ICS feedov (Outlook) — len na čítanie
-let calView = 'month';  // 'month' | 'week' | 'day'
+let calView = localStorage.getItem('calView') || 'week';  // 'month' | 'week' | 'day' — predvolený týždeň
 let calRef  = new Date(); // referenčný dátum (kotva pohľadu)
 const CAL_INT_KEY = '__interne__';   // kľúč pre interné (ručne zapísané) udalosti
 let calSrcHidden = new Set();        // skryté zdroje kalendára (kľúč = názov zdroja / CAL_INT_KEY)
@@ -2069,9 +2069,9 @@ function applyCalTheme() {
 function setCalTheme(v) { calTheme = v; localStorage.setItem('calTheme', v); applyCalTheme(); }
 let calTextFilter = '';   // textový filter
 let calTypeFilter = '';   // filter podľa typu
-let calBh = false;        // len pracovné hodiny (7–19) v týždeň/deň
+let calBh = localStorage.getItem('calBh') !== '0';   // len pracovné hodiny (7–19) — predvolene zapnuté
 let _calRemind = new Set();// už zobrazené pripomienky
-let calZoom = 46;         // px / hodina v týždennom a dennom pohľade
+let calZoom = parseInt(localStorage.getItem('calZoom')) || 64;   // px / hodina v týždennom a dennom pohľade
 
 // Date -> 'YYYY-MM-DD' (local components)
 function calYmd(d) {
@@ -2247,7 +2247,8 @@ function renderCalendar() {
   const vp = document.getElementById('calViewport'); if (!vp) return;
   document.querySelectorAll('[data-calview]').forEach(b => b.classList.toggle('active', b.dataset.calview === calView));
   document.getElementById('calZoomCtl')?.classList.toggle('hidden', calView === 'month');
-  document.getElementById('calBhBtn')?.classList.toggle('hidden', calView === 'month');
+  const bhBtn = document.getElementById('calBhBtn');
+  if (bhBtn) { bhBtn.classList.toggle('hidden', calView === 'month'); bhBtn.classList.toggle('active', calBh); }
   const ty = document.getElementById('calType'); if (ty) ty.value = calTypeFilter;
   applyCalTheme();
   calRenderSrcChips();
@@ -2329,7 +2330,7 @@ function renderCalMonth(vp) {
       const data = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
       const cls = `cal-span${seg.contL ? ' cont-l' : ''}${seg.contR ? ' cont-r' : ''}`;
       const sn = calEvSurnames(ev);
-      const snTxt = sn ? ` · ${escHtml(sn)}` : '';
+      const snTxt = sn ? ` <span class="cal-ev-owner">· ${escHtml(sn)}</span>` : '';
       return `<div class="${cls}" ${data} style="--ev-color:${escHtml(color)};left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${seg.lane * LANE}px" title="${calEvTip(ev)}">${seg.contL ? '◂ ' : ''}${escHtml(ev.title)}${snTxt}${seg.contR ? ' ▸' : ''}</div>`;
     }).join('');
 
@@ -2416,7 +2417,7 @@ function renderCalTimeGrid(vp, days) {
     const evhtml = laid.map(it => {
       if (it.e <= H0 * 60 || it.s >= H1 * 60) return '';
       const top = Math.max(0, (it.s - H0 * 60) / 60 * hourH);
-      const height = Math.max(15, (Math.min(it.e, H1 * 60) - Math.max(it.s, H0 * 60)) / 60 * hourH - 2);
+      const height = Math.max(24, (Math.min(it.e, H1 * 60) - Math.max(it.s, H0 * 60)) / 60 * hourH - 2);
       const w = 100 / it.cols, left = it.lane * w, ev = it.ev, ref = ev._ref || ev, ext = ref.external;
       const conflict = it.cols > 1;
       const sn = calEvSurnames(ev);
@@ -2506,7 +2507,7 @@ function exportCalendarExcel() {
   window.location.href = '/api/calendar/export.xlsx';
 }
 
-function setCalView(v) { calView = v; loadCalendar(); }
+function setCalView(v) { calView = v; localStorage.setItem('calView', v); loadCalendar(); }
 function calNav(dir) {
   if (calView === 'month') calRef = new Date(calRef.getFullYear(), calRef.getMonth() + dir, 1);
   else if (calView === 'week') calRef = new Date(calRef.getFullYear(), calRef.getMonth(), calRef.getDate() + 7 * dir);
@@ -2516,7 +2517,7 @@ function calNav(dir) {
 function calGoToday() { calRef = new Date(); loadCalendar(); }
 function setCalText(v) { calTextFilter = v.trim(); renderCalendar(); }
 function setCalType(v) { calTypeFilter = v; renderCalendar(); }
-function toggleCalBh() { calBh = !calBh; document.getElementById('calBhBtn')?.classList.toggle('active', calBh); renderCalendar(); }
+function toggleCalBh() { calBh = !calBh; localStorage.setItem('calBh', calBh ? '1' : '0'); renderCalendar(); }
 function calJumpDate(v) { if (!v) return; const [y, m, d] = v.split('-').map(Number); calRef = new Date(y, m - 1, d); setCalView('day'); }
 
 // ISO číslo týždňa
@@ -2564,7 +2565,7 @@ async function calCheckReminders() {
     });
   } catch {}
 }
-function calZoomBy(d) { calZoom = Math.max(28, Math.min(96, calZoom + d * 12)); renderCalendar(); }
+function calZoomBy(d) { calZoom = Math.max(28, Math.min(120, calZoom + d * 12)); localStorage.setItem('calZoom', String(calZoom)); renderCalendar(); }
 
 // ── Event modal ─────────────────────────────────────────────────────────────
 function openEventModal(event = null, prefillDate = null) {
@@ -6020,6 +6021,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.4.0', date: '6. 7. 2026', tag: 'ui', items: [
+    'Kalendár: priezviská vlastníkov zvýraznené červenou vo všetkých pohľadoch a motívoch.',
+    'Týždeň je predvolený pohľad; pracovné hodiny (7–19) predvolene zapnuté; väčšie bloky udalostí, vyššie riadky hodín, väčšie hlavičky dní — optimalizované pre týždňové zobrazenie. Pohľad, zoom aj prac. hodiny sa pamätajú.',
+    'Modrý/svetlý motív: opravený neviditeľný prepínač Mesiac/Týždeň/Deň a slabo čitateľná hodinová os.',
+  ] },
   { v: '2.3.0', date: '6. 7. 2026', tag: 'feat', items: [
     'Kalendár: prepínateľné motívy — 🌙 Tmavý (pôvodný), ☀️ Svetlý (čistý biely v štýle RON — udalosti ako podfarbené bloky s farebným rámom) a 🔷 Modrý (svetlý s modrými hlavičkami). Voľba sa pamätá.',
   ] },

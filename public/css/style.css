@@ -4671,30 +4671,30 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .cal-more:hover { color: #67e8f9; background: rgba(255,255,255,0.05); }
 
 /* Časová mriežka (týždeň / deň) */
-.ctg { --gutter: 54px; }
+.ctg { --gutter: 62px; }
 .ctg-head, .ctg-allday { display: grid; grid-template-columns: var(--gutter) repeat(var(--ctg-days), minmax(0,1fr)); }
 .ctg-head { border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: var(--cal-sticky-top, 116px); z-index: 30; background: #141a2e; }
-.ctg-dayhdr { padding: 8px 4px; text-align: center; font-size: 0.78rem; color: #cbd5e1; border-left: 1px solid rgba(255,255,255,0.07); cursor: pointer; white-space: nowrap; }
+.ctg-dayhdr { padding: 10px 6px; text-align: center; font-size: 0.92rem; color: #cbd5e1; border-left: 1px solid rgba(255,255,255,0.07); cursor: pointer; white-space: nowrap; }
 .ctg-dayhdr:hover { background: rgba(255,255,255,0.04); }
 .ctg-dayhdr.ctg-today { color: #67e8f9; }
 .ctg-dayhdr.ctg-we { background: rgba(255,255,255,0.02); }
-.ctg-dow { font-weight: 700; } .ctg-dnum { color: #94a3b8; font-size: 0.72rem; }
+.ctg-dow { font-weight: 700; } .ctg-dnum { color: #94a3b8; font-size: 0.8rem; }
 .ctg-allday { border-bottom: 1px solid rgba(255,255,255,0.12); min-height: 26px; max-height: 110px; overflow-y: auto; }
 .ctg-allday-lbl { font-size: 0.6rem; color: #64748b; padding: 5px 5px 0; text-align: right; }
-.ctg-allday-cell { border-left: 1px solid rgba(255,255,255,0.07); padding: 3px; display: flex; flex-direction: column; gap: 2px; min-height: 24px; }
+.ctg-allday-cell { border-left: 1px solid rgba(255,255,255,0.07); padding: 4px; display: flex; flex-direction: column; gap: 3px; min-height: 30px; }
 .ctg-allday-cell.ctg-we { background: rgba(255,255,255,0.02); }
 .ctg-body { display: flex; max-height: 60vh; overflow-y: auto; position: relative; scrollbar-width: thin; }
 .ctg-gutter { width: var(--gutter); flex-shrink: 0; }
 .ctg-hour { position: relative; border-top: 1px solid rgba(255,255,255,0.06); }
-.ctg-hour span { position: absolute; top: -7px; right: 6px; font-size: 0.62rem; color: #64748b; }
+.ctg-hour span { position: absolute; top: -8px; right: 6px; font-size: 0.72rem; color: #94a3b8; }
 .ctg-cols { flex: 1; display: grid; grid-template-columns: repeat(var(--ctg-days), minmax(0,1fr)); }
 .ctg-daycol { position: relative; border-left: 1px solid rgba(255,255,255,0.08); }
 .ctg-daycol.ctg-we { background: rgba(255,255,255,0.015); }
 .ctg-daycol.ctg-today { background: rgba(0,212,255,0.035); }
 .ctg-line { position: absolute; left: 0; right: 0; border-top: 1px solid rgba(255,255,255,0.05); pointer-events: none; }
-.ctg-ev { position: absolute; overflow: hidden; white-space: normal; font-size: 0.7rem; line-height: 1.18; padding: 2px 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 1; }
+.ctg-ev { position: absolute; overflow: hidden; white-space: normal; font-size: 0.82rem; line-height: 1.25; padding: 4px 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 1; border-radius: 6px; }
 .ctg-ev:hover { z-index: 2; }
-.ctg-ev-time { font-weight: 600; color: var(--ev-color); display: block; font-size: 0.64rem; }
+.ctg-ev-time { font-weight: 600; color: var(--ev-color); display: block; font-size: 0.74rem; }
 
 /* =============================================================================
    BACKBONE EDITOR — optická topológia (interrogátor · splitter · káble · senzory)
@@ -4864,13 +4864,13 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .calendar-page .ctg-ev { background: var(--ev-color); color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.3); }
 .calendar-page .ctg-ev .ctg-ev-time { color: rgba(255,255,255,0.92); }
 
-/* info „koho je" + merge + textový/dátumový filter */
+/* priezvisko vlastníka (zdroja) — zvýraznené červenou */
 .cal-ev-main { flex: 1; min-width: 0; }
-.cal-ev-owner { color: #94a3b8; font-weight: 400; } /* priezvisko vlastníka (zdroja) udalosti */
+.cal-ev-owner { color: #f87171; font-weight: 700; }
 .cal-ev-allday { display: block; }
-.cal-ev-allday .cal-ev-owner { color: rgba(255,255,255,0.85); }
-.cal-ev-merged .cal-ev-owner { color: #a5b4fc; font-weight: 600; }
-.ctg-ev-owner { opacity: 0.9; }
+.cal-ev-allday .cal-ev-owner, .cal-span .cal-ev-owner { color: #fecaca; }   /* na farebných pruhoch svetlejšia červená */
+.cal-ev-merged .cal-ev-owner { color: #f87171; font-weight: 700; }
+.ctg-ev-owner { color: #fecaca; font-weight: 700; }
 
 .cal-search { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; padding: 6px 10px; color: #94a3b8; }
 .cal-search input { border: none; outline: none; background: none; font-family: var(--font); font-size: 0.82rem; color: #e2e8f0; width: 150px; }
@@ -4958,9 +4958,9 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .calendar-page.cal-light .cal-ev { color: var(--cltx); }
 .calendar-page.cal-light .cal-ev-timed:hover { background: #f3f4f6; }
 .calendar-page.cal-light .cal-ev-time { color: #4b5563; }
-.calendar-page.cal-light .cal-ev-owner { color: var(--cltx2); }
+.calendar-page.cal-light .cal-ev-owner { color: #dc2626; }
 .calendar-page.cal-light .cal-ev-allday { color: #fff; }
-.calendar-page.cal-light .cal-ev-allday .cal-ev-owner { color: rgba(255,255,255,0.9); }
+.calendar-page.cal-light .cal-ev-allday .cal-ev-owner, .calendar-page.cal-light .cal-span .cal-ev-owner { color: #fecaca; }
 .calendar-page.cal-light .cal-more { color: var(--cltx2); }
 .calendar-page.cal-light .cal-more:hover { color: var(--clacc); background: #f3f4f6; }
 .calendar-page.cal-light .cal-holiday { background: rgba(220,38,38,0.08); color: #b91c1c; }
@@ -4990,7 +4990,13 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
   color: var(--cltx); text-shadow: none;
 }
 .calendar-page.cal-light .ctg-ev .ctg-ev-time { color: #374151; }
-.calendar-page.cal-light .ctg-ev .ctg-ev-owner { color: var(--cltx2); opacity: 1; }
+.calendar-page.cal-light .ctg-ev .ctg-ev-owner { color: #dc2626; }
+/* prepínač Mesiac/Týždeň/Deň + hodinová os — čitateľné na svetlom pozadí */
+.calendar-page.cal-light .tasks-viewtoggle { border-color: #c7d2e0; background: var(--clsurf); }
+.calendar-page.cal-light .tasks-view { color: #475569; }
+.calendar-page.cal-light .tasks-view:hover { background: #f1f5f9; color: #111827; }
+.calendar-page.cal-light .tasks-view.active { background: var(--clacc); color: #fff; }
+.calendar-page.cal-light .ctg-hour span { color: #64748b; font-weight: 600; }
 
 @media print {
   body * { visibility: hidden !important; }
