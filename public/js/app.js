@@ -1150,7 +1150,7 @@ async function loadHomeCalendar() {
       <div class="home-cal-date"><span class="hc-day">${d.getDate()}</span><span class="hc-mon">${DT_MONTHS[d.getMonth()].slice(0, 3)}</span></div>
       <div class="home-cal-body">
         <div class="home-cal-evtitle">${HOME_CAL_TYPE_ICON[e.type] || '📌'} ${escHtml(e.title)}</div>
-        <div class="home-cal-evmeta">${isToday ? 'dnes' : fmtDate(e.date)}${e.time ? ' · ' + escHtml(e.time) : ''}${e.person ? ' · ' + escHtml(e.person) : ''}</div>
+        <div class="home-cal-evmeta">${isToday ? 'dnes' : fmtDate(e.date)}${e.time ? ' · ' + escHtml(e.time) : ''}${e.source ? ' · 📅 ' + escHtml(e.source) : ''}</div>
       </div>`;
     el.appendChild(item);
   });
@@ -2056,7 +2056,8 @@ let calEvents = [];
 let calExternal = [];   // udalosti z napojených ICS feedov (Outlook) — len na čítanie
 let calView = 'month';  // 'month' | 'week' | 'day'
 let calRef  = new Date(); // referenčný dátum (kotva pohľadu)
-let calPersonFilter = ''; // filter podľa osoby / zdroja
+const CAL_INT_KEY = '__interne__';   // kľúč pre interné (ručne zapísané) udalosti
+let calSrcHidden = new Set();        // skryté zdroje kalendára (kľúč = názov zdroja / CAL_INT_KEY)
 let calTextFilter = '';   // textový filter
 let calTypeFilter = '';   // filter podľa typu
 let calBh = false;        // len pracovné hodiny (7–19) v týždeň/deň
@@ -2117,11 +2118,13 @@ function calBuildDayMap() {
 }
 
 // ── pomocné ──
+// kľúč zdroja udalosti (interné vs. názov externého kalendára)
+function calSrcKey(ev) { return ev.external ? (ev.source || 'Outlook') : CAL_INT_KEY; }
 function calVisible(ev) {
-  if (calPersonFilter && (ev.external ? ev.source : ev.person) !== calPersonFilter) return false;
+  if (calSrcHidden.has(calSrcKey(ev))) return false;
   if (calTypeFilter) { const t = ev.external ? 'outlook' : (ev.type || 'event'); if (t !== calTypeFilter) return false; }
   if (calTextFilter) {
-    const hay = [ev.title, ev.person, ev.source, ev.note].filter(Boolean).join(' ').toLowerCase();
+    const hay = [ev.title, ev.source, ev.note].filter(Boolean).join(' ').toLowerCase();
     if (!hay.includes(calTextFilter.toLowerCase())) return false;
   }
   return true;
@@ -2133,9 +2136,8 @@ function calWeekDays() {
   const mon = new Date(calRef.getFullYear(), calRef.getMonth(), calRef.getDate() - offset);
   return Array.from({ length: 7 }, (_, i) => new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i));
 }
-function calEvOwner(ev) { return ev.external ? (ev.source || 'Outlook') : (ev.person || ''); }
-function calInitials(name) { return String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 3).map(w => w[0].toUpperCase()).join('') || '?'; }
-// Zlúči rovnaké udalosti rôznych ľudí/zdrojov (rovnaký názov + dátum + čas) do jednej, so zoznamom vlastníkov
+function calEvOwner(ev) { return ev.external ? (ev.source || 'Outlook') : ''; }
+// Zlúči rovnaké udalosti z viacerých zdrojov (rovnaký názov + dátum + čas) do jednej, so zoznamom zdrojov
 function calMergeEvents(list) {
   const groups = new Map();
   list.forEach(ev => {
@@ -2148,6 +2150,14 @@ function calMergeEvents(list) {
   });
   return [...groups.values()];
 }
+// tooltip so zdrojom (farba chipu identifikuje zdroj, text netreba v každej udalosti)
+function calEvTip(ev) {
+  const srcs = (ev._owners && ev._owners.length) ? ev._owners : (calEvOwner(ev) ? [calEvOwner(ev)] : []);
+  const ext = (ev._ref || ev).external;
+  return escHtml(ev.title)
+    + (srcs.length ? '\n' + (srcs.length > 1 ? 'Zdroje: ' : 'Zdroj: ') + escHtml(srcs.join(', ')) : '')
+    + (ext ? ' (len na čítanie)' : '');
+}
 function calEvChipHtml(ev) {
   const ref = ev._ref || ev;
   const ext = ref.external;
@@ -2156,16 +2166,13 @@ function calEvChipHtml(ev) {
   const dataAttr = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
   const multi = ev._owners && ev._owners.length > 1;
   const cls = `cal-ev ${allday ? 'cal-ev-allday' : 'cal-ev-timed'}${ext ? ' cal-ev-ext' : ''}${multi ? ' cal-ev-merged' : ''}`;
-  const ownerFull = (ev._owners && ev._owners.length) ? ev._owners.join(', ') : calEvOwner(ev);
-  const ownerDisp = (ev._owners && ev._owners.length) ? ev._owners.map(calInitials).join(', ') : calInitials(calEvOwner(ev));
-  const icon = multi ? '👥' : (ext ? '📅' : '👤');
-  const ownerHtml = ownerFull ? `<span class="cal-ev-owner" title="${escHtml(ownerFull)}"> · ${icon} ${escHtml(ownerDisp)}</span>` : '';
-  const tip = escHtml(ev.title) + (ownerFull ? '\n' + (multi ? 'Spoločné: ' : '') + escHtml(ownerFull) : '') + (ext ? ' (len na čítanie)' : '');
+  const badge = multi ? `<span class="cal-ev-nsrc" title="Zdroje: ${escHtml(ev._owners.join(', '))}">×${ev._owners.length}</span>` : '';
+  const tip = calEvTip(ev);
   if (allday) {
-    return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-txt">${escHtml(ev.title)}</span>${ownerHtml}</div>`;
+    return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-txt">${escHtml(ev.title)}</span>${badge}</div>`;
   }
   const t = ev.time ? `<span class="cal-ev-time">${escHtml(ev.time)}</span>` : '';
-  return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-dot"></span><span class="cal-ev-main">${t}<span class="cal-ev-txt">${escHtml(ev.title)}</span>${ownerHtml}</span></div>`;
+  return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-dot"></span><span class="cal-ev-main">${t}<span class="cal-ev-txt">${escHtml(ev.title)}</span>${badge}</span></div>`;
 }
 function calAttachEvClicks(root) {
   root.querySelectorAll('.cal-ev, .cal-span').forEach(el => el.onclick = (e) => {
@@ -2174,15 +2181,50 @@ function calAttachEvClicks(root) {
     const ev = calEvents.find(x => x._id === el.dataset.id); if (ev) openEventModal(ev);
   });
 }
-function calFillPersonFilter() {
-  const sel = document.getElementById('calPerson'); if (!sel) return;
-  const persons = [...new Set(calEvents.map(e => (e.person || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'sk'));
-  const sources = [...new Set(calExternal.map(e => (e.source || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'sk'));
-  let html = '<option value="">👥 Všetci</option>';
-  if (persons.length) html += '<optgroup label="Osoby">' + persons.map(p => `<option value="${escHtml(p)}"${p === calPersonFilter ? ' selected' : ''}>${escHtml(p)}</option>`).join('') + '</optgroup>';
-  if (sources.length) html += '<optgroup label="Zdroje">' + sources.map(s => `<option value="${escHtml(s)}"${s === calPersonFilter ? ' selected' : ''}>📅 ${escHtml(s)}</option>`).join('') + '</optgroup>';
-  sel.innerHTML = html; sel.value = calPersonFilter;
+// ── Zdroje kalendára ako farebné prepínacie chipy (klik = zobraziť/skryť, ⊙ = iba tento) ──
+function calSources() {
+  // zdroj → { name, color, count } z aktuálne načítaných externých udalostí
+  const map = new Map();
+  calExternal.forEach(e => {
+    const k = (e.source || 'Outlook').trim() || 'Outlook';
+    const m = map.get(k) || { key: k, name: k, color: e.color || '#7c3aed', count: 0 };
+    m.count++; map.set(k, m);
+  });
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'sk'));
 }
+function calRenderSrcChips() {
+  const el = document.getElementById('calSrcBar'); if (!el) return;
+  const srcs = calSources();
+  // odstráň skryté zdroje, ktoré už neexistujú (okrem interných)
+  [...calSrcHidden].forEach(k => { if (k !== CAL_INT_KEY && !srcs.some(s => s.key === k)) calSrcHidden.delete(k); });
+  const chip = (key, name, color, count, icon) => {
+    const off = calSrcHidden.has(key);
+    return `<button class="cal-src-chip${off ? ' off' : ''}" style="--src-c:${escHtml(color)}"
+      onclick="calToggleSrc(decodeURIComponent('${encodeURIComponent(key)}'))"
+      ondblclick="calSoloSrc(decodeURIComponent('${encodeURIComponent(key)}'))"
+      title="${off ? 'Klik = zobraziť zdroj' : 'Klik = skryť zdroj'} · dvojklik = iba tento zdroj">
+      <span class="cal-src-dot"></span>${icon ? icon + ' ' : ''}${escHtml(name)}<span class="cal-src-n">${count}</span>
+    </button>`;
+  };
+  const intCount = calEvents.length;
+  let html = chip(CAL_INT_KEY, 'Interné (dashboard)', '#00d4ff', intCount, '✏️');
+  html += srcs.map(s => chip(s.key, s.name, s.color, s.count, '📅')).join('');
+  if (calSrcHidden.size) html += `<button class="cal-src-chip cal-src-all" onclick="calShowAllSrc()" title="Zobraziť všetky zdroje">Zobraziť všetky</button>`;
+  if (!srcs.length) html += `<button class="cal-src-chip cal-src-add" onclick="openIcsModal()" title="Napojiť Outlook / RON / iný kalendár cez ICS">+ Napojiť kalendár</button>`;
+  el.innerHTML = html;
+}
+function calToggleSrc(key) {
+  if (calSrcHidden.has(key)) calSrcHidden.delete(key); else calSrcHidden.add(key);
+  renderCalendar();
+}
+function calSoloSrc(key) {
+  // dvojklik: zobraz iba tento zdroj; ak už je sólo, zobraz všetky
+  const all = [CAL_INT_KEY, ...calSources().map(s => s.key)];
+  const isSolo = !calSrcHidden.has(key) && calSrcHidden.size === all.length - 1;
+  calSrcHidden = isSolo ? new Set() : new Set(all.filter(k => k !== key));
+  renderCalendar();
+}
+function calShowAllSrc() { calSrcHidden.clear(); renderCalendar(); }
 
 function renderCalendar() {
   const vp = document.getElementById('calViewport'); if (!vp) return;
@@ -2190,7 +2232,7 @@ function renderCalendar() {
   document.getElementById('calZoomCtl')?.classList.toggle('hidden', calView === 'month');
   document.getElementById('calBhBtn')?.classList.toggle('hidden', calView === 'month');
   const ty = document.getElementById('calType'); if (ty) ty.value = calTypeFilter;
-  calFillPersonFilter();
+  calRenderSrcChips();
   if (calView === 'month') renderCalMonth(vp);
   else renderCalTimeGrid(vp, calView === 'week' ? calWeekDays() : [new Date(calRef)]);
   calUpdateSticky();
@@ -2269,10 +2311,8 @@ function renderCalMonth(vp) {
       const data = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
       const cls = `cal-span${seg.contL ? ' cont-l' : ''}${seg.contR ? ' cont-r' : ''}`;
       const multi = ev._owners && ev._owners.length > 1;
-      const own = (ev._owners && ev._owners.length) ? ev._owners.join(', ') : calEvOwner(ev);
-      const ownDisp = (ev._owners && ev._owners.length) ? ev._owners.map(calInitials).join(', ') : calInitials(calEvOwner(ev));
-      const ownTxt = own ? ` · ${multi ? '👥' : (ext ? '📅' : '👤')} ${escHtml(ownDisp)}` : '';
-      return `<div class="${cls}" ${data} style="--ev-color:${escHtml(color)};left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${seg.lane * LANE}px" title="${escHtml(ev.title)}${own ? ' · ' + escHtml(own) : ''}">${seg.contL ? '◂ ' : ''}${escHtml(ev.title)}${ownTxt}${seg.contR ? ' ▸' : ''}</div>`;
+      const nsrc = multi ? ` <span class="cal-ev-nsrc">×${ev._owners.length}</span>` : '';
+      return `<div class="${cls}" ${data} style="--ev-color:${escHtml(color)};left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${seg.lane * LANE}px" title="${calEvTip(ev)}">${seg.contL ? '◂ ' : ''}${escHtml(ev.title)}${nsrc}${seg.contR ? ' ▸' : ''}</div>`;
     }).join('');
 
     let cellsHtml = '';
@@ -2361,12 +2401,11 @@ function renderCalTimeGrid(vp, days) {
       const height = Math.max(15, (Math.min(it.e, H1 * 60) - Math.max(it.s, H0 * 60)) / 60 * hourH - 2);
       const w = 100 / it.cols, left = it.lane * w, ev = it.ev, ref = ev._ref || ev, ext = ref.external;
       const multi = ev._owners && ev._owners.length > 1, conflict = it.cols > 1;
-      const _own = (ev._owners && ev._owners.length) ? ev._owners.join(', ') : calEvOwner(ev);
-      const _ownDisp = (ev._owners && ev._owners.length) ? ev._owners.map(calInitials).join(', ') : calInitials(calEvOwner(ev));
-      const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span> ${escHtml(ev.title)}${_own ? `<span class="ctg-ev-owner" title="${escHtml(_own)}"> · ${multi ? '👥' : (ext ? '📅' : '👤')} ${escHtml(_ownDisp)}</span>` : ''}`;
+      const badge = multi ? `<span class="cal-ev-nsrc" title="Zdroje: ${escHtml(ev._owners.join(', '))}">×${ev._owners.length}</span>` : '';
+      const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span> ${escHtml(ev.title)}${badge}`;
       const cls = `cal-ev ctg-ev${ext ? ' cal-ev-ext' : ''}${conflict ? ' ctg-ev-conflict' : ''}`;
       const ds = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
-      return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ext ? '#7c3aed' : '#00d4ff'))};top:${top}px;height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${conflict ? '⚠ Prekryv · ' : ''}${escHtml(ev.title)}${_own ? ' · ' + escHtml(_own) : ''}">${conflict ? '<span class="ctg-conf">⚠</span>' : ''}${inner}</div>`;
+      return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ext ? '#7c3aed' : '#00d4ff'))};top:${top}px;height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${conflict ? '⚠ Prekryv · ' : ''}${calEvTip(ev)}">${conflict ? '<span class="ctg-conf">⚠</span>' : ''}${inner}</div>`;
     }).join('');
     cols += `<div class="ctg-daycol${we ? ' ctg-we' : ''}${isToday ? ' ctg-today' : ''}" data-newday="${key}" style="height:${HN * hourH}px">${lines}${evhtml}</div>`;
   });
@@ -2456,7 +2495,6 @@ function calNav(dir) {
   loadCalendar();
 }
 function calGoToday() { calRef = new Date(); loadCalendar(); }
-function setCalPerson(v) { calPersonFilter = v; renderCalendar(); }
 function setCalText(v) { calTextFilter = v.trim(); renderCalendar(); }
 function setCalType(v) { calTypeFilter = v; renderCalendar(); }
 function toggleCalBh() { calBh = !calBh; document.getElementById('calBhBtn')?.classList.toggle('active', calBh); renderCalendar(); }
@@ -2502,7 +2540,7 @@ async function calCheckReminders() {
       const key = ev._id + '|' + calYmd(start);
       if (diff > 0 && diff <= ev.reminderMin && !_calRemind.has(key)) {
         _calRemind.add(key);
-        toast(`⏰ ${ev.title} o ${ev.time}${ev.person ? ' · ' + ev.person : ''}`, 'info', 9000);
+        toast(`⏰ ${ev.title} o ${ev.time}`, 'info', 9000);
       }
     });
   } catch {}
@@ -2515,7 +2553,6 @@ function openEventModal(event = null, prefillDate = null) {
   document.getElementById('eventModalTitle').textContent = isEdit ? 'Upraviť udalosť' : 'Nová udalosť';
   document.getElementById('evId').value      = isEdit ? event._id : '';
   document.getElementById('evTitle').value   = isEdit ? (event.title || '') : '';
-  document.getElementById('evPerson').value  = isEdit ? (event.person || '') : '';
   document.getElementById('evDate').value    = isEdit ? String(event.date).slice(0, 10) : (prefillDate || calYmd(new Date()));
   document.getElementById('evEndDate').value = isEdit && event.endDate ? String(event.endDate).slice(0, 10) : '';
   document.getElementById('evAllDay').checked = isEdit ? (event.allDay !== false) : true;
@@ -2557,7 +2594,6 @@ async function saveEvent() {
   const allDay = document.getElementById('evAllDay').checked;
   const body = {
     title,
-    person:  document.getElementById('evPerson').value.trim(),
     date,
     endDate,
     allDay,
@@ -4796,7 +4832,7 @@ function renderNotif() {
   let h = '';
   if (notifData.todayEvs.length) {
     h += '<div class="notif-group">Dnes v kalendári</div>';
-    notifData.todayEvs.forEach(ev => { h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('calendar')"><span>📅</span><span>${escHtml(ev.title)}${ev.time ? ' · ' + escHtml(ev.time) : ''}${ev.person ? ' · ' + escHtml(ev.person) : ''}</span></div>`; });
+    notifData.todayEvs.forEach(ev => { h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('calendar')"><span>📅</span><span>${escHtml(ev.title)}${ev.time ? ' · ' + escHtml(ev.time) : ''}</span></div>`; });
   }
   if ((notifData.tasksDue || []).length) {
     h += '<div class="notif-group">Úlohy — termín dnes / po termíne</div>';
@@ -5965,6 +6001,20 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.0.0', date: '6. 7. 2026', tag: 'major', items: [
+    'Kalendár prerobený na zdrojovo-centrický: osoby odstránené, entitou sú napojené kalendáre (zdroje).',
+    'Zdroje ako farebné prepínacie chipy nad kalendárom — klik zdroj zobrazí/skryje, dvojklik = iba tento zdroj; každý zdroj má vlastnú farbu a počet udalostí.',
+    'Čistejšie udalosti — bez iniciálok pri každej položke (zdroj identifikuje farba + tooltip); zlúčené udalosti z viacerých kalendárov majú kompaktný počet ×N.',
+    'Napojenie externých kalendárov zovšeobecnené: Outlook, RON (dochádzka), Google — čokoľvek s ICS/iCal odkazom, cez tlačidlo „🔗 Kalendáre".',
+    'Z modalu udalosti odstránené pole „Osoba" — udalosť patrí kalendáru, nie menu.',
+  ] },
+  { v: '1.99.0', date: '6. 7. 2026', tag: 'feat', items: [
+    'Plánovanie výroby: nový pohľad „📅 Kalendár expedície" — čo bolo/má byť expedované v daný deň, so súhrnom mesiaca.',
+    'Kalibračné listy k expedovaným výrobkom: stav odoslané/neodoslané, priradenie obchodníka, dátum odoslania; panel, KPI a zvýraznenie v kalendári.',
+    'Realistickejšie ukážkové dáta výroby (rozumné meškania 1–14 dní, reálne dátumy expedície).',
+    'Fotky z výroby: režim označovania — hromadné mazanie a hromadná úprava (kategória, autor, tagy).',
+    'Hlavička: obedy presunuté do samostatnej skupiny „🍽️ Jedlo" (Obed Sylex, Obed Fantozzi).',
+  ] },
   { v: '1.98.0', date: '3. 7. 2026', tag: 'fix', items: [
     'Changelog: doplnené chýbajúce záznamy o novinkách za verzie 1.94–1.97 (predtým sa dvíhala len verzia v hlavičke, ale história zmien na tejto stránke sa neaktualizovala).',
   ] },

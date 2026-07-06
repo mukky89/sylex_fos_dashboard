@@ -722,7 +722,7 @@
           <p class="cal-sub">Zdieľaný kalendár tímu · zápis manuálne</p>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn-secondary" onclick="openIcsModal()" title="Napojiť Outlook / externý kalendár (publikovaný ICS)">🔗 Outlook</button>
+          <button class="btn-secondary" onclick="openIcsModal()" title="Napojiť externý kalendár cez ICS odkaz (Outlook, RON, Google…)">🔗 Kalendáre</button>
           <button class="btn-secondary" onclick="openCalExportModal()" title="Odoberať kalendár v Outlooku (iCal odkaz)">📤 Export</button>
           <button class="btn-secondary" onclick="calPrint()" title="Tlač / PDF">🖨️</button>
           <button class="btn-word" onclick="exportCalendarExcel()" title="Export do Excelu">
@@ -747,9 +747,8 @@
           <input type="date" id="calJump" class="cal-jump" title="Prejsť na dátum" onchange="calJumpDate(this.value)">
           <div class="cal-search">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="calSearch" placeholder="Hľadať udalosť, meno…" oninput="setCalText(this.value)" autocomplete="off">
+            <input type="text" id="calSearch" placeholder="Hľadať udalosť…" oninput="setCalText(this.value)" autocomplete="off">
           </div>
-          <select id="calPerson" class="util-select" onchange="setCalPerson(this.value)" title="Filter podľa osoby / zdroja"><option value="">👥 Všetci</option></select>
           <select id="calType" class="util-select" onchange="setCalType(this.value)" title="Filter podľa typu">
             <option value="">Všetky typy</option>
             <option value="event">Udalosť</option><option value="meeting">Porada</option>
@@ -770,6 +769,9 @@
         </div>
       </div>
 
+      <!-- Zdroje kalendára — farebné prepínacie chipy (klik = zobraziť/skryť zdroj) -->
+      <div class="cal-src-bar" id="calSrcBar"></div>
+
       <div class="cal-grid-wrap" id="calViewport"></div>
 
     </div>
@@ -788,10 +790,6 @@
         <div class="form-group">
           <label>Názov *</label>
           <input type="text" id="evTitle" placeholder="napr. Porada FOS, Dovolenka...">
-        </div>
-        <div class="form-group">
-          <label>Osoba / koho sa týka</label>
-          <input type="text" id="evPerson" placeholder="napr. Ján Novák">
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -902,21 +900,20 @@
   <div id="icsModal" class="modal hidden">
     <div class="modal-backdrop" onclick="closeIcsModal()"></div>
     <div class="modal-box modal-sm">
-      <div class="modal-header"><h2>🔗 Napojiť Outlook kalendár</h2><button class="modal-close" onclick="closeIcsModal()">✕</button></div>
+      <div class="modal-header"><h2>🔗 Napojiť externý kalendár (ICS)</h2><button class="modal-close" onclick="closeIcsModal()">✕</button></div>
       <div class="modal-body">
         <div class="ics-help">
-          <strong>Ako získať odkaz z Outlooku:</strong>
+          <strong>Funguje s každým kalendárom, ktorý vie publikovať ICS/iCal odkaz:</strong>
           <ol>
-            <li>Outlook na webe → <em>Nastavenia → Kalendár → Zdieľané kalendáre</em></li>
-            <li>V časti <em>Publikovať kalendár</em> vyber kalendár a oprávnenie</li>
-            <li>Klikni <em>Publikovať</em> a skopíruj <strong>ICS</strong> odkaz</li>
-            <li>Vlož ho sem nižšie</li>
+            <li><strong>Outlook</strong> — Nastavenia → Kalendár → Zdieľané kalendáre → <em>Publikovať kalendár</em> → skopíruj ICS odkaz</li>
+            <li><strong>RON (dochádzka)</strong> — ak systém ponúka export/publikovanie kalendára do iCal/ICS, skopíruj odkaz; prípadne požiadaj správcu RON o ICS export</li>
+            <li><strong>Google</strong> — Nastavenia kalendára → <em>Tajná adresa vo formáte iCal</em></li>
           </ol>
-          <p class="ics-note">Udalosti z Outlooku sa zobrazia v kalendári <strong>len na čítanie</strong> (aktualizácia ~5 min).</p>
+          <p class="ics-note">Externé udalosti sa zobrazia <strong>len na čítanie</strong> (aktualizácia ~5 min). Každý zdroj má vlastnú farbu a prepínač nad kalendárom.</p>
         </div>
-        <div class="form-group"><label>ICS odkaz *</label><input type="text" id="icsUrl" placeholder="https://outlook.office365.com/owa/calendar/.../calendar.ics"></div>
+        <div class="form-group"><label>ICS odkaz *</label><input type="text" id="icsUrl" placeholder="https://…/calendar.ics"></div>
         <div class="form-row">
-          <div class="form-group"><label>Názov</label><input type="text" id="icsLabel" placeholder="napr. Môj Outlook"></div>
+          <div class="form-group"><label>Názov zdroja</label><input type="text" id="icsLabel" placeholder="napr. Outlook FOS, RON dochádzka"></div>
           <div class="form-group" style="max-width:90px"><label>Farba</label><input type="color" id="icsColor" value="#7c3aed" style="width:100%;height:38px;padding:2px;cursor:pointer"></div>
         </div>
         <div id="icsTestMsg" class="ics-test"></div>
