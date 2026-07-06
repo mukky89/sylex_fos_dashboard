@@ -4061,9 +4061,22 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .prod-kpi-click:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
 .prod-kpi-more { position: absolute; top: 10px; right: 12px; font-size: 0.64rem; color: #94a3b8; opacity: 0; transition: opacity .12s ease; }
 .prod-kpi-click:hover .prod-kpi-more { opacity: 1; }
+/* KPI detail modal — tmavý motív so svetlým textom (prod-table je stavaná pre tmavé pozadie) */
+#prodKpiModal .modal-box { background: #131c35; border-color: rgba(255,255,255,0.1); }
+#prodKpiModal .modal-header { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1); }
+#prodKpiModal .modal-header h2 { color: #f1f5f9; }
+#prodKpiModal .modal-close { color: #cbd5e1; }
+#prodKpiModal .modal-close:hover { background: rgba(239,68,68,0.2); color: #fca5a5; }
+#prodKpiModal .proc-empty { color: #94a3b8; }
 .prod-kpi-modal-body { max-height: 66vh; overflow: auto; }
+.prod-kpi-modal-body .prod-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.prod-kpi-modal-body .prod-table th { text-align: left; padding: 10px 12px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: #94a3b8; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.1); white-space: nowrap; position: sticky; top: 0; }
+.prod-kpi-modal-body .prod-table td { padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); color: #e2e8f0; }
+.prod-kpi-modal-body .prod-table .prod-t-num { font-weight: 700; color: #f0f9ff; display: block; }
+.prod-kpi-modal-body .prod-table .prod-t-qty { font-size: 0.68rem; color: #94a3b8; }
+.prod-kpi-modal-body .prod-table td.task-od { color: #fca5a5; font-weight: 700; }
 .prod-kpi-modal-body .prod-table tbody tr { cursor: pointer; }
-.prod-kpi-modal-body .prod-table tbody tr:hover td { background: rgba(255,255,255,0.05); }
+.prod-kpi-modal-body .prod-table tbody tr:hover td { background: rgba(255,255,255,0.06); }
 .prod-kpi-val { font-family: var(--font-title); font-size: 1.7rem; font-weight: 800; color: #f0f9ff; line-height: 1; }
 .prod-kpi-lbl { font-size: 0.78rem; color: #cbd5e1; margin-top: 6px; }
 .prod-kpi-sub { font-size: 0.68rem; color: #94a3b8; margin-top: 3px; }
