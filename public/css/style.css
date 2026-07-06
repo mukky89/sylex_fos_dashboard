@@ -4897,6 +4897,101 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .ctg-ev-conflict { box-shadow: inset 0 0 0 2px #f59e0b, 0 1px 3px rgba(0,0,0,0.3); }
 .ctg-conf { margin-right: 3px; }
 
+/* =============================================================================
+   KALENDÁR — SVETLÉ MOTÍVY (☀️ Svetlý ako RON, 🔷 Modrý) — prepínač v toolbari
+   Spoločné pravidlá cez .cal-light + premenné definované v konkrétnom motíve
+   ============================================================================= */
+.calendar-page.cal-theme-light {
+  --clbg: #f8fafc;        /* pozadie stránky */
+  --clsurf: #ffffff;      /* povrch mriežky/buniek */
+  --clhead: #ffffff;      /* hlavičky (dni, ctg-head) */
+  --clline: #e5e7eb;      /* mriežka / okraje */
+  --cltx: #1f2937;        /* hlavný text */
+  --cltx2: #6b7280;       /* tlmený text */
+  --clacc: #d97706;       /* akcent (RON jantárová) */
+}
+.calendar-page.cal-theme-soft {
+  --clbg: #eaf1fa;
+  --clsurf: #ffffff;
+  --clhead: #dce9f9;
+  --clline: #c9d9ee;
+  --cltx: #1e3a5f;
+  --cltx2: #64748b;
+  --clacc: #2563eb;
+}
+.calendar-page.cal-light { background: var(--clbg); }
+.calendar-page.cal-light .cal-title { color: var(--cltx); }
+.calendar-page.cal-light .cal-sub { color: var(--cltx2); }
+.calendar-page.cal-light .cal-month-label { color: var(--cltx); }
+.calendar-page.cal-light .cal-toolbar { background: var(--clbg); border-bottom-color: var(--clline); }
+.calendar-page.cal-light .cal-nav-btn, .calendar-page.cal-light .cal-today-btn,
+.calendar-page.cal-light .cal-zoom .cal-nav-btn { background: var(--clsurf); border-color: #d1d5db; color: #374151; }
+.calendar-page.cal-light .cal-nav-btn:hover, .calendar-page.cal-light .cal-today-btn:hover { background: #f3f4f6; color: #111827; }
+.calendar-page.cal-light .util-select { background: var(--clsurf); border-color: #d1d5db; color: #374151; }
+.calendar-page.cal-light .cal-search { background: var(--clsurf); border-color: #d1d5db; color: var(--cltx2); }
+.calendar-page.cal-light .cal-search input { color: var(--cltx); }
+.calendar-page.cal-light .cal-search input::placeholder { color: #9ca3af; }
+.calendar-page.cal-light .cal-jump { background: var(--clsurf); border-color: #d1d5db; color: var(--cltx); color-scheme: light; }
+.calendar-page.cal-light .cal-bh-btn.active { background: rgba(37,99,235,0.1); color: var(--clacc); border-color: var(--clacc); }
+/* chipy zdrojov */
+.calendar-page.cal-light .cal-src-chip { background: var(--clsurf); border-color: #d1d5db; color: #374151; }
+.calendar-page.cal-light .cal-src-chip:hover { background: #f3f4f6; border-color: #9ca3af; }
+.calendar-page.cal-light .cal-src-n { background: #f3f4f6; color: var(--cltx2); }
+.calendar-page.cal-light .cal-src-all { border-color: var(--clacc); color: var(--clacc); }
+.calendar-page.cal-light .cal-src-add { color: var(--cltx2); }
+/* mesačná mriežka */
+.calendar-page.cal-light .cal-grid-wrap { background: var(--clsurf); border-color: var(--clline); }
+.calendar-page.cal-light .cal-weekdays { background: var(--clhead); border-bottom: 1px solid var(--clline); }
+.calendar-page.cal-light .cal-weekdays > div { color: var(--cltx2); }
+.calendar-page.cal-light .cal-weekdays .cal-weekend { color: #dc2626; }
+.calendar-page.cal-light .cal-cell { border-right: 1px solid var(--clline); border-bottom: 1px solid var(--clline); }
+.calendar-page.cal-light .cal-cell:hover { background: #f9fafb; }
+.calendar-page.cal-light .cal-cell-out { background: #f3f4f6; }
+.calendar-page.cal-light .cal-cell-out .cal-cell-num { color: #b8bfc9; }
+.calendar-page.cal-light .cal-cell-weekend { background: #fafbfc; }
+.calendar-page.cal-light .cal-cell-num { color: #374151; }
+.calendar-page.cal-light .cal-cell-num[data-open-day]:hover { background: #e5e7eb; color: #111827; }
+.calendar-page.cal-light .cal-cell-today { background: color-mix(in srgb, var(--clacc) 7%, var(--clsurf)); box-shadow: inset 0 0 0 2px var(--clacc); }
+.calendar-page.cal-light .cal-cell-today .cal-cell-num { background: var(--clacc); color: #fff; }
+.calendar-page.cal-light .cal-wk { color: #9ca3af; background: #f3f4f6; }
+/* udalosti v mesiaci */
+.calendar-page.cal-light .cal-ev { color: var(--cltx); }
+.calendar-page.cal-light .cal-ev-timed:hover { background: #f3f4f6; }
+.calendar-page.cal-light .cal-ev-time { color: #4b5563; }
+.calendar-page.cal-light .cal-ev-owner { color: var(--cltx2); }
+.calendar-page.cal-light .cal-ev-allday { color: #fff; }
+.calendar-page.cal-light .cal-ev-allday .cal-ev-owner { color: rgba(255,255,255,0.9); }
+.calendar-page.cal-light .cal-more { color: var(--cltx2); }
+.calendar-page.cal-light .cal-more:hover { color: var(--clacc); background: #f3f4f6; }
+.calendar-page.cal-light .cal-holiday { background: rgba(220,38,38,0.08); color: #b91c1c; }
+.calendar-page.cal-light .cal-cell-dragover { background: color-mix(in srgb, var(--clacc) 12%, var(--clsurf)) !important; box-shadow: inset 0 0 0 2px var(--clacc); }
+/* časová mriežka (týždeň / deň) — RON štýl: bloky podfarbené farbou zdroja */
+.calendar-page.cal-light .ctg-head { background: var(--clhead); border-bottom: 1px solid var(--clline); }
+.calendar-page.cal-light .ctg-dayhdr { color: #374151; border-left: 1px solid var(--clline); }
+.calendar-page.cal-light .ctg-dayhdr:hover { background: #f3f4f6; }
+.calendar-page.cal-light .ctg-dnum { color: var(--cltx2); }
+.calendar-page.cal-light .ctg-dayhdr.ctg-today { color: var(--clacc); background: color-mix(in srgb, var(--clacc) 8%, var(--clhead)); box-shadow: inset 0 -2px 0 var(--clacc); }
+.calendar-page.cal-light .ctg-dayhdr.ctg-we { background: #fafbfc; }
+.calendar-page.cal-light .ctg-dayhdr.ctg-hol .ctg-dow { color: #dc2626; }
+.calendar-page.cal-light .ctg-allday { border-bottom: 1px solid var(--clline); background: var(--clsurf); }
+.calendar-page.cal-light .ctg-allday-lbl { color: #9ca3af; }
+.calendar-page.cal-light .ctg-allday-cell { border-left: 1px solid var(--clline); }
+.calendar-page.cal-light .ctg-allday-cell.ctg-we { background: #fafbfc; }
+.calendar-page.cal-light .ctg-body { background: var(--clsurf); }
+.calendar-page.cal-light .ctg-hour { border-top: 1px solid var(--clline); }
+.calendar-page.cal-light .ctg-hour span { color: #9ca3af; }
+.calendar-page.cal-light .ctg-daycol { border-left: 1px solid var(--clline); }
+.calendar-page.cal-light .ctg-daycol.ctg-we { background: #fafbfc; }
+.calendar-page.cal-light .ctg-daycol.ctg-today { background: color-mix(in srgb, var(--clacc) 5%, var(--clsurf)); box-shadow: inset 0 0 0 2px var(--clacc); }
+.calendar-page.cal-light .ctg-line { border-top: 1px solid #f1f5f9; }
+.calendar-page.cal-light .ctg-ev {
+  background: color-mix(in srgb, var(--ev-color) 14%, #ffffff);
+  border: 1px solid var(--ev-color); border-radius: 6px;
+  color: var(--cltx); text-shadow: none;
+}
+.calendar-page.cal-light .ctg-ev .ctg-ev-time { color: #374151; }
+.calendar-page.cal-light .ctg-ev .ctg-ev-owner { color: var(--cltx2); opacity: 1; }
+
 @media print {
   body * { visibility: hidden !important; }
   #page-calendar, #page-calendar * { visibility: visible !important; }

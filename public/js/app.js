@@ -2058,6 +2058,15 @@ let calView = 'month';  // 'month' | 'week' | 'day'
 let calRef  = new Date(); // referenčný dátum (kotva pohľadu)
 const CAL_INT_KEY = '__interne__';   // kľúč pre interné (ručne zapísané) udalosti
 let calSrcHidden = new Set();        // skryté zdroje kalendára (kľúč = názov zdroja / CAL_INT_KEY)
+let calTheme = localStorage.getItem('calTheme') || 'dark';   // motív: dark | light | soft
+function applyCalTheme() {
+  const page = document.getElementById('page-calendar'); if (!page) return;
+  page.classList.remove('cal-light', 'cal-theme-light', 'cal-theme-soft');
+  if (calTheme === 'light') page.classList.add('cal-light', 'cal-theme-light');
+  else if (calTheme === 'soft') page.classList.add('cal-light', 'cal-theme-soft');
+  const sel = document.getElementById('calThemeSel'); if (sel) sel.value = calTheme;
+}
+function setCalTheme(v) { calTheme = v; localStorage.setItem('calTheme', v); applyCalTheme(); }
 let calTextFilter = '';   // textový filter
 let calTypeFilter = '';   // filter podľa typu
 let calBh = false;        // len pracovné hodiny (7–19) v týždeň/deň
@@ -2240,6 +2249,7 @@ function renderCalendar() {
   document.getElementById('calZoomCtl')?.classList.toggle('hidden', calView === 'month');
   document.getElementById('calBhBtn')?.classList.toggle('hidden', calView === 'month');
   const ty = document.getElementById('calType'); if (ty) ty.value = calTypeFilter;
+  applyCalTheme();
   calRenderSrcChips();
   if (calView === 'month') renderCalMonth(vp);
   else renderCalTimeGrid(vp, calView === 'week' ? calWeekDays() : [new Date(calRef)]);
@@ -6010,6 +6020,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.3.0', date: '6. 7. 2026', tag: 'feat', items: [
+    'Kalendár: prepínateľné motívy — 🌙 Tmavý (pôvodný), ☀️ Svetlý (čistý biely v štýle RON — udalosti ako podfarbené bloky s farebným rámom) a 🔷 Modrý (svetlý s modrými hlavičkami). Voľba sa pamätá.',
+  ] },
   { v: '2.2.0', date: '6. 7. 2026', tag: 'ui', items: [
     'Kalendár: pri každej udalosti z napojeného kalendára sa zobrazuje priezvisko vlastníka (z názvu zdroja) — v mesačnom, týždennom aj dennom pohľade, aj na viacdňových pruhoch (dovolenka a pod.).',
     'Zlúčené udalosti z viacerých kalendárov ukazujú priezviská všetkých (namiesto ×N).',
