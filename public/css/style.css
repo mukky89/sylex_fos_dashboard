@@ -4636,7 +4636,30 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
    KALENDÁR — pohľady Týždeň/Deň (časová mriežka), filter, zoom, rozbalenie
    ============================================================================= */
 .cal-toolbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.cal-toolbar-right #calPerson { max-width: 210px; }
+
+/* Zdroje kalendára — farebné prepínacie chipy (klik = zobraziť/skryť, dvojklik = iba tento) */
+.cal-src-bar { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin: 0 0 12px; }
+.cal-src-bar:empty { display: none; }
+.cal-src-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 100px; padding: 5px 12px; font-size: 0.78rem; font-weight: 600;
+  color: #e2e8f0; cursor: pointer; user-select: none;
+  transition: background .12s ease, opacity .12s ease, border-color .12s ease;
+}
+.cal-src-chip:hover { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.26); }
+.cal-src-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--src-c, #7c3aed); box-shadow: 0 0 6px var(--src-c, #7c3aed); flex: none; }
+.cal-src-n { font-size: 0.68rem; font-weight: 700; color: #94a3b8; background: rgba(255,255,255,0.08); border-radius: 100px; padding: 0 7px; }
+.cal-src-chip.off { opacity: 0.42; border-style: dashed; }
+.cal-src-chip.off .cal-src-dot { background: #475569; box-shadow: none; }
+.cal-src-chip.off .cal-src-n, .cal-src-chip.off:hover { text-decoration: none; }
+.cal-src-all { border-color: rgba(0,212,255,0.5); color: #67e8f9; }
+.cal-src-add { border-style: dashed; color: #94a3b8; }
+.cal-src-add:hover { color: #67e8f9; border-color: rgba(0,212,255,0.5); }
+
+/* Počet zdrojov pri zlúčenej udalosti (rovnaká udalosť vo viacerých kalendároch) */
+.cal-ev-nsrc { font-size: 0.62rem; font-weight: 800; color: #a5b4fc; background: rgba(99,102,241,0.18); border-radius: 100px; padding: 0 5px; margin-left: 4px; flex: none; }
+.cal-ev-allday .cal-ev-nsrc, .cal-span .cal-ev-nsrc { background: rgba(255,255,255,0.22); color: #fff; }
 .cal-zoom { display: flex; gap: 3px; }
 .cal-zoom.hidden { display: none; }
 .cal-zoom .cal-nav-btn { width: 30px; height: 30px; font-size: 1.05rem; }
@@ -4841,7 +4864,7 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 
 /* info „koho je" + merge + textový/dátumový filter */
 .cal-ev-main { flex: 1; min-width: 0; }
-.cal-ev-owner { color: #94a3b8; font-weight: 400; }
+.cal-ev-owner { color: #94a3b8; font-weight: 400; } /* legacy — ponechané pre tlač starých náhľadov */
 .cal-ev-allday { display: block; }
 .cal-ev-allday .cal-ev-owner { color: rgba(255,255,255,0.85); }
 .cal-ev-merged .cal-ev-owner { color: #a5b4fc; font-weight: 600; }
@@ -4876,7 +4899,7 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
   body * { visibility: hidden !important; }
   #page-calendar, #page-calendar * { visibility: visible !important; }
   #page-calendar { position: absolute; left: 0; top: 0; right: 0; background: #fff !important; padding: 0; }
-  .cal-hdr > div:last-child, .cal-toolbar-right, .cal-nav, #calLegend { display: none !important; }
+  .cal-hdr > div:last-child, .cal-toolbar-right, .cal-nav, #calLegend, .cal-src-bar { display: none !important; }
   .calendar-page, .cal-grid-wrap, .cal-cell, .cal-weekdays { background: #fff !important; }
   .cal-title, .cal-month-label, .cal-cell-num, .cal-ev, .cal-ev-time, .cal-ev-owner, .cal-weekdays > div { color: #111 !important; }
   .cal-ev-allday, .cal-span, .ctg-ev { color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
