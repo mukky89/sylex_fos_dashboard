@@ -317,7 +317,38 @@ const UI_RADII = {
   sharp: { '--radius': '3px',  '--radius-lg': '4px' },
   round: { '--radius': '14px', '--radius-lg': '20px' },
 };
-let UI_CFG = { nav: 'header', sidebarTheme: 'dark', accent: 'cyan', density: 'comfortable', radius: 'soft', motion: 'on' };
+let UI_CFG = { nav: 'header', sidebarTheme: 'dark', accent: 'cyan', density: 'comfortable', radius: 'soft', motion: 'on', hiddenModules: [] };
+
+// Skryteľné moduly (cez Administrácia → Moduly). Domov a Administrácia sa skryť nedajú.
+const MODULES = [
+  { key: 'wiki',       icon: '📚', label: 'WIKI FOS' },
+  { key: 'procedures', icon: '📋', label: 'Pracovné postupy' },
+  { key: 'guides',     icon: '📖', label: 'Návody' },
+  { key: 'fbg',        icon: '📈', label: 'FBG vizualizácia' },
+  { key: 'bb',         icon: '🕸️', label: 'Backbone' },
+  { key: 'dev',        icon: '⭐', label: 'Vývoj výrobkov' },
+  { key: 'util',       icon: '🗓️', label: 'Vyťaženie technológií' },
+  { key: 'prod',       icon: '🏭', label: 'Plánovanie výroby' },
+  { key: 'mfg',        icon: '⚙️', label: 'Riadenie výroby' },
+  { key: 'pwf',        icon: '🔀', label: 'Workflow výroby' },
+  { key: 'photos',     icon: '📷', label: 'Fotky z výroby' },
+  { key: 'calendar',   icon: '📅', label: 'Kalendár' },
+  { key: 'tasks',      icon: '✅', label: 'Úlohy' },
+  { key: 'crm',        icon: '👥', label: 'CRM' },
+  { key: 'github',     icon: '🐙', label: 'GitHub projekty' },
+  { key: 'remote',     icon: '🖥️', label: 'Vzdialené PC' },
+  { key: 'mgmt',       icon: '📊', label: 'Manažment' },
+  { key: 'changelog',  icon: '🗒️', label: 'Changelog' },
+];
+
+// Skry/zobraz navigačné položky podľa UI_CFG.hiddenModules
+function applyHiddenModules() {
+  const hidden = new Set(UI_CFG.hiddenModules || []);
+  document.querySelectorAll('.nav-link[data-page], .asb-link[data-page]').forEach(l => {
+    if (l.dataset.page === 'home' || l.dataset.page === 'admin') return; // nikdy neskrývať
+    l.classList.toggle('nav-hidden', hidden.has(l.dataset.page));
+  });
+}
 
 function applyUiLayout() {
   const b = document.body, r = document.documentElement;
@@ -335,6 +366,7 @@ function applyUiLayout() {
   // Animácie
   b.classList.toggle('ui-reduce-motion', UI_CFG.motion === 'off');
 
+  applyHiddenModules();
   renderSidebarUser();
 }
 
@@ -366,12 +398,14 @@ async function loadUiConfig() {
       const nav = get('ui.nav'); const theme = get('ui.sidebarTheme');
       const accent = get('ui.accent'); const density = get('ui.density');
       const radius = get('ui.radius'); const motion = get('ui.motion');
+      const hidden = get('ui.hiddenModules');
       if (nav) UI_CFG.nav = nav;
       if (theme && SB_THEMES.includes(theme)) UI_CFG.sidebarTheme = theme;
       if (accent && UI_ACCENTS[accent]) UI_CFG.accent = accent;
       if (density === 'compact' || density === 'comfortable') UI_CFG.density = density;
       if (radius && UI_RADII[radius]) UI_CFG.radius = radius;
       if (motion === 'on' || motion === 'off') UI_CFG.motion = motion;
+      if (Array.isArray(hidden)) UI_CFG.hiddenModules = hidden.filter(k => typeof k === 'string');
       localStorage.setItem('fos_ui', JSON.stringify(UI_CFG));
       applyUiLayout();
     }
@@ -425,6 +459,37 @@ function renderAppearanceAdmin() {
   document.querySelectorAll('.appr-opt[data-motion]').forEach(b => b.classList.toggle('active', b.dataset.motion === UI_CFG.motion));
   const sec = document.getElementById('apprThemeSection');
   if (sec) sec.classList.toggle('dim', UI_CFG.nav !== 'sidebar');
+}
+
+// ── Admin: skrývanie jednotlivých modulov z navigácie ──────────────────────────
+function renderModulesAdmin() {
+  const el = document.getElementById('modulesGrid'); if (!el) return;
+  const hidden = new Set(UI_CFG.hiddenModules || []);
+  el.innerHTML = MODULES.map(m => {
+    const on = !hidden.has(m.key);
+    return `<label class="mod-item ${on ? '' : 'mod-off'}" title="${on ? 'Zobrazené' : 'Skryté'} — ${escHtml(m.label)}">
+      <span class="mod-ico">${m.icon}</span>
+      <span class="mod-label">${escHtml(m.label)}</span>
+      <span class="mod-switch"><input type="checkbox" ${on ? 'checked' : ''} onchange="toggleModule('${m.key}', this.checked)"><span class="mod-track"></span></span>
+    </label>`;
+  }).join('');
+  const cnt = document.getElementById('modulesHiddenCount');
+  if (cnt) cnt.textContent = hidden.size ? (hidden.size + ' skrytých') : 'žiadne skryté';
+}
+function toggleModule(key, visible) {
+  const set = new Set(UI_CFG.hiddenModules || []);
+  if (visible) set.delete(key); else set.add(key);
+  UI_CFG.hiddenModules = [...set];
+  applyHiddenModules();
+  renderModulesAdmin();
+  _saveUiCfg('ui.hiddenModules', UI_CFG.hiddenModules);
+}
+function showAllModules() {
+  if (!(UI_CFG.hiddenModules || []).length) { toast('Žiadne skryté moduly.', 'info'); return; }
+  UI_CFG.hiddenModules = [];
+  applyHiddenModules(); renderModulesAdmin();
+  _saveUiCfg('ui.hiddenModules', UI_CFG.hiddenModules);
+  toast('Všetky moduly sú opäť zobrazené.', 'success');
 }
 
 function startApp() {
@@ -4432,6 +4497,7 @@ function switchAdminTab(tab) {
   if (tab === 'sensor') { loadSensorConfigAdmin(); loadSensorStats(); }
   if (tab === 'users') loadUsers();
   if (tab === 'appearance') renderAppearanceAdmin();
+  if (tab === 'modules') renderModulesAdmin();
   if (tab === 'projcfg') loadPjConfigAdmin();
 }
 
@@ -6254,6 +6320,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.10.0', date: '7. 7. 2026', tag: 'feat', items: [
+    'Administrácia → nový tab „Moduly": jednotlivé moduly sa dajú skryť z hlavného menu aj bočného panela prepínačom. Dáta modulu zostávajú zachované, len sa skryje z navigácie.',
+    'Domov a Administrácia sa skryť nedajú. Tlačidlo „Zobraziť všetky" vráti všetko naspäť. Nastavenie je spoločné pre všetkých a pamätá sa na serveri.',
+  ] },
   { v: '2.9.1', date: '7. 7. 2026', tag: 'ui', items: [
     'Pracovné postupy: pri každej operácii je teraz priamo pod textom animované tlačidlo „🎤 Diktovať operáciu" — klik nadiktuje popis rovno do tej operácie.',
   ] },

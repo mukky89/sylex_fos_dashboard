@@ -3112,6 +3112,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
           Vzhľad
         </button>
+        <button class="admin-tab" data-tab="modules" onclick="switchAdminTab('modules')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Moduly
+        </button>
         <button class="admin-tab" data-tab="access" onclick="switchAdminTab('access')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
           Prístupy
@@ -3332,6 +3336,21 @@
               <div class="appr-opt-hint">Vypne prechody a animácie (prístupnosť, výkon).</div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- ── TAB: MODULES (skrývanie modulov z navigácie) ── -->
+      <div class="admin-panel" id="adminTab-modules">
+        <div class="admin-section">
+          <div class="admin-section-hdr">
+            <h2 class="admin-section-title">Viditeľnosť modulov</h2>
+            <div class="admin-section-actions">
+              <span id="modulesHiddenCount" class="modules-count"></span>
+              <button class="btn-secondary btn-sm" onclick="showAllModules()">↺ Zobraziť všetky</button>
+            </div>
+          </div>
+          <p class="admin-section-desc">Vypnutím prepínača skryješ modul z hlavného menu aj bočného panela pre všetkých používateľov. Dáta modulu zostanú zachované — len sa skryje z navigácie. <strong>Domov</strong> a <strong>Administrácia</strong> sa skryť nedajú.</p>
+          <div id="modulesGrid" class="modules-grid"></div>
         </div>
       </div>
 
