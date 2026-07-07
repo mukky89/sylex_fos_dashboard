@@ -1040,6 +1040,7 @@
           <button class="btn-secondary" onclick="closeProcedureModal()">← Späť na zoznam</button>
           <h2 id="procModalTitle" class="proc-edit-title">Nový postup</h2>
           <div class="proc-edit-bar-actions">
+            <button class="btn-sm" onclick="openDictation()" title="Hlasový diktát — nahrať a prepísať slovenský text">🎤 Diktovať</button>
             <button class="btn-sm" onclick="openProcedurePreview()" title="Náhľad">👁 Náhľad</button>
             <button class="btn-delete" id="prDeleteBtn" onclick="deleteProcedure(document.getElementById('prId').value)" style="display:none">🗑 Odstrániť</button>
             <button class="btn-primary" onclick="saveProcedure()">💾 Uložiť</button>
@@ -2173,6 +2174,37 @@
             <button class="btn-primary" onclick="saveEquipment()">Uložiť zariadenie</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== HLASOVÝ DIKTÁT (Speech-to-text SK) ===== -->
+  <div id="dictPanel" class="dict-panel hidden">
+    <div class="dict-backdrop" onclick="closeDictation()"></div>
+    <div class="dict-box">
+      <div class="dict-head">
+        <h2>🎤 Hlasový diktát <span class="dict-lang">SK</span></h2>
+        <button class="modal-close" onclick="closeDictation()">✕</button>
+      </div>
+      <div class="dict-body">
+        <div class="dict-target" id="dictTarget"></div>
+        <div class="dict-controls">
+          <button id="dictRecBtn" class="dict-rec" onclick="dictToggle()">
+            <span class="dict-rec-ico"></span><span id="dictRecLbl">🎙 Štart nahrávania</span>
+          </button>
+          <span id="dictStatus" class="dict-status"></span>
+        </div>
+        <label class="dict-lbl">Prepis (môžeš upraviť pred vložením)</label>
+        <textarea id="dictText" class="dict-text" rows="6" placeholder="Sem sa naživo píše rozpoznaný text…" oninput="dictOnEdit()"></textarea>
+        <div class="dict-interim" id="dictInterim"></div>
+        <div class="dict-audio" id="dictAudio"></div>
+      </div>
+      <div class="dict-foot">
+        <button class="btn-secondary btn-sm" onclick="dictClear()">Vyčistiť</button>
+        <button class="btn-secondary btn-sm" onclick="dictCopy()">⧉ Kopírovať</button>
+        <div style="flex:1"></div>
+        <button class="btn-secondary btn-sm" onclick="closeDictation()">Zavrieť</button>
+        <button class="btn-primary btn-sm" onclick="dictInsert()">↩ Vložiť do poľa</button>
       </div>
     </div>
   </div>

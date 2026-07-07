@@ -5440,3 +5440,45 @@ span.gh-name { color: #eef3fa; }
 .pk-tile img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
 .pk-tile-cap { padding: 5px 7px; font-size: 0.72rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pk-empty { grid-column: 1/-1; text-align: center; color: var(--text-dim); padding: 30px 16px; font-size: 0.88rem; }
+
+/* ==============================
+   HLASOVÝ DIKTÁT (Speech-to-text SK)
+   ============================== */
+.dict-panel { position: fixed; inset: 0; z-index: 4000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.dict-panel.hidden { display: none; }
+.dict-backdrop { position: absolute; inset: 0; background: rgba(6,10,22,0.62); backdrop-filter: blur(2px); }
+.dict-box { position: relative; width: 100%; max-width: 560px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 24px 70px rgba(0,0,0,0.45); display: flex; flex-direction: column; max-height: 88vh; overflow: hidden; }
+.dict-head { display: flex; align-items: center; justify-content: space-between; padding: 15px 18px; border-bottom: 1px solid var(--border); }
+.dict-head h2 { font-family: var(--font-title); font-size: 1.12rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.dict-lang { font-size: 0.64rem; font-weight: 700; letter-spacing: 0.06em; background: rgba(0,212,255,0.14); color: #0284c7; border: 1px solid rgba(0,212,255,0.35); padding: 2px 7px; border-radius: 999px; }
+.dict-body { padding: 16px 18px; overflow-y: auto; }
+.dict-foot { display: flex; align-items: center; gap: 8px; padding: 13px 18px; border-top: 1px solid var(--border); background: var(--page-bg); }
+
+.dict-target { font-size: 0.8rem; color: var(--text-dim); background: var(--page-bg); border: 1px solid var(--border); border-radius: 9px; padding: 8px 11px; margin-bottom: 12px; }
+.dict-target strong { color: var(--text); }
+.dict-target.dict-target-none { color: #b45309; background: #fff7ed; border-color: #fed7aa; }
+
+.dict-controls { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.dict-rec { display: inline-flex; align-items: center; gap: 9px; padding: 10px 18px; border-radius: 999px; border: 1px solid var(--border); background: #fff; color: var(--text); font-family: var(--font); font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+.dict-rec:hover { border-color: var(--border-focus); }
+.dict-rec-ico { width: 11px; height: 11px; border-radius: 50%; background: #ef4444; flex-shrink: 0; }
+.dict-rec.recording { background: #fef2f2; border-color: rgba(239,68,68,0.5); color: #b91c1c; }
+.dict-rec.recording .dict-rec-ico { animation: dictPulse 1s ease-in-out infinite; }
+@keyframes dictPulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: 0.55; } }
+
+.dict-status { font-size: 0.8rem; color: var(--text-dim); }
+.dict-status-rec { color: #dc2626; font-weight: 600; }
+.dict-status-ok { color: #16a34a; }
+.dict-status-warn { color: #b45309; }
+.dict-status-error { color: #dc2626; }
+
+.dict-lbl { display: block; font-size: 0.76rem; font-weight: 600; color: var(--text-dim); margin-bottom: 5px; }
+.dict-text { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-family: var(--font); font-size: 0.92rem; line-height: 1.5; color: var(--text); background: #fff; outline: none; resize: vertical; }
+.dict-text:focus { border-color: var(--border-focus); }
+.dict-interim { min-height: 18px; font-size: 0.82rem; color: #94a3b8; font-style: italic; margin-top: 5px; }
+
+.dict-audio { margin-top: 10px; }
+.dict-audio-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--page-bg); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; }
+.dict-player { height: 34px; max-width: 100%; flex: 1; min-width: 180px; }
+
+@media (max-width: 560px) { .dict-foot { flex-wrap: wrap; } .dict-foot > div[style] { display: none; } }
