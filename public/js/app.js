@@ -3046,11 +3046,19 @@ function generateProcedureWord(id) {
 }
 
 // ── Anotácie obrázka operácie (bubliny so šípkami) ────────────────────────────
+// Veľkosť písma anotácie je RELATÍVNA (cqw = % šírky obrázka), aby sa škálovala
+// so zobrazením. Staré absolútne px hodnoty (>10) prevedieme na relatívne.
+function annotFontSize(v) {
+  let n = Number(v);
+  if (isNaN(n)) return 4;
+  if (n > 10) n = n / 3.2;            // migrácia legacy px (napr. 14px → ~4.4)
+  return Math.max(2, Math.min(10, Math.round(n * 10) / 10));
+}
 function annotNorm(a) {
   return {
     x: clampNum(a.x, 50), y: clampNum(a.y, 18),
     tx: clampNum(a.tx, 50), ty: clampNum(a.ty, 60),
-    text: a.text || '', fontSize: Number(a.fontSize) || 14,
+    text: a.text || '', fontSize: annotFontSize(a.fontSize),
     textColor: a.textColor || '#111827', borderColor: a.borderColor || '#e11d48',
     bg: a.bg || '#ffffff', arrow: a.arrow !== false
   };
@@ -3064,7 +3072,7 @@ function renderAnnotationsHtml(annots, edit) {
   const lines = arr.map((a, i) => a.arrow ? `<line x1="${a.x}" y1="${a.y}" x2="${a.tx}" y2="${a.ty}" stroke="${escHtml(a.borderColor)}" stroke-width="0.7" marker-end="url(#pdvArr${i})"/>` : '').join('');
   const svg = `<svg class="pdv-annot-svg" viewBox="0 0 100 100" preserveAspectRatio="none"><defs>${markers}</defs>${lines}</svg>`;
   const items = arr.map((a, i) => {
-    const st = `left:${a.x}%;top:${a.y}%;font-size:${a.fontSize}px;color:${escHtml(a.textColor)};border-color:${escHtml(a.borderColor)};background:${escHtml(a.bg)}`;
+    const st = `left:${a.x}%;top:${a.y}%;--afs:${a.fontSize};color:${escHtml(a.textColor)};border-color:${escHtml(a.borderColor)};background:${escHtml(a.bg)}`;
     const tip = (a.arrow && edit) ? `<span class="pdv-annot-tip" data-tip="${i}" style="left:${a.tx}%;top:${a.ty}%"></span>` : '';
     return `<div class="pdv-annot${edit ? ' pdv-annot-edit' : ''}" data-annot="${i}" style="${st}"><span class="pdv-annot-txt">${escHtml(a.text)}</span></div>${tip}`;
   }).join('');
@@ -3109,8 +3117,8 @@ function annotRenderCtl() {
   el.innerHTML = `
     <label class="annot-lbl">Text bubliny</label>
     <textarea class="annot-in" rows="2" oninput="annotUpd('text',this.value)">${escHtml(a.text)}</textarea>
-    <label class="annot-lbl">Veľkosť písma: <b>${a.fontSize}px</b></label>
-    <input type="range" class="annot-range" min="9" max="40" value="${a.fontSize}" oninput="annotUpd('fontSize',this.value)">
+    <label class="annot-lbl">Veľkosť písma (škáluje sa s obrázkom): <b>${a.fontSize}</b></label>
+    <input type="range" class="annot-range" min="2" max="10" step="0.5" value="${a.fontSize}" oninput="annotUpd('fontSize',this.value)">
     <div class="annot-colors">
       <label>Text<input type="color" value="${escHtml(a.textColor)}" oninput="annotUpd('textColor',this.value)"></label>
       <label>Orámovanie<input type="color" value="${escHtml(a.borderColor)}" oninput="annotUpd('borderColor',this.value)"></label>
@@ -3128,7 +3136,7 @@ function annotUpd(field, val) {
   annotRender();
 }
 function annotAdd() {
-  _annots.push(annotNorm({ x: 22 + Math.random() * 16, y: 16 + Math.random() * 12, tx: 55, ty: 55, text: 'Nový popis', arrow: true }));
+  _annots.push(annotNorm({ x: 22 + Math.random() * 16, y: 16 + Math.random() * 12, tx: 55, ty: 55, text: 'Nový popis', fontSize: 4, arrow: true }));
   _annotSel = _annots.length - 1; annotRender();
 }
 function annotDel() { if (_annotSel < 0) return; _annots.splice(_annotSel, 1); _annotSel = _annots.length ? Math.min(_annotSel, _annots.length - 1) : -1; annotRender(); }
@@ -6502,6 +6510,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.17.2', date: '7. 7. 2026', tag: 'fix', items: [
+    'Anotácie obrázka: bublina sa už neláme po písmenách a proporčne sa škáluje s veľkosťou zobrazenia obrázka (rovnaký vzhľad v editore, náhľade aj vo výslednom postupe). Veľkosť písma je teraz relatívna k šírke obrázka.',
+  ] },
   { v: '2.17.1', date: '7. 7. 2026', tag: 'fix', items: [
     'Svetlé motívy: opravená čitateľnosť textov — jasné farby (svetlosivá, cyan, žltá, zelená, fialová, modrá) sa teraz v svetlých motívoch stmavia. Tmavý motív ostáva nezmenený.',
   ] },
