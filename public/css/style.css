@@ -4803,7 +4803,8 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .ctg-line { position: absolute; left: 0; right: 0; border-top: 1px solid rgba(255,255,255,0.05); pointer-events: none; z-index: 0; }
 /* Blok udalosti: výška podľa trvania (min-height), ale obsah sa neoreže —
    pri dlhom názve sa blok natiahne. Zalomenie po SLOVÁCH (nie po písmenách). */
-.ctg-ev { position: absolute; height: auto; overflow: visible; font-size: 0.8rem; line-height: 1.28; padding: 4px 7px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 2; border-radius: 6px; }
+/* display:block (nie flex z .cal-ev) — čas, popis a vlastník idú POD SEBA */
+.ctg-ev { display: block; position: absolute; height: auto; overflow: visible; font-size: 0.8rem; line-height: 1.28; padding: 4px 20px 5px 7px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 2; border-radius: 6px; }
 .ctg-ev:hover { z-index: 5; box-shadow: 0 3px 10px rgba(0,0,0,0.35); }
 /* pod seba: čas · popis (zalomí po slovách) · meno */
 .ctg-ev-time { display: block; font-weight: 700; color: var(--ev-color); font-size: 0.72rem; white-space: nowrap; text-decoration: none; }
@@ -5009,7 +5010,7 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .cal-dragging { opacity: 0.4; }
 .cal-ev[draggable="true"], .cal-span[draggable="true"] { cursor: grab; }
 .ctg-ev-conflict { box-shadow: inset 0 0 0 2px #f59e0b, 0 1px 3px rgba(0,0,0,0.3); }
-.ctg-conf { margin-right: 3px; }
+.ctg-conf { position: absolute; top: 3px; right: 4px; margin: 0; font-size: 0.72rem; line-height: 1; }
 
 /* =============================================================================
    KALENDÁR — SVETLÉ MOTÍVY (☀️ Svetlý ako RON, 🔷 Modrý) — prepínač v toolbari

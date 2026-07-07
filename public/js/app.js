@@ -6320,6 +6320,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.10.1', date: '7. 7. 2026', tag: 'fix', items: [
+    'Kalendár (týždeň/deň): udalosti sú konečne čitateľné — čas, názov udalosti a vlastník sú pod sebou na samostatných riadkoch (predtým sa kvôli zdedenému flex-layoutu ťahali vedľa seba a meno vlastníka pretekalo mimo bunky).',
+    'Značka prekryvu ⚠ je presunutá do pravého horného rohu, aby netlačila text.',
+  ] },
   { v: '2.10.0', date: '7. 7. 2026', tag: 'feat', items: [
     'Administrácia → nový tab „Moduly": jednotlivé moduly sa dajú skryť z hlavného menu aj bočného panela prepínačom. Dáta modulu zostávajú zachované, len sa skryje z navigácie.',
     'Domov a Administrácia sa skryť nedajú. Tlačidlo „Zobraziť všetky" vráti všetko naspäť. Nastavenie je spoločné pre všetkých a pamätá sa na serveri.',
