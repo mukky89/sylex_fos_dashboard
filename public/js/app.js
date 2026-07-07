@@ -2480,7 +2480,7 @@ function renderCalTimeGrid(vp, days) {
   const WD = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
 
   let head = '<div class="ctg-corner"></div>';
-  let allday = '<div class="ctg-corner ctg-allday-lbl">celý deň</div>';
+  let alldayCells = '';
   let cols = '';
   days.forEach(d => {
     const key = calYmd(d), we = (d.getDay() === 0 || d.getDay() === 6), isToday = key === todayKey;
@@ -2488,7 +2488,8 @@ function renderCalTimeGrid(vp, days) {
     head += `<div class="ctg-dayhdr${isToday ? ' ctg-today' : ''}${we ? ' ctg-we' : ''}${hol ? ' ctg-hol' : ''}" data-open-day="${key}" title="${hol ? 'Sviatok: ' + escHtml(hol) : ''}"><span class="ctg-dow">${WD[(d.getDay() + 6) % 7]}</span> <span class="ctg-dnum">${d.getDate()}.${d.getMonth() + 1}.</span></div>`;
     const dayEvs = dayMap[key] || [];
     const holHtml = hol ? `<div class="cal-holiday" title="Štátny sviatok: ${escHtml(hol)}">🇸🇰 ${escHtml(hol)}</div>` : '';
-    allday += `<div class="ctg-allday-cell${we ? ' ctg-we' : ''}${hol ? ' ctg-hol' : ''}" data-newday="${key}">${holHtml}${calMergeEvents(dayEvs.filter(ev => ev.allDay || calIsMultiDay(ev))).map(calEvChipHtml).join('')}</div>`;
+    // Iba podklad bunky (víkend/sviatok/klik + sviatkový chip) — celodenné/viacdňové udalosti sa kreslia ako spojené pruhy (nižšie)
+    alldayCells += `<div class="ctg-allday-cell${we ? ' ctg-we' : ''}${hol ? ' ctg-hol' : ''}" data-newday="${key}">${holHtml}</div>`;
     let lines = ''; for (let h = H0; h < H1; h++) lines += `<div class="ctg-line" style="top:${(h - H0) * hourH}px"></div>`;
     const laid = calLayoutLanes(calMergeEvents(dayEvs.filter(ev => !ev.allDay && !calIsMultiDay(ev) && ev.time)));
     const evhtml = laid.map(it => {
@@ -2506,11 +2507,41 @@ function renderCalTimeGrid(vp, days) {
     }).join('');
     cols += `<div class="ctg-daycol${we ? ' ctg-we' : ''}${isToday ? ' ctg-today' : ''}${hol ? ' ctg-hol' : ''}" data-newday="${key}" style="height:${HN * hourH}px">${lines}${evhtml}</div>`;
   });
+
+  // ── Celodenné / viacdňové udalosti ako SPOJENÉ pruhy cez dni (ako v mesačnom pohľade) ──
+  const wkKeys = days.map(calYmd), wStart = wkKeys[0], wEnd = wkKeys[wkKeys.length - 1], NCOL = days.length;
+  const evKey = ev => String(ev.date).slice(0, 10), evEndKey = ev => String(ev.endDate || ev.date).slice(0, 10);
+  const spanning = calMergeEvents(calEvents.concat(calExternal).filter(calVisible).filter(ev => ev.allDay || calIsMultiDay(ev)));
+  const adSegs = [];
+  spanning.forEach(ev => {
+    const s = evKey(ev), e = evEndKey(ev);
+    if (e < wStart || s > wEnd) return;
+    let startCol = wkKeys.indexOf(s), endCol = wkKeys.indexOf(e);
+    const contL = startCol === -1; if (contL) startCol = 0;
+    const contR = endCol === -1; if (contR) endCol = NCOL - 1;
+    adSegs.push({ ev, startCol, endCol, contL, contR });
+  });
+  adSegs.sort((a, b) => a.startCol - b.startCol || (b.endCol - b.startCol) - (a.endCol - a.startCol));
+  const adLanes = [];
+  adSegs.forEach(seg => { let L = 0; for (; ;) { const occ = adLanes[L] || []; if (occ.every(r => seg.endCol < r.s || seg.startCol > r.e)) { (adLanes[L] = adLanes[L] || []).push({ s: seg.startCol, e: seg.endCol }); seg.lane = L; break; } L++; } });
+  const adLaneCount = adLanes.length;
+  const ADLANE = 24;
+  const spanBars = adSegs.map(seg => {
+    const ev = seg.ev, ref = ev._ref || ev, ext = ref.external, color = ev.color || (ext ? '#7c3aed' : '#00d4ff');
+    const left = seg.startCol / NCOL * 100, width = (seg.endCol - seg.startCol + 1) / NCOL * 100;
+    const data = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
+    const cls = `cal-span${seg.contL ? ' cont-l' : ''}${seg.contR ? ' cont-r' : ''}`;
+    const sn = calEvSurnames(ev);
+    const snTxt = sn ? ` <span class="cal-ev-owner">· ${escHtml(sn)}</span>` : '';
+    return `<div class="${cls}" ${data} style="--ev-color:${escHtml(color)};left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${seg.lane * ADLANE}px" title="${calEvTip(ev)}">${seg.contL ? '◂ ' : ''}${escHtml(ev.title)}${snTxt}${seg.contR ? ' ▸' : ''}</div>`;
+  }).join('');
+  const allday = `<div class="ctg-corner ctg-allday-lbl">celý deň</div><div class="ctg-allday-body">${alldayCells}<div class="ctg-allday-spans">${spanBars}</div></div>`;
+
   let gutter = ''; for (let h = H0; h < H1; h++) gutter += `<div class="ctg-hour" style="height:${hourH}px"><span>${String(h).padStart(2, '0')}:00</span></div>`;
 
   vp.innerHTML = `<div class="ctg ctg-${calView}" style="--ctg-days:${days.length}">
     <div class="ctg-head">${head}</div>
-    <div class="ctg-allday">${allday}</div>
+    <div class="ctg-allday" style="--ad-lanes:${adLaneCount}">${allday}</div>
     <div class="ctg-body"><div class="ctg-gutter">${gutter}</div><div class="ctg-cols">${cols}</div></div>
   </div>`;
   calAttachEvClicks(vp);
@@ -6333,6 +6364,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.13.0', date: '7. 7. 2026', tag: 'feat', items: [
+    'Kalendár (týždeň/deň): celodenné a viacdňové udalosti sa teraz spájajú do súvislých pruhov cez dni (ako v mesačnom pohľade) — namiesto samostatných čipov v každom dni. Pruhy majú šípky pokračovania a stohujú sa do viacerých riadkov.',
+  ] },
   { v: '2.12.1', date: '7. 7. 2026', tag: 'fix', items: [
     'Kalendár (týždeň/deň): rámček dnešného dňa (a žltý rámček sviatku) je teraz viditeľný nad udalosťami — predtým ho udalosti v stĺpci prekrývali. Kreslí sa cez ::after vrstvu a neblokuje klikanie.',
   ] },
