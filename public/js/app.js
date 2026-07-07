@@ -3882,6 +3882,222 @@ async function deleteProcedure(id) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+//  HLASOVÝ DIKTÁT (Speech-to-text SK) — nahrávanie zvuku + živý prepis slovenčiny
+//  Prepis: Web Speech API (sk-SK, beží v prehliadači). Zvuk: MediaRecorder.
+//  Výsledný text sa vloží do naposledy zameraného poľa editora postupu,
+//  nahrávku je možné priložiť k postupu ako prílohu.
+// ══════════════════════════════════════════════════════════════════════════════
+let _dictLastField = null;   // naposledy zamerané editovateľné pole v editore postupu
+let dictRec = null;          // SpeechRecognition inštancia
+let dictMedia = null;        // MediaRecorder
+let dictStream = null;       // mic stream
+let dictChunks = [];         // audio chunky
+let dictBlob = null;         // hotová nahrávka
+let dictUrl = null;          // object URL nahrávky
+let dictFinal = '';          // akumulovaný finálny prepis
+let dictRunning = false;     // beží nahrávanie?
+let dictWantStop = false;    // úmyselné zastavenie (nereštartovať rozpoznávanie)
+
+// Sleduj naposledy zamerané textové pole v editore postupu (mimo panela diktátu)
+function _dictIsEditable(el) {
+  if (!el) return false;
+  if (el.isContentEditable) return true;
+  const t = el.tagName;
+  if (t === 'TEXTAREA') return true;
+  if (t === 'INPUT') { const ty = (el.getAttribute('type') || 'text').toLowerCase(); return ['text', 'search', 'url', 'tel', ''].includes(ty); }
+  return false;
+}
+document.addEventListener('focusin', (e) => {
+  const el = e.target;
+  if (!el || el.closest('#dictPanel')) return;
+  if (_dictIsEditable(el) && el.closest('#procEditView')) _dictLastField = el;
+});
+
+function dictSpeechCtor() { return window.SpeechRecognition || window.webkitSpeechRecognition || null; }
+
+function openDictation() {
+  dictFinal = '';
+  document.getElementById('dictText').value = '';
+  document.getElementById('dictInterim').textContent = '';
+  dictRenderAudio();
+  dictSetUi(false);
+  dictShowTarget();
+  if (!dictSpeechCtor()) dictStatus('Rozpoznávanie reči podporuje Chrome/Edge. Zvuk sa nahrá vždy, text môžeš napísať ručne.', 'warn');
+  else dictStatus('Klikni na 🎙 Štart a hovor po slovensky.', '');
+  document.getElementById('dictPanel').classList.remove('hidden');
+}
+function closeDictation() {
+  if (dictRunning) dictStop();
+  document.getElementById('dictPanel').classList.add('hidden');
+}
+
+function dictShowTarget() {
+  const el = document.getElementById('dictTarget'); if (!el) return;
+  const f = _dictLastField;
+  if (f && document.body.contains(f)) {
+    let name = 'pole';
+    const card = f.closest('.proc-step-card');
+    if (card) name = 'operácia' + (f.classList.contains('proc-step-note') ? ' — poznámka' : (f.classList.contains('proc-step-subsection') ? ' — podsekcia' : ''));
+    else {
+      const lbl = f.closest('.form-group')?.querySelector('label');
+      if (lbl) name = lbl.textContent.replace('*', '').trim();
+      else if (f.placeholder) name = f.placeholder.slice(0, 40);
+    }
+    el.innerHTML = `Text sa vloží do: <strong>${escHtml(name)}</strong>`;
+    el.classList.remove('dict-target-none');
+  } else {
+    el.innerHTML = '⚠ Klikni najprv do poľa v postupe, kam sa má text vložiť (potom sem).';
+    el.classList.add('dict-target-none');
+  }
+}
+
+async function dictToggle() { if (dictRunning) dictStop(); else await dictStart(); }
+
+async function dictStart() {
+  // 1) mikrofón + nahrávanie zvuku
+  try { dictStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch { dictStatus('Prístup k mikrofónu bol zamietnutý.', 'error'); return; }
+  dictChunks = []; dictBlob = null;
+  if (dictUrl) { URL.revokeObjectURL(dictUrl); dictUrl = null; }
+  try {
+    dictMedia = new MediaRecorder(dictStream);
+    dictMedia.ondataavailable = ev => { if (ev.data && ev.data.size) dictChunks.push(ev.data); };
+    dictMedia.onstop = () => {
+      if (dictChunks.length) { dictBlob = new Blob(dictChunks, { type: dictChunks[0].type || 'audio/webm' }); dictUrl = URL.createObjectURL(dictBlob); }
+      dictRenderAudio();
+    };
+    dictMedia.start();
+  } catch { /* nahrávanie zvuku je voliteľné */ }
+
+  // 2) rozpoznávanie reči (sk-SK)
+  const SR = dictSpeechCtor();
+  if (SR) {
+    dictRec = new SR();
+    dictRec.lang = 'sk-SK'; dictRec.continuous = true; dictRec.interimResults = true;
+    dictRec.onresult = dictOnResult;
+    dictRec.onerror = ev => { if (ev.error === 'no-speech' || ev.error === 'aborted') return; dictStatus('Rozpoznávanie: ' + ev.error, 'error'); };
+    dictRec.onend = () => { if (dictRunning && !dictWantStop) { try { dictRec.start(); } catch (_) {} } };  // udrž beh
+    try { dictRec.start(); } catch (_) {}
+  }
+  dictRunning = true; dictWantStop = false;
+  dictSetUi(true);
+  dictStatus(SR ? '● Nahrávam… hovor po slovensky.' : '● Nahrávam zvuk (bez automatického prepisu).', 'rec');
+}
+
+function dictStop() {
+  dictWantStop = true; dictRunning = false;
+  try { dictRec && dictRec.stop(); } catch (_) {}
+  try { if (dictMedia && dictMedia.state !== 'inactive') dictMedia.stop(); } catch (_) {}
+  try { dictStream && dictStream.getTracks().forEach(t => t.stop()); } catch (_) {}
+  dictSetUi(false);
+  dictStatus('Zastavené. Text uprav a vlož do poľa; nahrávku môžeš priložiť.', 'ok');
+}
+
+function dictOnResult(ev) {
+  let interim = '';
+  for (let i = ev.resultIndex; i < ev.results.length; i++) {
+    const r = ev.results[i];
+    if (r.isFinal) dictFinal += (dictFinal && !/\s$/.test(dictFinal) ? ' ' : '') + r[0].transcript.trim();
+    else interim += r[0].transcript;
+  }
+  const ta = document.getElementById('dictText');
+  if (ta) { ta.value = dictFinal; ta.scrollTop = ta.scrollHeight; }
+  const iv = document.getElementById('dictInterim');
+  if (iv) iv.textContent = interim ? '… ' + interim : '';
+}
+function dictOnEdit() { dictFinal = document.getElementById('dictText').value; }
+
+function dictRenderAudio() {
+  const el = document.getElementById('dictAudio'); if (!el) return;
+  if (!dictUrl) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="dict-audio-row">
+      <audio controls src="${dictUrl}" class="dict-player"></audio>
+      <button class="btn-secondary btn-sm" onclick="dictDownload()">⬇ Stiahnuť</button>
+      <button class="btn-primary btn-sm" onclick="dictAttach(this)">📎 Priložiť k postupu</button>
+    </div>`;
+}
+
+function dictExt() {
+  const t = (dictBlob && dictBlob.type) || '';
+  if (t.includes('ogg')) return 'ogg';
+  if (t.includes('mp4') || t.includes('m4a')) return 'm4a';
+  if (t.includes('wav')) return 'wav';
+  return 'webm';
+}
+function dictDownload() {
+  if (!dictUrl) return;
+  const a = document.createElement('a');
+  a.href = dictUrl; a.download = 'diktat-' + Date.now() + '.' + dictExt();
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+async function dictAttach(btn) {
+  if (!dictBlob) { toast('Žiadna nahrávka na priloženie.', 'warn'); return; }
+  const fd = new FormData();
+  fd.append('audio', dictBlob, 'diktat-' + Date.now() + '.' + dictExt());
+  if (btn) { btn.disabled = true; btn.textContent = 'Nahrávam…'; }
+  try {
+    const r = await fetch('/api/upload/audio', { method: 'POST', body: fd });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { toast('Chyba nahrávania: ' + (d.error || r.status), 'error'); return; }
+    // Zapni segment Prílohy, ak bol vypnutý, a pridaj riadok
+    const seg = document.querySelector('#procEditView .proc-seg[data-seg="attachments"]');
+    if (seg && seg.classList.contains('disabled')) { const cb = seg.querySelector('.proc-seg-en'); if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); } }
+    addAttachmentRow({ label: 'Hlasová nahrávka (' + new Date().toLocaleString('sk-SK') + ')', url: d.url });
+    scheduleProcLivePreview();
+    toast('Nahrávka priložená k postupu — nezabudni Uložiť.', 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = '📎 Priložiť k postupu'; } }
+}
+
+// Vlož prepísaný text do naposledy zameraného poľa
+function dictInsertText(text) {
+  const el = _dictLastField;
+  if (!el || !document.body.contains(el)) { toast('Klikni najprv do poľa v postupe (Zavrieť → klik do poľa → Diktovať).', 'warn'); return false; }
+  el.focus();
+  if (el.isContentEditable) {
+    let ok = false;
+    try { ok = document.execCommand('insertText', false, text); } catch (_) {}
+    if (!ok) {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount) { const rng = sel.getRangeAt(0); rng.deleteContents(); rng.insertNode(document.createTextNode(text)); sel.collapseToEnd(); }
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  } else {
+    const s = el.selectionStart ?? el.value.length, e = el.selectionEnd ?? el.value.length;
+    const pre = el.value.slice(0, s), post = el.value.slice(e);
+    const glue = pre && !/\s$/.test(pre) ? ' ' : '';
+    el.value = pre + glue + text + post;
+    const pos = (pre + glue + text).length; try { el.setSelectionRange(pos, pos); } catch (_) {}
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  return true;
+}
+function dictInsert() {
+  const t = document.getElementById('dictText').value.trim();
+  if (!t) { toast('Žiadny text na vloženie.', 'warn'); return; }
+  if (dictInsertText(t)) { toast('Text vložený do poľa.', 'success'); scheduleProcLivePreview(); }
+}
+function dictCopy() {
+  const t = document.getElementById('dictText').value;
+  if (!t) { toast('Žiadny text.', 'warn'); return; }
+  navigator.clipboard?.writeText(t).then(() => toast('Skopírované.', 'success'), () => toast('Nepodarilo sa skopírovať.', 'error'));
+}
+function dictClear() { dictFinal = ''; document.getElementById('dictText').value = ''; document.getElementById('dictInterim').textContent = ''; }
+
+function dictSetUi(recording) {
+  const btn = document.getElementById('dictRecBtn'); const lbl = document.getElementById('dictRecLbl');
+  if (btn) btn.classList.toggle('recording', !!recording);
+  if (lbl) lbl.textContent = recording ? '■ Zastaviť' : '🎙 Štart nahrávania';
+}
+function dictStatus(msg, type) {
+  const el = document.getElementById('dictStatus'); if (!el) return;
+  el.textContent = msg || '';
+  el.className = 'dict-status' + (type ? ' dict-status-' + type : '');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 //  NÁVODY (Guides) — dokumenty s revíziami, rich-text obsah, Word export
 // ══════════════════════════════════════════════════════════════════════════════
 let guidesData = [];
@@ -6023,6 +6239,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.9.0', date: '7. 7. 2026', tag: 'feat', items: [
+    'Pracovné postupy: nové tlačidlo „🎤 Diktovať" v editore — nahrá zvuk a naživo prepíše slovenskú reč na text (Web Speech API, sk-SK, priamo v prehliadači).',
+    'Prepis sa dá upraviť a vložiť do naposledy zameraného poľa (účel, rozsah, operácia, poznámka…). Panel ukazuje, kam text pôjde.',
+    'Zvukovú nahrávku je možné vypočuť, stiahnuť alebo priložiť k postupu ako prílohu (endpoint /api/upload/audio). Rozpoznávanie reči funguje v Chrome/Edge.',
+  ] },
   { v: '2.8.0', date: '7. 7. 2026', tag: 'feat', items: [
     'Nový modul „Workflow výroby produktu" (menu Výroba → Workflow): každý produkt (napr. SAA-01) má vlastnú postupnosť výrobných krokov — Montáž → Zváranie → Kontrola po zvaraní → Žíhanie → Kalibrácia.',
     'Kroky sa dajú klikom prepínať medzi stavmi Čaká → Prebieha → Hotové; postup (%) sa počíta automaticky a zobrazuje v zozname aj detaile (vertikálny stepper).',

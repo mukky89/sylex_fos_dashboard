@@ -33,6 +33,8 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+// Zvukové nahrávky (hlasový diktát v pracovných postupoch) — väčší limit
+const uploadAudio = multer({ storage, limits: { fileSize: 25 * 1024 * 1024 } });
 
 // In-memory sensor config — updated live by admin routes
 const sensorCfg = { ip: '10.88.5.184', path: '/values.xml', interval: 60 };
@@ -342,6 +344,15 @@ app.post('/api/upload', (req, res) => {
   upload.single('image')(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    return res.json({ url: `/uploads/${req.file.filename}` });
+  });
+});
+
+// Audio upload endpoint (hlasový diktát → priloženie nahrávky k pracovnému postupu)
+app.post('/api/upload/audio', (req, res) => {
+  uploadAudio.single('audio')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: 'Žiadny zvukový súbor' });
     return res.json({ url: `/uploads/${req.file.filename}` });
   });
 });
