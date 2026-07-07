@@ -2478,7 +2478,7 @@ function renderCalTimeGrid(vp, days) {
     head += `<div class="ctg-dayhdr${isToday ? ' ctg-today' : ''}${we ? ' ctg-we' : ''}${hol ? ' ctg-hol' : ''}" data-open-day="${key}" title="${hol ? 'Sviatok: ' + escHtml(hol) : ''}"><span class="ctg-dow">${WD[(d.getDay() + 6) % 7]}</span> <span class="ctg-dnum">${d.getDate()}.${d.getMonth() + 1}.</span></div>`;
     const dayEvs = dayMap[key] || [];
     const holHtml = hol ? `<div class="cal-holiday" title="Štátny sviatok: ${escHtml(hol)}">🇸🇰 ${escHtml(hol)}</div>` : '';
-    allday += `<div class="ctg-allday-cell${we ? ' ctg-we' : ''}" data-newday="${key}">${holHtml}${calMergeEvents(dayEvs.filter(ev => ev.allDay || calIsMultiDay(ev))).map(calEvChipHtml).join('')}</div>`;
+    allday += `<div class="ctg-allday-cell${we ? ' ctg-we' : ''}${hol ? ' ctg-hol' : ''}" data-newday="${key}">${holHtml}${calMergeEvents(dayEvs.filter(ev => ev.allDay || calIsMultiDay(ev))).map(calEvChipHtml).join('')}</div>`;
     let lines = ''; for (let h = H0; h < H1; h++) lines += `<div class="ctg-line" style="top:${(h - H0) * hourH}px"></div>`;
     const laid = calLayoutLanes(calMergeEvents(dayEvs.filter(ev => !ev.allDay && !calIsMultiDay(ev) && ev.time)));
     const evhtml = laid.map(it => {
@@ -2494,7 +2494,7 @@ function renderCalTimeGrid(vp, days) {
       const ds = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
       return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ext ? '#7c3aed' : '#00d4ff'))};top:${top}px;min-height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${conflict ? '⚠ Prekryv · ' : ''}${calEvTip(ev)}">${conflict ? '<span class="ctg-conf">⚠</span>' : ''}${inner}</div>`;
     }).join('');
-    cols += `<div class="ctg-daycol${we ? ' ctg-we' : ''}${isToday ? ' ctg-today' : ''}" data-newday="${key}" style="height:${HN * hourH}px">${lines}${evhtml}</div>`;
+    cols += `<div class="ctg-daycol${we ? ' ctg-we' : ''}${isToday ? ' ctg-today' : ''}${hol ? ' ctg-hol' : ''}" data-newday="${key}" style="height:${HN * hourH}px">${lines}${evhtml}</div>`;
   });
   let gutter = ''; for (let h = H0; h < H1; h++) gutter += `<div class="ctg-hour" style="height:${hourH}px"><span>${String(h).padStart(2, '0')}:00</span></div>`;
 
@@ -6323,6 +6323,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.11.0', date: '7. 7. 2026', tag: 'feat', items: [
+    'Kalendár: štátne sviatky sú zvýraznené žltým rámčekom — v mesačnom pohľade celá bunka, v týždni/dni celý stĺpec dňa (hlavička + „celý deň" + mriežka).',
+  ] },
   { v: '2.10.3', date: '7. 7. 2026', tag: 'fix', items: [
     'Kalendár (týždeň/deň): zvislé čiary stĺpcov (a modré zvýraznenie dnešného dňa) v hlavičke a riadku „celý deň" sa už zhodujú s mriežkou nižšie — predtým ich o šírku skrolovacej lišty rozhadzovalo, takže čiara z hlavičky nesedela s časovou mriežkou.',
   ] },

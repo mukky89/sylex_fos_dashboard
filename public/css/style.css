@@ -5090,6 +5090,19 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .calendar-page.cal-light .ctg-dayhdr.ctg-today { color: var(--clacc); background: color-mix(in srgb, var(--clacc) 8%, var(--clhead)); box-shadow: inset 0 -2px 0 var(--clacc); }
 .calendar-page.cal-light .ctg-dayhdr.ctg-we { background: #fafbfc; }
 .calendar-page.cal-light .ctg-dayhdr.ctg-hol .ctg-dow { color: #dc2626; }
+
+/* ── Sviatky — celý deň zvýraznený žltým rámčekom ────────────────────────────── */
+/* Mesačný pohľad: celá bunka */
+.calendar-page .cal-cell-holiday { background: rgba(234,179,8,0.12); box-shadow: inset 0 0 0 2px #eab308; position: relative; z-index: 1; }
+.calendar-page.cal-light .cal-cell-holiday { background: rgba(234,179,8,0.13); box-shadow: inset 0 0 0 2px #ca8a04; }
+/* Týždeň/deň: žltý rámček okolo celého stĺpca dňa (hlavička + „celý deň" + mriežka) */
+.calendar-page .ctg-dayhdr.ctg-hol { background: rgba(234,179,8,0.15); box-shadow: inset 2px 0 0 0 #eab308, inset -2px 0 0 0 #eab308, inset 0 2px 0 0 #eab308; }
+.calendar-page .ctg-allday-cell.ctg-hol { background: rgba(234,179,8,0.10); box-shadow: inset 2px 0 0 0 #eab308, inset -2px 0 0 0 #eab308; }
+.calendar-page .ctg-daycol.ctg-hol { background: rgba(234,179,8,0.07); box-shadow: inset 2px 0 0 0 #eab308, inset -2px 0 0 0 #eab308, inset 0 -2px 0 0 #eab308; }
+.calendar-page.cal-light .ctg-dayhdr.ctg-hol { background: rgba(234,179,8,0.20); box-shadow: inset 2px 0 0 0 #ca8a04, inset -2px 0 0 0 #ca8a04, inset 0 2px 0 0 #ca8a04; }
+.calendar-page.cal-light .ctg-allday-cell.ctg-hol { background: rgba(234,179,8,0.14); box-shadow: inset 2px 0 0 0 #ca8a04, inset -2px 0 0 0 #ca8a04; }
+.calendar-page.cal-light .ctg-daycol.ctg-hol { background: rgba(234,179,8,0.09); box-shadow: inset 2px 0 0 0 #ca8a04, inset -2px 0 0 0 #ca8a04, inset 0 -2px 0 0 #ca8a04; }
+
 .calendar-page.cal-light .ctg-allday { border-bottom: 1px solid var(--clline); background: var(--clsurf); }
 .calendar-page.cal-light .ctg-allday-lbl { color: #9ca3af; }
 .calendar-page.cal-light .ctg-allday-cell { border-left: 1px solid var(--clline); }
