@@ -4781,7 +4781,9 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 
 /* Časová mriežka (týždeň / deň) */
 .ctg { --gutter: 62px; }
-.ctg-head, .ctg-allday { display: grid; grid-template-columns: var(--gutter) repeat(var(--ctg-days), minmax(0,1fr)); }
+/* padding-right = šírka skrolovacej lišty tela (--sbw), aby stĺpce hlavičky a
+   riadku „celý deň" boli zarovnané so stĺpcami mriežky (inak ich scrollbar rozhodí) */
+.ctg-head, .ctg-allday { display: grid; grid-template-columns: var(--gutter) repeat(var(--ctg-days), minmax(0,1fr)); padding-right: var(--sbw, 0px); }
 .ctg-head { border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: var(--cal-sticky-top, 116px); z-index: 30; background: #141a2e; }
 .ctg-dayhdr { padding: 10px 6px; text-align: center; font-size: 0.92rem; color: #cbd5e1; border-left: 1px solid rgba(255,255,255,0.07); cursor: pointer; white-space: nowrap; }
 .ctg-dayhdr:hover { background: rgba(255,255,255,0.04); }

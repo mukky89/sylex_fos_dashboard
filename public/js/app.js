@@ -2507,6 +2507,9 @@ function renderCalTimeGrid(vp, days) {
   vp.querySelectorAll('[data-open-day]').forEach(el => el.onclick = () => calOpenDay(el.dataset.openDay));
   vp.querySelectorAll('[data-newday]').forEach(el => el.onclick = (e) => { if (e.target === el) openEventModal(null, el.dataset.newday); });
   const body = vp.querySelector('.ctg-body'); if (body) body.scrollTop = Math.max(0, (7 - H0) * hourH - 8);
+  // Zarovnaj hlavičku a riadok „celý deň" s mriežkou — kompenzuj šírku skrolovacej lišty tela
+  const ctg = vp.querySelector('.ctg');
+  if (body && ctg) { const sbw = Math.max(0, body.offsetWidth - body.clientWidth); ctg.style.setProperty('--sbw', sbw + 'px'); }
 }
 
 // Read-only zobrazenie externej (Outlook) udalosti
@@ -6320,6 +6323,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.10.3', date: '7. 7. 2026', tag: 'fix', items: [
+    'Kalendár (týždeň/deň): zvislé čiary stĺpcov (a modré zvýraznenie dnešného dňa) v hlavičke a riadku „celý deň" sa už zhodujú s mriežkou nižšie — predtým ich o šírku skrolovacej lišty rozhadzovalo, takže čiara z hlavičky nesedela s časovou mriežkou.',
+  ] },
   { v: '2.10.2', date: '7. 7. 2026', tag: 'fix', items: [
     'Kalendár (týždeň/deň): časová os je konečne čitateľná — hodiny už nie sú preškrtnuté čiarou (čiara v stĺpci s časmi bola odstránená, mriežku kreslia stĺpce dní) a prvý čas (napr. 07:00) sa už neschováva pod riadok „celý deň".',
   ] },
