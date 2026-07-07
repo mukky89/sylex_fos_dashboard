@@ -5002,7 +5002,10 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 
 /* Zvýraznenie dnešného dňa — celý rámček */
 .calendar-page .cal-cell-today { background: rgba(0,212,255,0.1); box-shadow: inset 0 0 0 2px var(--accent); position: relative; z-index: 1; }
-.calendar-page .ctg-daycol.ctg-today { background: rgba(0,212,255,0.06); box-shadow: inset 0 0 0 2px var(--accent); }
+.calendar-page .ctg-daycol.ctg-today { background: rgba(0,212,255,0.06); --frame-shadow: inset 0 0 0 2px var(--accent); }
+/* Rámček dňa (dnešný / sviatok) kreslíme cez ::after NAD udalosťami, nech ho neprekrývajú */
+.calendar-page .ctg-daycol.ctg-today::after,
+.calendar-page .ctg-daycol.ctg-hol::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 6; box-shadow: var(--frame-shadow); }
 .calendar-page .ctg-dayhdr.ctg-today { background: rgba(0,212,255,0.1); box-shadow: inset 0 -2px 0 var(--accent); font-weight: 700; }
 
 /* Štátne sviatky */
@@ -5103,10 +5106,10 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 /* Týždeň/deň: žltý rámček okolo celého stĺpca dňa (hlavička + „celý deň" + mriežka) */
 .calendar-page .ctg-dayhdr.ctg-hol { background: rgba(234,179,8,0.15); box-shadow: inset 2px 0 0 0 #eab308, inset -2px 0 0 0 #eab308, inset 0 2px 0 0 #eab308; }
 .calendar-page .ctg-allday-cell.ctg-hol { background: rgba(234,179,8,0.10); box-shadow: inset 2px 0 0 0 #eab308, inset -2px 0 0 0 #eab308; }
-.calendar-page .ctg-daycol.ctg-hol { background: rgba(234,179,8,0.07); box-shadow: inset 2px 0 0 0 #eab308, inset -2px 0 0 0 #eab308, inset 0 -2px 0 0 #eab308; }
+.calendar-page .ctg-daycol.ctg-hol { background: rgba(234,179,8,0.07); --frame-shadow: inset 2px 0 0 0 #eab308, inset -2px 0 0 0 #eab308, inset 0 -2px 0 0 #eab308; }
 .calendar-page.cal-light .ctg-dayhdr.ctg-hol { background: rgba(234,179,8,0.20); box-shadow: inset 2px 0 0 0 #ca8a04, inset -2px 0 0 0 #ca8a04, inset 0 2px 0 0 #ca8a04; }
 .calendar-page.cal-light .ctg-allday-cell.ctg-hol { background: rgba(234,179,8,0.14); box-shadow: inset 2px 0 0 0 #ca8a04, inset -2px 0 0 0 #ca8a04; }
-.calendar-page.cal-light .ctg-daycol.ctg-hol { background: rgba(234,179,8,0.09); box-shadow: inset 2px 0 0 0 #ca8a04, inset -2px 0 0 0 #ca8a04, inset 0 -2px 0 0 #ca8a04; }
+.calendar-page.cal-light .ctg-daycol.ctg-hol { background: rgba(234,179,8,0.09); --frame-shadow: inset 2px 0 0 0 #ca8a04, inset -2px 0 0 0 #ca8a04, inset 0 -2px 0 0 #ca8a04; }
 
 .calendar-page.cal-light .ctg-allday { border-bottom: 1px solid var(--clline); background: var(--clsurf); }
 .calendar-page.cal-light .ctg-allday-lbl { color: #9ca3af; }
@@ -5116,7 +5119,7 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .calendar-page.cal-light .ctg-hour span { color: #9ca3af; }
 .calendar-page.cal-light .ctg-daycol { border-left: 1px solid var(--clline); }
 .calendar-page.cal-light .ctg-daycol.ctg-we { background: #fafbfc; }
-.calendar-page.cal-light .ctg-daycol.ctg-today { background: color-mix(in srgb, var(--clacc) 5%, var(--clsurf)); box-shadow: inset 0 0 0 2px var(--clacc); }
+.calendar-page.cal-light .ctg-daycol.ctg-today { background: color-mix(in srgb, var(--clacc) 5%, var(--clsurf)); --frame-shadow: inset 0 0 0 2px var(--clacc); }
 .calendar-page.cal-light .ctg-line { border-top: 1px solid #f1f5f9; }
 .calendar-page.cal-light .ctg-ev {
   background: color-mix(in srgb, var(--ev-color) 14%, #ffffff);
