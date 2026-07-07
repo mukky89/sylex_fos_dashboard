@@ -3327,8 +3327,29 @@
       <div class="admin-panel" id="adminTab-appearance">
         <div class="admin-section">
           <div class="admin-section-hdr">
-            <h2 class="admin-section-title">Navigácia &amp; layout</h2>
+            <h2 class="admin-section-title">Web téma (celý web)</h2>
             <span class="appr-saved" id="apprSaved"></span>
+          </div>
+          <p class="admin-section-desc">Farebný motív celej aplikácie. Zmena sa prejaví okamžite pre všetkých používateľov.</p>
+          <div class="appr-webthemes">
+            <button class="appr-web" data-web="dark" onclick="setWebTheme('dark')">
+              <span class="apw-prev apw-dark"><i></i><i></i></span>
+              <span class="apw-name">Tmavý</span><span class="apw-sub">Predvolený</span>
+            </button>
+            <button class="appr-web" data-web="light" onclick="setWebTheme('light')">
+              <span class="apw-prev apw-light"><i></i><i></i></span>
+              <span class="apw-name">Svetlý</span><span class="apw-sub">Čistý, chladný</span>
+            </button>
+            <button class="appr-web" data-web="warm" onclick="setWebTheme('warm')">
+              <span class="apw-prev apw-warm"><i></i><i></i></span>
+              <span class="apw-name">Teplý svetlý</span><span class="apw-sub">Krémový, jemný</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="admin-section">
+          <div class="admin-section-hdr">
+            <h2 class="admin-section-title">Navigácia &amp; layout</h2>
           </div>
           <p class="admin-section-desc">Vyber, či sa hlavná navigácia zobrazí ako <strong>horná lišta</strong> alebo <strong>bočný panel (sidebar)</strong>. Zmena sa prejaví okamžite pre všetkých používateľov.</p>
 
