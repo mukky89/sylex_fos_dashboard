@@ -6320,6 +6320,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.10.2', date: '7. 7. 2026', tag: 'fix', items: [
+    'Kalendár (týždeň/deň): časová os je konečne čitateľná — hodiny už nie sú preškrtnuté čiarou (čiara v stĺpci s časmi bola odstránená, mriežku kreslia stĺpce dní) a prvý čas (napr. 07:00) sa už neschováva pod riadok „celý deň".',
+  ] },
   { v: '2.10.1', date: '7. 7. 2026', tag: 'fix', items: [
     'Kalendár (týždeň/deň): udalosti sú konečne čitateľné — čas, názov udalosti a vlastník sú pod sebou na samostatných riadkoch (predtým sa kvôli zdedenému flex-layoutu ťahali vedľa seba a meno vlastníka pretekalo mimo bunky).',
     'Značka prekryvu ⚠ je presunutá do pravého horného rohu, aby netlačila text.',
