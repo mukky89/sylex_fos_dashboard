@@ -5482,3 +5482,40 @@ span.gh-name { color: #eef3fa; }
 .dict-player { height: 34px; max-width: 100%; flex: 1; min-width: 180px; }
 
 @media (max-width: 560px) { .dict-foot { flex-wrap: wrap; } .dict-foot > div[style] { display: none; } }
+
+/* Mikrofónové tlačidlo priamo pri texte operácie — animované, aby si ho každý všimol */
+.proc-step-dictrow { margin: 7px 0 2px; }
+.proc-step-mic {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 14px; border-radius: 999px;
+  border: 1px solid rgba(0,212,255,0.55);
+  background: linear-gradient(180deg, #ecfeff, #e0f2fe);
+  color: #0369a1; font-family: var(--font); font-size: 0.78rem; font-weight: 700;
+  cursor: pointer; position: relative;
+  animation: micAttention 2.2s ease-in-out infinite;
+  transition: transform .12s, background .15s;
+}
+.proc-step-mic:hover { background: linear-gradient(180deg, #cffafe, #bae6fd); transform: translateY(-1px); }
+.proc-step-mic:active { transform: translateY(0); }
+.proc-step-mic-ico { font-size: 0.95rem; line-height: 1; animation: micWiggle 2.2s ease-in-out infinite; }
+.proc-step-mic-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: #ef4444; flex-shrink: 0;
+  box-shadow: 0 0 0 0 rgba(239,68,68,0.6); animation: micDot 1.3s ease-in-out infinite;
+}
+@keyframes micAttention {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,212,255,0.5); }
+  50%      { box-shadow: 0 0 0 7px rgba(0,212,255,0); }
+}
+@keyframes micDot {
+  0%, 100% { transform: scale(1);   box-shadow: 0 0 0 0 rgba(239,68,68,0.55); }
+  50%      { transform: scale(1.35); box-shadow: 0 0 0 5px rgba(239,68,68,0); }
+}
+@keyframes micWiggle {
+  0%, 92%, 100% { transform: rotate(0); }
+  94% { transform: rotate(-12deg); }
+  96% { transform: rotate(12deg); }
+  98% { transform: rotate(-8deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .proc-step-mic, .proc-step-mic-ico, .proc-step-mic-dot { animation: none; }
+}
