@@ -4793,6 +4793,12 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .ctg-allday { border-bottom: 1px solid rgba(255,255,255,0.12); min-height: 26px; max-height: 110px; overflow-y: auto; }
 .ctg-allday-lbl { font-size: 0.6rem; color: #64748b; padding: 5px 5px 0; text-align: right; }
 .ctg-allday-cell { border-left: 1px solid rgba(255,255,255,0.07); padding: 4px; display: flex; flex-direction: column; gap: 3px; min-height: 30px; }
+/* Celodenné/viacdňové udalosti ako SPOJENÉ pruhy cez dni (ako v mesačnom pohľade) */
+.ctg-allday { grid-template-columns: var(--gutter) 1fr; }   /* roh + spoločné telo dní */
+.ctg-allday-body { position: relative; display: grid; grid-template-columns: repeat(var(--ctg-days), minmax(0,1fr)); }
+.ctg-allday-body .ctg-allday-cell { padding-top: calc(var(--ad-lanes, 0) * 24px + 5px); }
+.ctg-allday-spans { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.ctg-allday-spans .cal-span { height: 20px; pointer-events: auto; }
 .ctg-allday-cell.ctg-we { background: rgba(255,255,255,0.02); }
 .ctg-body { display: flex; max-height: 60vh; overflow-y: auto; position: relative; scrollbar-width: thin; padding-top: 9px; }
 .ctg-gutter { width: var(--gutter); flex-shrink: 0; }
