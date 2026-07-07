@@ -184,6 +184,15 @@ module.exports = function(sensorCfg) {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // Import Vlastníkov produktov z Excelu (force=true zmaže a nahrá nanovo)
+  router.post('/seed-product-owners', async (req, res) => {
+    try {
+      const { seedProductOwners } = require('../scripts/seedProductOwners');
+      const result = await seedProductOwners({ force: !!(req.body && req.body.force) });
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   router.post('/seed-backbones', async (req, res) => {
     try {
       const { seedBackbones } = require('../scripts/seedBackbones');

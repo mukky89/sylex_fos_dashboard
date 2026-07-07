@@ -145,6 +145,13 @@ async function autoSeed() {
     }
   } catch (e) { console.error('Seed Equipment zlyhalo:', e.message); }
 
+  // ── Vlastníci produktov (import z Excelu, len ak je prázdne) ──────────────
+  try {
+    const { seedProductOwners } = require('./scripts/seedProductOwners');
+    const r = await seedProductOwners();
+    if (r.imported) console.log(`Seed: Vlastníci produktov importovaní (${r.imported})`);
+  } catch (e) { console.error('Seed Vlastníci produktov zlyhalo:', e.message); }
+
   // ── Seed KB sample data ───────────────────────────────────────────────────
   const count = await Product.countDocuments();
   if (count > 0) return; // DB already has KB data, skip
@@ -278,6 +285,7 @@ app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/production', require('./routes/production'));
 app.use('/api/manufacturing', require('./routes/manufacturing'));
 app.use('/api/product-workflows', require('./routes/productWorkflow'));
+app.use('/api/product-owners', require('./routes/productOwners'));
 app.use('/api/backbones', require('./routes/backbones'));
 app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/projects', require('./routes/projects'));
