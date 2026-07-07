@@ -4792,10 +4792,11 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .ctg-allday-lbl { font-size: 0.6rem; color: #64748b; padding: 5px 5px 0; text-align: right; }
 .ctg-allday-cell { border-left: 1px solid rgba(255,255,255,0.07); padding: 4px; display: flex; flex-direction: column; gap: 3px; min-height: 30px; }
 .ctg-allday-cell.ctg-we { background: rgba(255,255,255,0.02); }
-.ctg-body { display: flex; max-height: 60vh; overflow-y: auto; position: relative; scrollbar-width: thin; }
+.ctg-body { display: flex; max-height: 60vh; overflow-y: auto; position: relative; scrollbar-width: thin; padding-top: 9px; }
 .ctg-gutter { width: var(--gutter); flex-shrink: 0; }
-.ctg-hour { position: relative; border-top: 1px solid rgba(255,255,255,0.06); }
-.ctg-hour span { position: absolute; top: -8px; right: 6px; font-size: 0.72rem; color: #94a3b8; }
+/* Žiadna čiara v stĺpci s časmi — inak prechádza cez text (preškrtnutie). Mriežku kreslia stĺpce dní (.ctg-line). */
+.ctg-hour { position: relative; }
+.ctg-hour span { position: absolute; top: -8px; right: 8px; font-size: 0.72rem; color: #94a3b8; }
 .ctg-cols { flex: 1; display: grid; grid-template-columns: repeat(var(--ctg-days), minmax(0,1fr)); }
 .ctg-daycol { position: relative; border-left: 1px solid rgba(255,255,255,0.08); }
 .ctg-daycol.ctg-we { background: rgba(255,255,255,0.015); }
@@ -4971,7 +4972,6 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .calendar-page .ctg-allday-lbl { color: #64748b; }
 .calendar-page .ctg-allday-cell { border-left: 1px solid rgba(255,255,255,0.07); }
 .calendar-page .ctg-allday-cell.ctg-we { background: rgba(255,255,255,0.02); }
-.calendar-page .ctg-hour { border-top: 1px solid rgba(255,255,255,0.06); }
 .calendar-page .ctg-hour span { color: #64748b; }
 .calendar-page .ctg-daycol { border-left: 1px solid rgba(255,255,255,0.08); }
 .calendar-page .ctg-daycol.ctg-we { background: rgba(255,255,255,0.015); }
@@ -5093,7 +5093,6 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .calendar-page.cal-light .ctg-allday-cell { border-left: 1px solid var(--clline); }
 .calendar-page.cal-light .ctg-allday-cell.ctg-we { background: #fafbfc; }
 .calendar-page.cal-light .ctg-body { background: var(--clsurf); }
-.calendar-page.cal-light .ctg-hour { border-top: 1px solid var(--clline); }
 .calendar-page.cal-light .ctg-hour span { color: #9ca3af; }
 .calendar-page.cal-light .ctg-daycol { border-left: 1px solid var(--clline); }
 .calendar-page.cal-light .ctg-daycol.ctg-we { background: #fafbfc; }
