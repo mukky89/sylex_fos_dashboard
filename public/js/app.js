@@ -6502,6 +6502,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.17.1', date: '7. 7. 2026', tag: 'fix', items: [
+    'Svetlé motívy: opravená čitateľnosť textov — jasné farby (svetlosivá, cyan, žltá, zelená, fialová, modrá) sa teraz v svetlých motívoch stmavia. Tmavý motív ostáva nezmenený.',
+  ] },
   { v: '2.17.0', date: '7. 7. 2026', tag: 'feat', items: [
     'Pracovné postupy → obrázok operácie má nové tlačidlo „🎯 Anotovať": pridávanie textových bublín so šípkami priamo na obrázok.',
     'Bubliny sa ťahajú myšou, koncový bod šípky sa dá potiahnuť na cieľ. Pri každej bubline sa nastaví text, veľkosť písma, farba textu, farba orámovania aj pozadia.',
