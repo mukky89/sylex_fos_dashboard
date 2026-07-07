@@ -1217,7 +1217,7 @@ async function loadHomeCalendar() {
       <div class="home-cal-date"><span class="hc-day">${d.getDate()}</span><span class="hc-mon">${DT_MONTHS[d.getMonth()].slice(0, 3)}</span></div>
       <div class="home-cal-body">
         <div class="home-cal-evtitle">${HOME_CAL_TYPE_ICON[e.type] || '📌'} ${escHtml(e.title)}</div>
-        <div class="home-cal-evmeta">${isToday ? 'dnes' : fmtDate(e.date)}${e.time ? ' · ' + escHtml(e.time) : ''}${e.source ? ' · 📅 ' + escHtml(e.source) : ''}</div>
+        <div class="home-cal-evmeta">${isToday ? 'dnes' : fmtDate(e.date)}${calEvTimeRange(e) ? ' · ' + escHtml(calEvTimeRange(e)) : ''}${e.source ? ' · 📅 ' + escHtml(e.source) : ''}</div>
       </div>`;
     el.appendChild(item);
   });
@@ -2237,9 +2237,16 @@ function calEvSurnames(ev) {
 function calEvTip(ev) {
   const srcs = (ev._owners && ev._owners.length) ? ev._owners : (calEvOwner(ev) ? [calEvOwner(ev)] : []);
   const ext = (ev._ref || ev).external;
+  const rng = calEvTimeRange(ev);
   return escHtml(ev.title)
+    + (rng ? '\n🕒 ' + escHtml(rng) : '')
     + (srcs.length ? '\n' + (srcs.length > 1 ? 'Zdroje: ' : 'Zdroj: ') + escHtml(srcs.join(', ')) : '')
     + (ext ? ' (len na čítanie)' : '');
+}
+// Časový rozsah udalosti „od – do" (ak je zadaný koniec), inak len začiatok
+function calEvTimeRange(ev) {
+  if (!ev || !ev.time) return '';
+  return ev.endTime ? (ev.time + ' – ' + ev.endTime) : ev.time;
 }
 function calEvChipHtml(ev) {
   const ref = ev._ref || ev;
@@ -2250,13 +2257,16 @@ function calEvChipHtml(ev) {
   const multi = ev._owners && ev._owners.length > 1;
   const cls = `cal-ev ${allday ? 'cal-ev-allday' : 'cal-ev-timed'}${ext ? ' cal-ev-ext' : ''}${multi ? ' cal-ev-merged' : ''}`;
   const sn = calEvSurnames(ev);
-  const badge = sn ? `<span class="cal-ev-owner"> · ${escHtml(sn)}</span>` : '';
   const tip = calEvTip(ev);
   if (allday) {
+    const badge = sn ? `<span class="cal-ev-owner"> · ${escHtml(sn)}</span>` : '';
     return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-txt">${escHtml(ev.title)}</span>${badge}</div>`;
   }
-  const t = ev.time ? `<span class="cal-ev-time">${escHtml(ev.time)}</span>` : '';
-  return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-dot"></span><span class="cal-ev-main">${t}<span class="cal-ev-txt">${escHtml(ev.title)}</span>${badge}</span></div>`;
+  // Časovaná udalosť — čas (od–do), názov a vlastník POD SEBOU
+  const rng = calEvTimeRange(ev);
+  const t = rng ? `<span class="cal-ev-time">${escHtml(rng)}</span>` : '';
+  const owner = sn ? `<span class="cal-ev-owner">${escHtml(sn)}</span>` : '';
+  return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-dot"></span><span class="cal-ev-main">${t}<span class="cal-ev-txt">${escHtml(ev.title)}</span>${owner}</span></div>`;
 }
 function calAttachEvClicks(root) {
   root.querySelectorAll('.cal-ev, .cal-span').forEach(el => el.onclick = (e) => {
@@ -2489,7 +2499,7 @@ function renderCalTimeGrid(vp, days) {
       const conflict = it.cols > 1;
       const sn = calEvSurnames(ev);
       // pod seba: čas, popis (zalomí sa po slovách), meno používateľa
-      const inner = `<span class="ctg-ev-time">${escHtml(ev.time)}</span><span class="ctg-ev-title">${escHtml(ev.title)}</span>${sn ? `<span class="ctg-ev-owner">${escHtml(sn)}</span>` : ''}`;
+      const inner = `<span class="ctg-ev-time">${escHtml(calEvTimeRange(ev))}</span><span class="ctg-ev-title">${escHtml(ev.title)}</span>${sn ? `<span class="ctg-ev-owner">${escHtml(sn)}</span>` : ''}`;
       const cls = `cal-ev ctg-ev${ext ? ' cal-ev-ext' : ''}${conflict ? ' ctg-ev-conflict' : ''}`;
       const ds = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
       return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ext ? '#7c3aed' : '#00d4ff'))};top:${top}px;min-height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${conflict ? '⚠ Prekryv · ' : ''}${calEvTip(ev)}">${conflict ? '<span class="ctg-conf">⚠</span>' : ''}${inner}</div>`;
@@ -2516,7 +2526,7 @@ function renderCalTimeGrid(vp, days) {
 function showExternalEvent(ev) {
   const sameDay = !ev.endDate || String(ev.endDate).slice(0, 10) === String(ev.date).slice(0, 10);
   const d = fmtDate(ev.date) + (sameDay ? '' : ' – ' + fmtDate(ev.endDate));
-  const when = ev.allDay ? 'celodenná' : (ev.time || '');
+  const when = ev.allDay ? 'celodenná' : calEvTimeRange(ev);
   toast(`📅 ${ev.title}\n${d}${when ? ' · ' + when : ''}${ev.note ? '\n' + ev.note : ''}\nZdroj: ${ev.source || 'Outlook'} · len na čítanie`, 'info', 7000);
 }
 
@@ -5154,7 +5164,7 @@ function renderNotif() {
   let h = '';
   if (notifData.todayEvs.length) {
     h += '<div class="notif-group">Dnes v kalendári</div>';
-    notifData.todayEvs.forEach(ev => { h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('calendar')"><span>📅</span><span>${escHtml(ev.title)}${ev.time ? ' · ' + escHtml(ev.time) : ''}</span></div>`; });
+    notifData.todayEvs.forEach(ev => { h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('calendar')"><span>📅</span><span>${escHtml(ev.title)}${calEvTimeRange(ev) ? ' · ' + escHtml(calEvTimeRange(ev)) : ''}</span></div>`; });
   }
   if ((notifData.tasksDue || []).length) {
     h += '<div class="notif-group">Úlohy — termín dnes / po termíne</div>';
@@ -6323,6 +6333,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.12.0', date: '7. 7. 2026', tag: 'feat', items: [
+    'Kalendár (mesiac): pri časovaných udalostiach je čas, názov a vlastník pod sebou (predtým zlepené na jednom riadku).',
+    'Všade sa zobrazuje časový rozsah „od – do" (napr. 07:00 – 08:00), ak má udalosť zadaný koniec — v mesiaci, týždni/dni, na úvode, v notifikáciách aj v tooltipe.',
+  ] },
   { v: '2.11.0', date: '7. 7. 2026', tag: 'feat', items: [
     'Kalendár: štátne sviatky sú zvýraznené žltým rámčekom — v mesačnom pohľade celá bunka, v týždni/dni celý stĺpec dňa (hlavička + „celý deň" + mriežka).',
   ] },
