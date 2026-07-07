@@ -2646,18 +2646,22 @@ function calIsoWeek(d) {
 // Tlač
 function calPrint() { document.body.classList.add('printing-cal'); window.print(); setTimeout(() => document.body.classList.remove('printing-cal'), 600); }
 
-// iCal export (odber v Outlooku)
+// Zdieľanie kalendára — verejný odkaz na zobrazenie + iCal odber
 async function openCalExportModal() {
   try {
     const d = await fetch('/api/calendar/feed-url').then(r => r.json());
     document.getElementById('calExportUrl').value = location.origin + '/api/calendar/feed.ics?token=' + d.token;
-  } catch { document.getElementById('calExportUrl').value = ''; }
+    document.getElementById('calShareUrl').value  = location.origin + '/calendar-share.html?token=' + d.token;
+  } catch { document.getElementById('calExportUrl').value = ''; document.getElementById('calShareUrl').value = ''; }
   document.getElementById('calExportModal').classList.remove('hidden');
 }
-function calCopyExportUrl() {
-  const inp = document.getElementById('calExportUrl'); inp.select();
-  navigator.clipboard?.writeText(inp.value).then(() => toast('Odkaz skopírovaný.', 'success'), () => { try { document.execCommand('copy'); toast('Odkaz skopírovaný.', 'success'); } catch { toast('Skopíruj odkaz ručne.', 'info'); } });
+function _calCopy(id, msg) {
+  const inp = document.getElementById(id); if (!inp || !inp.value) { toast('Odkaz sa nepodarilo načítať.', 'error'); return; }
+  inp.select();
+  navigator.clipboard?.writeText(inp.value).then(() => toast(msg, 'success'), () => { try { document.execCommand('copy'); toast(msg, 'success'); } catch { toast('Skopíruj odkaz ručne.', 'info'); } });
 }
+function calCopyShareUrl() { _calCopy('calShareUrl', 'Odkaz na zobrazenie skopírovaný — pošli ho kolegovi.'); }
+function calCopyExportUrl() { _calCopy('calExportUrl', 'iCal odkaz skopírovaný.'); }
 
 // Pripomienky — kontroluje nadchádzajúce udalosti
 async function calCheckReminders() {
@@ -6367,6 +6371,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.15.0', date: '7. 7. 2026', tag: 'feat', items: [
+    'Kalendár → tlačidlo „🔗 Zdieľať": verejný odkaz na zobrazenie kalendára v prehliadači (read-only, bez prihlásenia) — pošli ho kolegovi. K dispozícii aj iCal odkaz na odber v Outlooku/Google.',
+    'Zdieľaný náhľad (calendar-share.html) je samostatná stránka chránená tajným tokenom, s mesačným prehľadom, sviatkami a časmi udalostí.',
+  ] },
   { v: '2.14.0', date: '7. 7. 2026', tag: 'feat', items: [
     'Nový modul „Vlastníci produktov" v hlavnom menu — zoznam Product Ownerov naimportovaný z Excelu (GOLDEN PN, hárok final): druh, kategória, výrobok, popis, Product Owner + PO2 + Backup, stav (NOK/WIP/DONE), TODO.',
     'Plne editovateľný (pridať/upraviť/zmazať), filtre podľa druhu, stavu a vlastníka, KPI prehľad a vyhľadávanie.',

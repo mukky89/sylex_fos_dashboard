@@ -277,6 +277,31 @@ function icsEsc(s) { return String(s || '').replace(/\\/g, '\\\\').replace(/;/g,
 function icsDate(d) { const p = n => String(n).padStart(2, '0'); const x = new Date(d); return `${x.getFullYear()}${p(x.getMonth() + 1)}${p(x.getDate())}`; }
 function icsDateTime(d, hm) { const [h, mi] = (hm || '00:00').split(':'); const x = new Date(d); return `${icsDate(x)}T${String(h).padStart(2, '0')}${String(mi || '00').padStart(2, '0')}00`; }
 
+// Verejné čítanie kalendára pre zdieľaný odkaz (token v query) — výnimka z auth brány
+router.get('/public', async (req, res) => {
+  try {
+    const tok = await getFeedToken(false);
+    if (!tok || req.query.token !== tok) return res.status(403).json({ error: 'Neplatný token' });
+    const { from, to } = req.query;
+    const start = from ? new Date(from) : new Date('1970-01-01');
+    const end   = to   ? new Date(to)   : new Date('2999-12-31');
+    const filter = { $or: [
+      { date: { $gte: start, $lte: end } },
+      { endDate: { $gte: start, $lte: end } },
+      { date: { $lte: start }, endDate: { $gte: end } }
+    ] };
+    const nonRecur = await CalendarEvent.find({ ...filter, recurFreq: { $in: ['none', null] } }).sort({ date: 1, time: 1 });
+    const recur = await CalendarEvent.find({ recurFreq: { $in: ['daily', 'weekly', 'monthly', 'yearly'] }, $or: [{ recurUntil: null }, { recurUntil: { $gte: start } }] });
+    const expanded = [];
+    recur.forEach(ev => expanded.push(...expandRecur(ev, start, end)));
+    const all = [...nonRecur.map(e => e.toObject()), ...expanded];
+    res.json(all.map(e => ({
+      title: e.title, date: e.date, endDate: e.endDate, allDay: e.allDay,
+      time: e.time, endTime: e.endTime, color: e.color, person: e.person, note: e.note
+    })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // URL feedu pre používateľa (autentizované cez globálnu bránu)
 router.get('/feed-url', async (req, res) => {
   try { res.json({ token: await getFeedToken(true) }); }

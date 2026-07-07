@@ -739,7 +739,7 @@
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn-secondary" onclick="openIcsModal()" title="Napojiť externý kalendár cez ICS odkaz (Outlook, RON, Google…)">🔗 Kalendáre</button>
-          <button class="btn-secondary" onclick="openCalExportModal()" title="Odoberať kalendár v Outlooku (iCal odkaz)">📤 Export</button>
+          <button class="btn-secondary" onclick="openCalExportModal()" title="Zdieľať kalendár — odkaz na zobrazenie alebo odber">🔗 Zdieľať</button>
           <button class="btn-secondary" onclick="calPrint()" title="Tlač / PDF">🖨️</button>
           <button class="btn-word" onclick="exportCalendarExcel()" title="Export do Excelu">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -897,22 +897,30 @@
   <div id="calExportModal" class="modal hidden">
     <div class="modal-backdrop" onclick="document.getElementById('calExportModal').classList.add('hidden')"></div>
     <div class="modal-box modal-sm">
-      <div class="modal-header"><h2>📤 Odoberať kalendár v Outlooku</h2><button class="modal-close" onclick="document.getElementById('calExportModal').classList.add('hidden')">✕</button></div>
+      <div class="modal-header"><h2>🔗 Zdieľať kalendár</h2><button class="modal-close" onclick="document.getElementById('calExportModal').classList.add('hidden')">✕</button></div>
       <div class="modal-body">
-        <div class="ics-help">
-          <strong>Ako pridať tento kalendár do Outlooku:</strong>
+        <div class="form-group">
+          <label>🌐 Odkaz na zobrazenie (pošli kolegovi)</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="calShareUrl" readonly onclick="this.select()" style="flex:1">
+            <button class="btn-primary btn-sm" onclick="calCopyShareUrl()">📋 Kopírovať</button>
+          </div>
+          <p class="ics-note">Kolega otvorí odkaz v prehliadači a uvidí kalendár <strong>iba na čítanie</strong> — bez prihlásenia.</p>
+        </div>
+        <div class="ics-help" style="margin-top:14px">
+          <strong>📅 Odoberať v Outlooku / Google Kalendári (voliteľné):</strong>
           <ol>
-            <li>Skopíruj odkaz nižšie</li>
-            <li>Outlook na webe → <em>Pridať kalendár → Predplatiť z webu</em></li>
+            <li>Skopíruj iCal odkaz nižšie</li>
+            <li>Outlook web → <em>Pridať kalendár → Predplatiť z webu</em> (alebo Google → <em>Iné kalendáre → Z URL</em>)</li>
             <li>Vlož odkaz a potvrď</li>
           </ol>
-          <p class="ics-note">Odkaz je <strong>verejný</strong> (kto ho má, vidí udalosti). Obsahuje aj opakované udalosti.</p>
         </div>
-        <div class="form-group"><label>iCal odkaz</label><input type="text" id="calExportUrl" readonly onclick="this.select()"></div>
+        <div class="form-group"><label>iCal odkaz (odber)</label><input type="text" id="calExportUrl" readonly onclick="this.select()"></div>
+        <p class="ics-note">Oba odkazy sú <strong>verejné</strong> (kto ich má, vidí udalosti). Ak ich chceš zneplatniť, v Administrácii zmeníš token feedu.</p>
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="document.getElementById('calExportModal').classList.add('hidden')">Zavrieť</button>
-        <button class="btn-primary" onclick="calCopyExportUrl()">📋 Kopírovať odkaz</button>
+        <button class="btn-primary" onclick="calCopyShareUrl()">📋 Kopírovať odkaz na zobrazenie</button>
       </div>
     </div>
   </div>
