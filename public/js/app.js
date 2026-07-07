@@ -317,7 +317,8 @@ const UI_RADII = {
   sharp: { '--radius': '3px',  '--radius-lg': '4px' },
   round: { '--radius': '14px', '--radius-lg': '20px' },
 };
-let UI_CFG = { nav: 'header', sidebarTheme: 'dark', accent: 'cyan', density: 'comfortable', radius: 'soft', motion: 'on', hiddenModules: [] };
+let UI_CFG = { nav: 'header', sidebarTheme: 'dark', accent: 'cyan', density: 'comfortable', radius: 'soft', motion: 'on', hiddenModules: [], webTheme: 'dark' };
+const WEB_THEMES = ['dark', 'light', 'warm'];
 
 // Skryteľné moduly (cez Administrácia → Moduly). Domov a Administrácia sa skryť nedajú.
 const MODULES = [
@@ -367,6 +368,9 @@ function applyUiLayout() {
   // Animácie
   b.classList.toggle('ui-reduce-motion', UI_CFG.motion === 'off');
 
+  // Web téma (celý web) — svetlé motívy
+  WEB_THEMES.forEach(t => b.classList.toggle('theme-' + t, t !== 'dark' && UI_CFG.webTheme === t));
+
   applyHiddenModules();
   renderSidebarUser();
 }
@@ -400,6 +404,8 @@ async function loadUiConfig() {
       const accent = get('ui.accent'); const density = get('ui.density');
       const radius = get('ui.radius'); const motion = get('ui.motion');
       const hidden = get('ui.hiddenModules');
+      const webTheme = get('ui.webTheme');
+      if (webTheme && WEB_THEMES.includes(webTheme)) UI_CFG.webTheme = webTheme;
       if (nav) UI_CFG.nav = nav;
       if (theme && SB_THEMES.includes(theme)) UI_CFG.sidebarTheme = theme;
       if (accent && UI_ACCENTS[accent]) UI_CFG.accent = accent;
@@ -450,6 +456,10 @@ function setMotion(motion) {
   if (motion !== 'on' && motion !== 'off') return;
   UI_CFG.motion = motion; applyUiLayout(); renderAppearanceAdmin(); _saveUiCfg('ui.motion', motion);
 }
+function setWebTheme(t) {
+  if (!WEB_THEMES.includes(t)) return;
+  UI_CFG.webTheme = t; applyUiLayout(); renderAppearanceAdmin(); _saveUiCfg('ui.webTheme', t);
+}
 
 function renderAppearanceAdmin() {
   document.querySelectorAll('.appr-layout').forEach(b => b.classList.toggle('active', b.dataset.nav === UI_CFG.nav));
@@ -458,6 +468,7 @@ function renderAppearanceAdmin() {
   document.querySelectorAll('.appr-opt[data-density]').forEach(b => b.classList.toggle('active', b.dataset.density === UI_CFG.density));
   document.querySelectorAll('.appr-opt[data-radius]').forEach(b => b.classList.toggle('active', b.dataset.radius === UI_CFG.radius));
   document.querySelectorAll('.appr-opt[data-motion]').forEach(b => b.classList.toggle('active', b.dataset.motion === UI_CFG.motion));
+  document.querySelectorAll('.appr-web[data-web]').forEach(b => b.classList.toggle('active', b.dataset.web === UI_CFG.webTheme));
   const sec = document.getElementById('apprThemeSection');
   if (sec) sec.classList.toggle('dim', UI_CFG.nav !== 'sidebar');
 }
@@ -6371,6 +6382,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.16.0', date: '7. 7. 2026', tag: 'feat', items: [
+    'Dva nové svetlé vzhľady na celý web — „Svetlý" (čistý, chladný) a „Teplý svetlý" (krémový). Prepínajú sa v Administrácia → Vzhľad → Web téma, nastavenie je spoločné pre všetkých.',
+    'Predvolený tmavý motív ostáva nezmenený. Svetlé motívy flipnú podklady, okraje aj text celej aplikácie cez „dark zone" tokeny.',
+  ] },
   { v: '2.15.0', date: '7. 7. 2026', tag: 'feat', items: [
     'Kalendár → tlačidlo „🔗 Zdieľať": verejný odkaz na zobrazenie kalendára v prehliadači (read-only, bez prihlásenia) — pošli ho kolegovi. K dispozícii aj iCal odkaz na odber v Outlooku/Google.',
     'Zdieľaný náhľad (calendar-share.html) je samostatná stránka chránená tajným tokenom, s mesačným prehľadom, sviatkami a časmi udalostí.',
