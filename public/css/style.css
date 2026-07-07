@@ -4983,6 +4983,11 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 
 /* priezvisko vlastníka (zdroja) — zvýraznené červenou */
 .cal-ev-main { flex: 1; min-width: 0; }
+/* Mesačný pohľad — časovaná udalosť: čas (od–do), názov a vlastník POD SEBOU */
+.cal-ev-timed .cal-ev-main { display: flex; flex-direction: column; gap: 1px; line-height: 1.3; }
+.cal-ev-timed .cal-ev-time { display: block; }
+.cal-ev-timed .cal-ev-txt { display: block; }
+.cal-ev-timed .cal-ev-owner { display: block; }
 .cal-ev-owner { color: #f87171; font-weight: 700; }
 .cal-ev-allday { display: block; }
 .cal-ev-allday .cal-ev-owner, .cal-span .cal-ev-owner { color: #fecaca; }   /* na farebných pruhoch svetlejšia červená */
