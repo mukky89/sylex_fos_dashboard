@@ -740,6 +740,7 @@ async function handleHash(hash) {
   if (hash === 'util')    { _activatePage('util');    loadUtil(); return; }
   if (hash === 'prod')    { _activatePage('prod');    loadProd(); return; }
   if (hash === 'mfg')     { _activatePage('mfg');     loadMfg(); return; }
+  if (hash === 'pwf')     { _activatePage('pwf');     loadPwf(); return; }
   if (hash === 'tasks')   { _activatePage('tasks');   loadTasks(); return; }
   if (hash === 'crm')     { _activatePage('crm');     loadCrm(); return; }
   if (hash === 'mgmt')    { _activatePage('mgmt');    loadManagement(); return; }
@@ -781,6 +782,7 @@ function showPage(name) {
   if (name === 'util')    loadUtil();
   if (name === 'prod')    loadProd();
   if (name === 'mfg')     loadMfg();
+  if (name === 'pwf')     loadPwf();
   if (name === 'tasks')   loadTasks();
   if (name === 'crm')     loadCrm();
   if (name === 'mgmt')    loadManagement();
@@ -6021,6 +6023,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.8.0', date: '7. 7. 2026', tag: 'feat', items: [
+    'Nový modul „Workflow výroby produktu" (menu Výroba → Workflow): každý produkt (napr. SAA-01) má vlastnú postupnosť výrobných krokov — Montáž → Zváranie → Kontrola po zvaraní → Žíhanie → Kalibrácia.',
+    'Kroky sa dajú klikom prepínať medzi stavmi Čaká → Prebieha → Hotové; postup (%) sa počíta automaticky a zobrazuje v zozname aj detaile (vertikálny stepper).',
+    'Editor krokov s presúvaním poradia (↑↓), pracoviskom a poznámkou. Tlačidlo „🎲 Ukážkové dáta" načíta SAA-01 a ďalšie vzorové workflow.',
+  ] },
   { v: '2.7.1', date: '6. 7. 2026', tag: 'ui', items: [
     'Plánovanie výroby → Gantt: skryté karty „🤖 AI analýza plánu" a „✨ AI optimalizácia" (pohľad premenovaný na 📊 Gantt).',
   ] },
@@ -8110,6 +8117,190 @@ async function seedRoutingsData() {
     loadRoutings();
     setTimeout(() => alert(`Hotovo — ${d.routings} postupov, ${d.operations} operácií.`), 200);
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  WORKFLOW VÝROBY PRODUKTU (Product Production Workflow)
+//  Produkt (napr. SAA-01) + postupnosť výrobných krokov (Montáž → Zváranie → ...)
+// ══════════════════════════════════════════════════════════════════════════════
+let pwfList = [];              // načítané workflow
+let pwfSelectedId = null;      // vybraný produkt v ľavom zozname
+let pwfSteps = [];             // kroky v otvorenom modáli
+const PWF_STATUS = {
+  pending: { lbl: 'Čaká', cls: 'pwf-st-pending', next: 'active' },
+  active:  { lbl: 'Prebieha', cls: 'pwf-st-active', next: 'done' },
+  done:    { lbl: 'Hotové', cls: 'pwf-st-done', next: 'pending' }
+};
+
+async function loadPwf() {
+  try { pwfList = await fetch('/api/product-workflows').then(r => r.json()); if (!Array.isArray(pwfList)) pwfList = []; }
+  catch { pwfList = []; }
+  if (!pwfList.find(w => w._id === pwfSelectedId)) pwfSelectedId = pwfList[0]?._id || null;
+  renderPwfList();
+  renderPwfDetail();
+}
+
+function pwfTitle(w) { return w.code || w.product || 'Bez názvu'; }
+
+function renderPwfList() {
+  const el = document.getElementById('pwfList'); if (!el) return;
+  if (!pwfList.length) {
+    el.innerHTML = '<div class="proc-empty" style="padding:14px">Žiadne workflow. Klikni na <strong>🎲 Ukážkové dáta</strong> alebo <strong>+ Nový produkt</strong>.</div>';
+    return;
+  }
+  el.innerHTML = pwfList.map(w => {
+    const s = w.stats || { total: 0, done: 0, progress: 0 };
+    return `
+    <button class="pwf-item ${w._id === pwfSelectedId ? 'active' : ''}" onclick="selectPwf('${w._id}')">
+      <div class="pwf-item-top">
+        <span class="pwf-item-code">${escHtml(pwfTitle(w))}</span>
+        <span class="pwf-item-pct">${s.progress}%</span>
+      </div>
+      ${w.product && w.code ? `<div class="pwf-item-name">${escHtml(w.product)}</div>` : ''}
+      <div class="pwf-item-bar"><div class="pwf-item-fill" style="width:${s.progress}%"></div></div>
+      <div class="pwf-item-meta">${s.total} krokov · ${s.done} hotových</div>
+    </button>`;
+  }).join('');
+}
+function selectPwf(id) { pwfSelectedId = id; renderPwfList(); renderPwfDetail(); }
+
+function renderPwfDetail() {
+  const el = document.getElementById('pwfDetail'); if (!el) return;
+  const w = pwfList.find(x => x._id === pwfSelectedId);
+  if (!w) { el.innerHTML = '<div class="proc-empty" style="padding:24px">Vyber produkt vľavo alebo pridaj nový.</div>'; return; }
+  const s = w.stats || { total: 0, done: 0, progress: 0 };
+
+  const steps = (w.steps || []).map((st, i) => {
+    const meta = PWF_STATUS[st.status] || PWF_STATUS.pending;
+    const last = i === w.steps.length - 1;
+    return `
+    <div class="pwf-step ${meta.cls}">
+      <div class="pwf-step-rail">
+        <button class="pwf-step-dot" title="Klik: zmeniť stav" onclick="cyclePwfStep('${w._id}','${st._id}','${st.status}')">${st.status === 'done' ? '✓' : i + 1}</button>
+        ${last ? '' : '<div class="pwf-step-line"></div>'}
+      </div>
+      <div class="pwf-step-body">
+        <div class="pwf-step-top">
+          <span class="pwf-step-name">${escHtml(st.name)}</span>
+          <button class="pwf-step-badge ${meta.cls}" onclick="cyclePwfStep('${w._id}','${st._id}','${st.status}')">${meta.lbl}</button>
+        </div>
+        <div class="pwf-step-sub">
+          ${st.station ? `<span class="pwf-step-station">🏭 ${escHtml(st.station)}</span>` : ''}
+          ${st.note ? `<span class="pwf-step-note">${escHtml(st.note)}</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="pwf-detail-hdr">
+      <div>
+        <div class="pwf-detail-title">${escHtml(pwfTitle(w))}</div>
+        <div class="pwf-detail-sub">${w.code && w.product ? escHtml(w.product) + ' · ' : ''}${s.total} krokov · ${s.done}/${s.total} hotových (${s.progress} %)</div>
+      </div>
+      <button class="btn-secondary btn-sm" onclick="openPwfModal(pwfList.find(x=>x._id==='${w._id}'))">✎ Upraviť</button>
+    </div>
+    <div class="pwf-detail-bar"><div class="pwf-detail-fill" style="width:${s.progress}%"></div></div>
+    ${w.steps && w.steps.length ? `<div class="pwf-steps">${steps}</div>` : '<div class="proc-empty" style="padding:20px">Tento produkt zatiaľ nemá žiadne kroky. Klikni na ✎ Upraviť.</div>'}
+    ${w.note && w.note !== 'seed' ? `<div class="pwf-detail-note">📝 ${escHtml(w.note)}</div>` : ''}`;
+}
+
+// Klik na krok — cyklus stavu Čaká → Prebieha → Hotové → Čaká
+async function cyclePwfStep(id, stepId, current) {
+  const next = (PWF_STATUS[current] || PWF_STATUS.pending).next;
+  try {
+    const r = await fetch(`/api/product-workflows/${id}/steps/${stepId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: next })
+    });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    const saved = await r.json();
+    const idx = pwfList.findIndex(x => x._id === id);
+    if (idx >= 0) pwfList[idx] = saved;
+    renderPwfList(); renderPwfDetail();
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────────
+function openPwfModal(w = null) {
+  const e = w && typeof w === 'object';
+  document.getElementById('pwfModalTitle').textContent = e ? 'Upraviť workflow produktu' : 'Nový produkt';
+  document.getElementById('pwfId').value = e ? w._id : '';
+  document.getElementById('pwfCode').value = e ? (w.code || '') : '';
+  document.getElementById('pwfProduct').value = e ? (w.product || '') : '';
+  document.getElementById('pwfNote').value = e && w.note !== 'seed' ? (w.note || '') : '';
+  pwfSteps = e ? (w.steps || []).map(s => ({ name: s.name || '', station: s.station || '', note: s.note || '', status: s.status || 'pending' }))
+               : [{ name: '', station: '', note: '', status: 'pending' }];
+  document.getElementById('pwfDeleteBtn').style.display = e ? '' : 'none';
+  renderPwfSteps();
+  document.getElementById('pwfModal').classList.remove('hidden');
+  modalSnapshot('pwfModal');
+}
+function closePwfModal() { modalGuardClose('pwfModal'); }
+
+function renderPwfSteps() {
+  const body = document.getElementById('pwfStepsBody'); if (!body) return;
+  body.innerHTML = pwfSteps.map((st, i) => `
+    <tr>
+      <td class="pwf-step-idx">${i + 1}</td>
+      <td><input class="pwf-in" value="${escHtml(st.name)}" placeholder="napr. Montáž" oninput="updatePwfStep(${i},'name',this.value)"></td>
+      <td><input class="pwf-in" value="${escHtml(st.station)}" placeholder="pracovisko" oninput="updatePwfStep(${i},'station',this.value)"></td>
+      <td><input class="pwf-in" value="${escHtml(st.note)}" placeholder="poznámka" oninput="updatePwfStep(${i},'note',this.value)"></td>
+      <td class="pwf-step-ops">
+        <button type="button" class="pwf-mini" onclick="movePwfStep(${i},-1)" title="Hore" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button type="button" class="pwf-mini" onclick="movePwfStep(${i},1)" title="Dole" ${i === pwfSteps.length - 1 ? 'disabled' : ''}>↓</button>
+        <button type="button" class="tk-sub-del" onclick="removePwfStep(${i})" title="Odstrániť">✕</button>
+      </td>
+    </tr>`).join('');
+}
+function updatePwfStep(i, field, val) { if (pwfSteps[i]) pwfSteps[i][field] = val; }
+function addPwfStep() { pwfSteps.push({ name: '', station: '', note: '', status: 'pending' }); renderPwfSteps(); }
+function removePwfStep(i) { pwfSteps.splice(i, 1); if (!pwfSteps.length) pwfSteps.push({ name: '', station: '', note: '', status: 'pending' }); renderPwfSteps(); }
+function movePwfStep(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= pwfSteps.length) return;
+  [pwfSteps[i], pwfSteps[j]] = [pwfSteps[j], pwfSteps[i]];
+  renderPwfSteps();
+}
+
+async function savePwf() {
+  const code = document.getElementById('pwfCode').value.trim();
+  const product = document.getElementById('pwfProduct').value.trim();
+  if (!code && !product) { toast('Zadaj kód alebo názov produktu.', 'error'); return; }
+  const body = {
+    code, product,
+    note: document.getElementById('pwfNote').value.trim(),
+    steps: pwfSteps.filter(s => (s.name || '').trim())
+  };
+  const id = document.getElementById('pwfId').value;
+  try {
+    const r = await fetch(id ? '/api/product-workflows/' + id : '/api/product-workflows', {
+      method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    const saved = await r.json(); pwfSelectedId = saved._id || pwfSelectedId;
+    modalSnapshot('pwfModal'); closePwfModal(); loadPwf();
+    toast('Workflow uložené.', 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+
+async function deletePwf(id) {
+  if (!id || !await uiConfirm('Odstrániť toto workflow produktu?')) return;
+  try {
+    await fetch('/api/product-workflows/' + id, { method: 'DELETE' });
+    pwfSelectedId = null; modalSnapshot('pwfModal'); closePwfModal(); loadPwf();
+    toast('Workflow odstránené.', 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+
+async function seedPwfData() {
+  if (!await uiConfirm('Načítať ukážkové workflow (SAA-01 a ďalšie)? Nahradí len predošlé ukážkové dáta.')) return;
+  try {
+    const r = await fetch('/api/admin/seed-workflows', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    pwfSelectedId = null; loadPwf();
+    toast(`Hotovo — ${d.workflows} workflow, ${d.steps} krokov.`, 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
