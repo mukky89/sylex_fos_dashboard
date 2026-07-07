@@ -3362,6 +3362,11 @@ function addStepRow(step = {}) {
     </div>
     <input type="text" class="proc-step-subsection" placeholder="Podsekcia (napr. 8.1 Príprava vlákna) — voliteľné" value="${escHtml(step.section || '')}">
     <div class="proc-step-editor" id="${sid}_ed"></div>
+    <div class="proc-step-dictrow">
+      <button type="button" class="proc-step-mic" onclick="dictForStep(this)" title="Nadiktovať popis operácie hlasom (slovenčina)">
+        <span class="proc-step-mic-ico">🎤</span><span class="proc-step-mic-dot"></span>Diktovať operáciu
+      </button>
+    </div>
     <input type="text" class="proc-step-note" placeholder="Krátka poznámka (voliteľné)" value="${escHtml(step.note || '')}">
     <div class="proc-step-section">
       <div class="proc-mini-label">Obrázok operácie</div>
@@ -3929,6 +3934,16 @@ function openDictation() {
 function closeDictation() {
   if (dictRunning) dictStop();
   document.getElementById('dictPanel').classList.add('hidden');
+}
+
+// Diktovanie priamo pre konkrétnu operáciu (tlačidlo 🎤 pri texte operácie)
+function dictForStep(btn) {
+  const card = btn.closest('.proc-step-card'); if (!card) return;
+  const ed = card.querySelector('.proc-step-editor .ProseMirror')
+          || card.querySelector('.proc-step-editor [contenteditable]')
+          || card.querySelector('.proc-step-editor textarea');
+  if (ed) { try { ed.focus(); } catch (_) {} _dictLastField = ed; }
+  openDictation();
 }
 
 function dictShowTarget() {
@@ -6239,6 +6254,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.9.1', date: '7. 7. 2026', tag: 'ui', items: [
+    'Pracovné postupy: pri každej operácii je teraz priamo pod textom animované tlačidlo „🎤 Diktovať operáciu" — klik nadiktuje popis rovno do tej operácie.',
+  ] },
   { v: '2.9.0', date: '7. 7. 2026', tag: 'feat', items: [
     'Pracovné postupy: nové tlačidlo „🎤 Diktovať" v editore — nahrá zvuk a naživo prepíše slovenskú reč na text (Web Speech API, sk-SK, priamo v prehliadači).',
     'Prepis sa dá upraviť a vložiť do naposledy zameraného poľa (účel, rozsah, operácia, poznámka…). Panel ukazuje, kam text pôjde.',
