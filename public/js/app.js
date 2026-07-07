@@ -3045,6 +3045,122 @@ function generateProcedureWord(id) {
   window.location.href = `/api/procedures/${id}/docx` + tokenQS();
 }
 
+// ── Anotácie obrázka operácie (bubliny so šípkami) ────────────────────────────
+function annotNorm(a) {
+  return {
+    x: clampNum(a.x, 50), y: clampNum(a.y, 18),
+    tx: clampNum(a.tx, 50), ty: clampNum(a.ty, 60),
+    text: a.text || '', fontSize: Number(a.fontSize) || 14,
+    textColor: a.textColor || '#111827', borderColor: a.borderColor || '#e11d48',
+    bg: a.bg || '#ffffff', arrow: a.arrow !== false
+  };
+}
+function clampNum(v, d) { const n = Number(v); return isNaN(n) ? d : Math.max(0, Math.min(100, n)); }
+// HTML prekrytia anotácií nad obrázkom (edit=true → interaktívne úchyty)
+function renderAnnotationsHtml(annots, edit) {
+  if (!Array.isArray(annots) || !annots.length) return '';
+  const arr = annots.map(annotNorm);
+  const markers = arr.map((a, i) => a.arrow ? `<marker id="pdvArr${i}" markerWidth="5" markerHeight="5" refX="4.2" refY="2.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L5,2.5 L0,5 Z" fill="${escHtml(a.borderColor)}"/></marker>` : '').join('');
+  const lines = arr.map((a, i) => a.arrow ? `<line x1="${a.x}" y1="${a.y}" x2="${a.tx}" y2="${a.ty}" stroke="${escHtml(a.borderColor)}" stroke-width="0.7" marker-end="url(#pdvArr${i})"/>` : '').join('');
+  const svg = `<svg class="pdv-annot-svg" viewBox="0 0 100 100" preserveAspectRatio="none"><defs>${markers}</defs>${lines}</svg>`;
+  const items = arr.map((a, i) => {
+    const st = `left:${a.x}%;top:${a.y}%;font-size:${a.fontSize}px;color:${escHtml(a.textColor)};border-color:${escHtml(a.borderColor)};background:${escHtml(a.bg)}`;
+    const tip = (a.arrow && edit) ? `<span class="pdv-annot-tip" data-tip="${i}" style="left:${a.tx}%;top:${a.ty}%"></span>` : '';
+    return `<div class="pdv-annot${edit ? ' pdv-annot-edit' : ''}" data-annot="${i}" style="${st}"><span class="pdv-annot-txt">${escHtml(a.text)}</span></div>${tip}`;
+  }).join('');
+  return `<div class="pdv-annots${edit ? ' pdv-annots-edit' : ''}">${svg}${items}</div>`;
+}
+
+// ── Editor anotácií (bubliny so šípkami) ──────────────────────────────────────
+let _annotCard = null, _annots = [], _annotSel = -1, _annotDrag = null;
+
+function openAnnotEditor(btn) {
+  const card = btn.closest('.proc-step-card'); if (!card) return;
+  if (!card._image) { toast('Najprv importuj obrázok operácie.', 'warn'); return; }
+  _annotCard = card;
+  _annots = (card._annots || []).map(annotNorm);
+  _annotSel = _annots.length ? 0 : -1;
+  document.getElementById('annotStage').innerHTML = `<img src="${escHtml(card._image)}" alt="" class="annot-img" draggable="false">`;
+  document.getElementById('annotModal').classList.remove('hidden');
+  const img = document.querySelector('#annotStage .annot-img');
+  if (img && !img.complete) img.addEventListener('load', annotRender, { once: true });
+  annotRender();
+}
+function closeAnnotEditor() { document.getElementById('annotModal').classList.add('hidden'); _annotCard = null; _annotDrag = null; }
+
+function annotRender() {
+  const stage = document.getElementById('annotStage'); if (!stage) return;
+  const old = stage.querySelector('.pdv-annots'); if (old) old.remove();
+  stage.insertAdjacentHTML('beforeend', renderAnnotationsHtml(_annots, true));
+  stage.querySelectorAll('.pdv-annot').forEach(el => {
+    const i = +el.dataset.annot; el.classList.toggle('sel', i === _annotSel);
+    el.addEventListener('mousedown', e => annotDragStart(e, 'box', i));
+  });
+  stage.querySelectorAll('.pdv-annot-tip').forEach(el => {
+    el.addEventListener('mousedown', e => annotDragStart(e, 'tip', +el.dataset.tip));
+  });
+  annotRenderCtl();
+}
+
+function annotRenderCtl() {
+  const el = document.getElementById('annotCtl'); if (!el) return;
+  if (_annotSel < 0 || !_annots[_annotSel]) { el.innerHTML = '<div class="annot-empty">Pridaj bublinu tlačidlom vyššie, alebo klikni na existujúcu.</div>'; return; }
+  const a = _annots[_annotSel];
+  el.innerHTML = `
+    <label class="annot-lbl">Text bubliny</label>
+    <textarea class="annot-in" rows="2" oninput="annotUpd('text',this.value)">${escHtml(a.text)}</textarea>
+    <label class="annot-lbl">Veľkosť písma: <b>${a.fontSize}px</b></label>
+    <input type="range" class="annot-range" min="9" max="40" value="${a.fontSize}" oninput="annotUpd('fontSize',this.value)">
+    <div class="annot-colors">
+      <label>Text<input type="color" value="${escHtml(a.textColor)}" oninput="annotUpd('textColor',this.value)"></label>
+      <label>Orámovanie<input type="color" value="${escHtml(a.borderColor)}" oninput="annotUpd('borderColor',this.value)"></label>
+      <label>Pozadie<input type="color" value="${escHtml(a.bg)}" oninput="annotUpd('bg',this.value)"></label>
+    </div>
+    <label class="annot-chk"><input type="checkbox" ${a.arrow ? 'checked' : ''} onchange="annotUpd('arrow',this.checked)"> Zobraziť šípku k cieľu</label>
+    <button type="button" class="btn-delete btn-sm annot-delbtn" onclick="annotDel()">🗑 Odstrániť bublinu</button>`;
+}
+
+function annotUpd(field, val) {
+  const a = _annots[_annotSel]; if (!a) return;
+  if (field === 'fontSize') a.fontSize = Number(val) || 14;
+  else if (field === 'arrow') a.arrow = !!val;
+  else a[field] = val;
+  annotRender();
+}
+function annotAdd() {
+  _annots.push(annotNorm({ x: 22 + Math.random() * 16, y: 16 + Math.random() * 12, tx: 55, ty: 55, text: 'Nový popis', arrow: true }));
+  _annotSel = _annots.length - 1; annotRender();
+}
+function annotDel() { if (_annotSel < 0) return; _annots.splice(_annotSel, 1); _annotSel = _annots.length ? Math.min(_annotSel, _annots.length - 1) : -1; annotRender(); }
+
+function annotDragStart(e, kind, i) {
+  e.preventDefault(); e.stopPropagation();
+  _annotSel = i;
+  const img = document.querySelector('#annotStage .annot-img');
+  _annotDrag = { kind, i, moved: false, rect: img.getBoundingClientRect() };
+  document.addEventListener('mousemove', annotDragMove);
+  document.addEventListener('mouseup', annotDragEnd);
+  annotRenderCtl();
+}
+function annotDragMove(e) {
+  if (!_annotDrag) return;
+  _annotDrag.moved = true;
+  const r = _annotDrag.rect;
+  const px = Math.max(0, Math.min(100, (e.clientX - r.left) / r.width * 100));
+  const py = Math.max(0, Math.min(100, (e.clientY - r.top) / r.height * 100));
+  const a = _annots[_annotDrag.i]; if (!a) return;
+  if (_annotDrag.kind === 'box') { a.x = Math.round(px * 10) / 10; a.y = Math.round(py * 10) / 10; }
+  else { a.tx = Math.round(px * 10) / 10; a.ty = Math.round(py * 10) / 10; }
+  annotRender();
+}
+function annotDragEnd() { _annotDrag = null; document.removeEventListener('mousemove', annotDragMove); document.removeEventListener('mouseup', annotDragEnd); }
+
+function annotSave() {
+  if (_annotCard) { _annotCard._annots = _annots.map(annotNorm); scheduleProcLivePreview(); }
+  closeAnnotEditor();
+  toast('Anotácie uložené do operácie (nezabudni Uložiť postup).', 'success');
+}
+
 // ── Detail / náhľad (read-only) ───────────────────────────────────────────────
 function renderProcedureDetailHtml(p) {
   const wm = procWarnMap(), pm = procPpeMap();
@@ -3129,7 +3245,7 @@ function renderProcedureDetailHtml(p) {
       const figN = s.image ? ++figCounter.n : 0;
       const imgStyle = s.imgWidth ? ` style="width:${Math.max(15, Math.min(100, s.imgWidth))}%"` : '';
       const imgHtml = s.image
-        ? `<figure class="pdv-fig pdv-fig-${pos}"${imgStyle}><img src="${escHtml(s.image)}" alt=""><figcaption>Obrázok ${figN}${s.caption ? ': ' + escHtml(s.caption) : ''}</figcaption><span class="pdv-resize"></span></figure>`
+        ? `<figure class="pdv-fig pdv-fig-${pos}"${imgStyle}><div class="pdv-fig-img"><img src="${escHtml(s.image)}" alt="">${renderAnnotationsHtml(s.annotations, false)}</div><figcaption>Obrázok ${figN}${s.caption ? ': ' + escHtml(s.caption) : ''}</figcaption><span class="pdv-resize"></span></figure>`
         : '';
       html += `<div class="pdv-step">
         <div class="pdv-step-num">${numLabel}</div>
@@ -3475,6 +3591,7 @@ function addStepRow(step = {}) {
   card.dataset.sid = sid;
   card._image    = step.image || '';
   card._imgWidth = step.imgWidth || null;
+  card._annots   = Array.isArray(step.annotations) ? step.annotations.map(annotNorm) : [];
   card._warnings = [...(step.warnings || [])];
   card._ppe      = [...(step.ppe || [])];
   card.innerHTML = `
@@ -3500,6 +3617,7 @@ function addStepRow(step = {}) {
       <div class="proc-step-img"></div>
       <div class="proc-img-controls">
         <button type="button" class="btn-sm" onclick="importStepImage(this)">🖼 Importovať</button>
+        <button type="button" class="btn-sm" onclick="openAnnotEditor(this)" title="Pridať bubliny so šípkami na obrázok">🎯 Anotovať</button>
         <select class="proc-img-pos" title="Rozloženie obrázka">
           <option value="below">Pod textom</option>
           <option value="right">Vpravo (text vľavo)</option>
@@ -3546,7 +3664,8 @@ function stepDataFromCard(card) {
     imgWidth: card._imgWidth || undefined,
     caption:  card.querySelector('.proc-img-caption')?.value.trim() || '',
     warnings: [...(card._warnings || [])],
-    ppe:      [...(card._ppe || [])]
+    ppe:      [...(card._ppe || [])],
+    annotations: (card._annots || []).map(annotNorm)
   };
 }
 
@@ -3580,7 +3699,8 @@ function collectSteps() {
       imgWidth: card._imgWidth || undefined,
       caption:  card.querySelector('.proc-img-caption')?.value.trim() || '',
       warnings: card._warnings || [],
-      ppe:      card._ppe || []
+      ppe:      card._ppe || [],
+      annotations: (card._annots || []).map(annotNorm)
     };
   }).filter(s => stripHtmlText(s.text) || s.image || s.note || s.section || (s.warnings && s.warnings.length) || (s.ppe && s.ppe.length));
 }
@@ -6382,6 +6502,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.17.0', date: '7. 7. 2026', tag: 'feat', items: [
+    'Pracovné postupy → obrázok operácie má nové tlačidlo „🎯 Anotovať": pridávanie textových bublín so šípkami priamo na obrázok.',
+    'Bubliny sa ťahajú myšou, koncový bod šípky sa dá potiahnuť na cieľ. Pri každej bubline sa nastaví text, veľkosť písma, farba textu, farba orámovania aj pozadia.',
+    'Anotácie sa uložia k operácii a zobrazujú sa v náhľade aj vo výslednom postupe (A4).',
+  ] },
   { v: '2.16.0', date: '7. 7. 2026', tag: 'feat', items: [
     'Dva nové svetlé vzhľady na celý web — „Svetlý" (čistý, chladný) a „Teplý svetlý" (krémový). Prepínajú sa v Administrácia → Vzhľad → Web téma, nastavenie je spoločné pre všetkých.',
     'Predvolený tmavý motív ostáva nezmenený. Svetlé motívy flipnú podklady, okraje aj text celej aplikácie cez „dark zone" tokeny.',
