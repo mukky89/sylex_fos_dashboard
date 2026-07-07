@@ -5694,3 +5694,49 @@ body.theme-light .powners-kpi, body.theme-warm .powners-kpi { box-shadow: var(--
 .apw-sub { font-size: 0.7rem; color: #94a3b8; }
 
 body.theme-light .prod-sub, body.theme-warm .prod-sub { color: #64748b; }
+
+/* ==============================
+   ANOTÁCIE OBRÁZKA OPERÁCIE (bubliny so šípkami)
+   ============================== */
+.pdv-fig-img { position: relative; display: block; line-height: 0; }
+.pdv-fig-img > img { display: block; width: 100%; height: auto; }
+.pdv-annots { position: absolute; inset: 0; pointer-events: none; }
+.pdv-annot-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.pdv-annot {
+  position: absolute; transform: translate(-50%, -50%);
+  max-width: 46%; padding: 3px 8px; border: 2px solid #e11d48; border-radius: 7px;
+  background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  line-height: 1.25; font-weight: 600; text-align: center; white-space: pre-wrap; word-break: break-word;
+}
+.pdv-annot-txt { display: block; }
+/* Edit režim v modáli */
+.pdv-annots-edit { pointer-events: none; }
+.pdv-annots-edit .pdv-annot { pointer-events: auto; cursor: move; user-select: none; }
+.pdv-annots-edit .pdv-annot.sel { outline: 2px dashed #00d4ff; outline-offset: 2px; }
+.pdv-annot-tip {
+  position: absolute; width: 14px; height: 14px; transform: translate(-50%, -50%);
+  border-radius: 50%; background: #fff; border: 3px solid #00d4ff; box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  cursor: crosshair; pointer-events: auto; z-index: 3;
+}
+
+/* Modal editora */
+.annot-box { max-width: 1000px; width: 96vw; }
+.annot-body { display: flex; gap: 16px; padding: 16px 18px; align-items: flex-start; }
+@media (max-width: 720px) { .annot-body { flex-direction: column; } }
+.annot-stage-wrap { flex: 1; min-width: 0; }
+.annot-stage { position: relative; display: inline-block; max-width: 100%; background: #0b1020; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.annot-img { display: block; max-width: 100%; max-height: 62vh; width: auto; height: auto; }
+.annot-hint { font-size: 0.74rem; color: var(--text-dim); margin-top: 8px; }
+.annot-side { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
+@media (max-width: 720px) { .annot-side { width: 100%; } }
+.annot-ctl { display: flex; flex-direction: column; gap: 8px; }
+.annot-empty { font-size: 0.8rem; color: var(--text-dim); padding: 10px 0; }
+.annot-lbl { font-size: 0.76rem; font-weight: 600; color: var(--text-dim); }
+.annot-lbl b { color: var(--text); }
+.annot-in { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; font-family: var(--font); font-size: 0.85rem; color: var(--text); background: #fff; resize: vertical; }
+.annot-range { width: 100%; }
+.annot-colors { display: flex; flex-direction: column; gap: 6px; }
+.annot-colors label { display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; color: var(--text); }
+.annot-colors input[type=color] { width: 44px; height: 28px; border: 1px solid var(--border); border-radius: 6px; background: none; cursor: pointer; padding: 0; }
+.annot-chk { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; color: var(--text); cursor: pointer; }
+.annot-delbtn { width: 100%; margin-top: 4px; justify-content: center; }

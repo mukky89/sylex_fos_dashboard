@@ -2225,6 +2225,31 @@
     </div>
   </div>
 
+  <!-- ===== ANOTÁCIE OBRÁZKA OPERÁCIE ===== -->
+  <div id="annotModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeAnnotEditor()"></div>
+    <div class="modal-box annot-box">
+      <div class="modal-header">
+        <h2>🎯 Anotácie obrázka</h2>
+        <button class="modal-close" onclick="closeAnnotEditor()">✕</button>
+      </div>
+      <div class="annot-body">
+        <div class="annot-stage-wrap">
+          <div class="annot-stage" id="annotStage"></div>
+          <div class="annot-hint">Ťahaj bublinu myšou · potiahni koncový bod šípky na cieľ · klikni bublinu pre úpravu textu a farieb.</div>
+        </div>
+        <div class="annot-side">
+          <button class="btn-primary btn-sm" style="width:100%" onclick="annotAdd()">+ Pridať bublinu</button>
+          <div id="annotCtl" class="annot-ctl"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeAnnotEditor()">Zrušiť</button>
+        <button class="btn-primary" onclick="annotSave()">💾 Uložiť anotácie</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== VLASTNÍCI PRODUKTOV (Product Owners) ===== -->
   <main id="page-powners" class="page powners-page">
     <div class="powners-inner">

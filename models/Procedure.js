@@ -35,7 +35,18 @@ const procedureSchema = new mongoose.Schema({
     imgWidth: { type: Number },                              // šírka obrázka v % (úprava v náhľade)
     caption:  { type: String, default: '' },                // popis obrázka (Obrázok N: ...)
     warnings: [String],                                      // kľúče typov upozornení
-    ppe:      [String]                                       // kľúče ochranných pomôcok
+    ppe:      [String],                                      // kľúče ochranných pomôcok
+    // Anotácie na obrázku operácie — voľne umiestniteľné textové bubliny so šípkami
+    annotations: [{
+      x: Number, y: Number,           // pozícia bubliny (% šírky/výšky obrázka)
+      tx: Number, ty: Number,         // pozícia hrotu šípky (%)
+      text: String,                   // text bubliny
+      fontSize: Number,               // veľkosť písma (px)
+      textColor: String,              // farba textu
+      borderColor: String,            // farba orámovania
+      bg: String,                     // farba pozadia bubliny
+      arrow: Boolean                  // zobraziť šípku k hrotu
+    }]
   }],
   attachments: [{ label: String, url: String }],            // prílohy / odkazy
   status:      { type: String, enum: ['active', 'draft', 'archived'], default: 'active' },
