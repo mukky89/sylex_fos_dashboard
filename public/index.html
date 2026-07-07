@@ -94,6 +94,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><path d="M5 8v8"/><path d="M9 6h7a3 3 0 013 3v0a3 3 0 01-3 3H9"/><polyline points="16 3 19 6 16 9"/></svg>
           <span class="nav-lbl">Workflow</span>
         </a>
+        <a class="nav-link" onclick="showPage('powners')" data-page="powners" title="Vlastníci produktov">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          <span class="nav-lbl">Vlastníci</span>
+        </a>
         <a class="nav-link" onclick="showPage('photos')" data-page="photos" title="Fotky z výroby">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
           <span class="nav-lbl">Fotky</span>
@@ -226,6 +230,10 @@
       <a class="asb-link" data-page="pwf" onclick="showPage('pwf')" title="Workflow výroby produktu">
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><path d="M5 8v8"/><path d="M9 6h7a3 3 0 013 3v0a3 3 0 01-3 3H9"/><polyline points="16 3 19 6 16 9"/></svg></span>
         <span class="asb-lbl">Workflow výroby</span>
+      </a>
+      <a class="asb-link" data-page="powners" onclick="showPage('powners')" title="Vlastníci produktov">
+        <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></span>
+        <span class="asb-lbl">Vlastníci produktov</span>
       </a>
       <a class="asb-link" data-page="photos" onclick="showPage('photos')" title="Fotky z výroby">
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
@@ -2205,6 +2213,87 @@
         <div style="flex:1"></div>
         <button class="btn-secondary btn-sm" onclick="closeDictation()">Zavrieť</button>
         <button class="btn-primary btn-sm" onclick="dictInsert()">↩ Vložiť do poľa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== VLASTNÍCI PRODUKTOV (Product Owners) ===== -->
+  <main id="page-powners" class="page powners-page">
+    <div class="powners-inner">
+      <div class="prod-hdr">
+        <div>
+          <h1 class="prod-title">Vlastníci produktov</h1>
+          <p class="prod-sub">Zoznam Product Ownerov · editovateľný · s históriou zmien (podľa Excelu GOLDEN PN)</p>
+        </div>
+        <div class="prod-hdr-actions">
+          <button class="btn-secondary" onclick="importPownersData()" title="Naimportovať/obnoviť dáta z Excelu (prepíše všetko)">📥 Import z Excelu</button>
+          <button class="btn-primary" onclick="openPownerModal()">+ Nový záznam</button>
+        </div>
+      </div>
+
+      <div class="powners-kpis" id="pownersKpis"></div>
+
+      <div class="powners-toolbar">
+        <div class="proc-search-wrap" style="margin:0;max-width:280px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="pownersSearch" placeholder="Hľadať výrobok, popis, vlastníka..." oninput="renderPowners()" autocomplete="off">
+        </div>
+        <select id="pownersKind" class="util-select" onchange="renderPowners()"><option value="">Všetky druhy</option></select>
+        <select id="pownersStatus" class="util-select" onchange="renderPowners()"><option value="">Všetky stavy</option></select>
+        <select id="pownersOwner" class="util-select" onchange="renderPowners()"><option value="">Všetci vlastníci</option></select>
+        <span id="pownersCount" class="powners-count"></span>
+      </div>
+
+      <div class="powners-table-wrap">
+        <table class="powners-table">
+          <thead><tr>
+            <th>NR</th><th>Druh</th><th>Kategória</th><th>Výrobok</th><th>Popis</th>
+            <th>Product Owner</th><th>PO 2</th><th>Backup</th><th>Stav</th><th>TODO</th><th></th>
+          </tr></thead>
+          <tbody id="pownersRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== PRODUCT OWNER MODAL ===== -->
+  <div id="pownerModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closePownerModal()"></div>
+    <div class="modal-box modal-lg">
+      <div class="modal-header"><h2 id="pownerModalTitle">Nový záznam</h2><button class="modal-close" onclick="closePownerModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="pwoId">
+        <div class="form-row">
+          <div class="form-group" style="max-width:110px"><label>NR</label><input type="number" id="pwoNr"></div>
+          <div class="form-group"><label>Druh</label><input type="text" id="pwoKind" list="pwoKindList" placeholder="Sensor / S-line"></div>
+          <div class="form-group"><label>Stav</label>
+            <select id="pwoStatus"><option value="">—</option><option value="NOK">NOK</option><option value="WIP">WIP</option><option value="DONE">DONE</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Kategória 1</label><input type="text" id="pwoCat1" placeholder="napr. Strain, Scan"></div>
+          <div class="form-group"><label>Kategória 2</label><input type="text" id="pwoCat2" placeholder="napr. Temperature, Switch"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Výrobok (kód)</label><input type="text" id="pwoProduct" placeholder="napr. SCN-80"></div>
+          <div class="form-group"><label>Popis výrobku</label><input type="text" id="pwoDesc" placeholder="Popis"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Product Owner</label><input type="text" id="pwoOwner" list="pwoOwnerList"></div>
+          <div class="form-group"><label>Product Owner 2</label><input type="text" id="pwoOwner2" list="pwoOwnerList"></div>
+          <div class="form-group"><label>Backup Owner</label><input type="text" id="pwoBackup" list="pwoOwnerList"></div>
+        </div>
+        <div class="form-group"><label>TODO</label><textarea id="pwoTodo" rows="2" placeholder="Čo treba dorobiť..."></textarea></div>
+        <div class="form-group"><label>Poznámka</label><input type="text" id="pwoNote" placeholder="Interná poznámka"></div>
+        <datalist id="pwoKindList"></datalist>
+        <datalist id="pwoOwnerList"></datalist>
+
+        <div class="pwo-history" id="pwoHistory"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete" id="pwoDeleteBtn" style="display:none" onclick="deletePowner(document.getElementById('pwoId').value)">Odstrániť</button>
+        <button class="btn-secondary" onclick="closePownerModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="savePowner()">Uložiť</button>
       </div>
     </div>
   </div>

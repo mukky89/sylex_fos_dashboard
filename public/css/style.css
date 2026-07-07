@@ -5575,3 +5575,56 @@ span.gh-name { color: #eef3fa; }
 .mod-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: #fff; transition: transform .16s; box-shadow: 0 1px 3px rgba(0,0,0,0.35); }
 .mod-switch input:checked + .mod-track { background: linear-gradient(90deg,#00d4ff,#22c55e); }
 .mod-switch input:checked + .mod-track::after { transform: translateX(17px); }
+
+/* ==============================
+   VLASTNÍCI PRODUKTOV (powners) — tmavá stránka + editovateľná tabuľka
+   ============================== */
+.powners-page { background: var(--hdr-bg); }
+.powners-inner { max-width: 1400px; margin: 0 auto; padding: 22px 26px 40px; }
+
+.powners-kpis { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0 14px; }
+.powners-kpi { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px 16px; min-width: 104px; display: flex; flex-direction: column; gap: 2px; }
+.powners-kpi .pk-num { font-size: 1.5rem; font-weight: 800; color: #f0f9ff; line-height: 1; font-variant-numeric: tabular-nums; }
+.powners-kpi .pk-lbl { font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.03em; }
+.powners-kpi.pk-done .pk-num { color: #4ade80; }
+.powners-kpi.pk-wip .pk-num { color: #fcd34d; }
+.powners-kpi.pk-nok .pk-num { color: #f87171; }
+.powners-kpi.pk-warn .pk-num { color: #fb923c; }
+
+.powners-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+.powners-count { font-size: 0.78rem; color: #94a3b8; margin-left: auto; }
+
+.powners-table-wrap { overflow-x: auto; border: 1px solid rgba(255,255,255,0.09); border-radius: 12px; background: rgba(255,255,255,0.02); }
+.powners-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 1000px; }
+.powners-table th { text-align: left; padding: 9px 11px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.03em; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.12); white-space: nowrap; position: sticky; top: 0; background: #141a2e; z-index: 1; }
+.powners-table td { padding: 8px 11px; border-bottom: 1px solid rgba(255,255,255,0.06); color: #dbe4f0; vertical-align: top; }
+.powners-table tbody tr { cursor: pointer; transition: background .12s; }
+.powners-table tbody tr:hover td { background: rgba(0,212,255,0.06); }
+.pwo-nr { color: #64748b; font-variant-numeric: tabular-nums; }
+.pwo-prod { font-weight: 700; color: #f0f9ff; white-space: nowrap; }
+.pwo-desc { min-width: 200px; color: #cbd5e1; }
+.pwo-dim { color: #94a3b8; }
+.pwo-todo { max-width: 220px; color: #fca5a5; font-size: 0.76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pwo-hist-col { white-space: nowrap; }
+.pwo-hist-dot { font-size: 0.72rem; color: #7dd3fc; }
+.powners-empty { text-align: center; color: #94a3b8; padding: 30px 16px; }
+
+/* Stavové odznaky */
+.pwo-badge { display: inline-block; font-size: 0.68rem; font-weight: 800; padding: 2px 9px; border-radius: 999px; letter-spacing: 0.03em; white-space: nowrap; }
+.pwo-st-nok { color: #fecaca; background: rgba(239,68,68,0.22); }
+.pwo-st-wip { color: #fde68a; background: rgba(245,158,11,0.22); }
+.pwo-st-done { color: #bbf7d0; background: rgba(34,197,94,0.22); }
+.pwo-st-other { color: #cbd5e1; background: rgba(255,255,255,0.1); }
+
+/* História zmien v modáli (svetlé pozadie modalu) */
+.pwo-history { margin-top: 16px; }
+.pwo-hist-hdr { font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+.pwo-hist-list { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; }
+.pwo-hist-item { background: var(--page-bg); border: 1px solid var(--border); border-radius: 9px; padding: 8px 11px; }
+.pwo-hist-meta { font-size: 0.76rem; color: var(--text-dim); }
+.pwo-hist-meta strong { color: var(--text); }
+.pwo-hist-changes { margin: 5px 0 0; padding-left: 16px; font-size: 0.78rem; color: var(--text); }
+.pwo-hist-changes li { margin: 2px 0; }
+.pwo-hc-field { font-weight: 600; }
+.pwo-hc-from { color: #b91c1c; text-decoration: line-through; }
+.pwo-hc-to { color: #15803d; font-weight: 600; }
