@@ -5702,15 +5702,18 @@ body.theme-light .prod-sub, body.theme-warm .prod-sub { color: #64748b; }
 /* ==============================
    ANOTÁCIE OBRÁZKA OPERÁCIE (bubliny so šípkami)
    ============================== */
-.pdv-fig-img { position: relative; display: block; line-height: 0; }
+.pdv-fig-img { position: relative; display: block; line-height: 0; container-type: inline-size; }
 .pdv-fig-img > img { display: block; width: 100%; height: auto; }
 .pdv-annots { position: absolute; inset: 0; pointer-events: none; }
 .pdv-annot-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .pdv-annot {
   position: absolute; transform: translate(-50%, -50%);
-  max-width: 46%; padding: 3px 8px; border: 2px solid #e11d48; border-radius: 7px;
-  background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-  line-height: 1.25; font-weight: 600; text-align: center; white-space: pre-wrap; word-break: break-word;
+  /* veľkosť sa škáluje so šírkou obrázka (cqw = 1 % šírky); rozmery v em → škálujú s písmom */
+  font-size: calc(var(--afs, 4) * 1cqw);
+  width: max-content; max-width: 72cqw;
+  padding: 0.28em 0.6em; border-style: solid; border-width: 0.14em; border-color: #e11d48; border-radius: 0.5em;
+  background: #fff; box-shadow: 0 0.14em 0.4em rgba(0,0,0,0.25);
+  line-height: 1.22; font-weight: 600; text-align: center; white-space: pre-wrap; overflow-wrap: break-word;
 }
 .pdv-annot-txt { display: block; }
 /* Edit režim v modáli */
@@ -5728,7 +5731,7 @@ body.theme-light .prod-sub, body.theme-warm .prod-sub { color: #64748b; }
 .annot-body { display: flex; gap: 16px; padding: 16px 18px; align-items: flex-start; }
 @media (max-width: 720px) { .annot-body { flex-direction: column; } }
 .annot-stage-wrap { flex: 1; min-width: 0; }
-.annot-stage { position: relative; display: inline-block; max-width: 100%; background: #0b1020; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.annot-stage { position: relative; display: inline-block; max-width: 100%; background: #0b1020; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); container-type: inline-size; }
 .annot-img { display: block; max-width: 100%; max-height: 62vh; width: auto; height: auto; }
 .annot-hint { font-size: 0.74rem; color: var(--text-dim); margin-top: 8px; }
 .annot-side { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
