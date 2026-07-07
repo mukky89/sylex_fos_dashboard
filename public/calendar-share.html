@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Kalendár · Sylex FOS</title>
+<style>
+  :root { --bg:#0d1225; --card:#141a2e; --line:rgba(255,255,255,0.09); --tx:#e8f0fb; --dim:#94a3b8; --acc:#00d4ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--tx); }
+  .wrap { max-width:1200px; margin:0 auto; padding:18px 16px 40px; }
+  header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:16px; }
+  .brand { display:flex; align-items:center; gap:10px; }
+  .brand svg { color:var(--acc); }
+  .brand-txt b { font-size:1.05rem; } .brand-txt span { display:block; font-size:0.72rem; color:var(--dim); letter-spacing:0.08em; }
+  .ro-badge { font-size:0.68rem; font-weight:700; color:#7dd3fc; background:rgba(0,212,255,0.12); border:1px solid rgba(0,212,255,0.3); padding:3px 9px; border-radius:999px; }
+  .nav { display:flex; align-items:center; gap:8px; }
+  .nav button { background:var(--card); color:var(--tx); border:1px solid var(--line); border-radius:9px; padding:7px 12px; font-size:0.85rem; cursor:pointer; font-family:inherit; }
+  .nav button:hover { border-color:var(--acc); }
+  .mlabel { font-size:1.1rem; font-weight:700; min-width:170px; text-align:center; text-transform:capitalize; }
+  .wd { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px; }
+  .wd div { font-size:0.7rem; color:var(--dim); text-transform:uppercase; letter-spacing:0.05em; text-align:center; font-weight:700; }
+  .wd .we { color:#f87171; }
+  .grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+  .cell { background:var(--card); border:1px solid var(--line); border-radius:10px; min-height:104px; padding:6px 7px; display:flex; flex-direction:column; gap:4px; overflow:hidden; }
+  .cell.out { opacity:0.4; }
+  .cell.today { border-color:var(--acc); box-shadow:inset 0 0 0 1px var(--acc); }
+  .cell.hol { border-color:#eab308; box-shadow:inset 0 0 0 1px #eab308; }
+  .cnum { font-size:0.82rem; font-weight:700; color:var(--dim); }
+  .cell.today .cnum { color:var(--acc); }
+  .hol-lbl { font-size:0.62rem; font-weight:700; color:#fca5a5; background:rgba(239,68,68,0.15); border-radius:4px; padding:1px 5px; }
+  .ev { font-size:0.72rem; line-height:1.25; border-radius:5px; padding:2px 6px; background:var(--evc,#00d4ff); color:#06121f; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ev .t { font-weight:800; }
+  .ev.allday { background:transparent; border-left:3px solid var(--evc,#7c3aed); color:var(--tx); border-radius:0 4px 4px 0; padding-left:6px; }
+  .ev .who { opacity:0.85; }
+  .empty { text-align:center; color:var(--dim); padding:60px 20px; }
+  .foot { margin-top:18px; font-size:0.72rem; color:var(--dim); text-align:center; }
+  @media (max-width:640px){ .cell{ min-height:74px; } .mlabel{ min-width:120px; font-size:0.95rem; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h3l2-7 4 14 2-7h3l2 4h2"/></svg>
+      <div class="brand-txt"><b>Kalendár</b><span>SYLEX FOS</span></div>
+      <span class="ro-badge">iba na čítanie</span>
+    </div>
+    <div class="nav">
+      <button onclick="move(-1)">‹</button>
+      <div class="mlabel" id="mlabel">—</div>
+      <button onclick="move(1)">›</button>
+      <button onclick="goToday()">Dnes</button>
+    </div>
+  </header>
+  <div class="wd"><div>Po</div><div>Ut</div><div>St</div><div>Št</div><div>Pi</div><div class="we">So</div><div class="we">Ne</div></div>
+  <div class="grid" id="grid"></div>
+  <div id="msg"></div>
+  <div class="foot">Zdieľaný náhľad kalendára · Sylex FOS Dashboard</div>
+</div>
+<script>
+const MONTHS = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'];
+const token = new URLSearchParams(location.search).get('token') || '';
+let ref = new Date(); ref.setDate(1);
+let events = [];
+
+function ymd(d){ const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function esc(s){ const e=document.createElement('div'); e.textContent=s==null?'':String(s); return e.innerHTML; }
+
+// Slovenské štátne sviatky (rovnaké ako v appke)
+function easter(y){ const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1; return new Date(y,mo-1,da); }
+function holidays(y){ const p=n=>String(n).padStart(2,'0'); const map={}; const set=(mm,dd,n)=>map[y+'-'+p(mm)+'-'+p(dd)]=n;
+  set(1,1,'Deň vzniku SR');set(1,6,'Zjavenie Pána');set(5,1,'Sviatok práce');set(5,8,'Deň víťazstva nad fašizmom');set(7,5,'Sv. Cyril a Metod');set(8,29,'SNP');set(9,1,'Deň Ústavy SR');set(9,15,'Sedembolestná P. Mária');set(11,1,'Všetkých svätých');set(11,17,'Deň boja za slobodu');set(12,24,'Štedrý deň');set(12,25,'1. sviatok vianočný');set(12,26,'2. sviatok vianočný');
+  const e=easter(y),gf=new Date(e);gf.setDate(e.getDate()-2);const em=new Date(e);em.setDate(e.getDate()+1);map[ymd(gf)]='Veľký piatok';map[ymd(em)]='Veľkonočný pondelok';return map; }
+
+async function load(){
+  if(!token){ document.getElementById('msg').innerHTML='<div class="empty">Chýba token v odkaze.</div>'; return; }
+  const gridStart=new Date(ref.getFullYear(),ref.getMonth(),1); const off=(gridStart.getDay()+6)%7;
+  const from=new Date(ref.getFullYear(),ref.getMonth(),1-off);
+  const to=new Date(from); to.setDate(to.getDate()+41);
+  try{
+    const r=await fetch('/api/calendar/public?token='+encodeURIComponent(token)+'&from='+ymd(from)+'&to='+ymd(to));
+    if(r.status===403){ document.getElementById('grid').innerHTML=''; document.getElementById('msg').innerHTML='<div class="empty">Neplatný alebo zrušený odkaz.</div>'; return; }
+    events=await r.json(); if(!Array.isArray(events)) events=[];
+  }catch(e){ document.getElementById('msg').innerHTML='<div class="empty">Nepodarilo sa načítať kalendár.</div>'; return; }
+  document.getElementById('msg').innerHTML='';
+  render();
+}
+
+function eventsForDay(key){
+  return events.filter(ev=>{
+    const s=String(ev.date).slice(0,10); const e=String(ev.endDate||ev.date).slice(0,10);
+    return key>=s && key<=e;
+  }).sort((a,b)=>(a.allDay?0:1)-(b.allDay?0:1) || String(a.time).localeCompare(String(b.time)));
+}
+function timeRange(ev){ if(ev.allDay||!ev.time) return ''; return ev.endTime?(ev.time+'–'+ev.endTime):ev.time; }
+
+function render(){
+  document.getElementById('mlabel').textContent=MONTHS[ref.getMonth()]+' '+ref.getFullYear();
+  const gridStart=new Date(ref.getFullYear(),ref.getMonth(),1); const off=(gridStart.getDay()+6)%7;
+  const start=new Date(ref.getFullYear(),ref.getMonth(),1-off);
+  const todayKey=ymd(new Date()); const hol=holidays(ref.getFullYear()); const hol2=holidays(ref.getFullYear()+ (ref.getMonth()===11?1:0));
+  let html='';
+  for(let i=0;i<42;i++){
+    const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i); const key=ymd(d);
+    const out=d.getMonth()!==ref.getMonth(); const we=(d.getDay()===0||d.getDay()===6);
+    const hname=hol[key]||hol2[key]||'';
+    const evs=eventsForDay(key);
+    const chips=evs.slice(0,4).map(ev=>{
+      const c=esc(ev.color||(ev.allDay?'#7c3aed':'#00d4ff'));
+      const who=ev.person?' <span class="who">· '+esc(ev.person)+'</span>':'';
+      const tr=timeRange(ev);
+      if(ev.allDay) return '<div class="ev allday" style="--evc:'+c+'" title="'+esc(ev.title)+'">'+esc(ev.title)+who+'</div>';
+      return '<div class="ev" style="--evc:'+c+'" title="'+esc((tr?tr+' ':'')+ev.title)+'">'+(tr?'<span class="t">'+esc(tr)+'</span> ':'')+esc(ev.title)+who+'</div>';
+    }).join('');
+    const more=evs.length>4?'<div class="cnum" style="color:#64748b">+'+(evs.length-4)+' ďalšie</div>':'';
+    html+='<div class="cell'+(out?' out':'')+(key===todayKey?' today':'')+(hname?' hol':'')+'">'
+      +'<div class="cnum">'+d.getDate()+'</div>'
+      +(hname?'<div class="hol-lbl" title="Štátny sviatok">🇸🇰 '+esc(hname)+'</div>':'')
+      +chips+more+'</div>';
+  }
+  document.getElementById('grid').innerHTML=html;
+}
+function move(n){ ref=new Date(ref.getFullYear(),ref.getMonth()+n,1); load(); }
+function goToday(){ ref=new Date(); ref.setDate(1); load(); }
+load();
+</script>
+</body>
+</html>
