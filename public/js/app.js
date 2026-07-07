@@ -6333,6 +6333,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.12.1', date: '7. 7. 2026', tag: 'fix', items: [
+    'Kalendár (týždeň/deň): rámček dnešného dňa (a žltý rámček sviatku) je teraz viditeľný nad udalosťami — predtým ho udalosti v stĺpci prekrývali. Kreslí sa cez ::after vrstvu a neblokuje klikanie.',
+  ] },
   { v: '2.12.0', date: '7. 7. 2026', tag: 'feat', items: [
     'Kalendár (mesiac): pri časovaných udalostiach je čas, názov a vlastník pod sebou (predtým zlepené na jednom riadku).',
     'Všade sa zobrazuje časový rozsah „od – do" (napr. 07:00 – 08:00), ak má udalosť zadaný koniec — v mesiaci, týždni/dni, na úvode, v notifikáciách aj v tooltipe.',
