@@ -30,6 +30,11 @@ router.get('/summary', async (req, res) => {
     const qtyPlanned = all.reduce((s, o) => s + (o.qtyPlanned || 0), 0);
     const qtyDone = all.reduce((s, o) => s + (o.qtyDone || 0), 0);
     const byStage = {}; STAGES.forEach(s => byStage[s] = all.filter(o => o.stage === s).length);
+    // Kalibračné listy — expedované výrobky, ktoré potrebujú odoslať kalibračné listy
+    const shipped = all.filter(o => o.stage === 'shipped');
+    const calibNeeded = shipped.filter(o => o.calibrationRequired);
+    const calibPending = calibNeeded.filter(o => o.calibrationStatus !== 'sent');
+    const calibSent = calibNeeded.filter(o => o.calibrationStatus === 'sent');
     // vyťaženie pracovísk (počet aktívnych + plánované ks)
     const lines = {};
     active.forEach(o => {
@@ -41,6 +46,8 @@ router.get('/summary', async (req, res) => {
       total: all.length, active: active.length, inProduction: inProd.length,
       overdue: overdue.length, dueSoon: dueSoon.length,
       qtyPlanned, qtyDone, fulfillment: qtyPlanned ? Math.round(qtyDone / qtyPlanned * 100) : 0,
+      shipped: shipped.length, calibNeeded: calibNeeded.length,
+      calibPending: calibPending.length, calibSent: calibSent.length,
       byStage, lines: Object.values(lines).sort((a, b) => b.orders - a.orders)
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -84,9 +91,11 @@ router.put('/:id', async (req, res) => {
     const o = await ProductionOrder.findById(req.params.id);
     if (!o) return res.status(404).json({ error: 'Not found' });
     ['number', 'product', 'customer', 'salesOrder', 'unit', 'workstation', 'assignee', 'priority', 'stage', 'note',
-     'division', 'drawing', 'sensor', 'orderStatus', 'delayReason'].forEach(k => { if (req.body[k] !== undefined) o[k] = req.body[k]; });
+     'division', 'drawing', 'sensor', 'orderStatus', 'delayReason',
+     'calibrationStatus', 'calibrationOwner', 'calibrationNote'].forEach(k => { if (req.body[k] !== undefined) o[k] = req.body[k]; });
+    if (req.body.calibrationRequired !== undefined) o.calibrationRequired = !!req.body.calibrationRequired;
     ['qtyPlanned', 'qtyDone', 'normHours'].forEach(k => { if (req.body[k] !== undefined) o[k] = Number(req.body[k]) || 0; });
-    ['start', 'due', 'produceBy', 'requiredDate', 'agreedDate', 'deliveryDate', 'producedDate', 'shippedDate'].forEach(k => { if (req.body[k] !== undefined) o[k] = req.body[k] || null; });
+    ['start', 'due', 'produceBy', 'requiredDate', 'agreedDate', 'deliveryDate', 'producedDate', 'shippedDate', 'calibrationSentDate'].forEach(k => { if (req.body[k] !== undefined) o[k] = req.body[k] || null; });
     if (req.body.order !== undefined) o.order = Number(req.body.order) || 0;
     if (req.body.progress !== undefined) o.progress = clampPct(req.body.progress);
     else if (req.body.qtyDone !== undefined && o.qtyPlanned > 0) o.progress = clampPct(o.qtyDone / o.qtyPlanned * 100);

@@ -20,13 +20,13 @@ const DEFAULT_LINKS = [
     url:   'https://syxapp03.sylex.sk/ads/',
     color: 'blue', group: 'custom', order: 3, active: true },
 
-  { label: 'Obedy',
+  { label: 'Obed Sylex',
     url:   'https://apps.powerapps.com/play/e/default-1b7d6e4a-de27-4867-b238-3f03b4bdeaba/a/5c1bd016-047d-4068-a5d8-5b8ab6fbeca3?tenantId=1b7d6e4a-de27-4867-b238-3f03b4bdeaba',
-    color: 'purple', group: 'custom', order: 4, active: true },
+    color: 'purple', group: 'jedlo', order: 4, active: true },
 
-  { label: 'Obedy Fantozzi',
+  { label: 'Obed Fantozzi',
     url:   'http://dbfood.eu-4.evennode.com/',
-    color: 'cyan', group: 'custom', order: 5, active: true },
+    color: 'cyan', group: 'jedlo', order: 5, active: true },
 
   { label: 'Intranet',
     url:   'https://sylexba.sharepoint.com/sites/SYLEX-Intranet/SitePages/Home.aspx',

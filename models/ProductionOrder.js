@@ -27,6 +27,12 @@ const productionOrderSchema = new mongoose.Schema({
   normHours:  { type: Number, default: 0 },                  // norma spolu [h]
   orderStatus:{ type: String, default: '' },                 // stav objednávky (text z IO)
   delayReason:{ type: String, default: '' },                 // dôvod meškania (prečo mešká)
+  // Kalibračné listy (pre expedované výrobky treba vytvoriť a odoslať kalibračné listy)
+  calibrationRequired:{ type: Boolean, default: false },     // treba vytvoriť kalibračné listy
+  calibrationStatus:{ type: String, enum: ['pending', 'sent'], default: 'pending' }, // odoslané / neodoslané
+  calibrationOwner:{ type: String, default: '' },            // obchodník, ktorý ich má odoslať
+  calibrationSentDate:{ type: Date, default: null },         // kedy boli odoslané
+  calibrationNote:{ type: String, default: '' },             // poznámka ku kalibračným listom
   progress:   { type: Number, default: 0, min: 0, max: 100 },
   note:       { type: String, default: '' },
   order:      { type: Number, default: 0 }                   // poradie v stĺpci (drag & drop)

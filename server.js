@@ -100,6 +100,13 @@ async function autoSeed() {
       const r = await HeaderLink.updateMany({ label: { $in: ['DBFOS', 'ISYS'] } }, { $set: { pinned: true } });
       if (r.modifiedCount) console.log('Migration: DBFOS/ISYS pinned to header');
     }
+    // Migrácia: obedové odkazy do samostatnej skupiny "Jedlo" (Obed Sylex, Obed Fantozzi)
+    const jedloCount = await HeaderLink.countDocuments({ group: 'jedlo' });
+    if (jedloCount === 0) {
+      const r1 = await HeaderLink.updateMany({ label: { $in: ['Obedy', 'Obed Sylex'] } }, { $set: { group: 'jedlo', label: 'Obed Sylex' } });
+      const r2 = await HeaderLink.updateMany({ label: { $in: ['Obedy Fantozzi', 'Obed Fantozzi'] } }, { $set: { group: 'jedlo', label: 'Obed Fantozzi' } });
+      if (r1.modifiedCount || r2.modifiedCount) console.log('Migration: obedové odkazy presunuté do skupiny Jedlo');
+    }
   }
 
   // ── Seed AppConfig (sensor settings) ─────────────────────────────────────
@@ -268,6 +275,7 @@ app.use('/api/equipment', require('./routes/equipment'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/production', require('./routes/production'));
 app.use('/api/manufacturing', require('./routes/manufacturing'));
+app.use('/api/product-workflows', require('./routes/productWorkflow'));
 app.use('/api/backbones', require('./routes/backbones'));
 app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/projects', require('./routes/projects'));
@@ -283,6 +291,9 @@ app.use('/api/datasheets', require('./routes/datasheets'));
 app.use('/api/sensor-types', require('./routes/sensorTypes'));
 app.use('/api/questions', require('./routes/questions'));
 app.use('/api/management', require('./routes/management'));
+app.use('/api/photos', require('./routes/photos'));
+app.use('/api/github', require('./routes/github'));
+app.use('/api/remote', require('./routes/remote'));
 app.use('/api/admin', require('./routes/admin')(sensorCfg));
 
 // Credentials endpoint (internal use only)

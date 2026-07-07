@@ -11,37 +11,97 @@ const PRODUCTS = [
 ];
 const CUSTOMERS = ['US CONEC', 'Optics11', 'Viaphoton', 'Corning', 'Huber+Suhner', 'Senko', 'II-VI', 'Fraunhofer IZM'];
 const LINES = ['Linka A — montáž', 'Linka B — lepenie', 'Pracovisko optika', 'Pracovisko kalibrácia', 'Expedícia'];
-// Vážený výber fáz — viac aktívnych zákaziek (plnší Gantt), ale aj expedované do zoznamu
-const STAGES = ['plan', 'plan', 'material', 'material', 'production', 'production', 'production', 'qc', 'qc', 'done', 'shipped', 'shipped'];
 const PRIOS = ['low', 'normal', 'normal', 'high', 'urgent'];
+// Obchodníci — kto má odoslať kalibračné listy k expedovaným výrobkom
+const SALES = ['M. Baláž', 'K. Danišová', 'R. Polák', 'T. Végh'];
+// Senzorové/meracie výrobky, ku ktorým sa vydávajú kalibračné listy
+const CALIBRATED = ['FBG senzor', 'Strain senzor', 'Vlhkostný senzor', 'Tlakový senzor', 'Káblový teplomer', 'DTS sonda', 'Interrogátor'];
+const needsCalibration = product => CALIBRATED.some(c => product.startsWith(c));
+
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const ri = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
+const dayMs = 864e5;
 
 async function seedProduction() {
   await ProductionOrder.deleteMany({ note: 'seed' });
-  const now = Date.now();
+  const today = new Date(new Date().toDateString()).getTime();
   const year = new Date().getFullYear();
   const docs = [];
-  const n = 32;
-  for (let i = 0; i < n; i++) {
-    const stage = pick(STAGES);
+
+  // Rozdelenie fáz — väčšina aktívnych, ale výrazná časť expedovaná
+  // (16 expedovaných na naplnenie tabuľky kalibračných listov + kalendára)
+  const plan = [
+    ...Array(4).fill('plan'), ...Array(4).fill('material'),
+    ...Array(6).fill('production'), ...Array(4).fill('qc'),
+    ...Array(3).fill('done'), ...Array(16).fill('shipped')
+  ];
+  // produkty vyžadujúce kalibračný list (aby expedovaných s kalibráciou bolo dosť)
+  const CALIB_PRODUCTS = PRODUCTS.filter(needsCalibration);
+  let shipIdx = 0;
+
+  plan.forEach((stage, i) => {
+    // pri expedovaných striedaj kalibrované a nekalibrované produkty (cca 3/4 kalibrovaných)
+    let product;
+    if (stage === 'shipped') { product = (shipIdx++ % 4 === 3) ? pick(PRODUCTS) : pick(CALIB_PRODUCTS); }
+    else product = pick(PRODUCTS);
     const qtyPlanned = ri(5, 200);
     let qtyDone = 0;
     if (stage === 'done' || stage === 'shipped') qtyDone = qtyPlanned;
     else if (stage === 'production' || stage === 'qc') qtyDone = ri(0, qtyPlanned);
-    const startOff = ri(-10, 20), dur = ri(2, 18);
+
+    // Realistické termíny podľa fázy
+    let start, due, shippedDate = null, producedDate = null;
+    if (stage === 'shipped') {
+      // expedované v posledných ~30 dňoch
+      const shipOff = -ri(1, 30);
+      shippedDate = new Date(today + shipOff * dayMs);
+      due = new Date(today + (shipOff + ri(-3, 3)) * dayMs);   // termín okolo dátumu expedície
+      start = new Date(today + (shipOff - ri(8, 20)) * dayMs);
+      producedDate = new Date(today + (shipOff - ri(0, 3)) * dayMs);
+    } else if (stage === 'done') {
+      // vyrobené, čaká na expedíciu v najbližších dňoch
+      producedDate = new Date(today - ri(0, 4) * dayMs);
+      due = new Date(today + ri(1, 7) * dayMs);
+      start = new Date(today - ri(8, 18) * dayMs);
+    } else {
+      // aktívne zákazky — realistické meškanie: väčšina v termíne, menšina mierne mešká
+      const dur = ri(4, 16);
+      let dueOff;
+      const r = Math.random();
+      if (r < 0.18) dueOff = -ri(1, 6);          // ~18 % mierne po termíne (1–6 dní)
+      else if (r < 0.28) dueOff = -ri(7, 14);    // ~10 % výraznejšie mešká (7–14 dní)
+      else dueOff = ri(0, 24);                    // zvyšok v termíne / do budúcna
+      due = new Date(today + dueOff * dayMs);
+      start = new Date(today + (dueOff - dur) * dayMs);
+    }
+
+    // Kalibračné listy — len merací/senzorový sortiment
+    const calibrationRequired = (stage === 'shipped' || stage === 'done') && needsCalibration(product);
+    let calibrationStatus = 'pending', calibrationOwner = '', calibrationSentDate = null;
+    if (calibrationRequired) {
+      // väčšina má priradeného obchodníka, zopár nechaj neurčených (na priradenie)
+      if (Math.random() < 0.8) calibrationOwner = pick(SALES);
+      if (stage === 'shipped' && Math.random() < 0.45) {
+        // časť expedovaných už má odoslané kalibračné listy (zvyšok čaká)
+        calibrationStatus = 'sent';
+        if (!calibrationOwner) calibrationOwner = pick(SALES);   // odoslané → obchodník je známy
+        calibrationSentDate = new Date((shippedDate?.getTime() || today) + ri(0, 5) * dayMs);
+      }
+    }
+
     docs.push({
       number: `VZ-${year}-${String(i + 1).padStart(3, '0')}`,
-      product: pick(PRODUCTS), customer: pick(CUSTOMERS), salesOrder: 'OBJ-' + year + '-' + String(ri(10, 99)),
+      product, customer: pick(CUSTOMERS), salesOrder: 'OBJ-' + year + '-' + String(ri(10, 99)),
       qtyPlanned, qtyDone, unit: 'ks',
       workstation: pick(LINES), assignee: pick(['M. Horák', 'P. Kováč', 'J. Novák', 'Lab', 'A. Tichý']),
       priority: pick(PRIOS), stage,
-      start: new Date(now + startOff * 864e5),
-      due: new Date(now + (startOff + dur) * 864e5),
+      start, due, producedDate, shippedDate,
+      calibrationRequired, calibrationStatus, calibrationOwner, calibrationSentDate,
       progress: qtyPlanned ? Math.round(qtyDone / qtyPlanned * 100) : 0,
       note: 'seed', order: i
     });
-  }
+  });
+
   await ProductionOrder.insertMany(docs);
   return { inserted: docs.length };
 }
