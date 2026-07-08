@@ -4067,9 +4067,16 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .prod-sub { color: var(--dz-text2); font-size: 0.9rem; margin-top: 4px; }
 .prod-hdr-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* Rámčeky sekcií — vizuálne oddelenie blokov v Plánovaní výroby */
+/* Rámčeky sekcií — vizuálne oddelenie blokov (výrobná rodina stránok) */
 .prod-section { background: rgba(var(--dz-fg-rgb),0.025); border: 1px solid rgba(var(--dz-fg-rgb),0.1); border-radius: 16px; padding: 16px 18px; margin-bottom: 18px; }
 .prod-section-hd { display: flex; align-items: center; gap: 8px; font-size: 0.74rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 14px; }
+/* zarovnanie prvého/posledného prvku v karte, aby nevznikali dvojité medzery */
+.prod-section > .mfg-section-hdr:first-child { margin-top: 0; }
+.prod-section > .pwf-layout { margin-top: 0; }
+.prod-section > *:last-child { margin-bottom: 0; }
+.prod-kpis-section .powners-kpis { margin: 0; }
+/* tabuľka vlastníkov v ráme sekcie — bez dvojitého orámovania */
+.prod-section .powners-table-wrap { border: none; background: transparent; }
 
 /* KPI */
 .prod-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 18px; }
