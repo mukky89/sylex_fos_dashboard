@@ -2176,17 +2176,32 @@ function calRange() {
           new Date(calRef.getFullYear(), calRef.getMonth() + 2, 0)];
 }
 
+let _calLoadSeq = 0;
+function calShowLoading(on) { document.getElementById('calLoader')?.classList.toggle('hidden', !on); }
+function calShowFeedLoading(on) { document.getElementById('calFeedLoading')?.classList.toggle('hidden', !on); }
+
 async function loadCalendar() {
   calYear = calRef.getFullYear(); calMonth = calRef.getMonth();
   const [from, to] = calRange();
+  const seq = ++_calLoadSeq;   // ochrana pred prekrytím pri rýchlom prepínaní
+  calShowLoading(true);
+  // 1) Interné udalosti (rýchle) — vykresli hneď, nech kalendár nečaká na ICS
   try {
-    const [ev, ext] = await Promise.all([
-      fetch(`/api/calendar?from=${calYmd(from)}&to=${calYmd(to)}`).then(r => r.json()),
-      fetch(`/api/calendar/external?from=${calYmd(from)}&to=${calYmd(to)}`).then(r => r.json()).catch(() => [])
-    ]);
+    const ev = await fetch(`/api/calendar?from=${calYmd(from)}&to=${calYmd(to)}`).then(r => r.json());
+    if (seq !== _calLoadSeq) return;
     calEvents = Array.isArray(ev) ? ev : [];
+  } catch { calEvents = []; }
+  calShowLoading(false);
+  renderCalendar();
+  // 2) Napojené ICS feedy (pomalšie) — dofetchuj a prekresli s jemným indikátorom
+  calShowFeedLoading(true);
+  try {
+    const ext = await fetch(`/api/calendar/external?from=${calYmd(from)}&to=${calYmd(to)}`).then(r => r.json());
+    if (seq !== _calLoadSeq) return;
     calExternal = Array.isArray(ext) ? ext : [];
-  } catch { calEvents = []; calExternal = []; }
+  } catch { calExternal = []; }
+  if (seq !== _calLoadSeq) return;
+  calShowFeedLoading(false);
   renderCalendar();
 }
 
@@ -6527,6 +6542,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.20.0', date: '8. 7. 2026', tag: 'feat', items: [
+    'Kalendár: moderný loading — interné udalosti sa zobrazia okamžite a napojené ICS kalendáre (pomalšie) sa dofetchujú s jemným indikátorom (netreba čakať na všetko).',
+    'Zdieľaný kalendár (verejný odkaz) teraz obsahuje aj udalosti z napojených ICS kalendárov kolegov (Outlook/RON…), nielen interné.',
+  ] },
   { v: '2.19.0', date: '8. 7. 2026', tag: 'feat', items: [
     'Vlastníci produktov: aktualizovaný zoznam (72 výrobkov) a stĺpce podľa novej tabuľky — NR, Druh, Výrobok, Popis, Product Owner, Backup Owner, Stav, TODO (odstránené Kategória a PO2). Dáta sa pri nasadení automaticky obnovia.',
     'Server: čisté ukončenie pri redeployi (graceful shutdown na SIGTERM) — už nehlási „npm error signal SIGTERM" pri nasadzovaní.',

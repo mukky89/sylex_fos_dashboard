@@ -793,7 +793,14 @@
       <!-- Zdroje kalendára — farebné prepínacie chipy (klik = zobraziť/skryť zdroj) -->
       <div class="cal-src-bar" id="calSrcBar"></div>
 
-      <div class="cal-grid-wrap" id="calViewport"></div>
+      <div class="cal-wrap-rel">
+        <div class="cal-grid-wrap" id="calViewport"></div>
+        <div class="cal-loader hidden" id="calLoader">
+          <div class="cal-spinner"></div>
+          <div class="cal-loader-txt">Načítavam kalendár…</div>
+        </div>
+      </div>
+      <div class="cal-feed-loading hidden" id="calFeedLoading"><span class="cal-feed-dot"></span> Načítavam napojené kalendáre…</div>
 
     </div>
   </main>

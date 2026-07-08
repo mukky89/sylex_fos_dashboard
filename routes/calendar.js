@@ -214,10 +214,8 @@ function localParts(d) {
 }
 
 // Externé udalosti zo všetkých aktívnych feedov, normalizované do tvaru kalendára (read-only)
-router.get('/external', async (req, res) => {
-  try {
-    const from = req.query.from ? new Date(req.query.from) : new Date(Date.now() - 30 * 864e5);
-    const to   = req.query.to   ? new Date(req.query.to)   : new Date(Date.now() + 120 * 864e5);
+// Expanduj napojené ICS feedy do udalostí v okne [from,to] (zdieľané pre /external aj /public)
+async function expandExternalFeeds(from, to) {
     const feeds = await IcsFeed.find({ active: true }).lean();
     const out = [];
     for (const f of feeds) {
@@ -263,7 +261,14 @@ router.get('/external', async (req, res) => {
         });
       }
     }
-    res.json(out);
+    return out;
+}
+
+router.get('/external', async (req, res) => {
+  try {
+    const from = req.query.from ? new Date(req.query.from) : new Date(Date.now() - 30 * 864e5);
+    const to   = req.query.to   ? new Date(req.query.to)   : new Date(Date.now() + 120 * 864e5);
+    res.json(await expandExternalFeeds(from, to));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -295,10 +300,14 @@ router.get('/public', async (req, res) => {
     const expanded = [];
     recur.forEach(ev => expanded.push(...expandRecur(ev, start, end)));
     const all = [...nonRecur.map(e => e.toObject()), ...expanded];
-    res.json(all.map(e => ({
+    const internal = all.map(e => ({
       title: e.title, date: e.date, endDate: e.endDate, allDay: e.allDay,
       time: e.time, endTime: e.endTime, color: e.color, person: e.person, note: e.note
-    })));
+    }));
+    // Pridaj aj napojené ICS feedy (Outlook/RON/... od kolegov)
+    let external = [];
+    try { external = (await expandExternalFeeds(start, end)).map(e => ({ ...e, person: e.source || '' })); } catch (e) { external = []; }
+    res.json([...internal, ...external]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
