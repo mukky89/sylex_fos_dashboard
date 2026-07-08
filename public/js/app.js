@@ -7798,13 +7798,24 @@ async function prodSaveReason(id, val) {
 // ── Kalibračné listy — TABUĽKA expedovaných objednávok ──────────────────────
 // Prvé, čo v Plánovaní výroby vidno: expedované objednávky a stav ich
 // kalibračných listov (neodoslané / odoslané), s obchodníkom a rýchlym označením.
-let prodCalibOnlyPending = false;   // filter: zobraziť len neodoslané
-function prodSetCalibFilter(only) { prodCalibOnlyPending = only; renderProdCalib(); }
+// Filtre (deň + stav) sú priamo nad zoznamom a štatistiky fungujú ako filtre.
+let prodCalibStatus = 'all';     // filter podľa stavu: 'all' | 'pending' | 'sent'
+let prodCalibDay = null;         // vybraný deň (Date), null → dnes
+let prodCalibAllDays = false;    // true → ignorovať denný filter a ukázať všetky
+function prodCalibInit() { if (!prodCalibDay) prodCalibDay = new Date(new Date().toDateString()); }
+// dátum, na ktorom sedí kalibračný list (reálna expedícia, inak termín)
+function prodCalibDayOf(o) {
+  const d = o.shippedDate || o.due;
+  return d ? new Date(new Date(d).toDateString()) : null;
+}
+function prodSetCalibStatus(status) { prodCalibStatus = status; renderProdCalib(); }
+function prodCalibShiftDay(dir) { prodCalibInit(); prodCalibAllDays = false; prodCalibDay = new Date(prodCalibDay.getFullYear(), prodCalibDay.getMonth(), prodCalibDay.getDate() + dir); renderProdCalib(); }
+function prodCalibToday() { prodCalibAllDays = false; prodCalibDay = new Date(new Date().toDateString()); renderProdCalib(); }
+function prodCalibSetAllDays(all) { prodCalibAllDays = all; if (!all) prodCalibInit(); renderProdCalib(); }
 function renderProdCalib() {
   const el = document.getElementById('prodCalibPanel'); if (!el) return;
+  prodCalibInit();
   const shipped = prodData.filter(o => o.stage === 'shipped' && o.calibrationRequired);
-  const pendingCnt = shipped.filter(o => o.calibrationStatus !== 'sent').length;
-  const sentCnt = shipped.length - pendingCnt;
 
   if (!shipped.length) {
     el.innerHTML = `<div class="prod-calib-hd">📄 Kalibračné listy k expedovaným objednávkam</div>
@@ -7812,10 +7823,29 @@ function renderProdCalib() {
     return;
   }
 
-  let items = shipped.slice().sort((a, b) =>
+  // 1) denný rozsah — buď jeden deň, alebo všetky dni
+  const dayMs = prodCalibDay.getTime();
+  const inDayScope = o => { if (prodCalibAllDays) return true; const d = prodCalibDayOf(o); return d && d.getTime() === dayMs; };
+  const scoped = shipped.filter(inDayScope);
+
+  // 2) štatistiky (v rámci denného rozsahu) — fungujú ako filtre podľa stavu
+  const scPending = scoped.filter(o => o.calibrationStatus !== 'sent').length;
+  const scSent = scoped.length - scPending;
+  const totalPending = shipped.filter(o => o.calibrationStatus !== 'sent').length;
+
+  // 3) filter podľa stavu
+  let items = scoped.slice();
+  if (prodCalibStatus === 'pending') items = items.filter(o => o.calibrationStatus !== 'sent');
+  else if (prodCalibStatus === 'sent') items = items.filter(o => o.calibrationStatus === 'sent');
+  items.sort((a, b) =>
     (a.calibrationStatus === 'sent') - (b.calibrationStatus === 'sent')       // neodoslané hore
     || new Date(b.shippedDate || b.due || 0) - new Date(a.shippedDate || a.due || 0));
-  if (prodCalibOnlyPending) items = items.filter(o => o.calibrationStatus !== 'sent');
+
+  // 4) denná navigácia
+  const today = new Date(new Date().toDateString()).getTime();
+  const isToday = dayMs === today;
+  const dayLabel = prodCalibAllDays ? 'Všetky dni'
+    : prodCalibDay.toLocaleDateString('sk-SK', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + (isToday ? ' · dnes' : '');
 
   const salesOpts = who => PROD_SALES.map(s => `<option value="${escHtml(s)}"${s === who ? ' selected' : ''}>${escHtml(s)}</option>`).join('');
   const rows = items.map(o => {
@@ -7839,16 +7869,42 @@ function renderProdCalib() {
     </tr>`;
   }).join('');
 
+  const emptyMsg = prodCalibAllDays
+    ? (prodCalibStatus === 'pending' ? 'Všetky kalibračné listy sú odoslané ✓' : 'Žiadne položky pre zvolený filter.')
+    : 'V tento deň nie je žiadna expedovaná objednávka s kalibračným listom.';
+
   el.innerHTML = `<div class="prod-calib-hd">📄 Kalibračné listy k expedovaným objednávkam
-      <span class="prod-late-count">${pendingCnt} čaká na odoslanie</span>
+      ${totalPending ? `<span class="prod-late-count">${totalPending} čaká na odoslanie</span>` : ''}
+    </div>
+
+    <div class="prod-calib-stats">
+      <button class="pc-stat ${prodCalibStatus === 'all' ? 'active' : ''}" onclick="prodSetCalibStatus('all')">
+        <span class="pc-stat-num">${scoped.length}</span><span class="pc-stat-lbl">Expedované${prodCalibAllDays ? '' : ' v tento deň'}</span>
+      </button>
+      <button class="pc-stat bad ${prodCalibStatus === 'pending' ? 'active' : ''}" onclick="prodSetCalibStatus('pending')">
+        <span class="pc-stat-num">${scPending}</span><span class="pc-stat-lbl">Čaká na odoslanie</span>
+      </button>
+      <button class="pc-stat ok ${prodCalibStatus === 'sent' ? 'active' : ''}" onclick="prodSetCalibStatus('sent')">
+        <span class="pc-stat-num">${scSent}</span><span class="pc-stat-lbl">Odoslané</span>
+      </button>
+    </div>
+
+    <div class="prod-calib-daybar">
+      <div class="util-nav">
+        <button class="cal-nav-btn" onclick="prodCalibShiftDay(-1)" title="Predošlý deň"${prodCalibAllDays ? ' disabled' : ''}>‹</button>
+        <button class="btn-sm" onclick="prodCalibToday()">Dnes</button>
+        <button class="cal-nav-btn" onclick="prodCalibShiftDay(1)" title="Ďalší deň"${prodCalibAllDays ? ' disabled' : ''}>›</button>
+        <span class="prod-calib-daylbl">${escHtml(dayLabel)}</span>
+      </div>
       <span class="prod-calib-toggle">
-        <button class="pc-filter ${!prodCalibOnlyPending ? 'active' : ''}" onclick="prodSetCalibFilter(false)">Všetky expedované (${shipped.length})</button>
-        <button class="pc-filter ${prodCalibOnlyPending ? 'active' : ''}" onclick="prodSetCalibFilter(true)">Len neodoslané (${pendingCnt})</button>
+        <button class="pc-filter ${!prodCalibAllDays ? 'active' : ''}" onclick="prodCalibSetAllDays(false)">Podľa dňa</button>
+        <button class="pc-filter ${prodCalibAllDays ? 'active' : ''}" onclick="prodCalibSetAllDays(true)">Všetky dni (${shipped.length})</button>
       </span>
     </div>
+
     <div class="prod-calib-tablewrap"><table class="prod-calib-table">
       <thead><tr><th>Objednávka</th><th>Produkt</th><th>Zákazník</th><th>Množstvo</th><th>Expedované</th><th>Kalibračný list</th><th>Obchodník</th><th></th></tr></thead>
-      <tbody>${rows || `<tr><td colspan="8" class="pc-empty">Všetky kalibračné listy sú odoslané ✓</td></tr>`}</tbody>
+      <tbody>${rows || `<tr><td colspan="8" class="pc-empty">${emptyMsg}</td></tr>`}</tbody>
     </table></div>`;
 }
 async function prodPatchCalib(id, patch) {
