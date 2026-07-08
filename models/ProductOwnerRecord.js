@@ -12,12 +12,9 @@ const historyEntrySchema = new mongoose.Schema({
 const productOwnerRecordSchema = new mongoose.Schema({
   nr:          { type: Number, default: null },   // NR — poradové číslo
   kind:        { type: String, default: '' },     // Druh (Sensor, S-line, ...)
-  cat1:        { type: String, default: '' },     // Kategória 1 (Strain, Scan, ...)
-  cat2:        { type: String, default: '' },     // Kategória 2 (Temperature, Switch, ...)
   product:     { type: String, default: '' },     // Výrobok (kód)
   description: { type: String, default: '' },     // Popis výrobku
   owner:       { type: String, default: '' },     // Product Owner
-  owner2:      { type: String, default: '' },     // Product Owner (2)
   backup:      { type: String, default: '' },     // Backup Owner
   status:      { type: String, default: '' },     // STAV (NOK / WIP / DONE)
   todo:        { type: String, default: '' },     // TODO

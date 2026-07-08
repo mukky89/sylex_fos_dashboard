@@ -380,6 +380,18 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`FOS Dashboard running on http://localhost:${PORT}`);
 });
+
+// Čisté ukončenie pri redeploy/škálovaní (Railway posiela SIGTERM) — bez „npm error signal SIGTERM"
+function gracefulShutdown(sig) {
+  console.log(`${sig} prijatý — ukončujem server…`);
+  server.close(() => {
+    mongoose.connection.close(false).finally(() => process.exit(0));
+  });
+  // poistka: ak sa nezavrie do 8 s, ukonči aj tak s úspešným kódom
+  setTimeout(() => process.exit(0), 8000).unref();
+}
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
