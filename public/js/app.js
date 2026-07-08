@@ -6542,6 +6542,23 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.25.0', date: '8. 7. 2026', tag: 'chore', items: [
+    'Changelog sa teraz vedie aj v súbore `CHANGELOG.md` (okrem stránky Changelog v appke) a jeho zápis je povinný krok pri každom nasadení.',
+    'Doplnené chýbajúce záznamy verzií 2.21–2.24 (denný filter a štatistiky kalibračných listov, presun KPI, rámčekovanie sekcií výrobných stránok).',
+  ] },
+  { v: '2.24.0', date: '8. 7. 2026', tag: 'feat', items: [
+    'Rámčekovanie sekcií rozšírené na celú výrobnú rodinu stránok — Riadenie výroby (MES), Vlastníci produktov a Workflow výroby produktu majú teraz sekcie v jednotných ohraničených kartách (rovnaký vzhľad ako Plánovanie výroby).',
+  ] },
+  { v: '2.23.0', date: '8. 7. 2026', tag: 'feat', items: [
+    'Plánovanie výroby: jednotlivé bloky (Kalibračné listy, Prehľad výroby/KPI, Zoznam zákaziek) sú vizuálne oddelené rámčekmi (kartami) pre lepšiu prehľadnosť.',
+  ] },
+  { v: '2.22.0', date: '8. 7. 2026', tag: 'feat', items: [
+    'Plánovanie výroby: KPI dlaždice presunuté nižšie — spod hlavičky tesne nad zoznam zákaziek.',
+  ] },
+  { v: '2.21.0', date: '8. 7. 2026', tag: 'feat', items: [
+    'Plánovanie výroby → Kalibračné listy: nový denný filter — predvolene ukazuje aktuálny deň, dá sa posúvať dozadu/dopredu (‹ Dnes ›) a prepnúť na „Všetky dni".',
+    'Samostatné štatistiky ku kalibračným listom (Expedované / Čaká na odoslanie / Odoslané) fungujú ako klikacie filtre podľa stavu; filtre presunuté z hlavičky priamo nad zoznam.',
+  ] },
   { v: '2.20.0', date: '8. 7. 2026', tag: 'feat', items: [
     'Kalendár: moderný loading — interné udalosti sa zobrazia okamžite a napojené ICS kalendáre (pomalšie) sa dofetchujú s jemným indikátorom (netreba čakať na všetko).',
     'Zdieľaný kalendár (verejný odkaz) teraz obsahuje aj udalosti z napojených ICS kalendárov kolegov (Outlook/RON…), nielen interné.',
@@ -6967,6 +6984,7 @@ const CL_TAG = {
   feat:  { l: 'Novinka', c: '#00d4ff' },
   fix:   { l: 'Oprava', c: '#f59e0b' },
   ui:    { l: 'Vzhľad', c: '#8b5cf6' },
+  chore: { l: 'Údržba', c: '#94a3b8' },
   base:  { l: 'Základ', c: '#64748b' },
 };
 function renderChangelog() {
