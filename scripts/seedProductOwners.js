@@ -4,21 +4,30 @@
  * Voľba force=true zmaže všetko a importuje nanovo.
  */
 const ProductOwnerRecord = require('../models/ProductOwnerRecord');
+const AppConfig = require('../models/AppConfig');
 const DATA = require('./data/productOwners.json');
+
+// Verzia dát — pri zmene zoznamu ju zdvihni; server pri štarte raz automaticky preimportuje.
+const DATA_VERSION = '2026-07-08-newlist';
 
 async function seedProductOwners({ force = false } = {}) {
   const count = await ProductOwnerRecord.countDocuments();
-  if (count > 0 && !force) return { skipped: true, existing: count };
-  if (force) await ProductOwnerRecord.deleteMany({});
+  const verCfg = await AppConfig.findOne({ key: 'productOwners.dataVersion' });
+  const curVer = verCfg ? verCfg.value : null;
+  // Importuj ak: vynútené, kolekcia prázdna, alebo sa zmenila verzia dát (nový zoznam)
+  if (!force && count > 0 && curVer === DATA_VERSION) return { skipped: true, existing: count };
+  await ProductOwnerRecord.deleteMany({});
   const docs = DATA.map(r => ({
-    nr: r.nr || null, kind: r.kind || '', cat1: r.cat1 || '', cat2: r.cat2 || '',
+    nr: (r.nr === 0 || r.nr) ? r.nr : null, kind: r.kind || '',
     product: r.product || '', description: r.description || '',
-    owner: r.owner || '', owner2: r.owner2 || '', backup: r.backup || '',
+    owner: r.owner || '', backup: r.backup || '',
     status: r.status || '', todo: r.todo || '',
     history: [{ at: new Date(), user: 'import (Excel)', action: 'create', changes: [] }]
   }));
   const created = await ProductOwnerRecord.insertMany(docs);
-  return { imported: created.length };
+  await AppConfig.findOneAndUpdate({ key: 'productOwners.dataVersion' },
+    { value: DATA_VERSION, group: 'productOwners', label: 'Verzia dát Vlastníkov produktov' }, { upsert: true });
+  return { imported: created.length, version: DATA_VERSION };
 }
 
 module.exports = { seedProductOwners };

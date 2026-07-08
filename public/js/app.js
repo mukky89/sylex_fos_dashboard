@@ -6527,6 +6527,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.19.0', date: '8. 7. 2026', tag: 'feat', items: [
+    'Vlastníci produktov: aktualizovaný zoznam (72 výrobkov) a stĺpce podľa novej tabuľky — NR, Druh, Výrobok, Popis, Product Owner, Backup Owner, Stav, TODO (odstránené Kategória a PO2). Dáta sa pri nasadení automaticky obnovia.',
+    'Server: čisté ukončenie pri redeployi (graceful shutdown na SIGTERM) — už nehlási „npm error signal SIGTERM" pri nasadzovaní.',
+  ] },
   { v: '2.18.0', date: '7. 7. 2026', tag: 'feat', items: [
     'Plánovanie výroby: predvolené zobrazenie je teraz „☰ Zoznam".',
     'Vlastníci produktov: štatistické okienka sú klikateľné — klik nastaví filter tabuľky (DONE/WIP/NOK/Bez vlastníka), opätovný klik zruší; aktívny filter je zvýraznený.',
@@ -8887,15 +8891,14 @@ function pownerStatusBadge(s) {
   if (m) return `<span class="pwo-badge ${m.cls}">${m.lbl}</span>`;
   return s ? `<span class="pwo-badge pwo-st-other">${escHtml(s)}</span>` : '';
 }
-function pownerCat(r) { return [r.cat1, r.cat2].filter(Boolean).join(' · '); }
-function pownerOwners(r) { return [r.owner, r.owner2].filter(Boolean); }
+function pownerOwners(r) { return [r.owner].filter(Boolean); }
 
 async function loadPowners() {
   try { pownersData = await fetch('/api/product-owners').then(r => r.json()); if (!Array.isArray(pownersData)) pownersData = []; }
   catch { pownersData = []; }
   // naplň filtre + datalisty
   const kinds = [...new Set(pownersData.map(r => r.kind).filter(Boolean))].sort();
-  const owners = [...new Set(pownersData.flatMap(r => [r.owner, r.owner2, r.backup]).filter(Boolean))].sort();
+  const owners = [...new Set(pownersData.flatMap(r => [r.owner, r.backup]).filter(Boolean))].sort();
   const fillSel = (id, vals, keep) => { const el = document.getElementById(id); if (!el) return; const cur = el.value; el.innerHTML = `<option value="">${keep}</option>` + vals.map(v => `<option value="${escHtml(v)}">${escHtml(v)}</option>`).join(''); el.value = cur; };
   fillSel('pownersKind', kinds, 'Všetky druhy');
   fillSel('pownersOwner', owners, 'Všetci vlastníci');
@@ -8914,23 +8917,21 @@ function renderPowners() {
   let list = pownersData.filter(r => {
     if (fk && r.kind !== fk) return false;
     if (fs && (r.status || '').toUpperCase() !== fs) return false;
-    if (fo && ![r.owner, r.owner2, r.backup].includes(fo)) return false;
+    if (fo && ![r.owner, r.backup].includes(fo)) return false;
     if (pownersNoOwner && pownerOwners(r).length) return false;
-    if (q) { const hay = [r.product, r.description, r.owner, r.owner2, r.backup, r.kind, r.cat1, r.cat2, r.todo].join(' ').toLowerCase(); if (!hay.includes(q)) return false; }
+    if (q) { const hay = [r.product, r.description, r.owner, r.backup, r.kind, r.todo].join(' ').toLowerCase(); if (!hay.includes(q)) return false; }
     return true;
   });
   renderPownerKpis();
   document.getElementById('pownersCount').textContent = `${list.length} / ${pownersData.length} záznamov`;
-  if (!list.length) { el.innerHTML = '<tr><td colspan="11" class="powners-empty">Žiadne záznamy. Skús <strong>📥 Import z Excelu</strong> alebo <strong>+ Nový záznam</strong>.</td></tr>'; return; }
+  if (!list.length) { el.innerHTML = '<tr><td colspan="9" class="powners-empty">Žiadne záznamy. Skús <strong>📥 Import z Excelu</strong> alebo <strong>+ Nový záznam</strong>.</td></tr>'; return; }
   el.innerHTML = list.map(r => `
     <tr onclick="openPowner('${r._id}')">
       <td class="pwo-nr">${r.nr ?? ''}</td>
       <td>${escHtml(r.kind || '')}</td>
-      <td class="pwo-dim">${escHtml(pownerCat(r))}</td>
       <td class="pwo-prod">${escHtml(r.product || '')}</td>
       <td class="pwo-desc">${escHtml(r.description || '')}</td>
       <td>${escHtml(r.owner || '')}</td>
-      <td class="pwo-dim">${escHtml(r.owner2 || '')}</td>
       <td class="pwo-dim">${escHtml(r.backup || '')}</td>
       <td>${pownerStatusBadge(r.status)}</td>
       <td class="pwo-todo" title="${escHtml(r.todo || '')}">${escHtml(r.todo || '')}</td>
@@ -8970,9 +8971,8 @@ function openPownerModal(r = null) {
   document.getElementById('pwoId').value = e ? r._id : '';
   const set = (id, v) => { document.getElementById(id).value = v ?? ''; };
   set('pwoNr', e ? r.nr : ''); set('pwoKind', e ? r.kind : ''); set('pwoStatus', e ? (r.status || '') : '');
-  set('pwoCat1', e ? r.cat1 : ''); set('pwoCat2', e ? r.cat2 : '');
   set('pwoProduct', e ? r.product : ''); set('pwoDesc', e ? r.description : '');
-  set('pwoOwner', e ? r.owner : ''); set('pwoOwner2', e ? r.owner2 : ''); set('pwoBackup', e ? r.backup : '');
+  set('pwoOwner', e ? r.owner : ''); set('pwoBackup', e ? r.backup : '');
   set('pwoTodo', e ? r.todo : ''); set('pwoNote', e ? r.note : '');
   document.getElementById('pwoDeleteBtn').style.display = e ? '' : 'none';
   renderPownerHistory(e ? r.history : []);
@@ -9000,9 +9000,9 @@ function renderPownerHistory(history) {
 async function savePowner() {
   const g = id => document.getElementById(id).value;
   const body = {
-    nr: g('pwoNr'), kind: g('pwoKind').trim(), cat1: g('pwoCat1').trim(), cat2: g('pwoCat2').trim(),
+    nr: g('pwoNr'), kind: g('pwoKind').trim(),
     product: g('pwoProduct').trim(), description: g('pwoDesc').trim(),
-    owner: g('pwoOwner').trim(), owner2: g('pwoOwner2').trim(), backup: g('pwoBackup').trim(),
+    owner: g('pwoOwner').trim(), backup: g('pwoBackup').trim(),
     status: g('pwoStatus'), todo: g('pwoTodo').trim(), note: g('pwoNote').trim()
   };
   if (!body.product && !body.description) { toast('Zadaj výrobok alebo popis.', 'error'); return; }

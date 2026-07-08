@@ -4,9 +4,9 @@ const ProductOwnerRecord = require('../models/ProductOwnerRecord');
 
 // Editovateľné polia + ich slovenské popisy (pre históriu zmien)
 const FIELDS = {
-  nr: 'NR', kind: 'Druh', cat1: 'Kategória 1', cat2: 'Kategória 2',
+  nr: 'NR', kind: 'Druh',
   product: 'Výrobok', description: 'Popis výrobku',
-  owner: 'Product Owner', owner2: 'Product Owner 2', backup: 'Backup Owner',
+  owner: 'Product Owner', backup: 'Backup Owner',
   status: 'Stav', todo: 'TODO', note: 'Poznámka'
 };
 
