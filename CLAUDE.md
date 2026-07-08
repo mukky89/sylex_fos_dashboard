@@ -3,9 +3,10 @@
 ## Deploy (DÔLEŽITÉ — robiť vždy automaticky)
 Po dokončení každej úlohy/funkcie **vždy automaticky nasadím do produkcie bez pýtania**:
 1. Zdvihnúť verziu v `package.json` (minor bump, napr. 1.32.0 → 1.33.0; pri väčšej zmene podľa uváženia). Verzia sa zobrazuje v hlavičke appky cez `/api/version`.
-2. Commit na vývojovú vetvu (`claude/...`) a push.
-3. Zlúčiť vývojovú vetvu do `master` (`git merge --no-ff`) a `git push origin master`.
-4. **Railway** automaticky nasadí z `master` (build 1–2 min).
+2. **Zapísať zmenu do changelogu (VŽDY):** pridať nový záznam navrch do poľa `CHANGELOG` v `public/js/app.js` (zobrazuje sa na stránke Changelog) **aj** do `CHANGELOG.md`.
+3. Commit na vývojovú vetvu (`claude/...`) a push.
+4. Zlúčiť vývojovú vetvu do `master` (`git merge --no-ff`) a `git push origin master`.
+5. **Railway** automaticky nasadí z `master` (build 1–2 min).
 Vrátiť sa späť na vývojovú vetvu a zosynchronizovať ju.
 
 > Používateľ udelil trvalý súhlas na auto-deploy do produkcie ("vždy to tak rob", 2026-06).
