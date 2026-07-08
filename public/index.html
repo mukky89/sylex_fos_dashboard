@@ -2272,8 +2272,12 @@
         </div>
       </div>
 
-      <div class="powners-kpis" id="pownersKpis"></div>
+      <section class="prod-section prod-kpis-section">
+        <div class="prod-section-hd">📊 Prehľad</div>
+        <div class="powners-kpis" id="pownersKpis"></div>
+      </section>
 
+      <section class="prod-section">
       <div class="powners-toolbar">
         <div class="proc-search-wrap" style="margin:0;max-width:280px">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -2294,6 +2298,7 @@
           <tbody id="pownersRows"></tbody>
         </table>
       </div>
+      </section>
     </div>
   </main>
 
@@ -2348,10 +2353,12 @@
         </div>
       </div>
 
+      <section class="prod-section">
       <div class="pwf-layout">
         <div class="pwf-list" id="pwfList"></div>
         <div class="pwf-detail" id="pwfDetail"></div>
       </div>
+      </section>
     </div>
   </main>
 
@@ -2584,9 +2591,13 @@
       </div>
 
       <!-- KPI -->
-      <div id="mfgKpis" class="prod-kpis"></div>
+      <section class="prod-section prod-kpis-section">
+        <div class="prod-section-hd">📊 Prehľad výroby</div>
+        <div id="mfgKpis" class="prod-kpis"></div>
+      </section>
 
       <!-- Dielenská tabuľa — živý stav pracovísk -->
+      <section class="prod-section">
       <div class="mfg-section-hdr">
         <h2 class="prod-lines-title">🏭 Dielenská tabuľa — živý stav pracovísk</h2>
         <div class="mfg-legend">
@@ -2598,9 +2609,11 @@
         </div>
       </div>
       <div id="mfgBoard" class="mfg-board"></div>
+      </section>
 
       <!-- Gantt: rozvrh operácií × pracoviská (technológie ↔ procesy) -->
-      <div class="mfg-section-hdr" style="margin-top:24px">
+      <section class="prod-section">
+      <div class="mfg-section-hdr">
         <h2 class="prod-lines-title">🗓️ Rozvrh výroby — operácie × pracoviská</h2>
         <div class="mfg-gantt-tools">
           <div class="tasks-viewtoggle">
@@ -2623,9 +2636,11 @@
       <div class="util-gantt-wrap"><div id="mfgGanttChart" class="util-gantt mfg-gantt"></div></div>
       <div id="mfgGanttLegend" class="mfg-gantt-legend"></div>
       <div id="mfgGanttUnsched" class="mfg-gantt-unsched"></div>
+      </section>
 
       <!-- Expedované zákazky a objednávky -->
-      <div class="mfg-section-hdr" style="margin-top:24px">
+      <section class="prod-section">
+      <div class="mfg-section-hdr">
         <h2 class="prod-lines-title">📦 Expedované zákazky a objednávky</h2>
         <div class="mfg-ship-tools">
           <span id="mfgShippedCount" class="mfg-ship-count"></span>
@@ -2636,6 +2651,7 @@
         </div>
       </div>
       <div id="mfgShippedList" class="mfg-shipped"></div>
+      </section>
 
       <!-- Spodný riadok: zmenové výkazy + prestoje -->
       <div class="mfg-grid">
@@ -2659,7 +2675,8 @@
       </div>
 
       <!-- Normované operácie / Technologické postupy -->
-      <div class="mfg-section-hdr" style="margin-top:26px">
+      <section class="prod-section">
+      <div class="mfg-section-hdr">
         <h2 class="prod-lines-title">📐 Normované operácie — technologické postupy</h2>
         <div class="mfg-legend" style="gap:8px">
           <button class="btn-secondary btn-sm" onclick="seedRoutingsData()" title="Načítať ukážkový postup z tabuľky Technológia">🎲 Ukážkový postup</button>
@@ -2670,6 +2687,7 @@
         <div class="mfg-rt-list" id="mfgRtList"></div>
         <div class="mfg-rt-detail" id="mfgRtDetail"></div>
       </div>
+      </section>
     </div>
   </main>
 
