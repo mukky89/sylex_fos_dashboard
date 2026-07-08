@@ -2409,6 +2409,14 @@
       <!-- Kalibračné listy k expedovaným výrobkom -->
       <div id="prodCalibPanel" class="prod-calib-panel"></div>
 
+      <!-- KPI — prehľad výroby (v samostatnom rámčeku, tesne nad zoznamom) -->
+      <section class="prod-section prod-kpis-section">
+        <div class="prod-section-hd">📊 Prehľad výroby</div>
+        <div id="prodKpis" class="prod-kpis"></div>
+      </section>
+
+      <!-- Zoznam / pohľady výroby (v samostatnom rámčeku) -->
+      <section class="prod-section prod-list-section">
       <div class="prod-toolbar">
         <div class="proc-search-wrap" style="margin:0;flex:1;max-width:340px">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -2421,9 +2429,6 @@
           <button class="tasks-view active" data-pview="list" onclick="setProdView('list')">☰ Zoznam</button>
         </div>
       </div>
-
-      <!-- KPI (presunuté nižšie, tesne nad zoznam) -->
-      <div id="prodKpis" class="prod-kpis"></div>
 
       <div id="prodKanban" class="kanban prod-kanban hidden"></div>
       <div id="prodList" class="prod-list hidden"></div>
@@ -2475,6 +2480,7 @@
           <span class="pg-leg-note">📄 = čaká na kalibračný list · ✅ = kalibračný list odoslaný · klikni na výrobok pre detail</span>
         </div>
       </div>
+      </section>
     </div>
   </main>
 
