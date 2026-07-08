@@ -1058,6 +1058,7 @@
           <div class="proc-edit-bar-actions">
             <button class="btn-sm" onclick="openDictation()" title="Hlasový diktát — nahrať a prepísať slovenský text">🎤 Diktovať</button>
             <button class="btn-sm" onclick="openProcedurePreview()" title="Náhľad">👁 Náhľad</button>
+            <button class="btn-sm" onclick="printProcedurePdf(collectProcedureForm())" title="Stiahnuť / vytlačiť ako PDF">⬇ PDF</button>
             <button class="btn-delete" id="prDeleteBtn" onclick="deleteProcedure(document.getElementById('prId').value)" style="display:none">🗑 Odstrániť</button>
             <button class="btn-primary" onclick="saveProcedure()">💾 Uložiť</button>
           </div>
@@ -2415,10 +2416,10 @@
           <input type="text" id="prodSearch" placeholder="Hľadať zákazku, produkt, zákazníka..." oninput="renderProd()" autocomplete="off">
         </div>
         <div class="tasks-viewtoggle">
-          <button class="tasks-view active" data-pview="gantt" onclick="setProdView('gantt')">📊 Gantt</button>
+          <button class="tasks-view" data-pview="gantt" onclick="setProdView('gantt')">📊 Gantt</button>
           <button class="tasks-view" data-pview="calendar" onclick="setProdView('calendar')">📅 Kalendár expedície</button>
           <button class="tasks-view" data-pview="kanban" onclick="setProdView('kanban')">▦ Kanban</button>
-          <button class="tasks-view" data-pview="list" onclick="setProdView('list')">☰ Zoznam</button>
+          <button class="tasks-view active" data-pview="list" onclick="setProdView('list')">☰ Zoznam</button>
         </div>
       </div>
 

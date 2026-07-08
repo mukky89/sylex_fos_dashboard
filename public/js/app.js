@@ -3916,6 +3916,12 @@ function makePreviewInteractive() {
     const card = cards[i]; if (!card) return;
     const sid = card.dataset.sid; stepEl.dataset.sid = sid;
 
+    // Klik na operáciu v náhľade → sfokusuj a odscroluj príslušnú kartu v editore vľavo
+    if (!stepEl.dataset.linkwired) {
+      stepEl.dataset.linkwired = '1';
+      stepEl.addEventListener('mousedown', () => focusEditorCard(card));
+    }
+
     const tx = stepEl.querySelector('.pdv-step-text');
     if (tx && !tx.dataset.wired) {
       tx.dataset.wired = '1'; tx.setAttribute('contenteditable', 'true'); tx.classList.add('pdv-editable');
@@ -3946,6 +3952,17 @@ function makePreviewInteractive() {
   });
 
   setupStepDrag(paper);
+}
+
+// Zvýrazni a odscroluj kartu operácie v editore (prepojenie náhľad → editor)
+let _cardFocusTimer = null;
+function focusEditorCard(card) {
+  if (!card) return;
+  document.querySelectorAll('#prStepsRows .proc-step-card.card-focus').forEach(c => c.classList.remove('card-focus'));
+  card.classList.add('card-focus');
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  clearTimeout(_cardFocusTimer);
+  _cardFocusTimer = setTimeout(() => card.classList.remove('card-focus'), 2000);
 }
 
 function cycleStepImagePos(card) {
@@ -6510,6 +6527,12 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.18.0', date: '7. 7. 2026', tag: 'feat', items: [
+    'Plánovanie výroby: predvolené zobrazenie je teraz „☰ Zoznam".',
+    'Vlastníci produktov: štatistické okienka sú klikateľné — klik nastaví filter tabuľky (DONE/WIP/NOK/Bez vlastníka), opätovný klik zruší; aktívny filter je zvýraznený.',
+    'Pracovný postup: v editore pribudlo tlačidlo „⬇ PDF" (aj „🗑 Odstrániť" pri úprave). Klik na operáciu v náhľade (vpravo) sfokusuje a odscroluje príslušnú kartu v editore (vľavo).',
+    'Pracovný postup: upozornenia a OOPP majú kompaktnejší „pill" dizajn s výraznejším piktogramom (menej miesta, lepšia čitateľnosť).',
+  ] },
   { v: '2.17.2', date: '7. 7. 2026', tag: 'fix', items: [
     'Anotácie obrázka: bublina sa už neláme po písmenách a proporčne sa škáluje s veľkosťou zobrazenia obrázka (rovnaký vzhľad v editore, náhľade aj vo výslednom postupe). Veľkosť písma je teraz relatívna k šírke obrázka.',
   ] },
@@ -7609,7 +7632,7 @@ async function deleteEquipment(id) {
 //  PLÁNOVANIE VÝROBY — výrobné zákazky (Kanban + zoznam + KPI + vyťaženie liniek)
 // ══════════════════════════════════════════════════════════════════════════════
 let prodData = [];
-let prodView = 'gantt';
+let prodView = 'list';
 let _dragProdId = null;
 let prodExpanded = new Set();   // rozbalené objednávky vo vnorenom zozname (kľúč = encodeURIComponent(salesOrder))
 const PROD_STAGES = [
@@ -8853,6 +8876,7 @@ async function seedPwfData() {
 //  VLASTNÍCI PRODUKTOV (Product Owners) — editovateľný zoznam + história zmien
 // ══════════════════════════════════════════════════════════════════════════════
 let pownersData = [];
+let pownersNoOwner = false;   // filter „bez vlastníka" (cez klik na štatistiku)
 const PWO_STATUS = {
   NOK:  { lbl: 'NOK',  cls: 'pwo-st-nok' },
   WIP:  { lbl: 'WIP',  cls: 'pwo-st-wip' },
@@ -8891,6 +8915,7 @@ function renderPowners() {
     if (fk && r.kind !== fk) return false;
     if (fs && (r.status || '').toUpperCase() !== fs) return false;
     if (fo && ![r.owner, r.owner2, r.backup].includes(fo)) return false;
+    if (pownersNoOwner && pownerOwners(r).length) return false;
     if (q) { const hay = [r.product, r.description, r.owner, r.owner2, r.backup, r.kind, r.cat1, r.cat2, r.todo].join(' ').toLowerCase(); if (!hay.includes(q)) return false; }
     return true;
   });
@@ -8918,12 +8943,23 @@ function renderPownerKpis() {
   const total = pownersData.length;
   const by = s => pownersData.filter(r => (r.status || '').toUpperCase() === s).length;
   const noOwner = pownersData.filter(r => !pownerOwners(r).length).length;
+  const fs = document.getElementById('pownersStatus')?.value || '';
+  const allActive = !fs && !pownersNoOwner;
+  const act = c => c ? ' active' : '';
   el.innerHTML = `
-    <div class="powners-kpi"><span class="pk-num">${total}</span><span class="pk-lbl">Produktov</span></div>
-    <div class="powners-kpi pk-done"><span class="pk-num">${by('DONE')}</span><span class="pk-lbl">DONE</span></div>
-    <div class="powners-kpi pk-wip"><span class="pk-num">${by('WIP')}</span><span class="pk-lbl">WIP</span></div>
-    <div class="powners-kpi pk-nok"><span class="pk-num">${by('NOK')}</span><span class="pk-lbl">NOK</span></div>
-    <div class="powners-kpi pk-warn"><span class="pk-num">${noOwner}</span><span class="pk-lbl">Bez vlastníka</span></div>`;
+    <button class="powners-kpi${act(allActive)}" onclick="pownerKpiClick('all')"><span class="pk-num">${total}</span><span class="pk-lbl">Produktov</span></button>
+    <button class="powners-kpi pk-done${act(fs === 'DONE')}" onclick="pownerKpiClick('DONE')"><span class="pk-num">${by('DONE')}</span><span class="pk-lbl">DONE</span></button>
+    <button class="powners-kpi pk-wip${act(fs === 'WIP')}" onclick="pownerKpiClick('WIP')"><span class="pk-num">${by('WIP')}</span><span class="pk-lbl">WIP</span></button>
+    <button class="powners-kpi pk-nok${act(fs === 'NOK')}" onclick="pownerKpiClick('NOK')"><span class="pk-num">${by('NOK')}</span><span class="pk-lbl">NOK</span></button>
+    <button class="powners-kpi pk-warn${act(pownersNoOwner)}" onclick="pownerKpiClick('noowner')"><span class="pk-num">${noOwner}</span><span class="pk-lbl">Bez vlastníka</span></button>`;
+}
+// Klik na štatistiku → nastaví filter tabuľky (toggle)
+function pownerKpiClick(kind) {
+  const st = document.getElementById('pownersStatus');
+  if (kind === 'all') { pownersNoOwner = false; if (st) st.value = ''; }
+  else if (kind === 'noowner') { pownersNoOwner = !pownersNoOwner; if (st) st.value = ''; }
+  else { pownersNoOwner = false; if (st) st.value = (st.value === kind ? '' : kind); }
+  renderPowners();
 }
 
 function openPowner(id) { const r = pownersData.find(x => x._id === id); if (r) openPownerModal(r); }
