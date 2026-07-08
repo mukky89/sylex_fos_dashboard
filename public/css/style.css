@@ -4138,6 +4138,23 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .prod-calib-panel { margin-bottom: 18px; }
 .prod-calib-hd { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.95rem; font-weight: 800; color: var(--dz-blue); margin-bottom: 8px; }
 .prod-calib-toggle { display: inline-flex; gap: 4px; margin-left: auto; }
+/* Štatistiky ku kalibračným listom — fungujú ako filtre podľa stavu */
+.prod-calib-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.pc-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; background: rgba(var(--dz-fg-rgb),0.05); border: 1px solid rgba(var(--dz-fg-rgb),0.14); border-radius: 12px; padding: 12px 14px; cursor: pointer; transition: background .12s, border-color .12s; }
+.pc-stat:hover { background: rgba(var(--dz-fg-rgb),0.1); }
+.pc-stat-num { font-size: 1.5rem; font-weight: 800; line-height: 1; color: var(--dz-text); }
+.pc-stat-lbl { font-size: 0.74rem; font-weight: 600; color: var(--dz-text2); }
+.pc-stat.active { background: rgba(59,130,246,0.16); border-color: rgba(59,130,246,0.5); }
+.pc-stat.bad .pc-stat-num { color: var(--dz-amber); }
+.pc-stat.bad.active { background: rgba(245,158,11,0.16); border-color: rgba(245,158,11,0.5); }
+.pc-stat.ok .pc-stat-num { color: var(--dz-green); }
+.pc-stat.ok.active { background: rgba(16,185,129,0.16); border-color: rgba(16,185,129,0.5); }
+/* Denná navigácia kalibračných listov */
+.prod-calib-daybar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.prod-calib-daylbl { font-size: 0.86rem; font-weight: 700; color: var(--dz-text); text-transform: capitalize; margin-left: 4px; }
+.prod-calib-daybar .prod-calib-toggle { margin-left: auto; }
+.prod-calib-daybar .cal-nav-btn[disabled] { opacity: 0.4; cursor: default; }
+@media (max-width: 640px) { .prod-calib-stats { grid-template-columns: 1fr; } }
 .pc-filter { background: rgba(var(--dz-fg-rgb),0.05); border: 1px solid rgba(var(--dz-fg-rgb),0.14); color: var(--dz-text2); border-radius: 8px; padding: 5px 11px; font-size: 0.74rem; font-weight: 600; cursor: pointer; }
 .pc-filter:hover { background: rgba(var(--dz-fg-rgb),0.1); }
 .pc-filter.active { background: rgba(59,130,246,0.2); border-color: rgba(59,130,246,0.5); color: #bfdbfe; }
