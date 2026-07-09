@@ -8,6 +8,15 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.26.0] — 2026-07-09
+### Údržba
+- Nainštalované **UI/UX Pro Max skills** ([ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill))
+  do `.claude/skills/` — dizajnová inteligencia pre vývoj (50+ UI štýlov,
+  161 farebných paliet, 73 párovaní fontov, 99 UX pravidiel, 25 typov grafov).
+- `.gitignore` upravený tak, aby sa `.claude/skills/` verzoval (zvyšok `.claude/`
+  ostáva ignorovaný); pokyn na používanie skillu pridaný do `CLAUDE.md`.
+- Zmena sa netýka behu appky — ide o nástroje pre vývoj.
+
 ## [2.25.0] — 2026-07-08
 ### Údržba
 - Changelog sa teraz vedie aj v súbore `CHANGELOG.md` (okrem stránky Changelog

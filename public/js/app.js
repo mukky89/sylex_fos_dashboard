@@ -6542,6 +6542,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.26.0', date: '9. 7. 2026', tag: 'chore', items: [
+    'Nainštalované UI/UX Pro Max skills (dizajnová inteligencia pre vývoj — 50+ UI štýlov, 161 farebných paliet, typografia, UX pravidlá, grafy). Budúce úpravy vzhľadu appky sa budú opierať o tieto odporúčania.',
+  ] },
   { v: '2.25.0', date: '8. 7. 2026', tag: 'chore', items: [
     'Changelog sa teraz vedie aj v súbore `CHANGELOG.md` (okrem stránky Changelog v appke) a jeho zápis je povinný krok pri každom nasadení.',
     'Doplnené chýbajúce záznamy verzií 2.21–2.24 (denný filter a štatistiky kalibračných listov, presun KPI, rámčekovanie sekcií výrobných stránok).',

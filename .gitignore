@@ -4,8 +4,10 @@ uploads/
 *.log
 .DS_Store
 Thumbs.db
-.claude/
+.claude/*
+!.claude/skills/
 
 # Audit výstupy
 sylex-audit.json
 sylex-audit.md
+__pycache__/
