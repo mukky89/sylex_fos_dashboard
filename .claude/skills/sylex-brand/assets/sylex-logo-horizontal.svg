@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 160" fill="none" role="img" aria-label="SYLEX FIBER OPTICS">
+  <!-- Horizontálne logo: emblém + „sylex" + deliaca čiara + „FIBER OPTICS".
+       Wordmark je aproximácia — pre tlač nahraď vendorovým vektorom. -->
+  <g stroke="#E2001A" stroke-width="15" stroke-linejoin="miter" stroke-miterlimit="10" stroke-linecap="butt">
+    <path d="M20 120 L68 24 L116 120"/>
+    <path d="M20 120 H52"/>
+    <path d="M116 120 H84"/>
+  </g>
+  <text x="142" y="116" fill="#E2001A"
+        font-family="'Arial Rounded MT Bold','Segoe UI',Arial,sans-serif"
+        font-weight="800" font-size="92" letter-spacing="-2">sylex</text>
+  <text x="378" y="72" fill="#E2001A" font-family="Arial,sans-serif" font-weight="700" font-size="15">®</text>
+  <line x1="410" y1="42" x2="410" y2="126" stroke="#E2001A" stroke-width="3"/>
+  <text x="432" y="108" fill="#E2001A" font-family="'Segoe UI',Arial,sans-serif"
+        font-weight="400" font-size="46" letter-spacing="3">FIBER OPTICS</text>
+</svg>

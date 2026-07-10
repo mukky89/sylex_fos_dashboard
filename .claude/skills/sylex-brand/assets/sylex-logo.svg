@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 300" fill="none" role="img" aria-label="SYLEX">
+  <!-- Primárne logo (stacked): emblém + wordmark „sylex". Wordmark je aproximácia
+       geometrickým fontom — pre tlač/oficiálne použitie nahraď vendorovým vektorom. -->
+  <g stroke="#E2001A" stroke-width="20" stroke-linejoin="miter" stroke-miterlimit="10" stroke-linecap="butt">
+    <path d="M54 168 L130 20 L206 168"/>
+    <path d="M54 168 H102"/>
+    <path d="M206 168 H158"/>
+  </g>
+  <text x="130" y="258" text-anchor="middle" fill="#E2001A"
+        font-family="'Arial Rounded MT Bold','Segoe UI',Arial,sans-serif"
+        font-weight="800" font-size="96" letter-spacing="-2">sylex</text>
+  <text x="238" y="205" fill="#E2001A" font-family="Arial,sans-serif" font-weight="700" font-size="20">®</text>
+</svg>

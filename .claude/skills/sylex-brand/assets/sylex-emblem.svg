@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 208" fill="none" role="img" aria-label="SYLEX">
+  <!-- Trojuholníkový emblém SYLEX: otvorená základňa, ostrý vrchol.
+       Rekonštrukcia geometrie z oficiálneho loga. Farba = brand red. -->
+  <g stroke="#E2001A" stroke-width="23" stroke-linejoin="miter" stroke-miterlimit="10" stroke-linecap="butt">
+    <path d="M33 184 L120 16 L207 184"/>
+    <path d="M33 184 H88"/>
+    <path d="M207 184 H152"/>
+  </g>
+</svg>
