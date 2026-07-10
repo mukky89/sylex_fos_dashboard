@@ -8,6 +8,15 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.28.0] — 2026-07-10
+### Údržba
+- Pridaný skill **sylex-brand** (`.claude/skills/sylex-brand/`) — oficiálny SYLEX
+  brand kit: SVG logá (červený trojuholníkový emblém, primárne stacked logo,
+  horizontálne „sylex® | FIBER OPTICS"), brand paleta (červená `#E2001A`),
+  pravidlá kontrastu, ochrannej zóny, typografie a CSS tokeny.
+- Skill je **on-demand** — aplikuje sa iba keď o použitie loga/brandu výslovne
+  požiadaš, nikdy nie automaticky pri bežnej UI práci (viď `CLAUDE.md`).
+
 ## [2.27.0] — 2026-07-10
 ### Pridané
 - **File server** — nový modul na zdieľanie súborov pre zákazníkov:

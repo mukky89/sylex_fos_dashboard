@@ -6544,6 +6544,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.28.0', date: '10. 7. 2026', tag: 'chore', items: [
+    'Pridaný skill <strong>sylex-brand</strong> — oficiálny SYLEX brand kit (červený emblém, wordmark „sylex®", varianta „FIBER OPTICS", brand paleta a pravidlá) v <code>.claude/skills/</code>. Aplikuje sa iba na výslovné vyžiadanie, nie automaticky.',
+  ] },
   { v: '2.27.0', date: '10. 7. 2026', tag: 'feat', items: [
     'Nový modul <strong>File server</strong> — zdieľanie súborov pre zákazníkov. Každé zdieľanie má vlastný odkaz /s/… chránený automaticky vygenerovaným heslom (zobrazí sa iba raz pri vytvorení).',
     'Zákaznícka stránka na stiahnutie súborov v modernom SYLEX dizajne (navy + limetka, optické vlákna v pozadí) — funguje bez prihlásenia, stačí odkaz a heslo.',
