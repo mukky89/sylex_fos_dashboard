@@ -253,6 +253,9 @@ function startSensorPolling() {
 // ── Auth (verejné) ────────────────────────────────────────────────────────────
 app.use('/api/auth', require('./routes/auth'));
 
+// ── File server: verejné zákaznícke API (heslom chránené zdieľania) ──────────
+app.use('/api/share', require('./routes/sharePublic'));
+
 // Version / health endpoint (verejné)
 app.get('/api/version', (req, res) => {
   res.json({
@@ -270,7 +273,7 @@ app.get('/api/version', (req, res) => {
 // ── Guard: všetko ostatné pod /api vyžaduje prihlásenie ───────────────────────
 const { requireAuth } = require('./middleware/auth');
 app.use('/api', (req, res, next) => {
-  if (req.path === '/version' || req.path.startsWith('/auth') || req.path === '/calendar/feed.ics' || req.path === '/calendar/public') return next();
+  if (req.path === '/version' || req.path.startsWith('/auth') || req.path.startsWith('/share/') || req.path === '/calendar/feed.ics' || req.path === '/calendar/public') return next();
   return requireAuth(req, res, next);
 });
 
@@ -305,6 +308,7 @@ app.use('/api/photos', require('./routes/photos'));
 app.use('/api/github', require('./routes/github'));
 app.use('/api/remote', require('./routes/remote'));
 app.use('/api/admin', require('./routes/admin')(sensorCfg));
+app.use('/api/fileshare', require('./routes/fileshare'));
 
 // Credentials endpoint (internal use only)
 app.get('/api/credentials/peaklogger', (req, res) => {
@@ -363,6 +367,11 @@ app.post('/api/upload/audio', (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Žiadny zvukový súbor' });
     return res.json({ url: `/uploads/${req.file.filename}` });
   });
+});
+
+// File server: verejná zákaznícka stránka zdieľania (/s/<token>)
+app.get('/s/:token', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'share.html'));
 });
 
 // Catch-all: serve SPA (only for non-API routes)

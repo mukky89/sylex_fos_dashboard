@@ -11,3 +11,6 @@ Thumbs.db
 sylex-audit.json
 sylex-audit.md
 __pycache__/
+
+# File server — nahrané súbory zdieľaní
+sharefiles/

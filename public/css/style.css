@@ -5217,9 +5217,9 @@ select option, select optgroup { background-color: #131c33; color: var(--dz-text
 /* ══════════════════════════════════════════════════════════════════════════
    FOTKY Z VÝROBY — galéria (tmavá stránka ako ostatné moduly)
    ══════════════════════════════════════════════════════════════════════════ */
-.photos-page, .github-page, .remote-page { background: var(--hdr-bg); }
+.photos-page, .github-page, .remote-page, .fileserver-page { background: var(--hdr-bg); }
 /* Tmavé stránky — pomocné texty musia mať explicitnú svetlú farbu */
-.photos-page .hint, .github-page .hint, .remote-page .hint { color: var(--dz-text2); font-size: 0.8rem; }
+.photos-page .hint, .github-page .hint, .remote-page .hint, .fileserver-page .hint { color: var(--dz-text2); font-size: 0.8rem; }
 .remote-page .hint code { background: rgba(var(--dz-fg-rgb),0.08); color: var(--dz-text2); border-radius: 4px; padding: 1px 5px; }
 
 .ph-cats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
@@ -5825,3 +5825,51 @@ body.theme-light .prod-sub, body.theme-warm .prod-sub { color: #64748b; }
 }
 .cal-feed-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: calFeedPulse 1s ease-in-out infinite; }
 @keyframes calFeedPulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: 0.4; } }
+
+/* ═══════════════ FILE SERVER — zdieľanie súborov pre zákazníkov ═══════════════ */
+.fs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.fs-card {
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px;
+  padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 11px;
+  box-shadow: var(--shadow-sm); transition: box-shadow .18s, transform .18s;
+}
+.fs-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.fs-card-off { opacity: .72; }
+.fs-card-title { display: flex; align-items: center; gap: 10px; }
+.fs-card-title h3 { margin: 0; font-size: 1rem; color: var(--text-bright); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.fs-badge { flex: none; font-size: .68rem; font-weight: 700; letter-spacing: .04em; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; }
+.fs-badge-on  { background: #e8f4d4; color: #4d6607; }
+.fs-badge-off { background: #fee2e2; color: #b91c1c; }
+.fs-note { margin: 5px 0 0; font-size: .8rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fs-link-row { display: flex; gap: 6px; }
+.fs-link-row input {
+  flex: 1; min-width: 0; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--page-bg); color: var(--accent2); font-size: .78rem; font-family: 'Consolas', monospace; cursor: copy;
+}
+.fs-btn-sm { padding: 6px 10px !important; font-size: .78rem !important; display: inline-flex; align-items: center; gap: 5px; }
+.fs-stats { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .76rem; color: var(--text-dim); }
+.fs-files { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow-y: auto; }
+.fs-file { display: flex; align-items: center; gap: 8px; padding: 6px 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--page-bg); }
+.fs-file-name { flex: 1; min-width: 0; font-size: .8rem; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fs-file-meta { flex: none; font-size: .72rem; color: var(--text-xdim); }
+.fs-file-del { flex: none; border: none; background: none; color: var(--text-xdim); cursor: pointer; font-size: .8rem; padding: 2px 5px; border-radius: 5px; }
+.fs-file-del:hover { color: #dc2626; background: #fee2e2; }
+.fs-nofiles { font-size: .78rem; color: var(--text-xdim); font-style: italic; padding: 4px 2px; }
+.fs-drop {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  padding: 11px 12px; border: 1.5px dashed var(--border); border-radius: 10px;
+  color: var(--text-dim); font-size: .78rem; cursor: pointer; text-align: center;
+  transition: border-color .16s, background .16s, color .16s;
+}
+.fs-drop:hover, .fs-drop.drag { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+.fs-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.fs-actions .btn-delete { margin-left: auto; }
+.fs-empty { grid-column: 1 / -1; text-align: center; color: var(--text-dim); padding: 46px 10px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.fs-empty svg { opacity: .5; }
+/* Modal s prístupmi */
+.fs-cred-row { display: flex; gap: 6px; align-items: flex-start; }
+.fs-cred-row input, .fs-cred-row textarea {
+  flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--page-bg); color: var(--text); font-size: .82rem; font-family: 'Consolas', monospace; resize: vertical;
+}
+.fs-cred-pass { font-size: 1.02rem !important; font-weight: 700; letter-spacing: .1em; color: #4d6607 !important; background: #f3f9e4 !important; border-color: #cfe39a !important; }

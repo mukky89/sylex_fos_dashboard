@@ -8,6 +8,23 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.27.0] — 2026-07-10
+### Pridané
+- **File server** — nový modul na zdieľanie súborov pre zákazníkov:
+  - každé zdieľanie má vlastný odkaz `/s/<token>` chránený **automaticky
+    vygenerovaným heslom** (bcrypt hash; plaintext sa zobrazí iba raz pri
+    vytvorení / obnove hesla);
+  - **zákaznícka stránka** v modernom SYLEX dizajne (navy `#1a1a2e` + limetka
+    `#97bf0d`, animované optické vlákna, glass karta) — beží bez prihlásenia,
+    po odomknutí heslom zobrazí zoznam súborov so sťahovaním;
+  - správa v dashboarde (stránka **File server**): upload viacerých súborov
+    naraz (drag & drop, max 500 MB/súbor), kopírovanie odkazu/hesla/hotovej
+    správy pre zákazníka, voliteľná expirácia, vypnutie linku, regenerácia
+    hesla, štatistiky odomknutí a stiahnutí;
+  - backend: model `FileShare`, chránené API `/api/fileshare`, verejné API
+    `/api/share/*` (unlock → krátkodobý share-token JWT), súbory uložené mimo
+    `public/` a servírované len cez overený download endpoint.
+
 ## [2.26.0] — 2026-07-09
 ### Údržba
 - Nainštalované **UI/UX Pro Max skills** ([ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill))
