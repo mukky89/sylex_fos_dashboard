@@ -825,6 +825,7 @@ async function handleHash(hash) {
   if (hash === 'photos')  { _activatePage('photos');  loadPhotos(); return; }
   if (hash === 'github')  { _activatePage('github');  loadGithub(); return; }
   if (hash === 'remote')  { _activatePage('remote');  loadRemote(); return; }
+  if (hash === 'fileserver') { _activatePage('fileserver'); loadFileShares(); return; }
   if (hash === 'admin')   { _activatePage('admin');   switchAdminTab('links'); return; }
   if (hash === 'changelog') { _activatePage('changelog'); renderChangelog(); return; }
   if (hash === 'wiki') { _activatePage('wiki'); await loadWiki(); return; }
@@ -868,6 +869,7 @@ function showPage(name) {
   if (name === 'photos')  loadPhotos();
   if (name === 'github')  loadGithub();
   if (name === 'remote')  loadRemote();
+  if (name === 'fileserver') loadFileShares();
   if (name === 'admin')   switchAdminTab('links');
   if (name === 'changelog') renderChangelog();
   if (name === 'bb')      loadBb();
@@ -6542,6 +6544,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.27.0', date: '10. 7. 2026', tag: 'feat', items: [
+    'Nový modul <strong>File server</strong> — zdieľanie súborov pre zákazníkov. Každé zdieľanie má vlastný odkaz /s/… chránený automaticky vygenerovaným heslom (zobrazí sa iba raz pri vytvorení).',
+    'Zákaznícka stránka na stiahnutie súborov v modernom SYLEX dizajne (navy + limetka, optické vlákna v pozadí) — funguje bez prihlásenia, stačí odkaz a heslo.',
+    'Správa zdieľaní v dashboarde: upload viacerých súborov naraz (drag &amp; drop, max 500 MB/súbor), kopírovanie odkazu a hotovej správy pre zákazníka, expirácia, vypnutie linku, nové heslo, štatistiky odomknutí a stiahnutí.',
+  ] },
   { v: '2.26.0', date: '9. 7. 2026', tag: 'chore', items: [
     'Nainštalované UI/UX Pro Max skills (dizajnová inteligencia pre vývoj — 50+ UI štýlov, 161 farebných paliet, typografia, UX pravidlá, grafy). Budúce úpravy vzhľadu appky sa budú opierať o tieto odporúčania.',
   ] },
@@ -12191,6 +12198,214 @@ async function annSave() {
 // Otvor editor nad existujúcim obrázkom v zozname (datasheety/prototypy) a nahraď URL
 async function reAnnotateDsImage(i) { if (!dsImagesData[i]) return; const url = await openImageAnnotator(dsImagesData[i].url); if (url) { dsImagesData[i].url = url; renderDsImages(); } }
 async function reAnnotatePtImage(i) { if (!ptImagesData[i]) return; const url = await openImageAnnotator(ptImagesData[i].url); if (url) { ptImagesData[i].url = url; renderPtImages(); } }
+
+// ==============================
+// FILE SERVER — zdieľanie súborov pre zákazníkov
+// ==============================
+let FS_SHARES = [];
+
+function fsFmtSize(b) {
+  if (!b) return '0 B';
+  const u = ['B', 'kB', 'MB', 'GB']; let i = 0;
+  while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+  return (i === 0 ? b : b.toFixed(1)) + ' ' + u[i];
+}
+function fsLinkOf(s) { return location.origin + '/s/' + s.token; }
+
+async function loadFileShares() {
+  try {
+    const r = await fetch('/api/fileshare');
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+    FS_SHARES = await r.json();
+  } catch (e) { FS_SHARES = []; toast('Nepodarilo sa načítať zdieľania: ' + e.message, 'error'); }
+  renderFileShares();
+}
+
+function fsIsExpired(s) { return s.expiresAt && new Date(s.expiresAt) < new Date(); }
+
+function renderFileShares() {
+  const wrap = document.getElementById('fsList');
+  if (!wrap) return;
+  const q = (document.getElementById('fsSearch')?.value || '').toLowerCase().trim();
+  let list = FS_SHARES;
+  if (q) list = list.filter(s => (s.name + ' ' + (s.note || '') + ' ' + s.token).toLowerCase().includes(q));
+  if (!list.length) {
+    wrap.innerHTML = `<div class="fs-empty">
+      <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><polyline points="8 17 12 13 16 17"/><line x1="12" y1="13" x2="12" y2="21"/></svg>
+      <p>${q ? 'Žiadne zdieľanie nezodpovedá hľadaniu.' : 'Zatiaľ žiadne zdieľania. Vytvor prvé cez „+ Nové zdieľanie".'}</p>
+    </div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(s => {
+    const expired = fsIsExpired(s);
+    const state = expired ? ['fs-badge-off', 'Expirované'] : (s.active ? ['fs-badge-on', 'Aktívne'] : ['fs-badge-off', 'Vypnuté']);
+    const totalSize = (s.files || []).reduce((a, f) => a + (f.size || 0), 0);
+    const filesHtml = (s.files || []).length ? s.files.map(f => `
+      <div class="fs-file">
+        <span class="fs-file-name" title="${escHtml(f.originalName)}">${escHtml(f.originalName)}</span>
+        <span class="fs-file-meta">${fsFmtSize(f.size)}${f.downloads ? ` · ⬇ ${f.downloads}×` : ''}</span>
+        <button class="fs-file-del" title="Zmazať súbor" onclick="fsDeleteFile('${s._id}','${f._id}')">✕</button>
+      </div>`).join('') : '<div class="fs-nofiles">Zatiaľ žiadne súbory</div>';
+    return `
+    <div class="fs-card${expired || !s.active ? ' fs-card-off' : ''}">
+      <div class="fs-card-head">
+        <div class="fs-card-title">
+          <h3 title="${escHtml(s.name)}">${escHtml(s.name)}</h3>
+          <span class="fs-badge ${state[0]}">${state[1]}</span>
+        </div>
+        ${s.note ? `<p class="fs-note" title="Interná poznámka">${escHtml(s.note)}</p>` : ''}
+      </div>
+      <div class="fs-link-row">
+        <input type="text" readonly value="${escHtml(fsLinkOf(s))}" onclick="this.select()" title="Odkaz pre zákazníka">
+        <button class="btn-secondary fs-btn-sm" onclick="fsCopy(fsLinkOf(FS_SHARES.find(x=>x._id==='${s._id}')), 'Odkaz skopírovaný')" title="Kopírovať odkaz">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+        <a class="btn-secondary fs-btn-sm" href="/s/${s.token}" target="_blank" rel="noopener" title="Otvoriť zákaznícku stránku">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
+      <div class="fs-stats">
+        <span title="Počet súborov">${(s.files || []).length} súb. · ${fsFmtSize(totalSize)}</span>
+        <span title="Počet odomknutí zákazníkom">👁 ${s.views || 0}×</span>
+        <span title="Počet stiahnutí">⬇ ${s.downloads || 0}×</span>
+        ${s.expiresAt ? `<span title="Platnosť do">⏳ ${new Date(s.expiresAt).toLocaleDateString('sk-SK')}</span>` : ''}
+      </div>
+      <div class="fs-files">${filesHtml}</div>
+      <div class="fs-drop" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')"
+           ondrop="event.preventDefault();this.classList.remove('drag');fsUpload('${s._id}', event.dataTransfer.files)"
+           onclick="fsPickFiles('${s._id}')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><polyline points="8 17 12 13 16 17"/><line x1="12" y1="13" x2="12" y2="21"/></svg>
+        <span>Pretiahni súbory sem alebo klikni (max 500 MB / súbor)</span>
+      </div>
+      <div class="fs-actions">
+        <button class="btn-secondary fs-btn-sm" onclick="openFsModal('${s._id}')">Upraviť</button>
+        <button class="btn-secondary fs-btn-sm" onclick="fsRegenPass('${s._id}')" title="Vygeneruje nové heslo — staré prestane platiť">Nové heslo</button>
+        <button class="btn-secondary fs-btn-sm" onclick="fsToggleActive('${s._id}')">${s.active ? 'Vypnúť' : 'Aktivovať'}</button>
+        <button class="btn-delete fs-btn-sm" onclick="fsDeleteShare('${s._id}')">Zmazať</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openFsModal(id) {
+  const s = id ? FS_SHARES.find(x => x._id === id) : null;
+  document.getElementById('fsModalTitle').textContent = s ? 'Upraviť zdieľanie' : 'Nové zdieľanie';
+  document.getElementById('fsId').value = s ? s._id : '';
+  document.getElementById('fsName').value = s ? s.name : '';
+  document.getElementById('fsNote').value = s ? (s.note || '') : '';
+  document.getElementById('fsExpires').value = s && s.expiresAt ? new Date(s.expiresAt).toISOString().slice(0, 10) : '';
+  document.getElementById('fsModal').classList.remove('hidden');
+  modalSnapshot('fsModal');
+  setTimeout(() => document.getElementById('fsName').focus(), 60);
+}
+function closeFsModal() { modalGuardClose('fsModal'); }
+
+async function saveFsShare() {
+  const id = document.getElementById('fsId').value;
+  const body = {
+    name: document.getElementById('fsName').value.trim(),
+    note: document.getElementById('fsNote').value.trim(),
+    expiresAt: document.getElementById('fsExpires').value || null
+  };
+  if (!body.name) { toast('Zadaj názov zdieľania', 'warn'); return; }
+  try {
+    const r = await fetch('/api/fileshare' + (id ? '/' + id : ''), {
+      method: id ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    modalSnapshot('fsModal'); // uložené — zavrieť bez strážneho dialógu
+    document.getElementById('fsModal').classList.add('hidden');
+    await loadFileShares();
+    if (!id && d.password) fsShowCreds(d.share, d.password);
+    else toast('Zdieľanie uložené', 'success');
+  } catch (e) { toast('Chyba pri ukladaní: ' + e.message, 'error'); }
+}
+
+function fsShowCreds(share, password) {
+  const link = fsLinkOf(share);
+  document.getElementById('fsCredLink').value = link;
+  document.getElementById('fsCredPass').value = password;
+  document.getElementById('fsCredMsg').value =
+    `Dobrý deň,\n\npripravili sme pre vás súbory na stiahnutie:\n${link}\nPrístupové heslo: ${password}\n\nS pozdravom\nSYLEX s.r.o.`;
+  document.getElementById('fsCredOpen').href = link;
+  document.getElementById('fsCredsModal').classList.remove('hidden');
+}
+
+async function fsCopy(text, msg) {
+  try { await navigator.clipboard.writeText(text); toast(msg || 'Skopírované', 'success'); }
+  catch {
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); ta.remove(); toast(msg || 'Skopírované', 'success');
+  }
+}
+
+async function fsRegenPass(id) {
+  if (!await uiConfirm('Vygenerovať nové heslo? Staré heslo okamžite prestane platiť.')) return;
+  try {
+    const r = await fetch(`/api/fileshare/${id}/password`, { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    fsShowCreds(d.share, d.password);
+  } catch (e) { toast('Chyba: ' + e.message, 'error'); }
+}
+
+async function fsToggleActive(id) {
+  const s = FS_SHARES.find(x => x._id === id); if (!s) return;
+  try {
+    const r = await fetch(`/api/fileshare/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: !s.active })
+    });
+    if (!r.ok) throw new Error((await r.json()).error || r.status);
+    toast(s.active ? 'Zdieľanie vypnuté' : 'Zdieľanie aktivované', 'success');
+    await loadFileShares();
+  } catch (e) { toast('Chyba: ' + e.message, 'error'); }
+}
+
+async function fsDeleteShare(id) {
+  const s = FS_SHARES.find(x => x._id === id); if (!s) return;
+  if (!await uiConfirm(`Zmazať zdieľanie „${s.name}" vrátane všetkých súborov? Odkaz prestane fungovať.`)) return;
+  try {
+    const r = await fetch(`/api/fileshare/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error((await r.json()).error || r.status);
+    toast('Zdieľanie zmazané', 'success');
+    await loadFileShares();
+  } catch (e) { toast('Chyba: ' + e.message, 'error'); }
+}
+
+function fsPickFiles(id) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.multiple = true;
+  inp.onchange = () => fsUpload(id, inp.files);
+  inp.click();
+}
+
+async function fsUpload(id, files) {
+  if (!files || !files.length) return;
+  const fd = new FormData();
+  Array.from(files).forEach(f => fd.append('files', f));
+  toast(`Nahrávam ${files.length} súbor(ov)…`, 'info');
+  try {
+    const r = await fetch(`/api/fileshare/${id}/files`, { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    toast('Súbory nahraté', 'success');
+    await loadFileShares();
+  } catch (e) { toast('Chyba pri nahrávaní: ' + e.message, 'error'); }
+}
+
+async function fsDeleteFile(id, fileId) {
+  if (!await uiConfirm('Zmazať tento súbor zo zdieľania?')) return;
+  try {
+    const r = await fetch(`/api/fileshare/${id}/files/${fileId}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error((await r.json()).error || r.status);
+    toast('Súbor zmazaný', 'success');
+    await loadFileShares();
+  } catch (e) { toast('Chyba: ' + e.message, 'error'); }
+}
 
 // Štart: over prihlásenie, potom spusti appku
 bootstrap();

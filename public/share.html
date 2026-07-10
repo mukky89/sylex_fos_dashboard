@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>SYLEX — Zdieľané súbory</title>
+<style>
+  :root {
+    --navy:      #12122a;
+    --navy2:     #1a1a2e;
+    --navy3:     #23233f;
+    --lime:      #97bf0d;
+    --lime-hi:   #b3de1e;
+    --ink:       #eef1f8;
+    --ink-dim:   #9aa3bd;
+    --ink-xdim:  #6b7390;
+    --line:      rgba(255,255,255,0.09);
+    --card:      rgba(255,255,255,0.045);
+    --danger:    #ff7a7a;
+    --radius:    18px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    min-height: 100vh;
+    font-family: 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--navy);
+    color: var(--ink);
+    display: flex; flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  /* ── Pozadie: jemné optické vlákna (svetelné krivky) ─────────────────── */
+  .bg { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(1100px 520px at 85% -10%, rgba(151,191,13,0.10), transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, rgba(46,80,192,0.16), transparent 60%),
+      linear-gradient(160deg, #15152e 0%, #12122a 45%, #0e0e22 100%);
+  }
+  .bg svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .fiber { fill: none; stroke-width: 1.4; stroke-linecap: round; opacity: .5; }
+  .fiber.glow { stroke-width: 2.6; filter: blur(4px); opacity: .35; }
+  .dash { stroke-dasharray: 8 340; animation: travel 9s linear infinite; }
+  .dash.d2 { animation-duration: 13s; animation-delay: -4s; }
+  .dash.d3 { animation-duration: 11s; animation-delay: -7s; }
+  @keyframes travel { to { stroke-dashoffset: -696; } }
+  @media (prefers-reduced-motion: reduce) { .dash { animation: none; } }
+
+  /* ── Hlavička ─────────────────────────────────────────────────────────── */
+  header {
+    position: relative; z-index: 2;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px clamp(20px, 5vw, 56px);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  .brand-name { display: flex; flex-direction: column; line-height: 1.05; }
+  .brand-name b { color: var(--ink); font-size: 1.24rem; letter-spacing: .22em; font-weight: 800; }
+  .brand-name span { color: var(--ink-xdim); font-size: .62rem; letter-spacing: .3em; text-transform: uppercase; margin-top: 3px; }
+  .hdr-tag { color: var(--ink-xdim); font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; }
+  @media (max-width: 560px) { .hdr-tag { display: none; } }
+
+  /* ── Obsah ────────────────────────────────────────────────────────────── */
+  main { position: relative; z-index: 2; flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px clamp(16px, 4vw, 40px) 48px; }
+  .card {
+    width: 100%; max-width: 620px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 24px 70px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+    padding: clamp(26px, 5vw, 44px);
+    animation: rise .45s cubic-bezier(.2,.7,.3,1) both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+  @media (prefers-reduced-motion: reduce) { .card { animation: none; } }
+
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; color: var(--lime); font-size: .7rem; font-weight: 700; letter-spacing: .28em; text-transform: uppercase; margin-bottom: 14px; }
+  .eyebrow::before { content: ''; width: 22px; height: 2px; background: var(--lime); border-radius: 2px; }
+  h1 { font-size: clamp(1.45rem, 3.6vw, 1.9rem); font-weight: 800; letter-spacing: -0.01em; margin-bottom: 8px; overflow-wrap: anywhere; }
+  .sub { color: var(--ink-dim); font-size: .93rem; line-height: 1.55; }
+
+  .meta-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0 26px; }
+  .meta-chip { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,0.03); color: var(--ink-dim); font-size: .8rem; }
+  .meta-chip svg { flex: none; color: var(--lime); }
+
+  /* ── Formulár hesla ──────────────────────────────────────────────────── */
+  .pass-label { display: block; color: var(--ink-dim); font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; margin-bottom: 9px; }
+  .pass-row { display: flex; gap: 10px; }
+  .pass-wrap { position: relative; flex: 1; }
+  .pass-wrap svg.lock { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--ink-xdim); pointer-events: none; }
+  input[type="password"], input[type="text"].pass {
+    width: 100%; padding: 14px 15px 14px 44px;
+    background: rgba(0,0,0,0.28);
+    border: 1px solid var(--line); border-radius: 12px;
+    color: var(--ink); font-size: 1.02rem; font-family: 'Consolas', 'SF Mono', monospace;
+    letter-spacing: .12em; text-transform: uppercase;
+    outline: none; transition: border-color .18s, box-shadow .18s;
+  }
+  input::placeholder { color: var(--ink-xdim); letter-spacing: .1em; }
+  input:focus { border-color: var(--lime); box-shadow: 0 0 0 3px rgba(151,191,13,0.22); }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    padding: 14px 26px; border: none; border-radius: 12px;
+    background: linear-gradient(180deg, var(--lime-hi), var(--lime));
+    color: #16220a; font-size: .95rem; font-weight: 800; letter-spacing: .02em;
+    cursor: pointer; white-space: nowrap;
+    box-shadow: 0 8px 22px rgba(151,191,13,0.28);
+    transition: transform .16s, box-shadow .16s, filter .16s;
+  }
+  .btn:hover { transform: translateY(-1px); filter: brightness(1.06); box-shadow: 0 12px 28px rgba(151,191,13,0.36); }
+  .btn:focus-visible { outline: 3px solid rgba(151,191,13,0.55); outline-offset: 2px; }
+  .btn:disabled { opacity: .55; cursor: wait; transform: none; }
+
+  .err { display: none; margin-top: 14px; color: var(--danger); font-size: .88rem; align-items: center; gap: 8px; }
+  .err.show { display: flex; animation: shake .4s; }
+  @keyframes shake { 20%,60% { transform: translateX(-5px); } 40%,80% { transform: translateX(5px); } }
+  @media (prefers-reduced-motion: reduce) { .err.show { animation: none; } }
+  .hint { margin-top: 22px; color: var(--ink-xdim); font-size: .8rem; line-height: 1.6; }
+
+  /* ── Zoznam súborov ──────────────────────────────────────────────────── */
+  .files-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 22px 0 14px; }
+  .files-count { color: var(--ink-dim); font-size: .85rem; }
+  .btn-ghost {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 16px; border-radius: 10px; border: 1px solid var(--line);
+    background: rgba(255,255,255,0.04); color: var(--ink); font-size: .84rem; font-weight: 600;
+    cursor: pointer; transition: border-color .16s, background .16s;
+  }
+  .btn-ghost:hover { border-color: var(--lime); background: rgba(151,191,13,0.08); }
+  .btn-ghost:focus-visible { outline: 3px solid rgba(151,191,13,0.55); outline-offset: 2px; }
+
+  .file-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .file-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 16px;
+    background: rgba(255,255,255,0.035);
+    border: 1px solid var(--line); border-radius: 13px;
+    transition: border-color .16s, background .16s, transform .16s;
+  }
+  .file-item:hover { border-color: rgba(151,191,13,0.5); background: rgba(151,191,13,0.05); transform: translateX(3px); }
+  .file-ico {
+    flex: none; width: 42px; height: 42px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(151,191,13,0.13); color: var(--lime);
+  }
+  .file-info { flex: 1; min-width: 0; }
+  .file-name { display: block; font-size: .93rem; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+  .file-meta { display: block; color: var(--ink-xdim); font-size: .76rem; margin-top: 2px; }
+  .file-dl {
+    flex: none; display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 15px; border-radius: 10px; border: 1px solid rgba(151,191,13,0.45);
+    background: transparent; color: var(--lime-hi); font-size: .82rem; font-weight: 700;
+    text-decoration: none; cursor: pointer; transition: background .16s, color .16s;
+  }
+  .file-dl:hover { background: var(--lime); color: #16220a; }
+  .file-dl:focus-visible { outline: 3px solid rgba(151,191,13,0.55); outline-offset: 2px; }
+  @media (max-width: 480px) {
+    .file-item { flex-wrap: wrap; }
+    .file-dl { width: 100%; justify-content: center; }
+  }
+  .empty { text-align: center; color: var(--ink-dim); padding: 34px 10px; font-size: .92rem; }
+
+  /* ── Stavové obrazovky ───────────────────────────────────────────────── */
+  .state-ico { width: 64px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center; background: rgba(151,191,13,0.12); color: var(--lime); margin-bottom: 20px; }
+  .state-ico.gray { background: rgba(255,255,255,0.06); color: var(--ink-dim); }
+
+  footer { position: relative; z-index: 2; padding: 18px clamp(20px, 5vw, 56px) 26px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--ink-xdim); font-size: .76rem; }
+  footer a { color: var(--ink-dim); text-decoration: none; }
+  footer a:hover { color: var(--lime); }
+  .foot-tag { letter-spacing: .12em; text-transform: uppercase; }
+
+  .hidden { display: none !important; }
+  .spin { width: 16px; height: 16px; border: 2px solid rgba(22,34,10,0.35); border-top-color: #16220a; border-radius: 50%; animation: rot .7s linear infinite; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="bg" aria-hidden="true">
+  <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+    <path class="fiber" stroke="rgba(151,191,13,0.16)" d="M-40,690 C300,640 420,830 760,760 S1240,600 1500,660"/>
+    <path class="fiber glow" stroke="rgba(151,191,13,0.5)" d="M-40,690 C300,640 420,830 760,760 S1240,600 1500,660" pathLength="348"/>
+    <path class="fiber dash" stroke="#b3de1e" d="M-40,690 C300,640 420,830 760,760 S1240,600 1500,660" pathLength="348"/>
+    <path class="fiber" stroke="rgba(90,130,255,0.13)" d="M-40,180 C360,260 620,80 940,170 S1320,320 1500,240"/>
+    <path class="fiber dash d2" stroke="rgba(140,170,255,0.8)" d="M-40,180 C360,260 620,80 940,170 S1320,320 1500,240" pathLength="348"/>
+    <path class="fiber" stroke="rgba(151,191,13,0.08)" d="M-40,430 C420,380 780,520 1120,430 S1400,340 1520,400"/>
+    <path class="fiber dash d3" stroke="rgba(179,222,30,0.7)" d="M-40,430 C420,380 780,520 1120,430 S1400,340 1520,400" pathLength="348"/>
+  </svg>
+</div>
+
+<header>
+  <a class="brand" href="https://www.sylex.sk" target="_blank" rel="noopener" aria-label="SYLEX s.r.o.">
+    <svg width="40" height="40" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+      <rect width="36" height="36" rx="9" fill="#97bf0d"/>
+      <path d="M11 12.5 C11 12.5 11 10 14.5 10 L21.5 10 C25 10 25 13.5 25 13.5 C25 17 21.5 18 18 19.2 C14.5 20.4 11 21.5 11 24.5 C11 24.5 11 27 14.5 27 L21.5 27 C25 27 25 24.5 25 24.5"
+            stroke="#16220a" stroke-width="2.6" stroke-linecap="round"/>
+    </svg>
+    <span class="brand-name"><b>SYLEX</b><span>Fiber Optics</span></span>
+  </a>
+  <span class="hdr-tag">Zabezpečený prenos súborov</span>
+</header>
+
+<main>
+  <!-- Načítavanie -->
+  <section class="card" id="scrLoading" aria-busy="true">
+    <div class="eyebrow">SYLEX File Server</div>
+    <h1>Načítavam…</h1>
+    <p class="sub">Overujem dostupnosť zdieľania.</p>
+  </section>
+
+  <!-- Nedostupné -->
+  <section class="card hidden" id="scrGone">
+    <div class="state-ico gray">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="8" y1="8" x2="16" y2="16"/><line x1="16" y1="8" x2="8" y2="16"/></svg>
+    </div>
+    <div class="eyebrow">SYLEX File Server</div>
+    <h1>Zdieľanie nie je dostupné</h1>
+    <p class="sub">Odkaz je neplatný, expirovaný alebo bol deaktivovaný. Ak súbory potrebujete, kontaktujte prosím svoju kontaktnú osobu v SYLEX s.r.o.</p>
+  </section>
+
+  <!-- Zamknuté: zadanie hesla -->
+  <section class="card hidden" id="scrLock">
+    <div class="state-ico">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <div class="eyebrow">SYLEX File Server</div>
+    <h1 id="lockName">Zdieľané súbory</h1>
+    <p class="sub">Pre vás pripravila spoločnosť <strong>SYLEX s.r.o.</strong> Obsah je chránený heslom, ktoré vám bolo doručené samostatne.</p>
+    <div class="meta-row" id="lockMeta"></div>
+    <form id="unlockForm" novalidate>
+      <label class="pass-label" for="passInput">Prístupové heslo</label>
+      <div class="pass-row">
+        <div class="pass-wrap">
+          <svg class="lock" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <input type="password" id="passInput" class="pass" placeholder="XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false" aria-describedby="unlockErr">
+        </div>
+        <button type="submit" class="btn" id="unlockBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+          Odomknúť
+        </button>
+      </div>
+      <p class="err" id="unlockErr" role="alert">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="unlockErrTxt">Nesprávne heslo</span>
+      </p>
+    </form>
+    <p class="hint">Heslo nerozlišuje veľké a malé písmená. Prenos je šifrovaný (HTTPS) a odkaz je určený len pre vás.</p>
+  </section>
+
+  <!-- Odomknuté: súbory -->
+  <section class="card hidden" id="scrFiles">
+    <div class="eyebrow">SYLEX File Server</div>
+    <h1 id="filesName">Zdieľané súbory</h1>
+    <p class="sub">Súbory pripravené na stiahnutie od spoločnosti <strong>SYLEX s.r.o.</strong></p>
+    <div class="files-head">
+      <span class="files-count" id="filesCount"></span>
+      <button type="button" class="btn-ghost" id="dlAllBtn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Stiahnuť všetko
+      </button>
+    </div>
+    <ul class="file-list" id="fileList"></ul>
+  </section>
+</main>
+
+<footer>
+  <span>© <span id="year"></span> SYLEX s.r.o. · Mlynské Luhy 31, Bratislava</span>
+  <span class="foot-tag">Optical Interconnect &amp; Sensing Solutions · <a href="https://www.sylex.sk" target="_blank" rel="noopener">www.sylex.sk</a></span>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  var token = location.pathname.replace(/^\/s\//, '').replace(/\/+$/, '');
+  var shareToken = sessionStorage.getItem('st-' + token) || '';
+  var FILES = [];
+
+  var $ = function (id) { return document.getElementById(id); };
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  function show(id) {
+    ['scrLoading', 'scrGone', 'scrLock', 'scrFiles'].forEach(function (s) { $(s).classList.toggle('hidden', s !== id); });
+  }
+  function fmtSize(b) {
+    if (!b) return '0 B';
+    var u = ['B', 'kB', 'MB', 'GB']; var i = 0;
+    while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+    return (i === 0 ? b : b.toFixed(1)) + ' ' + u[i];
+  }
+  function fmtDate(d) { try { return new Date(d).toLocaleDateString('sk-SK'); } catch (e) { return ''; } }
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+  function fileIcon(name, mime) {
+    var ext = (name.split('.').pop() || '').toLowerCase();
+    var P = {
+      img: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+      pdf: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h1.5a1.5 1.5 0 0 0 0-3H9v6"/>',
+      zip: '<path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/>',
+      doc: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/>',
+      xls: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13l6 6M15 13l-6 6"/>',
+      cad: '<circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
+      gen: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'
+    };
+    var k = 'gen';
+    if (/^image\//.test(mime) || ['png','jpg','jpeg','gif','webp','svg','bmp','tif','tiff'].indexOf(ext) >= 0) k = 'img';
+    else if (ext === 'pdf') k = 'pdf';
+    else if (['zip','rar','7z','gz','tar'].indexOf(ext) >= 0) k = 'zip';
+    else if (['doc','docx','odt','rtf','txt','md'].indexOf(ext) >= 0) k = 'doc';
+    else if (['xls','xlsx','ods','csv'].indexOf(ext) >= 0) k = 'xls';
+    else if (['dwg','dxf','step','stp','iges','igs','sldprt','pcb'].indexOf(ext) >= 0) k = 'cad';
+    return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">' + P[k] + '</svg>';
+  }
+
+  function api(path, opts) {
+    return fetch('/api/share/' + encodeURIComponent(token) + path, opts).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, status: r.status, data: d }; });
+    });
+  }
+
+  function renderFiles(name, files) {
+    FILES = files || [];
+    $('filesName').textContent = name || 'Zdieľané súbory';
+    document.title = 'SYLEX — ' + (name || 'Zdieľané súbory');
+    var total = FILES.reduce(function (s, f) { return s + (f.size || 0); }, 0);
+    $('filesCount').textContent = FILES.length + ' ' + (FILES.length === 1 ? 'súbor' : (FILES.length < 5 ? 'súbory' : 'súborov')) + ' · ' + fmtSize(total);
+    $('dlAllBtn').style.display = FILES.length > 1 ? '' : 'none';
+    var ul = $('fileList');
+    if (!FILES.length) { ul.innerHTML = '<li class="empty">Zatiaľ tu nie sú žiadne súbory. Skúste to prosím neskôr.</li>'; }
+    else {
+      ul.innerHTML = FILES.map(function (f) {
+        return '<li class="file-item">' +
+          '<span class="file-ico">' + fileIcon(f.name, f.mime) + '</span>' +
+          '<span class="file-info"><span class="file-name">' + esc(f.name) + '</span>' +
+          '<span class="file-meta">' + fmtSize(f.size) + ' · ' + fmtDate(f.uploadedAt) + '</span></span>' +
+          '<a class="file-dl" href="' + dlUrl(f) + '" download>' +
+          '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
+          'Stiahnuť</a></li>';
+      }).join('');
+    }
+    show('scrFiles');
+  }
+
+  function dlUrl(f) {
+    return '/api/share/' + encodeURIComponent(token) + '/download/' + f.id + '?st=' + encodeURIComponent(shareToken);
+  }
+
+  $('dlAllBtn').addEventListener('click', function () {
+    FILES.forEach(function (f, i) {
+      setTimeout(function () {
+        var a = document.createElement('a');
+        a.href = dlUrl(f); a.download = ''; document.body.appendChild(a); a.click(); a.remove();
+      }, i * 600);
+    });
+  });
+
+  $('unlockForm').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var btn = $('unlockBtn');
+    var pass = $('passInput').value.trim();
+    if (!pass) { showErr('Zadajte prosím heslo'); return; }
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span> Overujem…';
+    $('unlockErr').classList.remove('show');
+    api('/unlock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass })
+    }).then(function (r) {
+      if (r.ok) {
+        shareToken = r.data.shareToken;
+        try { sessionStorage.setItem('st-' + token, shareToken); } catch (e) {}
+        renderFiles(r.data.name, r.data.files);
+      } else if (r.status === 404) { show('scrGone'); }
+      else { showErr(r.data.error || 'Nesprávne heslo'); }
+    }).catch(function () { showErr('Chyba spojenia — skúste to znova'); })
+      .finally(function () {
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg> Odomknúť';
+      });
+  });
+
+  function showErr(msg) {
+    $('unlockErrTxt').textContent = msg;
+    var el = $('unlockErr');
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  }
+
+  function boot() {
+    if (!token) { show('scrGone'); return; }
+    api('/meta').then(function (r) {
+      if (!r.ok) { show('scrGone'); return; }
+      var m = r.data;
+      $('lockName').textContent = m.name || 'Zdieľané súbory';
+      document.title = 'SYLEX — ' + (m.name || 'Zdieľané súbory');
+      var chips = [];
+      chips.push('<span class="meta-chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/></svg>' + m.fileCount + ' ' + (m.fileCount === 1 ? 'súbor' : (m.fileCount < 5 && m.fileCount > 0 ? 'súbory' : 'súborov')) + ' · ' + fmtSize(m.totalSize) + '</span>');
+      if (m.expiresAt) chips.push('<span class="meta-chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Dostupné do ' + fmtDate(m.expiresAt) + '</span>');
+      $('lockMeta').innerHTML = chips.join('');
+
+      // Ak už máme platný share-token v session, skús rovno zobraziť súbory
+      if (shareToken) {
+        api('/files?st=' + encodeURIComponent(shareToken)).then(function (fr) {
+          if (fr.ok) renderFiles(fr.data.name, fr.data.files);
+          else { shareToken = ''; sessionStorage.removeItem('st-' + token); show('scrLock'); $('passInput').focus(); }
+        });
+      } else { show('scrLock'); setTimeout(function () { $('passInput').focus(); }, 250); }
+    }).catch(function () { show('scrGone'); });
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

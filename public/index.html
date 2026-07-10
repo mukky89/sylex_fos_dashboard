@@ -122,6 +122,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M9 12l6-4M15 8h-4M15 8v4"/></svg>
           <span class="nav-lbl">RustDesk</span>
         </a>
+        <a class="nav-link" onclick="showPage('fileserver')" data-page="fileserver" title="File server — zdieľanie súborov pre zákazníkov">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><polyline points="8 17 12 13 16 17"/><line x1="12" y1="13" x2="12" y2="21"/></svg>
+          <span class="nav-lbl">File server</span>
+        </a>
         <a class="nav-link" onclick="showPage('admin')" data-page="admin" title="Administrácia">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
           <span class="nav-lbl">Admin</span>
@@ -262,6 +266,10 @@
       <a class="asb-link" data-page="remote" onclick="showPage('remote')" title="Vzdialené pripojenie — RustDesk">
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M9 12l6-4M15 8h-4M15 8v4"/></svg></span>
         <span class="asb-lbl">Vzdialené PC</span>
+      </a>
+      <a class="asb-link" data-page="fileserver" onclick="showPage('fileserver')" title="File server — zdieľanie súborov pre zákazníkov">
+        <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><polyline points="8 17 12 13 16 17"/><line x1="12" y1="13" x2="12" y2="21"/></svg></span>
+        <span class="asb-lbl">File server</span>
       </a>
 
       <div class="asb-group">Vedenie &amp; systém</div>
@@ -3033,6 +3041,92 @@
       <div id="rcList" class="rc-grid"></div>
     </div>
   </main>
+
+  <!-- ═══════════════ FILE SERVER — zdieľanie súborov pre zákazníkov ═══════════════ -->
+  <main id="page-fileserver" class="page fileserver-page">
+    <div class="dev-inner">
+      <div class="admin-hdr">
+        <div>
+          <h1 class="admin-title">File server</h1>
+          <p class="admin-sub">Zdieľanie súborov pre zákazníkov · odkaz chránený heslom</p>
+        </div>
+      </div>
+      <div class="dev-toolbar">
+        <div class="proc-search-wrap" style="margin:0;flex:1;min-width:180px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="fsSearch" placeholder="Hľadať zdieľanie, zákazníka..." oninput="renderFileShares()" autocomplete="off">
+        </div>
+        <button class="btn-primary" onclick="openFsModal()">+ Nové zdieľanie</button>
+      </div>
+      <p class="hint" style="margin:0 0 12px">Každé zdieľanie má vlastný odkaz <code>/s/…</code> a vygenerované heslo. Heslo sa zobrazí <strong>iba raz</strong> pri vytvorení — pošli ho zákazníkovi iným kanálom než odkaz.</p>
+      <div id="fsList" class="fs-grid"></div>
+    </div>
+  </main>
+
+  <!-- Modal: nové / úprava zdieľania -->
+  <div id="fsModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeFsModal()"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header"><h2 id="fsModalTitle">Nové zdieľanie</h2><button class="modal-close" onclick="closeFsModal()">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="fsId">
+        <div class="form-group">
+          <label>Názov zdieľania *</label>
+          <input type="text" id="fsName" placeholder="napr. Meranie FOS — Zákazník s.r.o.">
+          <div class="form-hint">Zobrazí sa zákazníkovi na stránke so súbormi.</div>
+        </div>
+        <div class="form-group">
+          <label>Interná poznámka</label>
+          <input type="text" id="fsNote" placeholder="napr. objednávka č. 2026-041 (zákazník ju nevidí)">
+        </div>
+        <div class="form-group">
+          <label>Platnosť do (voliteľné)</label>
+          <input type="date" id="fsExpires">
+          <div class="form-hint">Po tomto dátume odkaz prestane fungovať. Prázdne = bez expirácie.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeFsModal()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveFsShare()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: vygenerované prístupy (heslo sa zobrazuje IBA RAZ) -->
+  <div id="fsCredsModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="document.getElementById('fsCredsModal').classList.add('hidden')"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header"><h2>🔑 Prístupy pre zákazníka</h2><button class="modal-close" onclick="document.getElementById('fsCredsModal').classList.add('hidden')">✕</button></div>
+      <div class="modal-body">
+        <p class="hint" style="margin:0 0 14px"><strong>Heslo sa zobrazuje iba teraz</strong> — ulož si ho alebo rovno pošli zákazníkovi. Odporúčame poslať odkaz a heslo dvomi rôznymi kanálmi (e-mail + SMS/telefón).</p>
+        <div class="form-group">
+          <label>Odkaz pre zákazníka</label>
+          <div class="fs-cred-row">
+            <input type="text" id="fsCredLink" readonly onclick="this.select()">
+            <button class="btn-secondary" onclick="fsCopy(document.getElementById('fsCredLink').value, 'Odkaz skopírovaný')">Kopírovať</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Heslo</label>
+          <div class="fs-cred-row">
+            <input type="text" id="fsCredPass" class="fs-cred-pass" readonly onclick="this.select()">
+            <button class="btn-secondary" onclick="fsCopy(document.getElementById('fsCredPass').value, 'Heslo skopírované')">Kopírovať</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Správa pre zákazníka (odkaz + heslo)</label>
+          <div class="fs-cred-row">
+            <textarea id="fsCredMsg" rows="4" readonly onclick="this.select()"></textarea>
+            <button class="btn-secondary" onclick="fsCopy(document.getElementById('fsCredMsg').value, 'Správa skopírovaná')">Kopírovať</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a class="btn-secondary" id="fsCredOpen" href="#" target="_blank" rel="noopener">Otvoriť stránku</a>
+        <button class="btn-primary" onclick="document.getElementById('fsCredsModal').classList.add('hidden')">Hotovo</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: pridanie / úprava fotiek -->
   <div id="photoModal" class="modal hidden">
