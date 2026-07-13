@@ -19,6 +19,46 @@ Vrátiť sa späť na vývojovú vetvu a zosynchronizovať ju.
 - **Moduly** = model (`models/`) + route (`routes/`) + sekcia v `index.html` + funkcie v `app.js` + CSS. Stránky sa prepínajú cez `showPage()` / `handleHash()` / `_activatePage()`.
 - **Seed skripty** v `scripts/seed*.js`, spúšťané cez admin endpointy `/api/admin/seed-*` (idempotentné, `note: 'seed'`).
 
+## Dátové modely (`models/`, mongoose)
+
+Cez 30 modelov, zoskupené podľa oblasti (model → hlavné polia / vzťahy):
+
+**Výroba / MES**
+- `ProductionOrder` — výrobné zákazky (VZ-2026-001…), `stage`: plan→material→production→qc→done→shipped, qty plán/skutok, workstation, priorita
+- `WorkCenter` — pracoviská/linky, `status`: running/setup/idle/maintenance/down, kapacita, aktuálna zákazka
+- `ShiftReport` — zmenové výkazy (R/P/N), vstupy pre OEE (downtime, goodQty, scrapQty, idealRate)
+- `Routing` — technologické postupy/normy (`operations[]`: kód, t/ks, linka, `machine` flag), `coeff` prirážka na ručné operácie
+- `ProductWorkflow` — kroky výroby konkrétneho produktu (montáž, zváranie…), `status` per krok
+
+**Produkty / R&D**
+- `Product` (ref `Category`), `Datasheet` (specs/features/ordering), `Prototype`, `SensorType` (citlivosť, gauge factor)
+- `ProductOwner` (ref `User` po/bo) + `ProductOwnerRecord` (história zmien vlastníctva)
+- `Procedure` — pracovné postupy (PP FOS…), revízie, súvisiace normy
+- `TestProtocol` — testovacie protokoly (`measurements[]` s pass/fail)
+
+**CRM / Predaj**
+- `Contact` (lead/active/inactive) + `CrmEmail` (ref `Contact`)
+- `Sale` — tržby (customer, product, qty, unitPrice/unitCost)
+- `Project` — sales/dev track, fázy (`salesStage`/`devStage`)
+
+**Zariadenia / kalibrácie**
+- `Equipment` (komory/pece) + `Booking` (rezervácie na `Equipment`, timeline)
+- `Instrument` — meradlá (dátumy kalibrácie, interval)
+- `Interrogator` — sériové výrobky (S-line), stav sklad/predaný/zákazník/oprava, história opráv
+- `RemotePc` — vzdialený prístup (RustDesk ID)
+
+**Obsah / dokumentácia**
+- `Guide` (revízie), `Photo` (ref `PhotoCategory`), `FileShare` (token+heslo, sledovanie stiahnutí)
+- `Announcement`, `HeaderLink` (ERP/SharePoint odkazy), `GithubRepo` (evidencia repozitárov)
+
+**Plánovanie / organizácia**
+- `Task` (kanban, subtasks, ref `User`), `CalendarEvent` / `IcsFeed` (import z Outlooku), `Question` (FAQ), `Backbone` (sieťová/kabelážna topológia)
+
+**Systém**
+- `User` (role user/admin), `AppConfig` (key/value nastavenia appky), `SensorReading` (surové dáta teplota/vlhkosť)
+
+Pri pridávaní nového modelu: drž sa vzoru existujúcich (mongoose Schema, slovenské komentáre pri poliach s netriviálnym významom, `trim: true` pri stringoch, `enum` pri stavoch), a zaraď ho vyššie do príslušnej kategórie.
+
 ## Konvencie
 - UI a komentáre po slovensky.
 - **UI/UX Pro Max skill (POUŽÍVAŤ pri UI práci):** v `.claude/skills/` sú nainštalované skills z [ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) (ui-ux-pro-max, ui-styling, design, design-system, brand, banner-design, slides). Pri návrhu/úprave UI komponentov, stránok, farieb, typografie či grafov najprv konzultovať skill `ui-ux-pro-max` (`SKILL.md` + vyhľadávanie: `python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<dopyt>" --design-system`). Odporúčania aplikovať v medziach existujúceho dizajnu appky (tmavá hlavička, CSS premenné v `style.css`), nie plošne prepisovať vzhľad.
