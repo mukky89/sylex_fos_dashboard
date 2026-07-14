@@ -6112,3 +6112,21 @@ body.theme-light .prod-sub, body.theme-warm .prod-sub { color: #64748b; }
 .us-role-kvalita{ background: #dcfce7; color: #166534; }
 .us-role-tech   { background: #ffedd5; color: #9a3412; }
 .us-role-user   { background: #e2e8f0; color: #475569; }
+
+/* Diagnostika e-mailu (Admin → Používatelia) */
+.mail-status { margin: 6px 0 12px; }
+.mail-status-head { font-size: .86rem; font-weight: 700; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; background: var(--page-bg); }
+.mail-status-head.mail-ok { color: #15803d; background: #dcfce7; }
+.mail-status-head.mail-bad { color: #b45309; background: #fef3c7; }
+.mail-kv { display: flex; gap: 12px; font-size: .82rem; padding: 3px 2px; }
+.mail-k { min-width: 160px; color: var(--text-dim); font-family: 'Consolas', monospace; }
+.mail-v { color: var(--text); font-family: 'Consolas', monospace; }
+.mail-v.mail-ok { color: #15803d; font-weight: 700; }
+.mail-v.mail-bad { color: #b91c1c; }
+.mail-v em { color: var(--text-xdim); font-style: italic; }
+.mail-hint { font-size: .78rem; color: var(--text-dim); margin-top: 8px; padding: 7px 10px; background: var(--accent-light); border-radius: 8px; }
+.mail-test-row { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.mail-test-input { flex: 1; min-width: 200px; max-width: 320px; padding: 8px 11px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); font-size: .85rem; }
+.mail-test-result { margin-top: 8px; font-size: .84rem; min-height: 20px; }
+.mail-test-result .mail-ok { color: #15803d; }
+.mail-test-result .mail-bad { color: #b91c1c; font-weight: 600; }

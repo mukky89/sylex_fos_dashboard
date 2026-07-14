@@ -4721,7 +4721,7 @@ function switchAdminTab(tab) {
   );
   if (tab === 'links')  loadAdminLinks();
   if (tab === 'sensor') { loadSensorConfigAdmin(); loadSensorStats(); }
-  if (tab === 'users') loadUsers();
+  if (tab === 'users') { loadUsers(); loadMailStatus(); }
   if (tab === 'appearance') renderAppearanceAdmin();
   if (tab === 'modules') renderModulesAdmin();
   if (tab === 'projcfg') loadPjConfigAdmin();
@@ -6557,6 +6557,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.31.1', date: '14. 7. 2026', tag: 'fix', items: [
+    'Oprava odosielania e-mailov: Brevo API sa teraz volá cez vstavaný modul <code>https</code> (nezávisí od globálneho <code>fetch</code>, funguje na každej verzii Node). Pridané <code>engines.node &gt;=18</code>.',
+    'Nová <strong>Diagnostika e-mailu</strong> (Admin → Používatelia): zobrazí stav konfigurácie (BREVO_API_KEY, EMAIL_SENDER, APP_URL…) a tlačidlo na <em>odoslanie testovacieho e-mailu</em>, ktoré ukáže presnú chybu z Brevo (napr. neoverený odosielateľ, neplatný kľúč).',
+  ] },
   { v: '2.31.0', date: '14. 7. 2026', tag: 'feat', items: [
     'Nové <strong>role používateľov</strong>: <em>Obchod</em>, <em>Kvalita</em>, <em>Technológia</em> (popri Používateľ a Admin) — voliteľné v modáli používateľa, farebne odlíšené odznaky v zozname.',
     'Odosielanie e-mailov cez <strong>Brevo</strong> (rovnaký prístup ako projekt DBFOOD): ak je nastavený <code>BREVO_API_KEY</code>, maily idú cez Brevo HTTP API (funguje aj keď je SMTP blokovaný, napr. na Railway), inak fallback na SMTP <code>smtp-relay.brevo.com</code>. Overovacie e-maily sa tak reálne doručia.',
@@ -10422,16 +10426,17 @@ async function saveUser() {
     // spätná väzba o overovacom e-maile
     if (d.verifyUrl) {
       if (d.emailSent) toast('Používateľ uložený · overovací e-mail odoslaný.', 'success');
-      else usShowVerifyLink(d.verifyUrl);
+      else usShowVerifyLink(d.verifyUrl, d.mailError);
     } else {
       toast('Používateľ uložený.', 'success');
     }
   } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
 }
 
-// Keď SMTP nie je nakonfigurované, ukáž odkaz na skopírovanie (fallback)
-async function usShowVerifyLink(url) {
-  toast('SMTP nie je nastavené — skopíruj overovací odkaz používateľovi.', 'warn', 6000);
+// Keď e-mail nemožno odoslať, ukáž dôvod + odkaz na skopírovanie (fallback)
+async function usShowVerifyLink(url, mailError) {
+  if (mailError) toast('E-mail sa neodoslal: ' + mailError + ' — skopíruj odkaz ručne.', 'error', 7000);
+  else toast('E-mail nie je nakonfigurovaný — skopíruj overovací odkaz používateľovi.', 'warn', 6000);
   try { await navigator.clipboard.writeText(url); toast('Overovací odkaz skopírovaný do schránky.', 'info', 5000); }
   catch { await uiConfirm('Overovací odkaz (pošli ho používateľovi):\n\n' + url); }
 }
@@ -10443,7 +10448,7 @@ async function resendVerification(id) {
     if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
     if (d.alreadyVerified) { toast('E-mail je už overený.', 'info'); loadUsers(); return; }
     if (d.emailSent) toast('Overovací e-mail odoslaný.', 'success');
-    else if (d.verifyUrl) usShowVerifyLink(d.verifyUrl);
+    else if (d.verifyUrl) usShowVerifyLink(d.verifyUrl, d.mailError);
     loadUsers();
   } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
 }
@@ -10455,6 +10460,47 @@ async function deleteUser(id) {
     if (!r.ok) { const er = await r.json().catch(() => ({})); toast('Chyba: ' + (er.error || r.status), 'error'); return; }
     closeUserModal(); loadUsers();
   } catch { toast('Chyba pri mazaní.', 'error'); }
+}
+
+// ── Diagnostika e-mailu (Admin → Používatelia) ──────────────────────────────────
+async function loadMailStatus() {
+  const el = document.getElementById('mailStatus'); if (!el) return;
+  el.innerHTML = '<div class="admin-loading">Načítavam…</div>';
+  try {
+    const d = await fetch('/api/admin/mail-status').then(r => r.json());
+    const row = (k, v, ok) => `<div class="mail-kv"><span class="mail-k">${k}</span><span class="mail-v ${ok === false ? 'mail-bad' : (ok ? 'mail-ok' : '')}">${v || '<em>nenastavené</em>'}</span></div>`;
+    const e = d.env || {};
+    el.innerHTML = `
+      <div class="mail-status-head ${d.configured ? 'mail-ok' : 'mail-bad'}">
+        ${d.configured ? '✅ E-mail je nakonfigurovaný' : '⚠️ E-mail NIE je nakonfigurovaný'} · metóda: <strong>${d.method || '—'}</strong>
+      </div>
+      ${row('BREVO_API_KEY', e.BREVO_API_KEY, !!e.BREVO_API_KEY)}
+      ${row('EMAIL_SENDER', e.EMAIL_SENDER, !!e.EMAIL_SENDER)}
+      ${row('SMTP_HOST', e.SMTP_HOST)}
+      ${row('SMTP_PORT', e.SMTP_PORT)}
+      ${row('SMTP_USER', e.SMTP_USER)}
+      ${row('EMAIL_PASSWORD', e.EMAIL_PASSWORD)}
+      ${row('APP_URL', e.APP_URL, !!e.APP_URL)}
+      ${!e.EMAIL_SENDER ? '<div class="mail-hint">⚠️ Chýba <code>EMAIL_SENDER</code> — bez overenej adresy odosielateľa Brevo e-mail neodošle.</div>' : ''}
+      ${e.BREVO_API_KEY && e.EMAIL_SENDER ? '<div class="mail-hint">ℹ️ Ak test zlyhá s chybou „sender not valid", over adresu <code>' + escHtml(e.EMAIL_SENDER) + '</code> v Breve (Senders &amp; IP).</div>' : ''}
+    `;
+  } catch (e) { el.innerHTML = '<div class="mail-bad">Chyba načítania stavu.</div>'; }
+}
+async function sendMailTest() {
+  const to = document.getElementById('mailTestTo').value.trim();
+  const res = document.getElementById('mailTestResult');
+  res.innerHTML = '<span class="admin-loading">Odosielam…</span>';
+  try {
+    const r = await fetch('/api/admin/mail-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to }) });
+    const d = await r.json();
+    if (d.ok) {
+      res.innerHTML = `<span class="mail-ok">✅ Odoslané na ${escHtml(d.to)} (${escHtml(d.method)}). Skontroluj schránku aj SPAM.</span>`;
+      toast('Testovací e-mail odoslaný.', 'success');
+    } else {
+      res.innerHTML = `<span class="mail-bad">❌ Neodoslané: ${escHtml(d.error || 'neznáma chyba')}</span>`;
+      toast('E-mail zlyhal — pozri detail chyby.', 'error', 5000);
+    }
+  } catch (e) { res.innerHTML = `<span class="mail-bad">Sieťová chyba: ${escHtml(e.message)}</span>`; }
 }
 
 // ==============================

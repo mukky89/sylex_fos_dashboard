@@ -8,6 +8,20 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.31.1] — 2026-07-14
+### Opravené
+- **Odosielanie e-mailov cez Brevo** — volanie API prerobené na vstavaný modul
+  `https` namiesto globálneho `fetch`, takže funguje na každej verzii Node
+  (predtým hrozilo „fetch is not defined" na staršom Node). Pridané
+  `engines.node >=18` do `package.json`.
+### Pridané
+- **Diagnostika e-mailu** (Admin → Používatelia): panel so stavom konfigurácie
+  (`BREVO_API_KEY`, `EMAIL_SENDER`, `SMTP_*`, `APP_URL`) a tlačidlo na odoslanie
+  testovacieho e-mailu, ktoré vráti presnú chybu z Brevo (neoverený odosielateľ,
+  neplatný kľúč a pod.). Endpointy `GET /api/admin/mail-status`,
+  `POST /api/admin/mail-test`. Skutočná chyba odoslania sa teraz zobrazuje aj
+  pri vytváraní používateľa a pri opätovnom odoslaní overenia.
+
 ## [2.31.0] — 2026-07-14
 ### Pridané
 - **Nové role používateľov**: `obchod` (Obchod), `kvalita` (Kvalita),
