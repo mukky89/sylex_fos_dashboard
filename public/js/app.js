@@ -6557,6 +6557,13 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.30.0', date: '14. 7. 2026', tag: 'feat', items: [
+    'Prepracovaná stránka <strong>Nový používateľ</strong> (Admin → Používatelia): väčšie prehľadné okno rozdelené na sekcie (Identita · Heslo · Nastavenia), bez vodorovného scrollu, opravené vstupné polia.',
+    '<strong>Generátor silného hesla</strong> 🎲 — jedným klikom vytvorí náhodné bezpečné heslo (nastaviteľná dĺžka, voliteľné špeciálne znaky, bez zameniteľných znakov 0/O/1/l/I), s indikátorom sily hesla, zobrazením/skrytím a kopírovaním do schránky.',
+    '<strong>Prihlásenie cez e-mail</strong> — používatelia sa môžu prihlásiť menom <em>alebo</em> e-mailom. Do profilu pribudlo pole e-mail.',
+    '<strong>Overenie e-mailu</strong> — pri zadaní e-mailu sa odošle overovací odkaz (platný 24 h) s brandovanou stránkou potvrdenia. V zozname používateľov je stav <em>overený / neoverený</em> a tlačidlo na opätovné odoslanie. Ak SMTP nie je nastavené, odkaz sa dá skopírovať a poslať ručne.',
+    'Poznámka: pre reálne odosielanie e-mailov nastav na Railway premenné <code>SMTP_HOST</code>, <code>SMTP_USER</code>, <code>SMTP_PASS</code> (voliteľne <code>SMTP_PORT</code>, <code>SMTP_SECURE</code>, <code>SMTP_FROM</code>, <code>APP_URL</code>).',
+  ] },
   { v: '2.29.1', date: '14. 7. 2026', tag: 'style', items: [
     'Modul <strong>GPN — Golden PN</strong> je teraz v <strong>tmavom režime</strong> — zjednotený vzhľad s ostatnými výrobnými stránkami (Výroba, Riadenie, Workflow, Vlastníci): tmavé navy pozadie, priehľadné karty, cyan akcenty. Dashboard, filtre aj zoznam ticketov sa prispôsobili tmavému podkladu (formuláre a detail ticketu ostávajú na svetlom modáli ako v celej appke).',
   ] },
@@ -10252,13 +10259,23 @@ function renderUsers() {
   usersData.forEach(u => {
     const item = document.createElement('div');
     item.className = 'admin-link-item' + (u.active ? '' : ' admin-link-inactive');
+    let mail = '';
+    if (u.email) {
+      const vb = u.emailVerified
+        ? '<span class="us-verify-badge us-vb-ok" title="E-mail overený">✓ overený</span>'
+        : `<span class="us-verify-badge us-vb-wait" title="E-mail neoverený">⌛ neoverený</span>`;
+      mail = ` · <span style="color:var(--text-dim)">${escHtml(u.email)}</span> ${vb}`;
+    }
+    const resendBtn = (u.email && !u.emailVerified)
+      ? `<button class="admin-icon-btn" onclick="resendVerification('${u._id}')" title="Znovu poslať overovací e-mail">✉</button>` : '';
     item.innerHTML = `
       <span class="ql-chip ql-${u.role === 'admin' ? 'purple' : 'blue'} admin-link-chip">${u.role === 'admin' ? 'ADMIN' : 'USER'}</span>
       <div class="admin-link-info">
         <div class="admin-link-label">${escHtml(u.name || u.username)} <span style="color:var(--text-xdim)">@${escHtml(u.username)}</span></div>
-        <div class="admin-link-url">${US_ROLE[u.role] || u.role}${u.active ? '' : ' · neaktívny'}</div>
+        <div class="admin-link-url">${US_ROLE[u.role] || u.role}${u.active ? '' : ' · neaktívny'}${mail}</div>
       </div>
       <div class="admin-link-actions">
+        ${resendBtn}
         <button class="admin-icon-btn" onclick="openUserModal(usersData.find(x=>x._id==='${u._id}'))" title="Upraviť">✎</button>
         <button class="admin-icon-btn danger" onclick="deleteUser('${u._id}')" title="Odstrániť">✕</button>
       </div>`;
@@ -10272,39 +10289,158 @@ function openUserModal(u = null) {
   document.getElementById('usUsername').value = e ? u.username : '';
   document.getElementById('usUsername').disabled = !!e;
   document.getElementById('usName').value = e ? (u.name || '') : '';
+  document.getElementById('usEmail').value = e ? (u.email || '') : '';
   document.getElementById('usPassword').value = '';
-  document.getElementById('usPassLabel').textContent = e ? 'Nové heslo (nechaj prázdne = bez zmeny)' : 'Heslo *';
+  document.getElementById('usPassword').type = 'password';
+  document.getElementById('usPassToggle').classList.remove('active');
+  document.getElementById('usPassLabel').textContent = e ? 'Nové heslo (prázdne = bez zmeny)' : 'Heslo *';
   document.getElementById('usRole').value = e ? (u.role || 'user') : 'user';
   document.getElementById('usActive').checked = e ? !!u.active : true;
+  document.getElementById('usSendVerify').checked = true;
+  document.getElementById('usGenLen').value = 16;
+  document.getElementById('usGenSym').checked = true;
+  document.getElementById('usGenCopied').textContent = '';
   document.getElementById('usDeleteBtn').style.display = e ? '' : 'none';
+  // e-mail badge (overený/neoverený) v modáli
+  const badge = document.getElementById('usEmailBadge');
+  if (e && u.email) badge.innerHTML = u.emailVerified ? '<span class="us-vb-ok">✓ overený</span>' : '<span class="us-vb-wait">⌛ neoverený</span>';
+  else badge.innerHTML = '';
+  usPassStrength();
+  usEmailChanged();
   document.getElementById('userModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById(e ? 'usName' : 'usUsername').focus(), 50);
 }
 function closeUserModal() { document.getElementById('userModal').classList.add('hidden'); }
+
+// Zobraz/skry pole „Poslať overovací e-mail" podľa toho, či je zadaný e-mail
+function usEmailChanged() {
+  const has = !!document.getElementById('usEmail').value.trim();
+  document.getElementById('usSendVerifyWrap').style.display = has ? '' : 'none';
+}
+
+// ── Generátor silného hesla ─────────────────────────────────────────────────────
+function usGenPassword() {
+  const len = Math.max(8, Math.min(64, parseInt(document.getElementById('usGenLen').value, 10) || 16));
+  const useSym = document.getElementById('usGenSym').checked;
+  const lower = 'abcdefghijkmnpqrstuvwxyz';     // bez l
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';     // bez I, O
+  const digits = '23456789';                    // bez 0, 1
+  const symbols = '!@#$%^&*()-_=+[]{}?';
+  let pool = lower + upper + digits + (useSym ? symbols : '');
+  const rnd = n => {
+    const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n;
+  };
+  // zaruč aspoň po jednom z každej triedy
+  const req = [lower, upper, digits];
+  if (useSym) req.push(symbols);
+  let chars = req.map(set => set[rnd(set.length)]);
+  while (chars.length < len) chars.push(pool[rnd(pool.length)]);
+  // zamiešaj (Fisher–Yates)
+  for (let i = chars.length - 1; i > 0; i--) { const j = rnd(i + 1); [chars[i], chars[j]] = [chars[j], chars[i]]; }
+  const pass = chars.join('');
+  const inp = document.getElementById('usPassword');
+  inp.value = pass; inp.type = 'text';
+  document.getElementById('usPassToggle').classList.add('active');
+  usPassStrength();
+  usCopyPass(true);
+}
+function usTogglePass() {
+  const inp = document.getElementById('usPassword');
+  const on = inp.type === 'password';
+  inp.type = on ? 'text' : 'password';
+  document.getElementById('usPassToggle').classList.toggle('active', on);
+}
+async function usCopyPass(silent) {
+  const val = document.getElementById('usPassword').value;
+  if (!val) { if (!silent) toast('Heslo je prázdne.', 'warn'); return; }
+  try {
+    await navigator.clipboard.writeText(val);
+    const c = document.getElementById('usGenCopied'); c.textContent = '✓ skopírované';
+    setTimeout(() => { c.textContent = ''; }, 2000);
+    if (!silent) toast('Heslo skopírované do schránky.', 'success');
+  } catch { if (!silent) toast('Kopírovanie zlyhalo — skopíruj ručne.', 'error'); }
+}
+// Odhad sily hesla (0–4) + vizuál
+function usPassStrength() {
+  const v = document.getElementById('usPassword').value;
+  const fill = document.getElementById('usStrengthFill');
+  const lbl = document.getElementById('usStrengthLbl');
+  if (!fill || !lbl) return;
+  if (!v) { fill.style.width = '0%'; fill.className = 'us-strength-fill'; lbl.textContent = ''; return; }
+  let score = 0;
+  if (v.length >= 8) score++;
+  if (v.length >= 12) score++;
+  if (/[a-z]/.test(v) && /[A-Z]/.test(v)) score++;
+  if (/\d/.test(v)) score++;
+  if (/[^A-Za-z0-9]/.test(v)) score++;
+  score = Math.min(4, score);
+  const map = [
+    { w: '20%', c: 'us-s0', t: 'veľmi slabé' },
+    { w: '40%', c: 'us-s1', t: 'slabé' },
+    { w: '60%', c: 'us-s2', t: 'stredné' },
+    { w: '80%', c: 'us-s3', t: 'silné' },
+    { w: '100%', c: 'us-s4', t: 'veľmi silné' }
+  ][score];
+  fill.style.width = map.w; fill.className = 'us-strength-fill ' + map.c; lbl.textContent = map.t;
+}
+
 async function saveUser() {
   const id = document.getElementById('usId').value;
   const username = document.getElementById('usUsername').value.trim();
+  const email = document.getElementById('usEmail').value.trim();
   const password = document.getElementById('usPassword').value;
-  if (!id && (!username || !password)) { alert('Meno a heslo sú povinné'); return; }
+  if (!id && (!username || !password)) { toast('Prihlasovacie meno a heslo sú povinné.', 'error'); return; }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Zadaj platný e-mail.', 'error'); return; }
   const body = {
     name: document.getElementById('usName').value.trim(),
+    email,
     role: document.getElementById('usRole').value,
-    active: document.getElementById('usActive').checked
+    active: document.getElementById('usActive').checked,
+    sendVerification: document.getElementById('usSendVerify').checked
   };
   if (password) body.password = password;
   if (!id) body.username = username;
   try {
     const resp = await fetch(id ? '/api/users/' + id : '/api/users', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (!resp.ok) { const er = await resp.json().catch(() => ({})); alert('Chyba: ' + (er.error || resp.status)); return; }
+    const d = await resp.json().catch(() => ({}));
+    if (!resp.ok) { toast('Chyba: ' + (d.error || resp.status), 'error'); return; }
     closeUserModal(); loadUsers();
-  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+    // spätná väzba o overovacom e-maile
+    if (d.verifyUrl) {
+      if (d.emailSent) toast('Používateľ uložený · overovací e-mail odoslaný.', 'success');
+      else usShowVerifyLink(d.verifyUrl);
+    } else {
+      toast('Používateľ uložený.', 'success');
+    }
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
 }
+
+// Keď SMTP nie je nakonfigurované, ukáž odkaz na skopírovanie (fallback)
+async function usShowVerifyLink(url) {
+  toast('SMTP nie je nastavené — skopíruj overovací odkaz používateľovi.', 'warn', 6000);
+  try { await navigator.clipboard.writeText(url); toast('Overovací odkaz skopírovaný do schránky.', 'info', 5000); }
+  catch { await uiConfirm('Overovací odkaz (pošli ho používateľovi):\n\n' + url); }
+}
+
+async function resendVerification(id) {
+  try {
+    const r = await fetch('/api/users/' + id + '/send-verification', { method: 'POST' });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    if (d.alreadyVerified) { toast('E-mail je už overený.', 'info'); loadUsers(); return; }
+    if (d.emailSent) toast('Overovací e-mail odoslaný.', 'success');
+    else if (d.verifyUrl) usShowVerifyLink(d.verifyUrl);
+    loadUsers();
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+
 async function deleteUser(id) {
   if (!id || !await uiConfirm('Naozaj odstrániť používateľa?')) return;
   try {
     const r = await fetch('/api/users/' + id, { method: 'DELETE' });
-    if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
+    if (!r.ok) { const er = await r.json().catch(() => ({})); toast('Chyba: ' + (er.error || r.status), 'error'); return; }
     closeUserModal(); loadUsers();
-  } catch { alert('Chyba'); }
+  } catch { toast('Chyba pri mazaní.', 'error'); }
 }
 
 // ==============================

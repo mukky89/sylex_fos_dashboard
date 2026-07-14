@@ -25,7 +25,7 @@
       <div class="login-logo">FOS <span>Dashboard</span></div>
       <p class="login-sub">Prihlásenie do systému</p>
       <form onsubmit="doLogin(event)">
-        <input type="text" id="loginUser" placeholder="Používateľské meno" autocomplete="username" autofocus>
+        <input type="text" id="loginUser" placeholder="Meno alebo e-mail" autocomplete="username" autofocus>
         <input type="password" id="loginPass" placeholder="Heslo" autocomplete="current-password">
         <div id="loginError" class="login-error hidden"></div>
         <button type="submit" class="btn-primary login-btn">Prihlásiť sa</button>
@@ -2087,19 +2087,50 @@
   <!-- ===== USER MODAL ===== -->
   <div id="userModal" class="modal hidden">
     <div class="modal-backdrop" onclick="closeUserModal()"></div>
-    <div class="modal-box modal-sm">
+    <div class="modal-box us-modal">
       <div class="modal-header"><h2 id="usModalTitle">Nový používateľ</h2><button class="modal-close" onclick="closeUserModal()">✕</button></div>
-      <div class="modal-body">
+      <div class="modal-body us-body">
         <input type="hidden" id="usId">
+
+        <div class="us-sec-lbl">Identita</div>
         <div class="form-row">
           <div class="form-group"><label>Prihlasovacie meno *</label><input type="text" id="usUsername" placeholder="napr. jnovak" autocomplete="off"></div>
-          <div class="form-group"><label>Meno</label><input type="text" id="usName" placeholder="Ján Novák"></div>
+          <div class="form-group"><label>Celé meno</label><input type="text" id="usName" placeholder="Ján Novák"></div>
         </div>
+        <div class="form-group">
+          <label>E-mail <span id="usEmailBadge" class="us-verify-badge"></span></label>
+          <input type="email" id="usEmail" placeholder="jan.novak@sylex.sk" autocomplete="off" oninput="usEmailChanged()">
+          <span class="us-field-hint">Slúži na prihlásenie aj na overenie účtu.</span>
+        </div>
+
+        <div class="us-sec-lbl">Heslo</div>
+        <div class="form-group us-pass-group">
+          <label id="usPassLabel">Heslo *</label>
+          <div class="us-pass-row">
+            <input type="password" id="usPassword" placeholder="Heslo" autocomplete="new-password" oninput="usPassStrength()">
+            <button type="button" class="us-pass-btn" id="usPassToggle" onclick="usTogglePass()" title="Zobraziť / skryť heslo">👁</button>
+            <button type="button" class="us-pass-btn" onclick="usGenPassword()" title="Vygenerovať silné heslo">🎲</button>
+            <button type="button" class="us-pass-btn" id="usPassCopy" onclick="usCopyPass()" title="Kopírovať heslo">⧉</button>
+          </div>
+          <div class="us-strength">
+            <div class="us-strength-bar"><div id="usStrengthFill" class="us-strength-fill"></div></div>
+            <span id="usStrengthLbl" class="us-strength-lbl"></span>
+          </div>
+          <div class="us-genopts">
+            <label class="us-mini-lbl">Dĺžka <input type="number" id="usGenLen" min="8" max="64" value="16" class="us-genlen"></label>
+            <label class="us-chk"><input type="checkbox" id="usGenSym" checked> špeciálne znaky</label>
+            <span id="usGenCopied" class="us-copied"></span>
+          </div>
+        </div>
+
+        <div class="us-sec-lbl">Nastavenia</div>
         <div class="form-row">
-          <div class="form-group"><label id="usPassLabel">Heslo *</label><input type="password" id="usPassword" placeholder="Heslo" autocomplete="new-password"></div>
           <div class="form-group"><label>Rola</label><select id="usRole"><option value="user">Používateľ</option><option value="admin">Admin</option></select></div>
+          <div class="form-group us-toggles">
+            <label class="checkbox-label"><input type="checkbox" id="usActive" checked> Aktívny účet</label>
+            <label class="checkbox-label" id="usSendVerifyWrap"><input type="checkbox" id="usSendVerify" checked> Poslať overovací e-mail</label>
+          </div>
         </div>
-        <div class="form-group"><label class="checkbox-label"><input type="checkbox" id="usActive" checked> Aktívny</label></div>
       </div>
       <div class="modal-footer">
         <button class="btn-delete" id="usDeleteBtn" onclick="deleteUser(document.getElementById('usId').value)" style="display:none">Odstrániť</button>

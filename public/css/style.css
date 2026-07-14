@@ -1125,6 +1125,8 @@ body {
   letter-spacing: 0.04em; color: var(--text-dim);
 }
 .form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
 .form-group input[type="color"],
 .form-group select {
   padding: 8px 11px; border-radius: var(--radius);
@@ -6046,3 +6048,59 @@ body.theme-light .prod-sub, body.theme-warm .prod-sub { color: #64748b; }
   .gpn-card { flex-direction: column; }
   .gpn-card-r { align-items: flex-start; flex-direction: row; gap: 10px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPRÁVA POUŽÍVATEĽOV — modal, generátor hesla, overenie e-mailu
+   ═══════════════════════════════════════════════════════════════════════════ */
+.us-modal { max-width: 560px; }
+.us-body { gap: 10px; }
+.us-sec-lbl {
+  font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 800;
+  color: var(--accent2); margin: 6px 0 2px; padding-bottom: 4px; border-bottom: 1px solid var(--border);
+}
+.us-sec-lbl:first-child { margin-top: 0; }
+.us-field-hint { font-size: .72rem; color: var(--text-xdim); margin-top: 3px; }
+
+/* Overovací badge (v zozname aj v modáli) */
+.us-verify-badge { display: inline-block; font-size: .66rem; font-weight: 800; padding: 1px 7px; border-radius: 999px; letter-spacing: .02em; vertical-align: middle; }
+.us-vb-ok   { color: #15803d; background: #dcfce7; }
+.us-vb-wait { color: #b45309; background: #fef3c7; }
+
+/* Heslo — riadok s tlačidlami */
+.us-pass-row { display: flex; gap: 6px; align-items: stretch; }
+.us-pass-row input {
+  flex: 1; padding: 8px 11px; border-radius: var(--radius);
+  background: var(--card-bg); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--font); font-size: .87rem; outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.us-pass-row input:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(8,145,178,0.1); }
+.us-pass-btn {
+  flex: none; width: 38px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--page-bg); color: var(--text-dim); cursor: pointer; font-size: .95rem;
+  transition: all var(--transition);
+}
+.us-pass-btn:hover { background: var(--accent-light); color: var(--accent2); border-color: var(--accent); }
+.us-pass-btn.active { background: var(--accent-light); color: var(--accent2); border-color: var(--accent); }
+
+/* Ukazovateľ sily hesla */
+.us-strength { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.us-strength-bar { flex: 1; height: 6px; border-radius: 4px; background: var(--border); overflow: hidden; }
+.us-strength-fill { height: 100%; width: 0; border-radius: 4px; transition: width .2s, background .2s; }
+.us-strength-fill.us-s0 { background: #ef4444; }
+.us-strength-fill.us-s1 { background: #f97316; }
+.us-strength-fill.us-s2 { background: #eab308; }
+.us-strength-fill.us-s3 { background: #84cc16; }
+.us-strength-fill.us-s4 { background: #16a34a; }
+.us-strength-lbl { font-size: .72rem; font-weight: 700; color: var(--text-dim); min-width: 78px; text-align: right; }
+
+/* Možnosti generátora */
+.us-genopts { display: flex; align-items: center; gap: 14px; margin-top: 8px; flex-wrap: wrap; }
+.us-mini-lbl { font-size: .74rem; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+.us-genlen { width: 56px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--card-bg); color: var(--text); font-size: .8rem; }
+.us-chk { font-size: .74rem; color: var(--text-dim); display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.us-copied { font-size: .72rem; font-weight: 700; color: var(--success); margin-left: auto; }
+
+/* Prepínače v nastaveniach */
+.us-toggles { justify-content: center; gap: 8px; }
+.us-toggles .checkbox-label { font-size: .84rem; }
