@@ -5877,50 +5877,53 @@ body.theme-light .prod-sub, body.theme-warm .prod-sub { color: #64748b; }
 /* ═══════════════════════════════════════════════════════════════════════════
    GPN — Golden PN (ticket systém požiadaviek)
    ═══════════════════════════════════════════════════════════════════════════ */
-.gpn-page { background: var(--page-bg); }
+/* Tmavá stránka (rovnaká rodina ako Výroba / Workflow / Vlastníci) */
+.gpn-page { background: var(--hdr-bg); }
 .gpn-inner { padding: 22px 26px 60px; max-width: 1320px; margin: 0 auto; }
 
 /* Dashboard KPI karty */
 .gpn-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 .gpn-kpi {
   display: flex; flex-direction: column; gap: 3px; align-items: flex-start;
-  padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-lg);
-  background: var(--card-bg); cursor: pointer; transition: var(--transition); text-align: left;
+  padding: 14px 16px; border: 1px solid rgba(var(--dz-fg-rgb),0.1); border-radius: var(--radius-lg);
+  background: rgba(var(--dz-fg-rgb),0.04); cursor: pointer; transition: transform .12s, border-color .14s, background .14s, box-shadow .14s; text-align: left;
 }
-.gpn-kpi:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); }
-.gpn-kpi.active { border-color: var(--accent); background: var(--accent-light); box-shadow: var(--shadow-sm); }
+.gpn-kpi:hover { transform: translateY(-2px); background: rgba(var(--dz-fg-rgb),0.07); box-shadow: 0 6px 16px rgba(0,0,0,0.18); }
+.gpn-kpi.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), 0 4px 14px rgba(8,145,178,0.18); }
 .gpn-kpi-ico { font-size: 1.1rem; }
-.gpn-kpi-n { font-size: 1.7rem; font-weight: 800; line-height: 1; color: var(--text-bright); font-family: var(--font-title); }
-.gpn-kpi-lbl { font-size: .78rem; color: var(--text-dim); }
+.gpn-kpi-n { font-size: 1.7rem; font-weight: 800; line-height: 1; color: var(--dz-text); font-family: var(--font-title); font-variant-numeric: tabular-nums; }
+.gpn-kpi-lbl { font-size: .78rem; color: #94a3b8; }
 
 /* Filtre */
 .gpn-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
 .gpn-filter {
-  padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius);
-  background: var(--card-bg); color: var(--text); font-size: .8rem; max-width: 170px;
+  padding: 7px 10px; border: 1px solid rgba(var(--dz-fg-rgb),0.14); border-radius: var(--radius);
+  background: rgba(var(--dz-fg-rgb),0.05); color: var(--dz-text2); font-size: .8rem; max-width: 170px;
+  color-scheme: dark;
 }
-.gpn-filter:focus { outline: none; border-color: var(--border-focus); }
+.gpn-filter:focus { outline: none; border-color: var(--accent); }
+.gpn-filter option { background: var(--dz-surface2); color: var(--dz-text2); }
 
 /* Zoznam ticketov */
 .gpn-list { display: flex; flex-direction: column; gap: 10px; }
 .gpn-card {
   display: flex; justify-content: space-between; gap: 16px; align-items: stretch;
-  padding: 13px 16px; border: 1px solid var(--border); border-radius: var(--radius-lg);
-  background: var(--card-bg); cursor: pointer; transition: var(--transition);
+  padding: 13px 16px; border: 1px solid rgba(var(--dz-fg-rgb),0.1); border-radius: var(--radius-lg);
+  background: rgba(var(--dz-fg-rgb),0.03); cursor: pointer; transition: transform .12s, border-color .14s, background .14s, box-shadow .14s;
 }
-.gpn-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.gpn-card:hover { border-color: var(--accent); background: rgba(0,212,255,0.06); box-shadow: 0 6px 16px rgba(0,0,0,0.2); transform: translateY(-1px); }
 .gpn-card-l { min-width: 0; flex: 1; }
 .gpn-card-top { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 5px; }
-.gpn-num { font-weight: 800; font-family: 'Consolas', monospace; font-size: .84rem; color: var(--accent2); }
-.gpn-type-tag { font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-xdim); font-weight: 700; }
-.gpn-card-title { font-weight: 700; color: var(--text-bright); font-size: .96rem; margin-bottom: 4px; }
-.gpn-card-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: .78rem; color: var(--text-dim); }
-.gpn-unassigned { color: var(--warning); }
+.gpn-num { font-weight: 800; font-family: 'Consolas', monospace; font-size: .84rem; color: var(--dz-cyan); }
+.gpn-type-tag { font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; color: #64748b; font-weight: 700; }
+.gpn-card-title { font-weight: 700; color: var(--dz-text); font-size: .96rem; margin-bottom: 4px; }
+.gpn-card-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: .78rem; color: #94a3b8; }
+.gpn-unassigned { color: var(--dz-amber); }
 .gpn-card-r { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px; min-width: 92px; }
-.gpn-mini-bar { width: 92px; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
-.gpn-mini-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--success)); border-radius: 3px; }
-.gpn-mini-lbl { font-size: .7rem; color: var(--text-xdim); }
-.gpn-card-date { font-size: .72rem; color: var(--text-xdim); }
+.gpn-mini-bar { width: 92px; height: 6px; border-radius: 3px; background: rgba(var(--dz-fg-rgb),0.12); overflow: hidden; }
+.gpn-mini-fill { height: 100%; background: linear-gradient(90deg, var(--dz-cyan), var(--dz-green)); border-radius: 3px; }
+.gpn-mini-lbl { font-size: .7rem; color: #64748b; }
+.gpn-card-date { font-size: .72rem; color: #64748b; }
 
 /* Badge (stav / priorita) */
 .gpn-badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: .7rem; font-weight: 700; line-height: 1.5; }

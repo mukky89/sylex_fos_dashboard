@@ -6557,6 +6557,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.29.1', date: '14. 7. 2026', tag: 'style', items: [
+    'Modul <strong>GPN — Golden PN</strong> je teraz v <strong>tmavom režime</strong> — zjednotený vzhľad s ostatnými výrobnými stránkami (Výroba, Riadenie, Workflow, Vlastníci): tmavé navy pozadie, priehľadné karty, cyan akcenty. Dashboard, filtre aj zoznam ticketov sa prispôsobili tmavému podkladu (formuláre a detail ticketu ostávajú na svetlom modáli ako v celej appke).',
+  ] },
   { v: '2.29.0', date: '14. 7. 2026', tag: 'feat', items: [
     'Nový modul <strong>GPN — Golden PN</strong> (v menu nad <em>Vlastníci produktov</em>) — interný ticket systém pre požiadavky na vytvorenie a úpravu GPN medzi obchodom a technológiou. Nahrádza chaotickú komunikáciu cez e-mail/Teams jednotným formulárom, kde obchodník zadá všetky potrebné údaje naraz.',
     '<strong>Formulár požiadavky</strong>: typ (nové/úprava), priorita, dôvod a popis, produkt/variant/zákazník/projekt, dynamický zoznam <em>káblov</em> (typ, počet, dĺžka, farba, označenie) a <em>konektorov</em> (A/B, orientácia, pinout), materiál (tubing, sleeve, label, heat shrink, iné), termín a špeciálne požiadavky.',
