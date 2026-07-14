@@ -8,6 +8,33 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.30.0] — 2026-07-14
+### Pridané
+- **Generátor silného hesla** v modáli používateľa — jedným klikom vytvorí
+  kryptograficky náhodné heslo (nastaviteľná dĺžka 8–64, voliteľné špeciálne
+  znaky, bez zameniteľných znakov 0/O/1/l/I), s indikátorom sily hesla,
+  prepínačom zobraziť/skryť a kopírovaním do schránky.
+- **Prihlásenie cez e-mail** — login akceptuje používateľské meno *alebo* e-mail
+  (`$or` v `routes/auth.js`). Do modelu `User` pribudlo pole `email`
+  (unikátne pre neprázdne hodnoty) + polia `emailVerified`, `verifyToken`,
+  `verifyExpires`.
+- **Overenie e-mailu** — pri vytvorení/zmene e-mailu sa vygeneruje overovací
+  token (platnosť 24 h) a odošle sa e-mail cez SMTP (nodemailer, `utils/mailer.js`).
+  Verejný endpoint `GET /api/auth/verify-email?token=…` zobrazí brandovanú
+  potvrdzovaciu stránku. V zozname používateľov je stav *overený/neoverený* a
+  tlačidlo na opätovné odoslanie (`POST /api/users/:id/send-verification`).
+  Ak SMTP nie je nakonfigurované, appka funguje ďalej a odkaz sa vráti do UI na
+  skopírovanie.
+### Zmenené
+- **Prepracovaný modal Nový/Upraviť používateľ** — väčšie okno (560 px)
+  rozdelené na sekcie (Identita · Heslo · Nastavenia), pridané pole e-mail a
+  prepínač „Poslať overovací e-mail", opravené štýlovanie `input[type=email/password]`,
+  hlášky `alert()` nahradené `toast()`.
+### Konfigurácia
+- Pre reálne odosielanie e-mailov nastav env premenné: `SMTP_HOST`, `SMTP_USER`,
+  `SMTP_PASS` (voliteľne `SMTP_PORT` [587], `SMTP_SECURE`, `SMTP_FROM`, `APP_URL`).
+- Nová závislosť: `nodemailer`.
+
 ## [2.29.1] — 2026-07-14
 ### Zmenené
 - Modul **GPN — Golden PN** prepnutý do **tmavého režimu** pre zjednotenie s
