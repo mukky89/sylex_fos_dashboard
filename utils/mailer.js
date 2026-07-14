@@ -1,35 +1,49 @@
 /**
- * Odosielanie e-mailov cez SMTP (nodemailer).
- * Konfigurácia cez env premenné (nastav na Railway):
- *   SMTP_HOST, SMTP_PORT (default 587), SMTP_SECURE ('true' pre 465),
- *   SMTP_USER, SMTP_PASS, SMTP_FROM (napr. "FOS Dashboard <no-reply@sylex.sk>")
- *   APP_URL (verejná adresa appky, napr. https://fos.sylex.sk) — pre odkazy v mailoch
+ * Odosielanie e-mailov cez Brevo (Sendinblue).
+ * Rovnaký prístup ako repozitár DBFOOD:
+ *   - ak je nastavený BREVO_API_KEY → odosielame cez Brevo HTTP API (HTTPS/443),
+ *     funguje aj tam, kde je SMTP blokovaný (napr. Railway),
+ *   - inak fallback na SMTP cez nodemailer (smtp-relay.brevo.com).
  *
- * Ak SMTP nie je nakonfigurované, appka funguje ďalej — odkaz na overenie sa
- * vráti do UI (admin ho môže skopírovať a poslať ručne). Nič nespadne.
+ * Env premenné (nastavené na Railway podľa DBFOOD):
+ *   BREVO_API_KEY   — API kľúč Brevo (preferovaná cesta cez HTTP API)
+ *   EMAIL_SENDER    — overená adresa odosielateľa (napr. no-reply@sylex.sk)
+ *   SMTP_HOST       — default smtp-relay.brevo.com
+ *   SMTP_PORT       — default 587
+ *   SMTP_USER       — SMTP login (fallback: EMAIL_SENDER)
+ *   EMAIL_PASSWORD  — SMTP heslo / kľúč (fallback: BREVO_API_KEY)
+ *   APP_URL         — verejná adresa appky pre odkazy v mailoch
  */
 const nodemailer = require('nodemailer');
 
-let _transport = null;
+const SENDER_NAME = 'FOS Dashboard';
 
-function isConfigured() {
-  return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+function senderEmail() {
+  return process.env.EMAIL_SENDER || process.env.SMTP_FROM || process.env.SMTP_USER || '';
 }
 
+function smtpPass() {
+  return process.env.EMAIL_PASSWORD || process.env.SMTP_PASS || process.env.BREVO_API_KEY || '';
+}
+
+// Máme dostatok konfigurácie na odoslanie mailu?
+function isConfigured() {
+  if (process.env.BREVO_API_KEY && senderEmail()) return true;
+  if ((process.env.SMTP_HOST || process.env.BREVO_API_KEY) && senderEmail() && smtpPass()) return true;
+  return false;
+}
+
+let _transport = null;
 function transport() {
-  if (!isConfigured()) return null;
   if (_transport) return _transport;
+  const port = Number(process.env.SMTP_PORT) || 587;
   _transport = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || Number(process.env.SMTP_PORT) === 465,
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+    port,
+    secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465,
+    auth: { user: process.env.SMTP_USER || senderEmail(), pass: smtpPass() }
   });
   return _transport;
-}
-
-function fromAddress() {
-  return process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@sylex.sk';
 }
 
 // Verejná adresa appky — z env alebo z requestu (fallback).
@@ -43,12 +57,53 @@ function baseUrl(req) {
   return '';
 }
 
-// Odošle e-mail. Vráti { sent: bool, error?: string }.
-async function sendMail({ to, subject, html, text }) {
-  const t = transport();
-  if (!t) return { sent: false, error: 'SMTP nie je nakonfigurované' };
+// Odoslanie cez Brevo HTTP API (natívny fetch — bez ďalšej závislosti).
+async function sendViaBrevoApi({ to, subject, html, text }) {
+  const payload = {
+    sender: { name: SENDER_NAME, email: senderEmail() },
+    to: [{ email: to }],
+    subject
+  };
+  if (html) payload.htmlContent = html;
+  if (text) payload.textContent = text;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 20000);
   try {
-    await t.sendMail({ from: fromAddress(), to, subject, html, text: text || undefined });
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify(payload),
+      signal: ctrl.signal
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      return { sent: false, error: `Brevo API ${res.status}: ${body.slice(0, 300)}` };
+    }
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, error: e.message };
+  } finally { clearTimeout(t); }
+}
+
+// Zjednotené odoslanie mailu. Vráti { sent: bool, error?: string }.
+async function sendMail({ to, subject, html, text }) {
+  if (!to) return { sent: false, error: 'Chýba príjemca' };
+  if (!isConfigured()) return { sent: false, error: 'E-mail (Brevo/SMTP) nie je nakonfigurovaný' };
+
+  // Preferuj Brevo HTTP API (funguje aj keď je SMTP blokovaný)
+  if (process.env.BREVO_API_KEY && senderEmail()) {
+    const r = await sendViaBrevoApi({ to, subject, html, text });
+    if (r.sent) return r;
+    // ak API zlyhá a máme SMTP heslo, skús fallback
+    if (!smtpPass()) return r;
+  }
+
+  // Fallback: SMTP cez nodemailer
+  try {
+    await transport().sendMail({
+      from: `"${SENDER_NAME}" <${senderEmail()}>`,
+      to, subject, html, text: text || undefined
+    });
     return { sent: true };
   } catch (e) {
     return { sent: false, error: e.message };

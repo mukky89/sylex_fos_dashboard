@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
   email:        { type: String, default: '', lowercase: true, trim: true },
   passwordHash: { type: String, required: true },
   name:         { type: String, default: '', trim: true },
-  role:         { type: String, enum: ['user', 'admin'], default: 'user' },
+  role:         { type: String, enum: ['user', 'admin', 'obchod', 'kvalita', 'technologia'], default: 'user' },
   active:       { type: Boolean, default: true },
   // Overenie emailu
   emailVerified: { type: Boolean, default: false },

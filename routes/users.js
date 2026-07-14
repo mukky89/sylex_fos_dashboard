@@ -8,6 +8,8 @@ const mailer = require('../utils/mailer');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24 h
+const ROLES = ['user', 'admin', 'obchod', 'kvalita', 'technologia'];
+const normRole = r => ROLES.includes(r) ? r : 'user';
 
 // Zoznam mien používateľov pre výbery (PO/BO, priradenia) — dostupné každému prihlásenému
 router.get('/options', requireAuth, async (req, res) => {
@@ -47,7 +49,7 @@ router.post('/', async (req, res) => {
 
     const u = await User.create({
       username, email, name: req.body.name || '',
-      role: req.body.role === 'admin' ? 'admin' : 'user',
+      role: normRole(req.body.role),
       active: req.body.active !== undefined ? !!req.body.active : true,
       passwordHash: await bcrypt.hash(req.body.password, 10),
       emailVerified: false
@@ -74,7 +76,7 @@ router.put('/:id', async (req, res) => {
     const u = await User.findById(req.params.id);
     if (!u) return res.status(404).json({ error: 'Not found' });
     if (req.body.name !== undefined) u.name = req.body.name;
-    if (req.body.role) u.role = req.body.role === 'admin' ? 'admin' : 'user';
+    if (req.body.role) u.role = normRole(req.body.role);
     if (req.body.active !== undefined) u.active = !!req.body.active;
     if (req.body.password) u.passwordHash = await bcrypt.hash(req.body.password, 10);
 
