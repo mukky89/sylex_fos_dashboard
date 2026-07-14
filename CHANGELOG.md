@@ -8,6 +8,15 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.29.1] — 2026-07-14
+### Zmenené
+- Modul **GPN — Golden PN** prepnutý do **tmavého režimu** pre zjednotenie s
+  ostatnými výrobnými stránkami (Výroba, Riadenie, Workflow, Vlastníci) —
+  tmavé navy pozadie, priehľadné karty s bielym overlayom, cyan akcenty a
+  svetlé odznaky stavov/priorít. Dashboard (KPI), filtre a zoznam ticketov sa
+  prispôsobili tmavému podkladu; formulár požiadavky a detail ticketu ostávajú
+  na svetlom modáli (rovnako ako ostatné modály v aplikácii).
+
 ## [2.29.0] — 2026-07-14
 ### Pridané
 - Nový modul **GPN — Golden PN** (v menu nad *Vlastníci produktov*) — interný
