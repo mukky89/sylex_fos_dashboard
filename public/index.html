@@ -3823,6 +3823,21 @@
           <p class="admin-section-desc">Správa prístupov. Každý používateľ má vlastné úlohy. Len admin vidí túto sekciu.</p>
           <div id="usersList" class="admin-links-list"><div class="admin-loading">Načítavam…</div></div>
         </div>
+
+        <!-- Diagnostika odosielania e-mailov (Brevo/SMTP) -->
+        <div class="admin-section">
+          <div class="admin-section-hdr">
+            <h2 class="admin-section-title">Diagnostika e-mailu</h2>
+            <button class="btn-secondary btn-sm" onclick="loadMailStatus()">↻ Obnoviť stav</button>
+          </div>
+          <p class="admin-section-desc">Overenie konfigurácie odosielania e-mailov (overovacie e-maily, Brevo/SMTP).</p>
+          <div id="mailStatus" class="mail-status"><div class="admin-loading">Klikni na „Obnoviť stav".</div></div>
+          <div class="mail-test-row">
+            <input type="email" id="mailTestTo" placeholder="príjemca testu (napr. tvoj e-mail)" class="mail-test-input">
+            <button class="btn-primary btn-sm" onclick="sendMailTest()">✉ Poslať testovací e-mail</button>
+          </div>
+          <div id="mailTestResult" class="mail-test-result"></div>
+        </div>
       </div>
 
       <!-- ── TAB: WORKFLOW PROJEKTOV ── -->

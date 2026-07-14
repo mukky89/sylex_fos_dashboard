@@ -15,6 +15,7 @@
  *   APP_URL         — verejná adresa appky pre odkazy v mailoch
  */
 const nodemailer = require('nodemailer');
+const https = require('https');
 
 const SENDER_NAME = 'FOS Dashboard';
 
@@ -57,8 +58,9 @@ function baseUrl(req) {
   return '';
 }
 
-// Odoslanie cez Brevo HTTP API (natívny fetch — bez ďalšej závislosti).
-async function sendViaBrevoApi({ to, subject, html, text }) {
+// Odoslanie cez Brevo HTTP API. Používa vstavaný modul `https`, aby to fungovalo
+// na každej verzii Node (nie je závislé od globálneho `fetch`).
+function sendViaBrevoApi({ to, subject, html, text }) {
   const payload = {
     sender: { name: SENDER_NAME, email: senderEmail() },
     to: [{ email: to }],
@@ -66,23 +68,33 @@ async function sendViaBrevoApi({ to, subject, html, text }) {
   };
   if (html) payload.htmlContent = html;
   if (text) payload.textContent = text;
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 20000);
-  try {
-    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+  const body = JSON.stringify(payload);
+
+  return new Promise(resolve => {
+    const req = https.request({
       method: 'POST',
-      headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify(payload),
-      signal: ctrl.signal
+      hostname: 'api.brevo.com',
+      path: '/v3/smtp/email',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+        accept: 'application/json',
+        'Content-Length': Buffer.byteLength(body)
+      },
+      timeout: 20000
+    }, res => {
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) resolve({ sent: true });
+        else resolve({ sent: false, error: `Brevo API ${res.statusCode}: ${String(data).slice(0, 300)}` });
+      });
     });
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      return { sent: false, error: `Brevo API ${res.status}: ${body.slice(0, 300)}` };
-    }
-    return { sent: true };
-  } catch (e) {
-    return { sent: false, error: e.message };
-  } finally { clearTimeout(t); }
+    req.on('error', e => resolve({ sent: false, error: e.message }));
+    req.on('timeout', () => { req.destroy(); resolve({ sent: false, error: 'Brevo API timeout (20s)' }); });
+    req.write(body);
+    req.end();
+  });
 }
 
 // Zjednotené odoslanie mailu. Vráti { sent: bool, error?: string }.

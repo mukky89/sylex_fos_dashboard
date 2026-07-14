@@ -227,5 +227,39 @@ module.exports = function(sensorCfg) {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // ── Diagnostika e-mailu (Brevo/SMTP) ─────────────────────────────────────────
+  const mailer = require('../utils/mailer');
+  const mask = v => v ? (String(v).length > 8 ? String(v).slice(0, 4) + '…' + String(v).slice(-2) : '••••') : '';
+  // Stav konfigurácie — hodnoty citlivých kľúčov sú maskované.
+  router.get('/mail-status', (req, res) => {
+    res.json({
+      configured: mailer.isConfigured(),
+      method: process.env.BREVO_API_KEY ? 'Brevo HTTP API' : (process.env.SMTP_HOST || process.env.EMAIL_PASSWORD ? 'SMTP' : '—'),
+      env: {
+        BREVO_API_KEY: process.env.BREVO_API_KEY ? mask(process.env.BREVO_API_KEY) : '',
+        EMAIL_SENDER:  process.env.EMAIL_SENDER || '',
+        SMTP_HOST:     process.env.SMTP_HOST || '',
+        SMTP_PORT:     process.env.SMTP_PORT || '',
+        SMTP_USER:     process.env.SMTP_USER || '',
+        EMAIL_PASSWORD: process.env.EMAIL_PASSWORD ? '••••' : '',
+        SMTP_PASS:     process.env.SMTP_PASS ? '••••' : '',
+        APP_URL:       process.env.APP_URL || ''
+      },
+      baseUrl: mailer.baseUrl(req)
+    });
+  });
+  // Test — odošle skutočný e-mail a vráti presný výsledok/chybu z Brevo.
+  router.post('/mail-test', async (req, res) => {
+    const to = String((req.body && req.body.to) || process.env.EMAIL_SENDER || '').trim();
+    if (!to) return res.status(400).json({ ok: false, error: 'Zadaj adresu príjemcu (to).' });
+    const r = await mailer.sendMail({
+      to,
+      subject: 'Test e-mailu — FOS Dashboard',
+      html: '<p>Toto je <strong>testovací e-mail</strong> z FOS Dashboard. Ak ho vidíš, odosielanie funguje. ✅</p>',
+      text: 'Testovací e-mail z FOS Dashboard. Ak ho vidíš, odosielanie funguje.'
+    });
+    res.status(r.sent ? 200 : 502).json({ ok: r.sent, error: r.error || null, to, method: process.env.BREVO_API_KEY ? 'Brevo HTTP API' : 'SMTP' });
+  });
+
   return router;
 };
