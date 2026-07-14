@@ -8,6 +8,14 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.31.2] — 2026-07-14
+### Opravené
+- **Hotfix štartu aplikácie** — `engines.node` zvýšené z `>=18` na `>=20`.
+  Predchádzajúce `>=18` spôsobilo, že Railway (Nixpacks) nainštaloval Node 18,
+  na ktorom balík `node-ical` padal so `SyntaxError: Invalid regular expression
+  flags` (používa regex flag `v` dostupný až od Node 20) a server sa nespustil.
+  `node-ical` má vlastné `engines.node: >=20`.
+
 ## [2.31.1] — 2026-07-14
 ### Opravené
 - **Odosielanie e-mailov cez Brevo** — volanie API prerobené na vstavaný modul

@@ -6557,6 +6557,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.31.2', date: '14. 7. 2026', tag: 'fix', items: [
+    'Hotfix štartu: <code>engines.node</code> zvýšené na <code>&gt;=20</code>. Predchádzajúce <code>&gt;=18</code> spôsobilo, že Railway nainštaloval Node 18, na ktorom padal balík <code>node-ical</code> (používa regex flag <code>v</code> dostupný až od Node 20) a appka sa nespustila.',
+  ] },
   { v: '2.31.1', date: '14. 7. 2026', tag: 'fix', items: [
     'Oprava odosielania e-mailov: Brevo API sa teraz volá cez vstavaný modul <code>https</code> (nezávisí od globálneho <code>fetch</code>, funguje na každej verzii Node). Pridané <code>engines.node &gt;=18</code>.',
     'Nová <strong>Diagnostika e-mailu</strong> (Admin → Používatelia): zobrazí stav konfigurácie (BREVO_API_KEY, EMAIL_SENDER, APP_URL…) a tlačidlo na <em>odoslanie testovacieho e-mailu</em>, ktoré ukáže presnú chybu z Brevo (napr. neoverený odosielateľ, neplatný kľúč).',
