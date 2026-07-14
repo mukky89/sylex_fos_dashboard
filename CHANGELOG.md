@@ -8,6 +8,23 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.31.0] — 2026-07-14
+### Pridané
+- **Nové role používateľov**: `obchod` (Obchod), `kvalita` (Kvalita),
+  `technologia` (Technológia) — popri `user` a `admin`. Rozšírený enum v modeli
+  `User`, validácia v `routes/users.js`, výber v modáli a farebne odlíšené
+  odznaky rolí v zozname používateľov.
+- **Odosielanie e-mailov cez Brevo** (rovnaká logika ako repozitár DBFOOD):
+  `utils/mailer.js` preferuje **Brevo HTTP API** (`https://api.brevo.com/v3/smtp/email`
+  cez natívny `fetch`, hlavička `api-key`) keď je nastavený `BREVO_API_KEY` —
+  funguje aj tam, kde je SMTP blokovaný (Railway). Fallback na SMTP
+  (`smtp-relay.brevo.com`, nodemailer) keď API kľúč chýba. Odosielateľ z
+  `EMAIL_SENDER`. Vďaka tomu sa overovacie e-maily reálne doručia.
+### Konfigurácia
+- Env premenné (podľa DBFOOD): `BREVO_API_KEY`, `EMAIL_SENDER`, `SMTP_HOST`
+  (default `smtp-relay.brevo.com`), `SMTP_PORT` (587), `SMTP_USER`,
+  `EMAIL_PASSWORD`, `APP_URL`.
+
 ## [2.30.0] — 2026-07-14
 ### Pridané
 - **Generátor silného hesla** v modáli používateľa — jedným klikom vytvorí

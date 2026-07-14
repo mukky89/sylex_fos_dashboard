@@ -6557,6 +6557,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.31.0', date: '14. 7. 2026', tag: 'feat', items: [
+    'Nové <strong>role používateľov</strong>: <em>Obchod</em>, <em>Kvalita</em>, <em>Technológia</em> (popri Používateľ a Admin) — voliteľné v modáli používateľa, farebne odlíšené odznaky v zozname.',
+    'Odosielanie e-mailov cez <strong>Brevo</strong> (rovnaký prístup ako projekt DBFOOD): ak je nastavený <code>BREVO_API_KEY</code>, maily idú cez Brevo HTTP API (funguje aj keď je SMTP blokovaný, napr. na Railway), inak fallback na SMTP <code>smtp-relay.brevo.com</code>. Overovacie e-maily sa tak reálne doručia.',
+    'Podporované env premenné (podľa DBFOOD): <code>BREVO_API_KEY</code>, <code>EMAIL_SENDER</code>, <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>EMAIL_PASSWORD</code>, <code>APP_URL</code>.',
+  ] },
   { v: '2.30.0', date: '14. 7. 2026', tag: 'feat', items: [
     'Prepracovaná stránka <strong>Nový používateľ</strong> (Admin → Používatelia): väčšie prehľadné okno rozdelené na sekcie (Identita · Heslo · Nastavenia), bez vodorovného scrollu, opravené vstupné polia.',
     '<strong>Generátor silného hesla</strong> 🎲 — jedným klikom vytvorí náhodné bezpečné heslo (nastaviteľná dĺžka, voliteľné špeciálne znaky, bez zameniteľných znakov 0/O/1/l/I), s indikátorom sily hesla, zobrazením/skrytím a kopírovaním do schránky.',
@@ -10242,7 +10247,15 @@ function prodOptimize() {
 // POUŽÍVATELIA (admin)
 // ==============================
 let usersData = [];
-const US_ROLE = { admin: 'Admin', user: 'Používateľ' };
+const US_ROLE = { admin: 'Admin', user: 'Používateľ', obchod: 'Obchod', kvalita: 'Kvalita', technologia: 'Technológia' };
+// Farebné odznaky rolí (trieda + skratka)
+const US_ROLE_CHIP = {
+  admin:      { cls: 'us-role-admin', lbl: 'ADMIN' },
+  obchod:     { cls: 'us-role-obchod', lbl: 'OBCHOD' },
+  kvalita:    { cls: 'us-role-kvalita', lbl: 'KVALITA' },
+  technologia:{ cls: 'us-role-tech', lbl: 'TECHNOLÓGIA' },
+  user:       { cls: 'us-role-user', lbl: 'USER' }
+};
 async function loadUsers() {
   const el = document.getElementById('usersList'); if (el) el.innerHTML = '<div class="admin-loading">Načítavam…</div>';
   try {
@@ -10268,8 +10281,9 @@ function renderUsers() {
     }
     const resendBtn = (u.email && !u.emailVerified)
       ? `<button class="admin-icon-btn" onclick="resendVerification('${u._id}')" title="Znovu poslať overovací e-mail">✉</button>` : '';
+    const chip = US_ROLE_CHIP[u.role] || US_ROLE_CHIP.user;
     item.innerHTML = `
-      <span class="ql-chip ql-${u.role === 'admin' ? 'purple' : 'blue'} admin-link-chip">${u.role === 'admin' ? 'ADMIN' : 'USER'}</span>
+      <span class="us-role-chip ${chip.cls} admin-link-chip">${chip.lbl}</span>
       <div class="admin-link-info">
         <div class="admin-link-label">${escHtml(u.name || u.username)} <span style="color:var(--text-xdim)">@${escHtml(u.username)}</span></div>
         <div class="admin-link-url">${US_ROLE[u.role] || u.role}${u.active ? '' : ' · neaktívny'}${mail}</div>
