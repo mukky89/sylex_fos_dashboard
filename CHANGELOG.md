@@ -8,6 +8,38 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.29.0] — 2026-07-14
+### Pridané
+- Nový modul **GPN — Golden PN** (v menu nad *Vlastníci produktov*) — interný
+  ticket systém (Request Form + Ticket Workflow) pre požiadavky na vytvorenie a
+  úpravu GPN (Golden Part Number) medzi obchodom (Sales) a technologickým
+  oddelením. Cieľom je nahradiť chaotickú komunikáciu cez e-mail/Teams jednotným
+  procesom, kde obchodník zadá všetky potrebné údaje už pri vytvorení požiadavky.
+- **Formulár požiadavky**: typ (nové GPN / úprava existujúceho), priorita, dôvod,
+  popis; produkt / variant / zákazník / projekt; dynamický zoznam káblov (typ,
+  počet, dĺžka, farba, označenie) a konektorov (A/B, orientácia, pinout);
+  materiál (tubing, sleeve, label, heat shrink, iné); termín, poznámky a
+  špeciálne požiadavky.
+- **Workflow ticketu** s automatickým unikátnym číslom `GPN-RRRR-NNNN` a stavmi:
+  Nová → Čaká na kontrolu → Rozpracované → (Čaká na doplnenie) → Na schválenie →
+  Schválené → Dokončené → Uzavreté. Ticket sa dá vrátiť obchodníkovi na
+  doplnenie informácií.
+- **Dashboard** s prehľadmi (nové, rozpracované, čakajúce na doplnenie, na
+  schválenie, dokončené) a filtrovaním podľa zákazníka, produktu, technológa,
+  obchodníka, dátumu, priority a stavu + fulltextové hľadanie.
+- **Detail ticketu**: ID, stav, dátum, autor, priradený technológ, kompletné
+  parametre, checklist výrobnej dokumentácie (GPN, výrobný výkres, baliaci výkres,
+  BOM, BOO, FOS karta, schválenie výkresov, dokumentácia kompletná), prílohy s
+  drag & drop uploadom (výkres/foto/špecifikácia/datasheet/iné), komentáre a plná
+  história zmien (kto, kedy, čo).
+- **Notifikácie**: GPN požiadavky vyžadujúce pozornosť (nové / na kontrolu /
+  čakajúce na doplnenie) sa zobrazujú v paneli notifikácií. Možnosť kopírovať
+  existujúcu požiadavku a načítať ukážkové dáta.
+- Nový model `models/GpnRequest.js`, route `routes/gpn.js` (CRUD, workflow,
+  checklist, komentáre, prílohy, história), seed `scripts/seedGpn.js` a admin
+  endpoint `/api/admin/seed-gpn`. Architektúra je modulárna pre budúce rozšírenia
+  (automatické generovanie GPN/BOM, ERP/PLM prepojenie, export PDF/Excel, KPI/SLA).
+
 ## [2.28.0] — 2026-07-10
 ### Údržba
 - Pridaný skill **sylex-brand** (`.claude/skills/sylex-brand/`) — oficiálny SYLEX

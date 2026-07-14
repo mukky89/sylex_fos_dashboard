@@ -94,6 +94,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><path d="M5 8v8"/><path d="M9 6h7a3 3 0 013 3v0a3 3 0 01-3 3H9"/><polyline points="16 3 19 6 16 9"/></svg>
           <span class="nav-lbl">Workflow</span>
         </a>
+        <a class="nav-link" onclick="showPage('gpn')" data-page="gpn" title="GPN — Golden PN požiadavky">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11H3v10h6zM21 3h-6v18h6zM15 8H9v13h6z"/></svg>
+          <span class="nav-lbl">GPN</span>
+        </a>
         <a class="nav-link" onclick="showPage('powners')" data-page="powners" title="Vlastníci produktov">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
           <span class="nav-lbl">Vlastníci</span>
@@ -234,6 +238,10 @@
       <a class="asb-link" data-page="pwf" onclick="showPage('pwf')" title="Workflow výroby produktu">
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><path d="M5 8v8"/><path d="M9 6h7a3 3 0 013 3v0a3 3 0 01-3 3H9"/><polyline points="16 3 19 6 16 9"/></svg></span>
         <span class="asb-lbl">Workflow výroby</span>
+      </a>
+      <a class="asb-link" data-page="gpn" onclick="showPage('gpn')" title="GPN — Golden PN požiadavky">
+        <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11H3v10h6zM21 3h-6v18h6zM15 8H9v13h6z"/></svg></span>
+        <span class="asb-lbl">GPN — Golden PN</span>
       </a>
       <a class="asb-link" data-page="powners" onclick="showPage('powners')" title="Vlastníci produktov">
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></span>
@@ -2263,6 +2271,147 @@
         <button class="btn-secondary" onclick="closeAnnotEditor()">Zrušiť</button>
         <button class="btn-primary" onclick="annotSave()">💾 Uložiť anotácie</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ===== GPN — GOLDEN PN (ticket systém požiadaviek) ===== -->
+  <main id="page-gpn" class="page gpn-page">
+    <div class="gpn-inner">
+      <div class="prod-hdr">
+        <div>
+          <h1 class="prod-title">GPN — Golden PN</h1>
+          <p class="prod-sub">Požiadavky na vytvorenie a úpravu GPN · jednotný proces medzi obchodom a technológiou · ticket workflow</p>
+        </div>
+        <div class="prod-hdr-actions">
+          <button class="btn-secondary" onclick="seedGpnData()" title="Načítať ukážkové požiadavky">🎲 Ukážkové dáta</button>
+          <button class="btn-primary" onclick="openGpnForm()">+ Nová požiadavka</button>
+        </div>
+      </div>
+
+      <!-- Dashboard — prehľady podľa stavu (klik = filter) -->
+      <section class="prod-section gpn-kpis-section">
+        <div class="prod-section-hd">📊 Prehľad požiadaviek</div>
+        <div id="gpnKpis" class="gpn-kpis"></div>
+      </section>
+
+      <!-- Filtre + zoznam -->
+      <section class="prod-section">
+        <div class="gpn-toolbar">
+          <div class="proc-search-wrap" style="margin:0;flex:1;min-width:220px;max-width:340px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="gpnSearch" placeholder="Hľadať číslo, produkt, zákazníka, GPN..." oninput="renderGpn()" autocomplete="off">
+          </div>
+          <select id="gpnFStatus" class="gpn-filter" onchange="renderGpn()"><option value="">Všetky stavy</option></select>
+          <select id="gpnFPriority" class="gpn-filter" onchange="renderGpn()"><option value="">Priorita</option></select>
+          <select id="gpnFCustomer" class="gpn-filter" onchange="renderGpn()"><option value="">Zákazník</option></select>
+          <select id="gpnFProduct" class="gpn-filter" onchange="renderGpn()"><option value="">Produkt</option></select>
+          <select id="gpnFAssignee" class="gpn-filter" onchange="renderGpn()"><option value="">Technológ</option></select>
+          <select id="gpnFRequester" class="gpn-filter" onchange="renderGpn()"><option value="">Obchodník</option></select>
+          <input type="date" id="gpnFFrom" class="gpn-filter" onchange="renderGpn()" title="Od dátumu">
+          <input type="date" id="gpnFTo" class="gpn-filter" onchange="renderGpn()" title="Do dátumu">
+          <button class="btn-secondary btn-sm" onclick="resetGpnFilters()" title="Zrušiť filtre">✕ Filtre</button>
+        </div>
+        <div id="gpnList" class="gpn-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ===== GPN — FORMULÁR POŽIADAVKY (nová / úprava) ===== -->
+  <div id="gpnFormModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeGpnForm()"></div>
+    <div class="modal-box modal-lg gpn-modal-box">
+      <div class="modal-header">
+        <h2 id="gpnFormTitle">Nová požiadavka GPN</h2>
+        <button class="modal-close" onclick="closeGpnForm()">✕</button>
+      </div>
+      <div class="modal-body gpn-form-body">
+        <input type="hidden" id="gpnFormId">
+
+        <div class="gpn-form-sec">Základné údaje</div>
+        <div class="form-row">
+          <div class="form-group"><label>Typ požiadavky *</label>
+            <select id="gpnType" onchange="gpnToggleExisting()">
+              <option value="new">Nové GPN</option>
+              <option value="modify">Úprava existujúceho GPN</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Priorita</label>
+            <select id="gpnPriority">
+              <option value="low">Nízka</option>
+              <option value="normal" selected>Normálna</option>
+              <option value="high">Vysoká</option>
+              <option value="urgent">Urgentná</option>
+            </select>
+          </div>
+          <div class="form-group" id="gpnExistingWrap" style="display:none"><label>Existujúce GPN</label><input type="text" id="gpnExistingGpn" placeholder="napr. GPN-104772"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Dôvod požiadavky</label><input type="text" id="gpnReason" placeholder="napr. nový projekt, zmena dĺžky..."></div>
+          <div class="form-group"><label>Obchodník (autor)</label><input type="text" id="gpnRequesterName" placeholder="meno obchodníka"></div>
+        </div>
+        <div class="form-group"><label>Popis</label><textarea id="gpnDescription" rows="2" placeholder="stručný popis požiadavky"></textarea></div>
+
+        <div class="gpn-form-sec">Produkt</div>
+        <div class="form-row">
+          <div class="form-group"><label>Produkt</label><input type="text" id="gpnProduct" placeholder="napr. Patchcord zväzok"></div>
+          <div class="form-group"><label>Variant produktu</label><input type="text" id="gpnProductVariant" placeholder="napr. MV-12"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Zákazník</label><input type="text" id="gpnCustomer" placeholder="napr. Siemens"></div>
+          <div class="form-group"><label>Projekt</label><input type="text" id="gpnProject" placeholder="napr. MV-12 Retrofit"></div>
+        </div>
+
+        <div class="gpn-form-sec gpn-sec-with-btn">Káble <button type="button" class="btn-secondary btn-sm" onclick="gpnAddCable()">+ Kábel</button></div>
+        <div class="gpn-subtable-wrap">
+          <table class="gpn-subtable">
+            <thead><tr><th>Typ kábla</th><th style="width:70px">Počet</th><th style="width:90px">Dĺžka</th><th style="width:90px">Farba</th><th>Označenie</th><th style="width:34px"></th></tr></thead>
+            <tbody id="gpnCablesBody"></tbody>
+          </table>
+        </div>
+
+        <div class="gpn-form-sec gpn-sec-with-btn">Konektory <button type="button" class="btn-secondary btn-sm" onclick="gpnAddConnector()">+ Konektor</button></div>
+        <div class="gpn-subtable-wrap">
+          <table class="gpn-subtable">
+            <thead><tr><th>Konektor A</th><th>Konektor B</th><th>Orientácia</th><th>Pinout</th><th style="width:34px"></th></tr></thead>
+            <tbody id="gpnConnectorsBody"></tbody>
+          </table>
+        </div>
+
+        <div class="gpn-form-sec">Materiál</div>
+        <div class="form-row">
+          <div class="form-group"><label>Tubing</label><input type="text" id="gpnMatTubing"></div>
+          <div class="form-group"><label>Sleeve</label><input type="text" id="gpnMatSleeve"></div>
+          <div class="form-group"><label>Label</label><input type="text" id="gpnMatLabel"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Heat shrink</label><input type="text" id="gpnMatHeatShrink"></div>
+          <div class="form-group"><label>Iný materiál</label><input type="text" id="gpnMatOther"></div>
+        </div>
+
+        <div class="gpn-form-sec">Dodatočné informácie</div>
+        <div class="form-row">
+          <div class="form-group"><label>Termín</label><input type="date" id="gpnDeadline"></div>
+          <div class="form-group"><label>Špeciálne požiadavky</label><input type="text" id="gpnSpecial" placeholder="napr. LSZH, bez halogénov"></div>
+        </div>
+        <div class="form-group"><label>Poznámky</label><textarea id="gpnNotes" rows="2" placeholder="doplňujúce poznámky"></textarea></div>
+        <p class="gpn-form-hint">📎 Prílohy (výkresy, foto, špecifikácie) sa pridávajú v detaile ticketu po vytvorení požiadavky — podporujú drag &amp; drop.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeGpnForm()">Zrušiť</button>
+        <button class="btn-primary" onclick="saveGpn()">Uložiť požiadavku</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== GPN — DETAIL TICKETU ===== -->
+  <div id="gpnDetailModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeGpnDetail()"></div>
+    <div class="modal-box modal-lg gpn-detail-box">
+      <div class="modal-header gpn-detail-header">
+        <h2 id="gpnDetailTitle">Ticket</h2>
+        <button class="modal-close" onclick="closeGpnDetail()">✕</button>
+      </div>
+      <div class="modal-body gpn-detail-body" id="gpnDetailBody"></div>
     </div>
   </div>
 
