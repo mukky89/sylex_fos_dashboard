@@ -818,6 +818,7 @@ async function handleHash(hash) {
   if (hash === 'prod')    { _activatePage('prod');    loadProd(); return; }
   if (hash === 'mfg')     { _activatePage('mfg');     loadMfg(); return; }
   if (hash === 'pwf')     { _activatePage('pwf');     loadPwf(); return; }
+  if (hash === 'gpn')     { _activatePage('gpn');     loadGpn(); return; }
   if (hash === 'powners') { _activatePage('powners'); loadPowners(); return; }
   if (hash === 'tasks')   { _activatePage('tasks');   loadTasks(); return; }
   if (hash === 'crm')     { _activatePage('crm');     loadCrm(); return; }
@@ -862,6 +863,7 @@ function showPage(name) {
   if (name === 'prod')    loadProd();
   if (name === 'mfg')     loadMfg();
   if (name === 'pwf')     loadPwf();
+  if (name === 'gpn')     loadGpn();
   if (name === 'powners') loadPowners();
   if (name === 'tasks')   loadTasks();
   if (name === 'crm')     loadCrm();
@@ -4719,7 +4721,7 @@ function switchAdminTab(tab) {
   );
   if (tab === 'links')  loadAdminLinks();
   if (tab === 'sensor') { loadSensorConfigAdmin(); loadSensorStats(); }
-  if (tab === 'users') loadUsers();
+  if (tab === 'users') { loadUsers(); loadMailStatus(); }
   if (tab === 'appearance') renderAppearanceAdmin();
   if (tab === 'modules') renderModulesAdmin();
   if (tab === 'projcfg') loadPjConfigAdmin();
@@ -5330,12 +5332,13 @@ let notifData = { newAnns: [], todayEvs: [] };
 async function loadNotif() {
   try {
     const key = calYmd(new Date());
-    const [anns, evs, instr, tasks, procs] = await Promise.all([
+    const [anns, evs, instr, tasks, procs, gpn] = await Promise.all([
       fetch('/api/announcements').then(r => r.json()).catch(() => []),
       fetch(`/api/calendar?from=${key}&to=${key}`).then(r => r.json()).catch(() => []),
       fetch('/api/instruments').then(r => r.json()).catch(() => []),
       fetch('/api/tasks').then(r => r.json()).catch(() => []),
       fetch('/api/procedures').then(r => r.json()).catch(() => []),
+      fetch('/api/gpn').then(r => r.json()).catch(() => []),
     ]);
     const weekAgo = new Date(Date.now() - 7 * 864e5);
     const newAnns = (Array.isArray(anns) ? anns : []).filter(a => new Date(a.date || a.createdAt) >= weekAgo);
@@ -5356,8 +5359,11 @@ async function loadNotif() {
       if (!nr) return false;
       return Math.ceil((new Date(nr) - new Date()) / 864e5) <= 30;
     });
-    notifData = { newAnns, todayEvs, calDue, tasksDue, procRevDue };
-    const count = newAnns.length + todayEvs.length + calDue.length + tasksDue.length + procRevDue.length;
+    // GPN požiadavky vyžadujúce pozornosť: nové/na kontrolu + čakajúce na doplnenie
+    const gpnAll = Array.isArray(gpn) ? gpn : [];
+    const gpnAttention = gpnAll.filter(t => ['new', 'waiting_review', 'waiting_info'].includes(t.status));
+    notifData = { newAnns, todayEvs, calDue, tasksDue, procRevDue, gpnAttention };
+    const count = newAnns.length + todayEvs.length + calDue.length + tasksDue.length + procRevDue.length + gpnAttention.length;
     const b = document.getElementById('notifBadge');
     if (b) { b.textContent = count > 9 ? '9+' : count; b.classList.toggle('hidden', count === 0); }
   } catch (e) {}
@@ -5398,6 +5404,13 @@ function renderNotif() {
       const days = Math.ceil((new Date(p.validity.nextRevision) - new Date()) / 864e5);
       const lbl = days < 0 ? 'po termíne' : `o ${days} dní`;
       h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('procedures');setTimeout(()=>openProcedureById('${p._id}'),250)"><span>📋</span><span>${escHtml(p.title)} — revízia ${lbl}</span></div>`;
+    });
+  }
+  if ((notifData.gpnAttention || []).length) {
+    h += '<div class="notif-group">GPN požiadavky — vyžadujú pozornosť</div>';
+    notifData.gpnAttention.slice(0, 8).forEach(t => {
+      const m = { new: 'nová', waiting_review: 'na kontrolu', waiting_info: 'čaká na doplnenie' }[t.status] || t.status;
+      h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('gpn');setTimeout(()=>openGpnDetail('${t._id}'),250)"><span>🧩</span><span>${escHtml(t.number || '')} · ${escHtml(t.product || t.customer || '')} — ${m}</span></div>`;
     });
   }
   if (notifData.newAnns.length) {
@@ -6544,6 +6557,43 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.33.0', date: '15. 7. 2026', tag: 'feat', items: [
+    'Oficiálne <strong>logo SYLEX</strong> (červený emblém so slovom „sylex") nasadené naprieč celou aplikáciou: v <strong>hlavičke</strong> (pred názvom FOS Dashboard), na <strong>prihlasovacej obrazovke</strong>, v <strong>alternatívnom bočnom paneli</strong>, na stránke <strong>overenia e-mailu</strong>, v <strong>overovacom e-maile</strong> (hostované PNG s textovým fallbackom) a v exportovaných <strong>pracovných postupoch</strong> (Word/PDF). Logo je vektorové (SVG) a funguje na svetlom aj tmavom podklade.',
+  ] },
+  { v: '2.32.0', date: '15. 7. 2026', tag: 'feat', items: [
+    'Nový <strong>dizajn overovacieho e-mailu</strong>: table-based responzívna šablóna s brandovanou hlavičkou (FOS Dashboard · SYLEX), akcentovou linkou, „bulletproof" CTA tlačidlom (vrátane VML fallbacku pre Outlook), preheaderom a čistým pätičkovým blokom. Vyzerá rovnako v Gmaile aj Outlooku. Meno príjemcu sa teraz HTML-escapuje.',
+  ] },
+  { v: '2.31.2', date: '14. 7. 2026', tag: 'fix', items: [
+    'Hotfix štartu: <code>engines.node</code> zvýšené na <code>&gt;=20</code>. Predchádzajúce <code>&gt;=18</code> spôsobilo, že Railway nainštaloval Node 18, na ktorom padal balík <code>node-ical</code> (používa regex flag <code>v</code> dostupný až od Node 20) a appka sa nespustila.',
+  ] },
+  { v: '2.31.1', date: '14. 7. 2026', tag: 'fix', items: [
+    'Oprava odosielania e-mailov: Brevo API sa teraz volá cez vstavaný modul <code>https</code> (nezávisí od globálneho <code>fetch</code>, funguje na každej verzii Node). Pridané <code>engines.node &gt;=18</code>.',
+    'Nová <strong>Diagnostika e-mailu</strong> (Admin → Používatelia): zobrazí stav konfigurácie (BREVO_API_KEY, EMAIL_SENDER, APP_URL…) a tlačidlo na <em>odoslanie testovacieho e-mailu</em>, ktoré ukáže presnú chybu z Brevo (napr. neoverený odosielateľ, neplatný kľúč).',
+  ] },
+  { v: '2.31.0', date: '14. 7. 2026', tag: 'feat', items: [
+    'Nové <strong>role používateľov</strong>: <em>Obchod</em>, <em>Kvalita</em>, <em>Technológia</em> (popri Používateľ a Admin) — voliteľné v modáli používateľa, farebne odlíšené odznaky v zozname.',
+    'Odosielanie e-mailov cez <strong>Brevo</strong> (rovnaký prístup ako projekt DBFOOD): ak je nastavený <code>BREVO_API_KEY</code>, maily idú cez Brevo HTTP API (funguje aj keď je SMTP blokovaný, napr. na Railway), inak fallback na SMTP <code>smtp-relay.brevo.com</code>. Overovacie e-maily sa tak reálne doručia.',
+    'Podporované env premenné (podľa DBFOOD): <code>BREVO_API_KEY</code>, <code>EMAIL_SENDER</code>, <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>EMAIL_PASSWORD</code>, <code>APP_URL</code>.',
+  ] },
+  { v: '2.30.0', date: '14. 7. 2026', tag: 'feat', items: [
+    'Prepracovaná stránka <strong>Nový používateľ</strong> (Admin → Používatelia): väčšie prehľadné okno rozdelené na sekcie (Identita · Heslo · Nastavenia), bez vodorovného scrollu, opravené vstupné polia.',
+    '<strong>Generátor silného hesla</strong> 🎲 — jedným klikom vytvorí náhodné bezpečné heslo (nastaviteľná dĺžka, voliteľné špeciálne znaky, bez zameniteľných znakov 0/O/1/l/I), s indikátorom sily hesla, zobrazením/skrytím a kopírovaním do schránky.',
+    '<strong>Prihlásenie cez e-mail</strong> — používatelia sa môžu prihlásiť menom <em>alebo</em> e-mailom. Do profilu pribudlo pole e-mail.',
+    '<strong>Overenie e-mailu</strong> — pri zadaní e-mailu sa odošle overovací odkaz (platný 24 h) s brandovanou stránkou potvrdenia. V zozname používateľov je stav <em>overený / neoverený</em> a tlačidlo na opätovné odoslanie. Ak SMTP nie je nastavené, odkaz sa dá skopírovať a poslať ručne.',
+    'Poznámka: pre reálne odosielanie e-mailov nastav na Railway premenné <code>SMTP_HOST</code>, <code>SMTP_USER</code>, <code>SMTP_PASS</code> (voliteľne <code>SMTP_PORT</code>, <code>SMTP_SECURE</code>, <code>SMTP_FROM</code>, <code>APP_URL</code>).',
+  ] },
+  { v: '2.29.1', date: '14. 7. 2026', tag: 'style', items: [
+    'Modul <strong>GPN — Golden PN</strong> je teraz v <strong>tmavom režime</strong> — zjednotený vzhľad s ostatnými výrobnými stránkami (Výroba, Riadenie, Workflow, Vlastníci): tmavé navy pozadie, priehľadné karty, cyan akcenty. Dashboard, filtre aj zoznam ticketov sa prispôsobili tmavému podkladu (formuláre a detail ticketu ostávajú na svetlom modáli ako v celej appke).',
+  ] },
+  { v: '2.29.0', date: '14. 7. 2026', tag: 'feat', items: [
+    'Nový modul <strong>GPN — Golden PN</strong> (v menu nad <em>Vlastníci produktov</em>) — interný ticket systém pre požiadavky na vytvorenie a úpravu GPN medzi obchodom a technológiou. Nahrádza chaotickú komunikáciu cez e-mail/Teams jednotným formulárom, kde obchodník zadá všetky potrebné údaje naraz.',
+    '<strong>Formulár požiadavky</strong>: typ (nové/úprava), priorita, dôvod a popis, produkt/variant/zákazník/projekt, dynamický zoznam <em>káblov</em> (typ, počet, dĺžka, farba, označenie) a <em>konektorov</em> (A/B, orientácia, pinout), materiál (tubing, sleeve, label, heat shrink, iné), termín a špeciálne požiadavky.',
+    '<strong>Ticket workflow</strong> s automatickým číslom (GPN-RRRR-NNNN) a stavmi: Nová → Čaká na kontrolu → Rozpracované → (Čaká na doplnenie) → Na schválenie → Schválené → Dokončené → Uzavreté. Ticket sa dá vrátiť obchodníkovi na doplnenie informácií.',
+    '<strong>Dashboard</strong> s prehľadmi (nové, rozpracované, čakajúce na doplnenie, na schválenie, dokončené) a filtrami podľa zákazníka, produktu, technológa, obchodníka, dátumu, priority a stavu + fulltext.',
+    '<strong>Detail ticketu</strong>: kompletné parametre, priradenie technológa, checklist výrobnej dokumentácie (GPN, výrobný a baliaci výkres, BOM, BOO, FOS karta, schválenie výkresov, kompletná dokumentácia), prílohy s <em>drag &amp; drop</em> uploadom, komentáre a plná história zmien (kto, kedy, čo).',
+    'Notifikácie: GPN požiadavky vyžadujúce pozornosť (nové / na kontrolu / čakajúce na doplnenie) sa zobrazujú v zvončeku notifikácií. Možnosť <em>kopírovať</em> existujúcu požiadavku a ukážkové dáta (🎲).',
+    'Architektúra pripravená na budúce rozšírenia (automatické generovanie GPN/BOM, prepojenie na ERP/PLM, export PDF/Excel, KPI a SLA meranie).',
+  ] },
   { v: '2.28.0', date: '10. 7. 2026', tag: 'chore', items: [
     'Pridaný skill <strong>sylex-brand</strong> — oficiálny SYLEX brand kit (červený emblém, wordmark „sylex®", varianta „FIBER OPTICS", brand paleta a pravidlá) v <code>.claude/skills/</code>. Aplikuje sa iba na výslovné vyžiadanie, nie automaticky.',
   ] },
@@ -8983,6 +9033,525 @@ async function seedPwfData() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+//  GPN — GOLDEN PN (ticket systém požiadaviek Sales → Technológia)
+// ══════════════════════════════════════════════════════════════════════════════
+let gpnData = [];                 // načítané tickety
+let gpnFilterBucket = '';         // aktívny KPI filter (stav-bucket)
+let gpnFormCables = [];           // riadky káblov v otvorenom formulári
+let gpnFormConnectors = [];       // riadky konektorov v otvorenom formulári
+let gpnDetailId = null;           // otvorený ticket v detaile
+let gpnUsers = [];                // používatelia (technológovia) pre priradenie
+
+const GPN_STATUS = {
+  new:            { lbl: 'Nová',                    cls: 'gpn-st-new',   next: 'waiting_review' },
+  waiting_review: { lbl: 'Čaká na kontrolu',        cls: 'gpn-st-rev',   next: 'in_progress' },
+  in_progress:    { lbl: 'Rozpracované',            cls: 'gpn-st-prog',  next: 'ready_approval' },
+  waiting_info:   { lbl: 'Čaká na doplnenie',       cls: 'gpn-st-wait',  next: 'in_progress' },
+  ready_approval: { lbl: 'Na schválenie',           cls: 'gpn-st-appr',  next: 'approved' },
+  approved:       { lbl: 'Schválené',               cls: 'gpn-st-ok',    next: 'completed' },
+  completed:      { lbl: 'Dokončené',               cls: 'gpn-st-done',  next: 'closed' },
+  closed:         { lbl: 'Uzavreté',                cls: 'gpn-st-closed', next: null }
+};
+const GPN_STATUS_ORDER = ['new', 'waiting_review', 'in_progress', 'waiting_info', 'ready_approval', 'approved', 'completed', 'closed'];
+const GPN_PRIORITY = {
+  low:    { lbl: 'Nízka',    cls: 'gpn-pr-low' },
+  normal: { lbl: 'Normálna', cls: 'gpn-pr-normal' },
+  high:   { lbl: 'Vysoká',   cls: 'gpn-pr-high' },
+  urgent: { lbl: 'Urgentná', cls: 'gpn-pr-urgent' }
+};
+const GPN_TYPE = { new: 'Nové GPN', modify: 'Úprava GPN' };
+const GPN_CHECKLIST = {
+  gpn:              'Vytvorené GPN',
+  prod_drawing:     'Výrobný výkres',
+  pack_drawing:     'Baliaci výkres',
+  bom:              'BOM',
+  boo:              'BOO',
+  fos_card:         'FOS karta',
+  drawings_approved:'Schválenie výkresov',
+  docs_complete:    'Dokumentácia kompletná'
+};
+const GPN_CHECKLIST_ORDER = ['gpn', 'prod_drawing', 'pack_drawing', 'bom', 'boo', 'fos_card', 'drawings_approved', 'docs_complete'];
+const GPN_ATT_CAT = { drawing: '📐 Výkres', photo: '📷 Fotografia', spec: '📋 Špecifikácia', datasheet: '📄 Datasheet', other: '📎 Iné' };
+// KPI buckety dashboardu → množina stavov
+const GPN_BUCKETS = [
+  { key: 'new',      lbl: 'Nové požiadavky',     statuses: ['new', 'waiting_review'], ico: '🆕' },
+  { key: 'progress', lbl: 'Rozpracované',        statuses: ['in_progress'],           ico: '🔧' },
+  { key: 'waiting',  lbl: 'Čakajú na doplnenie', statuses: ['waiting_info'],          ico: '⏳' },
+  { key: 'approval', lbl: 'Na schválenie',       statuses: ['ready_approval', 'approved'], ico: '✅' },
+  { key: 'done',     lbl: 'Dokončené',           statuses: ['completed', 'closed'],   ico: '📦' }
+];
+
+function gpnStatusBadge(s) { const m = GPN_STATUS[s] || GPN_STATUS.new; return `<span class="gpn-badge ${m.cls}">${m.lbl}</span>`; }
+function gpnPriorityBadge(p) { const m = GPN_PRIORITY[p] || GPN_PRIORITY.normal; return `<span class="gpn-badge ${m.cls}">${m.lbl}</span>`; }
+function gpnDateInput(iso) { if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return ''; return d.toISOString().slice(0, 10); }
+function gpnDeadlineTag(t) {
+  if (!t.deadline) return '';
+  const days = Math.ceil((new Date(t.deadline) - new Date()) / 864e5);
+  const done = t.status === 'completed' || t.status === 'closed';
+  const cls = done ? 'gpn-dl-ok' : (days < 0 ? 'gpn-dl-late' : (days <= 3 ? 'gpn-dl-soon' : 'gpn-dl'));
+  const lbl = done ? fmtDate(t.deadline) : (days < 0 ? `po termíne (${fmtDate(t.deadline)})` : `${fmtDate(t.deadline)} (o ${days} d)`);
+  return `<span class="gpn-dl-tag ${cls}">📅 ${lbl}</span>`;
+}
+
+async function loadGpn() {
+  try { gpnData = await fetch('/api/gpn').then(r => r.json()); if (!Array.isArray(gpnData)) gpnData = []; }
+  catch { gpnData = []; }
+  gpnPopulateFilters();
+  renderGpnKpis();
+  renderGpn();
+  if (!gpnUsers.length) fetch('/api/users/options').then(r => r.json()).then(u => { gpnUsers = Array.isArray(u) ? u : []; }).catch(() => {});
+}
+
+function gpnPopulateFilters() {
+  const st = document.getElementById('gpnFStatus');
+  if (st && st.options.length <= 1) GPN_STATUS_ORDER.forEach(k => st.add(new Option(GPN_STATUS[k].lbl, k)));
+  const pr = document.getElementById('gpnFPriority');
+  if (pr && pr.options.length <= 1) Object.keys(GPN_PRIORITY).forEach(k => pr.add(new Option(GPN_PRIORITY[k].lbl, k)));
+  const fill = (id, vals) => {
+    const el = document.getElementById(id); if (!el) return;
+    const cur = el.value;
+    el.innerHTML = el.options[0].outerHTML + vals.filter(Boolean).map(v => `<option>${escHtml(v)}</option>`).join('');
+    el.value = cur;
+  };
+  fill('gpnFCustomer', [...new Set(gpnData.map(t => t.customer).filter(Boolean))].sort());
+  fill('gpnFProduct', [...new Set(gpnData.map(t => t.product).filter(Boolean))].sort());
+  fill('gpnFAssignee', [...new Set(gpnData.map(t => t.assigneeName).filter(Boolean))].sort());
+  fill('gpnFRequester', [...new Set(gpnData.map(t => t.requesterName).filter(Boolean))].sort());
+}
+
+function renderGpnKpis() {
+  const el = document.getElementById('gpnKpis'); if (!el) return;
+  el.innerHTML = GPN_BUCKETS.map(b => {
+    const n = gpnData.filter(t => b.statuses.includes(t.status)).length;
+    return `<button class="gpn-kpi ${gpnFilterBucket === b.key ? 'active' : ''}" onclick="gpnToggleBucket('${b.key}')">
+      <span class="gpn-kpi-ico">${b.ico}</span>
+      <span class="gpn-kpi-n">${n}</span>
+      <span class="gpn-kpi-lbl">${b.lbl}</span>
+    </button>`;
+  }).join('');
+}
+function gpnToggleBucket(key) { gpnFilterBucket = gpnFilterBucket === key ? '' : key; renderGpnKpis(); renderGpn(); }
+
+function resetGpnFilters() {
+  ['gpnSearch', 'gpnFStatus', 'gpnFPriority', 'gpnFCustomer', 'gpnFProduct', 'gpnFAssignee', 'gpnFRequester', 'gpnFFrom', 'gpnFTo'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  gpnFilterBucket = ''; renderGpnKpis(); renderGpn();
+}
+
+function renderGpn() {
+  const el = document.getElementById('gpnList'); if (!el) return;
+  const q = (document.getElementById('gpnSearch')?.value || '').toLowerCase().trim();
+  const fSt = document.getElementById('gpnFStatus')?.value || '';
+  const fPr = document.getElementById('gpnFPriority')?.value || '';
+  const fCu = document.getElementById('gpnFCustomer')?.value || '';
+  const fPd = document.getElementById('gpnFProduct')?.value || '';
+  const fAs = document.getElementById('gpnFAssignee')?.value || '';
+  const fRe = document.getElementById('gpnFRequester')?.value || '';
+  const fFrom = document.getElementById('gpnFFrom')?.value || '';
+  const fTo = document.getElementById('gpnFTo')?.value || '';
+  const bucket = GPN_BUCKETS.find(b => b.key === gpnFilterBucket);
+
+  let list = gpnData.filter(t => {
+    if (bucket && !bucket.statuses.includes(t.status)) return false;
+    if (fSt && t.status !== fSt) return false;
+    if (fPr && t.priority !== fPr) return false;
+    if (fCu && t.customer !== fCu) return false;
+    if (fPd && t.product !== fPd) return false;
+    if (fAs && t.assigneeName !== fAs) return false;
+    if (fRe && t.requesterName !== fRe) return false;
+    if (fFrom && new Date(t.createdAt) < new Date(fFrom)) return false;
+    if (fTo) { const d = new Date(fTo); d.setHours(23, 59, 59); if (new Date(t.createdAt) > d) return false; }
+    if (q) {
+      const hay = `${t.number} ${t.product} ${t.customer} ${t.project} ${t.description} ${t.resultGpn} ${t.requesterName} ${t.assigneeName}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  if (!list.length) {
+    el.innerHTML = '<div class="proc-empty" style="padding:20px">Žiadne požiadavky. Klikni na <strong>+ Nová požiadavka</strong> alebo <strong>🎲 Ukážkové dáta</strong>.</div>';
+    return;
+  }
+  el.innerHTML = list.map(t => {
+    const s = t.stats || { checklistDone: 0, checklistTotal: 8, progress: 0 };
+    return `<div class="gpn-card" onclick="openGpnDetail('${t._id}')">
+      <div class="gpn-card-l">
+        <div class="gpn-card-top">
+          <span class="gpn-num">${escHtml(t.number || '—')}</span>
+          ${gpnStatusBadge(t.status)}
+          ${gpnPriorityBadge(t.priority)}
+          <span class="gpn-type-tag">${GPN_TYPE[t.type] || ''}</span>
+        </div>
+        <div class="gpn-card-title">${escHtml(t.product || t.description || 'Bez názvu')}${t.productVariant ? ' · ' + escHtml(t.productVariant) : ''}</div>
+        <div class="gpn-card-meta">
+          ${t.customer ? `<span>🏢 ${escHtml(t.customer)}</span>` : ''}
+          ${t.project ? `<span>🗂️ ${escHtml(t.project)}</span>` : ''}
+          ${t.requesterName ? `<span>👤 ${escHtml(t.requesterName)}</span>` : ''}
+          ${t.assigneeName ? `<span>🔧 ${escHtml(t.assigneeName)}</span>` : '<span class="gpn-unassigned">🔧 nepriradené</span>'}
+          ${gpnDeadlineTag(t)}
+        </div>
+      </div>
+      <div class="gpn-card-r">
+        <div class="gpn-mini-bar" title="Dokumentácia ${s.checklistDone}/${s.checklistTotal}"><div class="gpn-mini-fill" style="width:${s.progress}%"></div></div>
+        <div class="gpn-mini-lbl">${s.checklistDone}/${s.checklistTotal} dok.</div>
+        <div class="gpn-card-date">${fmtDate(t.createdAt)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Formulár požiadavky ─────────────────────────────────────────────────────────
+function gpnEmptyCable() { return { cableType: '', count: 1, length: '', color: '', marking: '' }; }
+function gpnEmptyConnector() { return { connectorA: '', connectorB: '', orientation: '', pinout: '' }; }
+
+function openGpnForm(t = null, isCopy = false) {
+  const e = t && typeof t === 'object';
+  document.getElementById('gpnFormTitle').textContent = isCopy ? 'Kópia požiadavky' : (e ? 'Upraviť požiadavku ' + (t.number || '') : 'Nová požiadavka GPN');
+  document.getElementById('gpnFormId').value = e && !isCopy ? t._id : '';
+  const g = id => document.getElementById(id);
+  g('gpnType').value = e ? (t.type || 'new') : 'new';
+  g('gpnPriority').value = e ? (t.priority || 'normal') : 'normal';
+  g('gpnExistingGpn').value = e ? (t.existingGpn || '') : '';
+  g('gpnReason').value = e ? (t.reason || '') : '';
+  g('gpnRequesterName').value = e ? (t.requesterName || '') : ((CURRENT_USER && CURRENT_USER.name) || '');
+  g('gpnDescription').value = e ? (t.description || '') : '';
+  g('gpnProduct').value = e ? (t.product || '') : '';
+  g('gpnProductVariant').value = e ? (t.productVariant || '') : '';
+  g('gpnCustomer').value = e ? (t.customer || '') : '';
+  g('gpnProject').value = e ? (t.project || '') : '';
+  const m = (e && t.material) || {};
+  g('gpnMatTubing').value = m.tubing || ''; g('gpnMatSleeve').value = m.sleeve || ''; g('gpnMatLabel').value = m.label || '';
+  g('gpnMatHeatShrink').value = m.heatShrink || ''; g('gpnMatOther').value = m.other || '';
+  g('gpnDeadline').value = e ? gpnDateInput(t.deadline) : '';
+  g('gpnSpecial').value = e ? (t.special || '') : '';
+  g('gpnNotes').value = e && t.notes !== 'seed' ? (t.notes || '') : '';
+  gpnFormCables = e && (t.cables || []).length ? t.cables.map(c => ({ ...c })) : [gpnEmptyCable()];
+  gpnFormConnectors = e && (t.connectors || []).length ? t.connectors.map(c => ({ ...c })) : [gpnEmptyConnector()];
+  gpnToggleExisting();
+  renderGpnCables(); renderGpnConnectors();
+  document.getElementById('gpnFormModal').classList.remove('hidden');
+  modalSnapshot('gpnFormModal');
+}
+function closeGpnForm() { modalGuardClose('gpnFormModal'); }
+function gpnToggleExisting() {
+  document.getElementById('gpnExistingWrap').style.display = document.getElementById('gpnType').value === 'modify' ? '' : 'none';
+}
+
+function renderGpnCables() {
+  const b = document.getElementById('gpnCablesBody'); if (!b) return;
+  b.innerHTML = gpnFormCables.map((c, i) => `<tr>
+    <td><input class="gpn-in" value="${escHtml(c.cableType || '')}" oninput="gpnUpdCable(${i},'cableType',this.value)" placeholder="napr. G657A2 2mm"></td>
+    <td><input class="gpn-in" type="number" min="1" value="${c.count || 1}" oninput="gpnUpdCable(${i},'count',this.value)"></td>
+    <td><input class="gpn-in" value="${escHtml(c.length || '')}" oninput="gpnUpdCable(${i},'length',this.value)" placeholder="2,5 m"></td>
+    <td><input class="gpn-in" value="${escHtml(c.color || '')}" oninput="gpnUpdCable(${i},'color',this.value)" placeholder="žltá"></td>
+    <td><input class="gpn-in" value="${escHtml(c.marking || '')}" oninput="gpnUpdCable(${i},'marking',this.value)" placeholder="označenie"></td>
+    <td><button type="button" class="tk-sub-del" onclick="gpnDelCable(${i})">✕</button></td>
+  </tr>`).join('');
+}
+function gpnUpdCable(i, f, v) { if (gpnFormCables[i]) gpnFormCables[i][f] = v; }
+function gpnAddCable() { gpnFormCables.push(gpnEmptyCable()); renderGpnCables(); }
+function gpnDelCable(i) { gpnFormCables.splice(i, 1); if (!gpnFormCables.length) gpnFormCables.push(gpnEmptyCable()); renderGpnCables(); }
+
+function renderGpnConnectors() {
+  const b = document.getElementById('gpnConnectorsBody'); if (!b) return;
+  b.innerHTML = gpnFormConnectors.map((c, i) => `<tr>
+    <td><input class="gpn-in" value="${escHtml(c.connectorA || '')}" oninput="gpnUpdConn(${i},'connectorA',this.value)" placeholder="LC/UPC"></td>
+    <td><input class="gpn-in" value="${escHtml(c.connectorB || '')}" oninput="gpnUpdConn(${i},'connectorB',this.value)" placeholder="SC/APC"></td>
+    <td><input class="gpn-in" value="${escHtml(c.orientation || '')}" oninput="gpnUpdConn(${i},'orientation',this.value)" placeholder="A→B"></td>
+    <td><input class="gpn-in" value="${escHtml(c.pinout || '')}" oninput="gpnUpdConn(${i},'pinout',this.value)" placeholder="pinout"></td>
+    <td><button type="button" class="tk-sub-del" onclick="gpnDelConn(${i})">✕</button></td>
+  </tr>`).join('');
+}
+function gpnUpdConn(i, f, v) { if (gpnFormConnectors[i]) gpnFormConnectors[i][f] = v; }
+function gpnAddConnector() { gpnFormConnectors.push(gpnEmptyConnector()); renderGpnConnectors(); }
+function gpnDelConn(i) { gpnFormConnectors.splice(i, 1); if (!gpnFormConnectors.length) gpnFormConnectors.push(gpnEmptyConnector()); renderGpnConnectors(); }
+
+async function saveGpn() {
+  const g = id => document.getElementById(id).value.trim();
+  const body = {
+    type: document.getElementById('gpnType').value,
+    priority: document.getElementById('gpnPriority').value,
+    existingGpn: g('gpnExistingGpn'),
+    reason: g('gpnReason'), description: g('gpnDescription'),
+    requesterName: g('gpnRequesterName'),
+    product: g('gpnProduct'), productVariant: g('gpnProductVariant'),
+    customer: g('gpnCustomer'), project: g('gpnProject'),
+    material: { tubing: g('gpnMatTubing'), sleeve: g('gpnMatSleeve'), label: g('gpnMatLabel'), heatShrink: g('gpnMatHeatShrink'), other: g('gpnMatOther') },
+    deadline: document.getElementById('gpnDeadline').value || null,
+    special: g('gpnSpecial'), notes: g('gpnNotes'),
+    cables: gpnFormCables.filter(c => c.cableType || c.length || c.color || c.marking),
+    connectors: gpnFormConnectors.filter(c => c.connectorA || c.connectorB || c.orientation || c.pinout)
+  };
+  if (!body.product && !body.description && !body.reason) { toast('Vyplň aspoň produkt, dôvod alebo popis.', 'error'); return; }
+  const id = document.getElementById('gpnFormId').value;
+  try {
+    const r = await fetch(id ? '/api/gpn/' + id : '/api/gpn', {
+      method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    modalSnapshot('gpnFormModal'); closeGpnForm(); await loadGpn();
+    toast(id ? 'Požiadavka uložená.' : `Vytvorená požiadavka ${d.number}.`, 'success');
+    if (!id) openGpnDetail(d._id);
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+
+// ── Detail ticketu ──────────────────────────────────────────────────────────────
+async function openGpnDetail(id) {
+  gpnDetailId = id;
+  document.getElementById('gpnDetailModal').classList.remove('hidden');
+  document.getElementById('gpnDetailBody').innerHTML = '<div class="proc-empty" style="padding:30px">Načítavam…</div>';
+  try {
+    const t = await fetch('/api/gpn/' + id).then(r => r.json());
+    renderGpnDetail(t);
+  } catch (e) { document.getElementById('gpnDetailBody').innerHTML = '<div class="proc-empty">Chyba načítania.</div>'; }
+}
+function closeGpnDetail() { document.getElementById('gpnDetailModal').classList.add('hidden'); gpnDetailId = null; }
+
+function gpnRow(label, val) { return val ? `<div class="gpn-kv"><span class="gpn-k">${label}</span><span class="gpn-v">${escHtml(String(val))}</span></div>` : ''; }
+
+function renderGpnDetail(t) {
+  document.getElementById('gpnDetailTitle').innerHTML = `${escHtml(t.number || 'Ticket')} ${gpnStatusBadge(t.status)} ${gpnPriorityBadge(t.priority)}`;
+  const body = document.getElementById('gpnDetailBody');
+  const s = t.stats || { checklistDone: 0, checklistTotal: 8, progress: 0 };
+
+  // Workflow lišta
+  const steps = GPN_STATUS_ORDER.filter(k => k !== 'waiting_info').map(k => {
+    const idx = GPN_STATUS_ORDER.indexOf(t.status);
+    const kIdx = GPN_STATUS_ORDER.indexOf(k);
+    const active = t.status === k;
+    const passed = kIdx < idx && t.status !== 'waiting_info';
+    return `<div class="gpn-wf-step ${active ? 'active' : ''} ${passed ? 'passed' : ''}"><span class="gpn-wf-dot"></span><span class="gpn-wf-lbl">${GPN_STATUS[k].lbl}</span></div>`;
+  }).join('<span class="gpn-wf-sep"></span>');
+
+  // Akcie stavu
+  const next = GPN_STATUS[t.status]?.next;
+  const statusOpts = GPN_STATUS_ORDER.map(k => `<option value="${k}" ${t.status === k ? 'selected' : ''}>${GPN_STATUS[k].lbl}</option>`).join('');
+
+  // Checklist
+  const checkMap = {}; (t.checklist || []).forEach(i => checkMap[i.key] = i);
+  const checklist = GPN_CHECKLIST_ORDER.map(k => {
+    const it = checkMap[k] || { done: false };
+    return `<label class="gpn-check ${it.done ? 'done' : ''}">
+      <input type="checkbox" ${it.done ? 'checked' : ''} onchange="gpnToggleCheck('${t._id}','${k}',this.checked)">
+      <span class="gpn-check-lbl">${GPN_CHECKLIST[k]}</span>
+      ${it.done && it.doneBy ? `<span class="gpn-check-by">${escHtml(it.doneBy)}</span>` : ''}
+    </label>`;
+  }).join('');
+
+  // Káble & konektory
+  const cables = (t.cables || []).length ? `<table class="gpn-vtable"><thead><tr><th>Typ</th><th>Ks</th><th>Dĺžka</th><th>Farba</th><th>Označenie</th></tr></thead><tbody>${t.cables.map(c => `<tr><td>${escHtml(c.cableType || '')}</td><td>${c.count || ''}</td><td>${escHtml(c.length || '')}</td><td>${escHtml(c.color || '')}</td><td>${escHtml(c.marking || '')}</td></tr>`).join('')}</tbody></table>` : '<div class="gpn-none">—</div>';
+  const conns = (t.connectors || []).length ? `<table class="gpn-vtable"><thead><tr><th>Konektor A</th><th>Konektor B</th><th>Orientácia</th><th>Pinout</th></tr></thead><tbody>${t.connectors.map(c => `<tr><td>${escHtml(c.connectorA || '')}</td><td>${escHtml(c.connectorB || '')}</td><td>${escHtml(c.orientation || '')}</td><td>${escHtml(c.pinout || '')}</td></tr>`).join('')}</tbody></table>` : '<div class="gpn-none">—</div>';
+  const mat = t.material || {};
+  const matRows = [gpnRow('Tubing', mat.tubing), gpnRow('Sleeve', mat.sleeve), gpnRow('Label', mat.label), gpnRow('Heat shrink', mat.heatShrink), gpnRow('Iný materiál', mat.other)].join('') || '<div class="gpn-none">—</div>';
+
+  // Prílohy
+  const atts = (t.attachments || []).length ? t.attachments.map(a => `<div class="gpn-att">
+      <a href="${a.url}" target="_blank" class="gpn-att-link">${GPN_ATT_CAT[a.category] || '📎'} ${escHtml(a.name || a.url)}</a>
+      ${a.size ? `<span class="gpn-att-size">${(a.size / 1024).toFixed(0)} kB</span>` : ''}
+      <button class="tk-sub-del" onclick="gpnDeleteAtt('${t._id}','${a._id}')">✕</button>
+    </div>`).join('') : '<div class="gpn-none">Žiadne prílohy</div>';
+
+  // Komentáre
+  const comments = (t.comments || []).length ? t.comments.slice().reverse().map(c => `<div class="gpn-comment"><div class="gpn-comment-hd"><strong>${escHtml(c.by || '—')}</strong><span>${fmtDateTime(c.at)}</span></div><div class="gpn-comment-tx">${escHtml(c.text)}</div></div>`).join('') : '<div class="gpn-none">Zatiaľ bez komentárov</div>';
+
+  // História
+  const history = (t.history || []).slice().reverse().map(h => {
+    let txt = h.note || '';
+    if (h.action === 'status') txt = `Stav: ${GPN_STATUS[h.from]?.lbl || h.from} → ${GPN_STATUS[h.to]?.lbl || h.to}`;
+    else if (h.action === 'assigned') txt = `Priradenie: ${escHtml(h.from)} → ${escHtml(h.to)}`;
+    else if (h.action === 'checklist') txt = `Checklist: ${GPN_CHECKLIST[h.field] || h.field} — ${h.to === 'done' ? 'hotové' : 'zrušené'}`;
+    else if (h.action === 'created') txt = 'Požiadavka vytvorená';
+    else if (h.action === 'edited') txt = 'Upravené parametre';
+    return `<div class="gpn-hist"><span class="gpn-hist-dot"></span><div><div class="gpn-hist-tx">${escHtml(txt)}</div><div class="gpn-hist-meta">${escHtml(h.by || '')} · ${fmtDateTime(h.at)}</div></div></div>`;
+  }).join('') || '<div class="gpn-none">—</div>';
+
+  const assigneeOpts = ['<option value="">— nepriradené —</option>'].concat(
+    gpnUsers.map(u => `<option value="${u._id}" ${t.assignee === u._id ? 'selected' : ''}>${escHtml(u.name || u.username)}</option>`)
+  ).join('');
+
+  body.innerHTML = `
+    <div class="gpn-wf">${steps}</div>
+    ${t.status === 'waiting_info' ? '<div class="gpn-wait-banner">⏳ Ticket čaká na doplnenie informácií od obchodníka.</div>' : ''}
+
+    <div class="gpn-detail-grid">
+      <div class="gpn-detail-main">
+        <div class="gpn-sec">
+          <div class="gpn-sec-hd">Požiadavka</div>
+          <div class="gpn-kvs">
+            ${gpnRow('Typ', GPN_TYPE[t.type])}
+            ${gpnRow('Upravované GPN', t.existingGpn)}
+            ${gpnRow('Dôvod', t.reason)}
+            ${gpnRow('Produkt', [t.product, t.productVariant].filter(Boolean).join(' · '))}
+            ${gpnRow('Zákazník', t.customer)}
+            ${gpnRow('Projekt', t.project)}
+            ${gpnRow('Termín', t.deadline ? fmtDate(t.deadline) : '')}
+            ${gpnRow('Špeciálne požiadavky', t.special)}
+            ${gpnRow('Výsledné GPN', t.resultGpn)}
+          </div>
+          ${t.description ? `<div class="gpn-desc">${escHtml(t.description)}</div>` : ''}
+          ${t.notes && t.notes !== 'seed' ? `<div class="gpn-desc">📝 ${escHtml(t.notes)}</div>` : ''}
+        </div>
+
+        <div class="gpn-sec"><div class="gpn-sec-hd">Káble</div>${cables}</div>
+        <div class="gpn-sec"><div class="gpn-sec-hd">Konektory</div>${conns}</div>
+        <div class="gpn-sec"><div class="gpn-sec-hd">Materiál</div><div class="gpn-kvs">${matRows}</div></div>
+
+        <div class="gpn-sec">
+          <div class="gpn-sec-hd">Prílohy</div>
+          <div id="gpnDrop" class="gpn-drop" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="gpnDrop(event,'${t._id}')">
+            Presuň sem súbory (drag &amp; drop) alebo
+            <label class="gpn-drop-btn">vyber súbory<input type="file" multiple style="display:none" onchange="gpnUploadFiles('${t._id}', this.files, document.getElementById('gpnAttCat').value)"></label>
+            <select id="gpnAttCat" class="gpn-att-cat" onclick="event.stopPropagation()">
+              ${Object.keys(GPN_ATT_CAT).map(k => `<option value="${k}">${GPN_ATT_CAT[k]}</option>`).join('')}
+            </select>
+          </div>
+          <div class="gpn-atts">${atts}</div>
+        </div>
+
+        <div class="gpn-sec">
+          <div class="gpn-sec-hd">Komentáre</div>
+          <div class="gpn-comment-new">
+            <textarea id="gpnCommentTx" rows="2" placeholder="Napíš komentár…"></textarea>
+            <button class="btn-primary btn-sm" onclick="gpnAddComment('${t._id}')">Pridať</button>
+          </div>
+          <div class="gpn-comments">${comments}</div>
+        </div>
+      </div>
+
+      <div class="gpn-detail-side">
+        <div class="gpn-sec">
+          <div class="gpn-sec-hd">Workflow</div>
+          ${next ? `<button class="btn-primary gpn-full-btn" onclick="gpnSetStatus('${t._id}','${next}')">▶ ${GPN_STATUS[next].lbl}</button>` : ''}
+          ${t.status !== 'waiting_info' ? `<button class="btn-secondary gpn-full-btn" onclick="gpnSetStatus('${t._id}','waiting_info')">⏳ Vrátiť obchodníkovi</button>` : ''}
+          <label class="gpn-side-lbl">Nastaviť stav ručne</label>
+          <select class="gpn-side-sel" onchange="gpnSetStatus('${t._id}',this.value)">${statusOpts}</select>
+        </div>
+
+        <div class="gpn-sec">
+          <div class="gpn-sec-hd">Priradenie</div>
+          <label class="gpn-side-lbl">Technológ</label>
+          <select class="gpn-side-sel" onchange="gpnAssign('${t._id}',this)">${assigneeOpts}</select>
+          <div class="gpn-side-info">Obchodník: <strong>${escHtml(t.requesterName || '—')}</strong></div>
+          <div class="gpn-side-info">Vytvorené: ${fmtDateTime(t.createdAt)}</div>
+        </div>
+
+        <div class="gpn-sec">
+          <div class="gpn-sec-hd">Dokumentácia <span class="gpn-check-pct">${s.checklistDone}/${s.checklistTotal}</span></div>
+          <div class="gpn-detail-bar"><div class="gpn-detail-fill" style="width:${s.progress}%"></div></div>
+          <div class="gpn-checks">${checklist}</div>
+        </div>
+
+        <div class="gpn-sec">
+          <div class="gpn-sec-hd">História</div>
+          <div class="gpn-hists">${history}</div>
+        </div>
+
+        <div class="gpn-side-actions">
+          <button class="btn-secondary btn-sm" onclick="gpnEditFromDetail('${t._id}')">✎ Upraviť</button>
+          <button class="btn-secondary btn-sm" onclick="gpnCopyTicket('${t._id}')">⧉ Kopírovať</button>
+          <button class="btn-delete btn-sm" onclick="deleteGpnTicket('${t._id}')">🗑 Zmazať</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function gpnFind(id) { return gpnData.find(t => t._id === id); }
+function gpnEditFromDetail(id) { const t = gpnFind(id); openGpnForm(t || { _id: id }, false); }
+function gpnCopyTicket(id) { const t = gpnFind(id); if (t) { closeGpnDetail(); openGpnForm(t, true); } }
+
+async function gpnRefreshDetail(id, saved) {
+  if (saved) renderGpnDetail(saved);
+  else { const t = await fetch('/api/gpn/' + id).then(r => r.json()); renderGpnDetail(t); }
+  // aktualizuj lokálny zoznam bez plného reloadu
+  const idx = gpnData.findIndex(t => t._id === id);
+  if (idx >= 0 && saved) gpnData[idx] = saved;
+  renderGpnKpis(); renderGpn();
+}
+
+async function gpnSetStatus(id, status) {
+  try {
+    const r = await fetch(`/api/gpn/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+    const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    await gpnRefreshDetail(id, d);
+    toast('Stav zmenený na „' + (GPN_STATUS[status]?.lbl || status) + '".', 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+async function gpnAssign(id, sel) {
+  const opt = sel.options[sel.selectedIndex];
+  try {
+    const r = await fetch(`/api/gpn/${id}/assign`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assignee: sel.value || null, assigneeName: sel.value ? opt.textContent : '' }) });
+    const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    await gpnRefreshDetail(id, d);
+    toast('Technológ priradený.', 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+async function gpnToggleCheck(id, key, done) {
+  try {
+    const r = await fetch(`/api/gpn/${id}/checklist/${key}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done }) });
+    const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    await gpnRefreshDetail(id, d);
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+async function gpnAddComment(id) {
+  const tx = document.getElementById('gpnCommentTx'); const text = tx.value.trim();
+  if (!text) return;
+  try {
+    const r = await fetch(`/api/gpn/${id}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+    const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    await gpnRefreshDetail(id, d);
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+function gpnDrop(ev, id) {
+  ev.preventDefault(); ev.currentTarget.classList.remove('over');
+  const cat = document.getElementById('gpnAttCat')?.value || 'other';
+  if (ev.dataTransfer.files && ev.dataTransfer.files.length) gpnUploadFiles(id, ev.dataTransfer.files, cat);
+}
+async function gpnUploadFiles(id, files, category) {
+  if (!files || !files.length) return;
+  const fd = new FormData();
+  fd.append('category', category || 'other');
+  Array.from(files).forEach(f => fd.append('files', f));
+  try {
+    const r = await fetch(`/api/gpn/${id}/attachments`, { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    await gpnRefreshDetail(id, d);
+    toast('Prílohy nahrané.', 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+async function gpnDeleteAtt(id, attId) {
+  if (!await uiConfirm('Odstrániť prílohu?')) return;
+  try {
+    const r = await fetch(`/api/gpn/${id}/attachments/${attId}`, { method: 'DELETE' });
+    const d = await r.json();
+    await gpnRefreshDetail(id, d);
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+async function deleteGpnTicket(id) {
+  if (!await uiConfirm('Naozaj zmazať celý ticket? Túto akciu nemožno vrátiť.')) return;
+  try {
+    await fetch('/api/gpn/' + id, { method: 'DELETE' });
+    closeGpnDetail(); await loadGpn();
+    toast('Ticket zmazaný.', 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+
+async function seedGpnData() {
+  if (!await uiConfirm('Načítať ukážkové GPN požiadavky? Nahradí len predošlé ukážkové dáta.')) return;
+  try {
+    const r = await fetch('/api/admin/seed-gpn', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    await loadGpn();
+    toast(`Hotovo — ${d.tickets} ukážkových požiadaviek.`, 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 //  VLASTNÍCI PRODUKTOV (Product Owners) — editovateľný zoznam + história zmien
 // ══════════════════════════════════════════════════════════════════════════════
 let pownersData = [];
@@ -9691,7 +10260,15 @@ function prodOptimize() {
 // POUŽÍVATELIA (admin)
 // ==============================
 let usersData = [];
-const US_ROLE = { admin: 'Admin', user: 'Používateľ' };
+const US_ROLE = { admin: 'Admin', user: 'Používateľ', obchod: 'Obchod', kvalita: 'Kvalita', technologia: 'Technológia' };
+// Farebné odznaky rolí (trieda + skratka)
+const US_ROLE_CHIP = {
+  admin:      { cls: 'us-role-admin', lbl: 'ADMIN' },
+  obchod:     { cls: 'us-role-obchod', lbl: 'OBCHOD' },
+  kvalita:    { cls: 'us-role-kvalita', lbl: 'KVALITA' },
+  technologia:{ cls: 'us-role-tech', lbl: 'TECHNOLÓGIA' },
+  user:       { cls: 'us-role-user', lbl: 'USER' }
+};
 async function loadUsers() {
   const el = document.getElementById('usersList'); if (el) el.innerHTML = '<div class="admin-loading">Načítavam…</div>';
   try {
@@ -9708,13 +10285,24 @@ function renderUsers() {
   usersData.forEach(u => {
     const item = document.createElement('div');
     item.className = 'admin-link-item' + (u.active ? '' : ' admin-link-inactive');
+    let mail = '';
+    if (u.email) {
+      const vb = u.emailVerified
+        ? '<span class="us-verify-badge us-vb-ok" title="E-mail overený">✓ overený</span>'
+        : `<span class="us-verify-badge us-vb-wait" title="E-mail neoverený">⌛ neoverený</span>`;
+      mail = ` · <span style="color:var(--text-dim)">${escHtml(u.email)}</span> ${vb}`;
+    }
+    const resendBtn = (u.email && !u.emailVerified)
+      ? `<button class="admin-icon-btn" onclick="resendVerification('${u._id}')" title="Znovu poslať overovací e-mail">✉</button>` : '';
+    const chip = US_ROLE_CHIP[u.role] || US_ROLE_CHIP.user;
     item.innerHTML = `
-      <span class="ql-chip ql-${u.role === 'admin' ? 'purple' : 'blue'} admin-link-chip">${u.role === 'admin' ? 'ADMIN' : 'USER'}</span>
+      <span class="us-role-chip ${chip.cls} admin-link-chip">${chip.lbl}</span>
       <div class="admin-link-info">
         <div class="admin-link-label">${escHtml(u.name || u.username)} <span style="color:var(--text-xdim)">@${escHtml(u.username)}</span></div>
-        <div class="admin-link-url">${US_ROLE[u.role] || u.role}${u.active ? '' : ' · neaktívny'}</div>
+        <div class="admin-link-url">${US_ROLE[u.role] || u.role}${u.active ? '' : ' · neaktívny'}${mail}</div>
       </div>
       <div class="admin-link-actions">
+        ${resendBtn}
         <button class="admin-icon-btn" onclick="openUserModal(usersData.find(x=>x._id==='${u._id}'))" title="Upraviť">✎</button>
         <button class="admin-icon-btn danger" onclick="deleteUser('${u._id}')" title="Odstrániť">✕</button>
       </div>`;
@@ -9728,39 +10316,200 @@ function openUserModal(u = null) {
   document.getElementById('usUsername').value = e ? u.username : '';
   document.getElementById('usUsername').disabled = !!e;
   document.getElementById('usName').value = e ? (u.name || '') : '';
+  document.getElementById('usEmail').value = e ? (u.email || '') : '';
   document.getElementById('usPassword').value = '';
-  document.getElementById('usPassLabel').textContent = e ? 'Nové heslo (nechaj prázdne = bez zmeny)' : 'Heslo *';
+  document.getElementById('usPassword').type = 'password';
+  document.getElementById('usPassToggle').classList.remove('active');
+  document.getElementById('usPassLabel').textContent = e ? 'Nové heslo (prázdne = bez zmeny)' : 'Heslo *';
   document.getElementById('usRole').value = e ? (u.role || 'user') : 'user';
   document.getElementById('usActive').checked = e ? !!u.active : true;
+  document.getElementById('usSendVerify').checked = true;
+  document.getElementById('usGenLen').value = 16;
+  document.getElementById('usGenSym').checked = true;
+  document.getElementById('usGenCopied').textContent = '';
   document.getElementById('usDeleteBtn').style.display = e ? '' : 'none';
+  // e-mail badge (overený/neoverený) v modáli
+  const badge = document.getElementById('usEmailBadge');
+  if (e && u.email) badge.innerHTML = u.emailVerified ? '<span class="us-vb-ok">✓ overený</span>' : '<span class="us-vb-wait">⌛ neoverený</span>';
+  else badge.innerHTML = '';
+  usPassStrength();
+  usEmailChanged();
   document.getElementById('userModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById(e ? 'usName' : 'usUsername').focus(), 50);
 }
 function closeUserModal() { document.getElementById('userModal').classList.add('hidden'); }
+
+// Zobraz/skry pole „Poslať overovací e-mail" podľa toho, či je zadaný e-mail
+function usEmailChanged() {
+  const has = !!document.getElementById('usEmail').value.trim();
+  document.getElementById('usSendVerifyWrap').style.display = has ? '' : 'none';
+}
+
+// ── Generátor silného hesla ─────────────────────────────────────────────────────
+function usGenPassword() {
+  const len = Math.max(8, Math.min(64, parseInt(document.getElementById('usGenLen').value, 10) || 16));
+  const useSym = document.getElementById('usGenSym').checked;
+  const lower = 'abcdefghijkmnpqrstuvwxyz';     // bez l
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';     // bez I, O
+  const digits = '23456789';                    // bez 0, 1
+  const symbols = '!@#$%^&*()-_=+[]{}?';
+  let pool = lower + upper + digits + (useSym ? symbols : '');
+  const rnd = n => {
+    const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n;
+  };
+  // zaruč aspoň po jednom z každej triedy
+  const req = [lower, upper, digits];
+  if (useSym) req.push(symbols);
+  let chars = req.map(set => set[rnd(set.length)]);
+  while (chars.length < len) chars.push(pool[rnd(pool.length)]);
+  // zamiešaj (Fisher–Yates)
+  for (let i = chars.length - 1; i > 0; i--) { const j = rnd(i + 1); [chars[i], chars[j]] = [chars[j], chars[i]]; }
+  const pass = chars.join('');
+  const inp = document.getElementById('usPassword');
+  inp.value = pass; inp.type = 'text';
+  document.getElementById('usPassToggle').classList.add('active');
+  usPassStrength();
+  usCopyPass(true);
+}
+function usTogglePass() {
+  const inp = document.getElementById('usPassword');
+  const on = inp.type === 'password';
+  inp.type = on ? 'text' : 'password';
+  document.getElementById('usPassToggle').classList.toggle('active', on);
+}
+async function usCopyPass(silent) {
+  const val = document.getElementById('usPassword').value;
+  if (!val) { if (!silent) toast('Heslo je prázdne.', 'warn'); return; }
+  try {
+    await navigator.clipboard.writeText(val);
+    const c = document.getElementById('usGenCopied'); c.textContent = '✓ skopírované';
+    setTimeout(() => { c.textContent = ''; }, 2000);
+    if (!silent) toast('Heslo skopírované do schránky.', 'success');
+  } catch { if (!silent) toast('Kopírovanie zlyhalo — skopíruj ručne.', 'error'); }
+}
+// Odhad sily hesla (0–4) + vizuál
+function usPassStrength() {
+  const v = document.getElementById('usPassword').value;
+  const fill = document.getElementById('usStrengthFill');
+  const lbl = document.getElementById('usStrengthLbl');
+  if (!fill || !lbl) return;
+  if (!v) { fill.style.width = '0%'; fill.className = 'us-strength-fill'; lbl.textContent = ''; return; }
+  let score = 0;
+  if (v.length >= 8) score++;
+  if (v.length >= 12) score++;
+  if (/[a-z]/.test(v) && /[A-Z]/.test(v)) score++;
+  if (/\d/.test(v)) score++;
+  if (/[^A-Za-z0-9]/.test(v)) score++;
+  score = Math.min(4, score);
+  const map = [
+    { w: '20%', c: 'us-s0', t: 'veľmi slabé' },
+    { w: '40%', c: 'us-s1', t: 'slabé' },
+    { w: '60%', c: 'us-s2', t: 'stredné' },
+    { w: '80%', c: 'us-s3', t: 'silné' },
+    { w: '100%', c: 'us-s4', t: 'veľmi silné' }
+  ][score];
+  fill.style.width = map.w; fill.className = 'us-strength-fill ' + map.c; lbl.textContent = map.t;
+}
+
 async function saveUser() {
   const id = document.getElementById('usId').value;
   const username = document.getElementById('usUsername').value.trim();
+  const email = document.getElementById('usEmail').value.trim();
   const password = document.getElementById('usPassword').value;
-  if (!id && (!username || !password)) { alert('Meno a heslo sú povinné'); return; }
+  if (!id && (!username || !password)) { toast('Prihlasovacie meno a heslo sú povinné.', 'error'); return; }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Zadaj platný e-mail.', 'error'); return; }
   const body = {
     name: document.getElementById('usName').value.trim(),
+    email,
     role: document.getElementById('usRole').value,
-    active: document.getElementById('usActive').checked
+    active: document.getElementById('usActive').checked,
+    sendVerification: document.getElementById('usSendVerify').checked
   };
   if (password) body.password = password;
   if (!id) body.username = username;
   try {
     const resp = await fetch(id ? '/api/users/' + id : '/api/users', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (!resp.ok) { const er = await resp.json().catch(() => ({})); alert('Chyba: ' + (er.error || resp.status)); return; }
+    const d = await resp.json().catch(() => ({}));
+    if (!resp.ok) { toast('Chyba: ' + (d.error || resp.status), 'error'); return; }
     closeUserModal(); loadUsers();
-  } catch (e) { alert('Sieťová chyba: ' + e.message); }
+    // spätná väzba o overovacom e-maile
+    if (d.verifyUrl) {
+      if (d.emailSent) toast('Používateľ uložený · overovací e-mail odoslaný.', 'success');
+      else usShowVerifyLink(d.verifyUrl, d.mailError);
+    } else {
+      toast('Používateľ uložený.', 'success');
+    }
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
 }
+
+// Keď e-mail nemožno odoslať, ukáž dôvod + odkaz na skopírovanie (fallback)
+async function usShowVerifyLink(url, mailError) {
+  if (mailError) toast('E-mail sa neodoslal: ' + mailError + ' — skopíruj odkaz ručne.', 'error', 7000);
+  else toast('E-mail nie je nakonfigurovaný — skopíruj overovací odkaz používateľovi.', 'warn', 6000);
+  try { await navigator.clipboard.writeText(url); toast('Overovací odkaz skopírovaný do schránky.', 'info', 5000); }
+  catch { await uiConfirm('Overovací odkaz (pošli ho používateľovi):\n\n' + url); }
+}
+
+async function resendVerification(id) {
+  try {
+    const r = await fetch('/api/users/' + id + '/send-verification', { method: 'POST' });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
+    if (d.alreadyVerified) { toast('E-mail je už overený.', 'info'); loadUsers(); return; }
+    if (d.emailSent) toast('Overovací e-mail odoslaný.', 'success');
+    else if (d.verifyUrl) usShowVerifyLink(d.verifyUrl, d.mailError);
+    loadUsers();
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+
 async function deleteUser(id) {
   if (!id || !await uiConfirm('Naozaj odstrániť používateľa?')) return;
   try {
     const r = await fetch('/api/users/' + id, { method: 'DELETE' });
-    if (!r.ok) { const er = await r.json().catch(() => ({})); alert('Chyba: ' + (er.error || r.status)); return; }
+    if (!r.ok) { const er = await r.json().catch(() => ({})); toast('Chyba: ' + (er.error || r.status), 'error'); return; }
     closeUserModal(); loadUsers();
-  } catch { alert('Chyba'); }
+  } catch { toast('Chyba pri mazaní.', 'error'); }
+}
+
+// ── Diagnostika e-mailu (Admin → Používatelia) ──────────────────────────────────
+async function loadMailStatus() {
+  const el = document.getElementById('mailStatus'); if (!el) return;
+  el.innerHTML = '<div class="admin-loading">Načítavam…</div>';
+  try {
+    const d = await fetch('/api/admin/mail-status').then(r => r.json());
+    const row = (k, v, ok) => `<div class="mail-kv"><span class="mail-k">${k}</span><span class="mail-v ${ok === false ? 'mail-bad' : (ok ? 'mail-ok' : '')}">${v || '<em>nenastavené</em>'}</span></div>`;
+    const e = d.env || {};
+    el.innerHTML = `
+      <div class="mail-status-head ${d.configured ? 'mail-ok' : 'mail-bad'}">
+        ${d.configured ? '✅ E-mail je nakonfigurovaný' : '⚠️ E-mail NIE je nakonfigurovaný'} · metóda: <strong>${d.method || '—'}</strong>
+      </div>
+      ${row('BREVO_API_KEY', e.BREVO_API_KEY, !!e.BREVO_API_KEY)}
+      ${row('EMAIL_SENDER', e.EMAIL_SENDER, !!e.EMAIL_SENDER)}
+      ${row('SMTP_HOST', e.SMTP_HOST)}
+      ${row('SMTP_PORT', e.SMTP_PORT)}
+      ${row('SMTP_USER', e.SMTP_USER)}
+      ${row('EMAIL_PASSWORD', e.EMAIL_PASSWORD)}
+      ${row('APP_URL', e.APP_URL, !!e.APP_URL)}
+      ${!e.EMAIL_SENDER ? '<div class="mail-hint">⚠️ Chýba <code>EMAIL_SENDER</code> — bez overenej adresy odosielateľa Brevo e-mail neodošle.</div>' : ''}
+      ${e.BREVO_API_KEY && e.EMAIL_SENDER ? '<div class="mail-hint">ℹ️ Ak test zlyhá s chybou „sender not valid", over adresu <code>' + escHtml(e.EMAIL_SENDER) + '</code> v Breve (Senders &amp; IP).</div>' : ''}
+    `;
+  } catch (e) { el.innerHTML = '<div class="mail-bad">Chyba načítania stavu.</div>'; }
+}
+async function sendMailTest() {
+  const to = document.getElementById('mailTestTo').value.trim();
+  const res = document.getElementById('mailTestResult');
+  res.innerHTML = '<span class="admin-loading">Odosielam…</span>';
+  try {
+    const r = await fetch('/api/admin/mail-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to }) });
+    const d = await r.json();
+    if (d.ok) {
+      res.innerHTML = `<span class="mail-ok">✅ Odoslané na ${escHtml(d.to)} (${escHtml(d.method)}). Skontroluj schránku aj SPAM.</span>`;
+      toast('Testovací e-mail odoslaný.', 'success');
+    } else {
+      res.innerHTML = `<span class="mail-bad">❌ Neodoslané: ${escHtml(d.error || 'neznáma chyba')}</span>`;
+      toast('E-mail zlyhal — pozri detail chyby.', 'error', 5000);
+    }
+  } catch (e) { res.innerHTML = `<span class="mail-bad">Sieťová chyba: ${escHtml(e.message)}</span>`; }
 }
 
 // ==============================

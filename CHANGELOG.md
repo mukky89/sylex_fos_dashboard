@@ -8,6 +8,142 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.33.0] — 2026-07-15
+### Pridané
+- **Oficiálne logo SYLEX** (červený emblém so slovom „sylex", `#E2001A`)
+  nasadené naprieč celou aplikáciou:
+  - webové assety `public/img/sylex-logo.svg` (vektor, self-contained) a
+    `public/img/sylex-logo.png`,
+  - **hlavička** (`.logo` v `index.html`) — logo pred názvom *FOS Dashboard*,
+  - **prihlasovacia obrazovka** (`.login-logo-img`),
+  - **alternatívny bočný panel** (`.asb-logo`, biela plôška s logom),
+  - stránka **overenia e-mailu** (`routes/auth.js`),
+  - **overovací e-mail** (`utils/mailer.js`) — logo cez hostované PNG
+    (absolútna URL z `APP_URL`/requestu) s textovým fallbackom „SYLEX",
+  - export **pracovných postupov** do Wordu/PDF
+    (`routes/procedures.js`, `public/assets/guides/sylex-logo.png`,
+    zachovaný pomer strán 59×45).
+### Zmenené
+- Logo v hlavičke nahradilo pôvodný textový emblém; funguje na svetlom aj
+  tmavom podklade (červená je čitateľná na oboch).
+
+## [2.32.0] — 2026-07-15
+### Pridané
+- **Nový dizajn overovacieho e-mailu** (`utils/mailer.js`) — table-based
+  responzívna HTML šablóna s brandovanou tmavou hlavičkou (FOS Dashboard ·
+  SYLEX), akcentovou linkou, „bulletproof" CTA tlačidlom (vrátane VML
+  fallbacku pre Outlook), skrytým preheaderom a pätičkou. Vyzerá konzistentne
+  v Gmaile aj Outlooku.
+### Zmenené
+- Meno príjemcu v overovacom e-maile sa teraz HTML-escapuje (`esc()`).
+
+## [2.31.2] — 2026-07-14
+### Opravené
+- **Hotfix štartu aplikácie** — `engines.node` zvýšené z `>=18` na `>=20`.
+  Predchádzajúce `>=18` spôsobilo, že Railway (Nixpacks) nainštaloval Node 18,
+  na ktorom balík `node-ical` padal so `SyntaxError: Invalid regular expression
+  flags` (používa regex flag `v` dostupný až od Node 20) a server sa nespustil.
+  `node-ical` má vlastné `engines.node: >=20`.
+
+## [2.31.1] — 2026-07-14
+### Opravené
+- **Odosielanie e-mailov cez Brevo** — volanie API prerobené na vstavaný modul
+  `https` namiesto globálneho `fetch`, takže funguje na každej verzii Node
+  (predtým hrozilo „fetch is not defined" na staršom Node). Pridané
+  `engines.node >=18` do `package.json`.
+### Pridané
+- **Diagnostika e-mailu** (Admin → Používatelia): panel so stavom konfigurácie
+  (`BREVO_API_KEY`, `EMAIL_SENDER`, `SMTP_*`, `APP_URL`) a tlačidlo na odoslanie
+  testovacieho e-mailu, ktoré vráti presnú chybu z Brevo (neoverený odosielateľ,
+  neplatný kľúč a pod.). Endpointy `GET /api/admin/mail-status`,
+  `POST /api/admin/mail-test`. Skutočná chyba odoslania sa teraz zobrazuje aj
+  pri vytváraní používateľa a pri opätovnom odoslaní overenia.
+
+## [2.31.0] — 2026-07-14
+### Pridané
+- **Nové role používateľov**: `obchod` (Obchod), `kvalita` (Kvalita),
+  `technologia` (Technológia) — popri `user` a `admin`. Rozšírený enum v modeli
+  `User`, validácia v `routes/users.js`, výber v modáli a farebne odlíšené
+  odznaky rolí v zozname používateľov.
+- **Odosielanie e-mailov cez Brevo** (rovnaká logika ako repozitár DBFOOD):
+  `utils/mailer.js` preferuje **Brevo HTTP API** (`https://api.brevo.com/v3/smtp/email`
+  cez natívny `fetch`, hlavička `api-key`) keď je nastavený `BREVO_API_KEY` —
+  funguje aj tam, kde je SMTP blokovaný (Railway). Fallback na SMTP
+  (`smtp-relay.brevo.com`, nodemailer) keď API kľúč chýba. Odosielateľ z
+  `EMAIL_SENDER`. Vďaka tomu sa overovacie e-maily reálne doručia.
+### Konfigurácia
+- Env premenné (podľa DBFOOD): `BREVO_API_KEY`, `EMAIL_SENDER`, `SMTP_HOST`
+  (default `smtp-relay.brevo.com`), `SMTP_PORT` (587), `SMTP_USER`,
+  `EMAIL_PASSWORD`, `APP_URL`.
+
+## [2.30.0] — 2026-07-14
+### Pridané
+- **Generátor silného hesla** v modáli používateľa — jedným klikom vytvorí
+  kryptograficky náhodné heslo (nastaviteľná dĺžka 8–64, voliteľné špeciálne
+  znaky, bez zameniteľných znakov 0/O/1/l/I), s indikátorom sily hesla,
+  prepínačom zobraziť/skryť a kopírovaním do schránky.
+- **Prihlásenie cez e-mail** — login akceptuje používateľské meno *alebo* e-mail
+  (`$or` v `routes/auth.js`). Do modelu `User` pribudlo pole `email`
+  (unikátne pre neprázdne hodnoty) + polia `emailVerified`, `verifyToken`,
+  `verifyExpires`.
+- **Overenie e-mailu** — pri vytvorení/zmene e-mailu sa vygeneruje overovací
+  token (platnosť 24 h) a odošle sa e-mail cez SMTP (nodemailer, `utils/mailer.js`).
+  Verejný endpoint `GET /api/auth/verify-email?token=…` zobrazí brandovanú
+  potvrdzovaciu stránku. V zozname používateľov je stav *overený/neoverený* a
+  tlačidlo na opätovné odoslanie (`POST /api/users/:id/send-verification`).
+  Ak SMTP nie je nakonfigurované, appka funguje ďalej a odkaz sa vráti do UI na
+  skopírovanie.
+### Zmenené
+- **Prepracovaný modal Nový/Upraviť používateľ** — väčšie okno (560 px)
+  rozdelené na sekcie (Identita · Heslo · Nastavenia), pridané pole e-mail a
+  prepínač „Poslať overovací e-mail", opravené štýlovanie `input[type=email/password]`,
+  hlášky `alert()` nahradené `toast()`.
+### Konfigurácia
+- Pre reálne odosielanie e-mailov nastav env premenné: `SMTP_HOST`, `SMTP_USER`,
+  `SMTP_PASS` (voliteľne `SMTP_PORT` [587], `SMTP_SECURE`, `SMTP_FROM`, `APP_URL`).
+- Nová závislosť: `nodemailer`.
+
+## [2.29.1] — 2026-07-14
+### Zmenené
+- Modul **GPN — Golden PN** prepnutý do **tmavého režimu** pre zjednotenie s
+  ostatnými výrobnými stránkami (Výroba, Riadenie, Workflow, Vlastníci) —
+  tmavé navy pozadie, priehľadné karty s bielym overlayom, cyan akcenty a
+  svetlé odznaky stavov/priorít. Dashboard (KPI), filtre a zoznam ticketov sa
+  prispôsobili tmavému podkladu; formulár požiadavky a detail ticketu ostávajú
+  na svetlom modáli (rovnako ako ostatné modály v aplikácii).
+
+## [2.29.0] — 2026-07-14
+### Pridané
+- Nový modul **GPN — Golden PN** (v menu nad *Vlastníci produktov*) — interný
+  ticket systém (Request Form + Ticket Workflow) pre požiadavky na vytvorenie a
+  úpravu GPN (Golden Part Number) medzi obchodom (Sales) a technologickým
+  oddelením. Cieľom je nahradiť chaotickú komunikáciu cez e-mail/Teams jednotným
+  procesom, kde obchodník zadá všetky potrebné údaje už pri vytvorení požiadavky.
+- **Formulár požiadavky**: typ (nové GPN / úprava existujúceho), priorita, dôvod,
+  popis; produkt / variant / zákazník / projekt; dynamický zoznam káblov (typ,
+  počet, dĺžka, farba, označenie) a konektorov (A/B, orientácia, pinout);
+  materiál (tubing, sleeve, label, heat shrink, iné); termín, poznámky a
+  špeciálne požiadavky.
+- **Workflow ticketu** s automatickým unikátnym číslom `GPN-RRRR-NNNN` a stavmi:
+  Nová → Čaká na kontrolu → Rozpracované → (Čaká na doplnenie) → Na schválenie →
+  Schválené → Dokončené → Uzavreté. Ticket sa dá vrátiť obchodníkovi na
+  doplnenie informácií.
+- **Dashboard** s prehľadmi (nové, rozpracované, čakajúce na doplnenie, na
+  schválenie, dokončené) a filtrovaním podľa zákazníka, produktu, technológa,
+  obchodníka, dátumu, priority a stavu + fulltextové hľadanie.
+- **Detail ticketu**: ID, stav, dátum, autor, priradený technológ, kompletné
+  parametre, checklist výrobnej dokumentácie (GPN, výrobný výkres, baliaci výkres,
+  BOM, BOO, FOS karta, schválenie výkresov, dokumentácia kompletná), prílohy s
+  drag & drop uploadom (výkres/foto/špecifikácia/datasheet/iné), komentáre a plná
+  história zmien (kto, kedy, čo).
+- **Notifikácie**: GPN požiadavky vyžadujúce pozornosť (nové / na kontrolu /
+  čakajúce na doplnenie) sa zobrazujú v paneli notifikácií. Možnosť kopírovať
+  existujúcu požiadavku a načítať ukážkové dáta.
+- Nový model `models/GpnRequest.js`, route `routes/gpn.js` (CRUD, workflow,
+  checklist, komentáre, prílohy, história), seed `scripts/seedGpn.js` a admin
+  endpoint `/api/admin/seed-gpn`. Architektúra je modulárna pre budúce rozšírenia
+  (automatické generovanie GPN/BOM, ERP/PLM prepojenie, export PDF/Excel, KPI/SLA).
+
 ## [2.28.0] — 2026-07-10
 ### Údržba
 - Pridaný skill **sylex-brand** (`.claude/skills/sylex-brand/`) — oficiálny SYLEX
