@@ -2007,7 +2007,7 @@
 
   <!-- ===== TASKS (Úlohy) PAGE ===== -->
   <main id="page-tasks" class="page tasks-page">
-    <div class="tasks-inner">
+    <div class="tasks-inner tasks-wide">
       <div class="proc-hdr">
         <div>
           <h1 class="proc-title">Moje úlohy</h1>
@@ -2027,17 +2027,17 @@
         <select id="tkTagFilter" class="tk-tag-filter" onchange="setTaskTagFilter(this.value)" title="Filtrovať podľa tagu">
           <option value="">Všetky tagy</option>
         </select>
-        <button class="tasks-filter active" id="taskGroupBtn" onclick="toggleTaskGroup()" title="Zoskupiť úlohy podľa projektu a zákazníka">🗂️ Zoskupiť</button>
+        <button class="tasks-filter hidden" id="taskGroupBtn" onclick="toggleTaskGroup()" title="Zoskupiť úlohy podľa projektu a zákazníka">🗂️ Zoskupiť</button>
         <div class="tasks-viewtoggle">
-          <button class="tasks-view active" data-tview="list" onclick="setTaskView('list')" title="Zoznam">☰ Zoznam</button>
+          <button class="tasks-view" data-tview="list" onclick="setTaskView('list')" title="Zoznam">☰ Zoznam</button>
           <button class="tasks-view" data-tview="kanban" onclick="setTaskView('kanban')" title="Kanban">▦ Kanban</button>
-          <button class="tasks-view" data-tview="grid" onclick="setTaskView('grid')" title="Grid (tabuľka)">▤ Grid</button>
+          <button class="tasks-view active" data-tview="grid" onclick="setTaskView('grid')" title="Grid (tabuľka)">▤ Grid</button>
         </div>
       </div>
       <div id="tasksProgress" class="tasks-progress"></div>
-      <div id="tasksList" class="tasks-list"></div>
+      <div id="tasksList" class="tasks-list hidden"></div>
       <div id="tasksKanban" class="kanban hidden"></div>
-      <div id="tasksGrid" class="tasks-grid-wrap hidden"></div>
+      <div id="tasksGrid" class="tasks-grid-wrap"></div>
     </div>
   </main>
 

@@ -6557,6 +6557,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.36.0', date: '15. 7. 2026', tag: 'feat', items: [
+    '<strong>Grid</strong> je teraz predvolený pohľad úloh, s <strong>filtrami pod hlavičkou každého stĺpca</strong> (text/výber) a dvojúrovňovým <strong>zoskupením podľa Zákazníka a následne Projektu</strong> (rozbaľovacie skupiny s počtami).',
+    'Projekt a Zákazník sa teraz ukladajú do <strong>číselníka</strong> — ponuka pri vytváraní úlohy zostáva dostupná aj po vymazaní úloh, ktoré ich pôvodne použili.',
+  ] },
   { v: '2.35.0', date: '15. 7. 2026', tag: 'feat', items: [
     'Nový <strong>Grid</strong> pohľad úloh (tretí view vedľa Zoznamu a Kanbanu) — tabuľka so stĺpcami názov, stav, priorita, projekt, zákazník, termín, tagy a progres, s triedením kliknutím na hlavičku stĺpca.',
   ] },
@@ -7101,7 +7105,7 @@ let taskFilter = 'open';
 let taskTagFilter = '';
 let taskSortKey = 'order';
 let taskSortDir = 1;
-let taskView = 'list';
+let taskView = 'grid';
 let taskGroup = true;   // zoskupiť podľa projektu + zákazníka
 let _dragTaskId = null;
 let tkSubtasks = [];   // pracovná kópia podúloh v modale
@@ -7128,11 +7132,13 @@ async function loadTasks() {
   renderTaskProgress();
   renderTasks();
 }
-// Combobox: ponuka projektov a zákazníkov z uložených úloh
-function fillTaskDatalists() {
-  const uniq = (key) => [...new Set(tasksData.map(t => (t[key] || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'sk'));
-  const pl = document.getElementById('tkProjectList'); if (pl) pl.innerHTML = uniq('project').map(x => `<option value="${escHtml(x)}">`).join('');
-  const cl = document.getElementById('tkCustomerList'); if (cl) cl.innerHTML = uniq('customer').map(x => `<option value="${escHtml(x)}">`).join('');
+// Combobox: ponuka projektov a zákazníkov z číselníka (perzistuje aj po vymazaní úloh)
+async function fillTaskDatalists() {
+  let cat = { customers: [], projects: [] };
+  try { cat = await fetch('/api/tasks/catalog').then(r => r.json()); } catch { /* ignore */ }
+  const sorted = (arr) => (arr || []).slice().sort((a, b) => a.localeCompare(b, 'sk'));
+  const pl = document.getElementById('tkProjectList'); if (pl) pl.innerHTML = sorted(cat.projects).map(x => `<option value="${escHtml(x)}">`).join('');
+  const cl = document.getElementById('tkCustomerList'); if (cl) cl.innerHTML = sorted(cat.customers).map(x => `<option value="${escHtml(x)}">`).join('');
 }
 // Filter podľa tagu — ponuka všetkých použitých tagov
 function fillTaskTagFilter() {
@@ -7352,19 +7358,24 @@ function taskKanbanCard(t) {
 
 // ── Grid (tabuľkový) pohľad ────────────────────────────────────────────────────
 const TASK_GRID_COLS = [
-  { key: 'title', label: 'Názov' },
-  { key: 'status', label: 'Stav' },
-  { key: 'priority', label: 'Priorita' },
-  { key: 'project', label: 'Projekt' },
-  { key: 'customer', label: 'Zákazník' },
-  { key: 'due', label: 'Termín' },
-  { key: 'tags', label: 'Tagy' },
-  { key: 'progress', label: 'Progres' }
+  { key: 'title', label: 'Názov', filter: 'text' },
+  { key: 'status', label: 'Stav', filter: 'status' },
+  { key: 'priority', label: 'Priorita', filter: 'priority' },
+  { key: 'project', label: 'Projekt', filter: 'text' },
+  { key: 'customer', label: 'Zákazník', filter: 'text' },
+  { key: 'due', label: 'Termín', filter: 'text' },
+  { key: 'tags', label: 'Tagy', filter: 'text' },
+  { key: 'progress', label: 'Progres', filter: null }
 ];
+let taskGridColFilters = { title: '', status: '', priority: '', project: '', customer: '', due: '', tags: '' };
 function setTaskSort(key) {
   if (taskSortKey === key) taskSortDir = -taskSortDir;
   else { taskSortKey = key; taskSortDir = 1; }
   renderTaskGrid();
+}
+function setTaskGridColFilter(key, val) {
+  taskGridColFilters[key] = val;
+  renderTaskGridBody();
 }
 function taskGridSortVal(t, key) {
   switch (key) {
@@ -7377,27 +7388,63 @@ function taskGridSortVal(t, key) {
     default: return (t[key] || '').toString().toLowerCase();
   }
 }
-function renderTaskGrid() {
-  const el = document.getElementById('tasksGrid'); if (!el) return;
+// Vyfiltrované + zoradené úlohy pre grid (globálne filtre + filtre stĺpcov)
+function taskGridItems() {
   let items = tasksData.slice();
   if (taskFilter === 'open') items = items.filter(t => !t.done && t.status !== 'cancelled');
   else if (taskFilter === 'done') items = items.filter(t => t.done);
   if (taskTagFilter) items = items.filter(t => (t.tags || []).includes(taskTagFilter));
+  const f = taskGridColFilters;
+  if (f.title) items = items.filter(t => (t.title || '').toLowerCase().includes(f.title.toLowerCase()));
+  if (f.status) items = items.filter(t => taskStatusOf(t) === f.status);
+  if (f.priority) items = items.filter(t => (t.priority || 'normal') === f.priority);
+  if (f.project) items = items.filter(t => (t.project || '').toLowerCase().includes(f.project.toLowerCase()));
+  if (f.customer) items = items.filter(t => (t.customer || '').toLowerCase().includes(f.customer.toLowerCase()));
+  if (f.due) items = items.filter(t => t.due && fmtDate(t.due).toLowerCase().includes(f.due.toLowerCase()));
+  if (f.tags) items = items.filter(t => (t.tags || []).some(tag => tag.toLowerCase().includes(f.tags.toLowerCase())));
   items.sort((a, b) => {
     const av = taskGridSortVal(a, taskSortKey), bv = taskGridSortVal(b, taskSortKey);
     if (av < bv) return -taskSortDir; if (av > bv) return taskSortDir; return 0;
   });
-  if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne úlohy v tomto filtri.</div>'; return; }
+  return items;
+}
+function taskGridFilterCellHtml(c) {
+  if (c.filter === 'status') {
+    return `<select onchange="setTaskGridColFilter('status', this.value)"><option value="">Všetky</option>${TK_STATUS.map(s => `<option value="${s.key}" ${taskGridColFilters.status === s.key ? 'selected' : ''}>${s.label}</option>`).join('')}</select>`;
+  }
+  if (c.filter === 'priority') {
+    return `<select onchange="setTaskGridColFilter('priority', this.value)"><option value="">Všetky</option>${Object.entries(TK_PRIO).map(([k, p]) => `<option value="${k}" ${taskGridColFilters.priority === k ? 'selected' : ''}>${p.l}</option>`).join('')}</select>`;
+  }
+  if (c.filter === 'text') {
+    return `<input type="text" placeholder="Filter…" value="${escHtml(taskGridColFilters[c.key] || '')}" oninput="setTaskGridColFilter('${c.key}', this.value)">`;
+  }
+  return '';
+}
+// Postaví kostru tabuľky (hlavička + riadok filtrov) — volá sa len raz pri prepnutí na grid
+function buildTaskGridSkeleton(el) {
   const thead = TASK_GRID_COLS.map(c => {
     const active = taskSortKey === c.key;
     const arrow = active ? (taskSortDir === 1 ? '▲' : '▼') : '';
-    return `<th onclick="setTaskSort('${c.key}')" class="${active ? 'task-grid-sorted' : ''}">${c.label} <span class="task-grid-arrow">${arrow}</span></th>`;
+    return `<th onclick="setTaskSort('${c.key}')" class="${active ? 'task-grid-sorted' : ''}" data-key="${c.key}">${c.label} <span class="task-grid-arrow">${arrow}</span></th>`;
   }).join('');
-  const rows = items.map(t => {
-    const prio = TK_PRIO[t.priority] || TK_PRIO.normal;
-    const od = taskOverdue(t);
-    const rowCls = 'task-grid-row' + (t.done ? ' task-grid-done' : '') + (t.status === 'cancelled' ? ' task-grid-cancelled' : '') + (od ? ' task-grid-overdue' : '');
-    return `<tr class="${rowCls}" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
+  const filterRow = TASK_GRID_COLS.map(c => `<th class="task-grid-filtercell">${taskGridFilterCellHtml(c)}</th>`).join('');
+  el.innerHTML = `<table class="task-grid"><thead><tr>${thead}</tr><tr class="task-grid-filterrow">${filterRow}</tr></thead><tbody id="tasksGridTbody"></tbody></table>`;
+}
+// Aktualizuje len šípky triedenia v hlavičke (bez straty fokusu vo filtroch)
+function updateTaskGridHeader(el) {
+  el.querySelectorAll('thead th[data-key]').forEach(th => {
+    const key = th.dataset.key;
+    const active = taskSortKey === key;
+    th.classList.toggle('task-grid-sorted', active);
+    const arrow = th.querySelector('.task-grid-arrow');
+    if (arrow) arrow.textContent = active ? (taskSortDir === 1 ? '▲' : '▼') : '';
+  });
+}
+function taskGridRowHtml(t) {
+  const prio = TK_PRIO[t.priority] || TK_PRIO.normal;
+  const od = taskOverdue(t);
+  const rowCls = 'task-grid-row' + (t.done ? ' task-grid-done' : '') + (t.status === 'cancelled' ? ' task-grid-cancelled' : '') + (od ? ' task-grid-overdue' : '');
+  return `<tr class="${rowCls}" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
       <td class="task-grid-title">${escHtml(t.title)}</td>
       <td><span class="task-grid-status task-grid-status-${taskStatusOf(t)}">${TK_STATUS_LABEL[taskStatusOf(t)] || ''}</span></td>
       <td><span class="task-prio" style="color:${prio.c}">${prio.l}</span></td>
@@ -7407,8 +7454,64 @@ function renderTaskGrid() {
       <td>${(t.tags || []).map(tag => `<span class="task-chip task-chip-tag">#${escHtml(tag)}</span>`).join(' ')}</td>
       <td>${taskProgressHtml(t)}</td>
     </tr>`;
-  }).join('');
-  el.innerHTML = `<table class="task-grid"><thead><tr>${thead}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+// Kľúče zbalených skupín (2-úrovňové zoskupenie Zákazník → Projekt)
+let taskGridCollapsed = new Set();
+function toggleTaskGridGroup(key) {
+  if (taskGridCollapsed.has(key)) taskGridCollapsed.delete(key); else taskGridCollapsed.add(key);
+  renderTaskGridBody();
+}
+function taskGridGroupSort(keys, noneLabel) {
+  return keys.sort((a, b) => (a === noneLabel ? 1 : b === noneLabel ? -1 : a.localeCompare(b, 'sk')));
+}
+function renderTaskGridBody() {
+  const tbody = document.getElementById('tasksGridTbody'); if (!tbody) return;
+  const items = taskGridItems();
+  if (!items.length) { tbody.innerHTML = `<tr><td colspan="${TASK_GRID_COLS.length}" class="proc-empty">Žiadne úlohy v tomto filtri.</td></tr>`; return; }
+
+  // zoskupenie: Zákazník → Projekt (poradie úloh v rámci skupiny podľa aktívneho triedenia)
+  const NO_CUST = 'Bez zákazníka', NO_PROJ = 'Bez projektu';
+  const custMap = new Map();
+  items.forEach(t => {
+    const cust = (t.customer || '').trim() || NO_CUST;
+    const proj = (t.project || '').trim() || NO_PROJ;
+    if (!custMap.has(cust)) custMap.set(cust, new Map());
+    const projMap = custMap.get(cust);
+    if (!projMap.has(proj)) projMap.set(proj, []);
+    projMap.get(proj).push(t);
+  });
+
+  let html = '';
+  taskGridGroupSort([...custMap.keys()], NO_CUST).forEach(cust => {
+    const projMap = custMap.get(cust);
+    const custKey = 'c:' + cust;
+    const custTotal = [...projMap.values()].reduce((s, arr) => s + arr.length, 0);
+    const custCollapsed = taskGridCollapsed.has(custKey);
+    html += `<tr class="task-grid-group task-grid-group-cust" data-gkey="${escHtml(custKey)}">
+      <td colspan="${TASK_GRID_COLS.length}"><span class="task-grid-group-arrow">${custCollapsed ? '▸' : '▾'}</span>🏢 ${escHtml(cust)} <span class="task-grid-group-count">${custTotal}</span></td>
+    </tr>`;
+    if (custCollapsed) return;
+    taskGridGroupSort([...projMap.keys()], NO_PROJ).forEach(proj => {
+      const arr = projMap.get(proj);
+      const projKey = custKey + '|p:' + proj;
+      const projCollapsed = taskGridCollapsed.has(projKey);
+      html += `<tr class="task-grid-group task-grid-group-proj" data-gkey="${escHtml(projKey)}">
+        <td colspan="${TASK_GRID_COLS.length}"><span class="task-grid-group-arrow">${projCollapsed ? '▸' : '▾'}</span>🗂️ ${escHtml(proj)} <span class="task-grid-group-count">${arr.length}</span></td>
+      </tr>`;
+      if (projCollapsed) return;
+      arr.forEach(t => { html += taskGridRowHtml(t); });
+    });
+  });
+  tbody.innerHTML = html;
+  tbody.querySelectorAll('.task-grid-group').forEach(row => {
+    row.onclick = () => toggleTaskGridGroup(row.dataset.gkey);
+  });
+}
+function renderTaskGrid() {
+  const el = document.getElementById('tasksGrid'); if (!el) return;
+  if (!el.querySelector('table.task-grid')) buildTaskGridSkeleton(el);
+  else updateTaskGridHeader(el);
+  renderTaskGridBody();
 }
 
 function getTaskDragAfter(container, y) {

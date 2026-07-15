@@ -8,6 +8,20 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.36.0] — 2026-07-15
+### Pridané
+- **Grid** je predvolený pohľad úloh (namiesto Zoznamu).
+- **Filtre stĺpcov v Grid pohľade** — riadok pod hlavičkou tabuľky s
+  textovými/select filtrami pre každý stĺpec (Názov, Stav, Priorita,
+  Projekt, Zákazník, Termín, Tagy).
+- **Vnorené zoskupenie v Grid pohľade** — úlohy sa zoskupujú podľa
+  Zákazníka a následne podľa Projektu, so skladateľnými (collapsible)
+  hlavičkami skupín a počtami úloh.
+- **Číselník projektov a zákazníkov** (`models/TaskCatalog.js`,
+  `GET /api/tasks/catalog`) — hodnoty použité v poliach Projekt/Zákazník
+  sa automaticky ukladajú a ponúkajú pri vytváraní ďalších úloh, aj keď
+  pôvodné úlohy medzitým zaniknú.
+
 ## [2.35.0] — 2026-07-15
 ### Pridané
 - **Grid pohľad úloh** — nový tretí view (Zoznam / Kanban / **Grid**) na
