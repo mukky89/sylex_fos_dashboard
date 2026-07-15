@@ -8,6 +8,16 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.32.0] — 2026-07-15
+### Pridané
+- **Nový dizajn overovacieho e-mailu** (`utils/mailer.js`) — table-based
+  responzívna HTML šablóna s brandovanou tmavou hlavičkou (FOS Dashboard ·
+  SYLEX), akcentovou linkou, „bulletproof" CTA tlačidlom (vrátane VML
+  fallbacku pre Outlook), skrytým preheaderom a pätičkou. Vyzerá konzistentne
+  v Gmaile aj Outlooku.
+### Zmenené
+- Meno príjemcu v overovacom e-maile sa teraz HTML-escapuje (`esc()`).
+
 ## [2.31.2] — 2026-07-14
 ### Opravené
 - **Hotfix štartu aplikácie** — `engines.node` zvýšené z `>=18` na `>=20`.
