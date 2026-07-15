@@ -8,6 +8,28 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.39.0] — 2026-07-15
+### Pridané
+- **Potvrdzovanie notifikácií** — nový model `NotifDismiss` a route
+  `routes/notifications.js` (`GET /api/notifications/dismissed`,
+  `POST /api/notifications/dismiss`). Každá notifikácia má kľúč
+  `typ:id:relevantná-hodnota` (napr. `task:<id>:<due>`), takže potvrdenie
+  zmizne natrvalo, ale znova sa objaví, ak sa dôvod (termín, stav) zmení.
+  V paneli je ✕ pri každej položke aj „Označiť všetky ako prečítané".
+- **Denník aktualizácií úlohy** (`models/Task.js` pole `updates`,
+  `POST /api/tasks/:id/updates`) — nahrádza voľné polia Popis/Poznámka
+  v modáli formou pridávania záznamov s autorom a časom (kto a kedy
+  zmenil stav). Staré hodnoty `description`/`note` zostávajú zachované
+  a zobrazujú sa ako historické záznamy. Posledná aktualizácia je vidno
+  v novom stĺpci **Posledná aktualizácia** v Grid pohľade úloh.
+
+### Opravené
+- Modal **Upraviť úlohu**: chýbajúce `width: 100%; min-width: 0` na
+  `<select>`/`<input>` v `.form-group` spôsobovalo, že dlhý text v
+  rozbaľovacom poli Závislosti roztiahol celý modal vodorovne mimo
+  obrazovky (nutnosť skrolovať doprava, časť polí neviditeľná). Modal
+  rozšírený na 780 px.
+
 ## [2.38.1] — 2026-07-15
 ### Opravené
 - Odsadenie podradených úloh v pohľade Zoznam teraz posúva doprava **celý
