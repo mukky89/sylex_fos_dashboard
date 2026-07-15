@@ -8,6 +8,12 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.38.1] — 2026-07-15
+### Opravené
+- Odsadenie podradených úloh v pohľade Zoznam teraz posúva doprava **celý
+  riadok** (`margin-left` + `width: calc(...)` na `.task-row`), nielen text
+  názvu v ňom — hierarchia je tak vizuálne zreteľnejšia.
+
 ## [2.38.0] — 2026-07-15
 ### Zmenené
 - Modal **Upraviť úlohu** rozšírený na 660 px (`.modal-md`) a preusporiadaný:
