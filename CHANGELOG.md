@@ -8,6 +8,105 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.40.0] — 2026-07-15
+### Pridané
+- Grid pohľad úloh: predvolené triedenie **podľa priority** (kritická →
+  nízka, `TK_PRIO[...].rank`), riadky majú **farebné pozadie podľa
+  priority** (`.task-grid-prio-critical/high/normal/low`).
+- Stĺpec **Názov** v Grid pohľade rozšírený na min. 380px (2× oproti
+  pôvodnému auto-layoutu).
+- Stĺpec **Posledná aktualizácia**: hover tooltip (`data-tooltip` +
+  CSS `::after`) zobrazí celý text záznamu namiesto orezaného.
+
+## [2.39.1] — 2026-07-15
+### Opravené
+- Grid pohľad úloh: riadky úloh v zoskupení Zákazník → Projekt teraz majú
+  vlastné odsadenie (`taskGridRowHtml(t, groupIndent)`, 30px navyše nad
+  odsadením hlavičky skupiny Projekt), takže sú vizuálne jasne vnorené
+  pod svoj projekt — predtým začínali na rovnakej ľavej hrane ako
+  hlavička skupiny Zákazník.
+
+## [2.39.0] — 2026-07-15
+### Pridané
+- **Potvrdzovanie notifikácií** — nový model `NotifDismiss` a route
+  `routes/notifications.js` (`GET /api/notifications/dismissed`,
+  `POST /api/notifications/dismiss`). Každá notifikácia má kľúč
+  `typ:id:relevantná-hodnota` (napr. `task:<id>:<due>`), takže potvrdenie
+  zmizne natrvalo, ale znova sa objaví, ak sa dôvod (termín, stav) zmení.
+  V paneli je ✕ pri každej položke aj „Označiť všetky ako prečítané".
+- **Denník aktualizácií úlohy** (`models/Task.js` pole `updates`,
+  `POST /api/tasks/:id/updates`) — nahrádza voľné polia Popis/Poznámka
+  v modáli formou pridávania záznamov s autorom a časom (kto a kedy
+  zmenil stav). Staré hodnoty `description`/`note` zostávajú zachované
+  a zobrazujú sa ako historické záznamy. Posledná aktualizácia je vidno
+  v novom stĺpci **Posledná aktualizácia** v Grid pohľade úloh.
+
+### Opravené
+- Modal **Upraviť úlohu**: chýbajúce `width: 100%; min-width: 0` na
+  `<select>`/`<input>` v `.form-group` spôsobovalo, že dlhý text v
+  rozbaľovacom poli Závislosti roztiahol celý modal vodorovne mimo
+  obrazovky (nutnosť skrolovať doprava, časť polí neviditeľná). Modal
+  rozšírený na 780 px.
+
+## [2.38.1] — 2026-07-15
+### Opravené
+- Odsadenie podradených úloh v pohľade Zoznam teraz posúva doprava **celý
+  riadok** (`margin-left` + `width: calc(...)` na `.task-row`), nielen text
+  názvu v ňom — hierarchia je tak vizuálne zreteľnejšia.
+
+## [2.38.0] — 2026-07-15
+### Zmenené
+- Modal **Upraviť úlohu** rozšírený na 660 px (`.modal-md`) a preusporiadaný:
+  Závislosti a Podúlohy sú vedľa seba v skrolovateľných zoznamoch
+  (`.tk-scroll-list`, max. výška 128 px), Popis a Poznámka tiež vedľa seba —
+  menej skrolovania, viac viditeľné naraz.
+- Podradené úlohy (s nastavenou nadradenou úlohou) sú v pohľadoch Zoznam
+  a Grid odsadené zľava podľa hĺbky hierarchie (`taskDepth()`), so
+  symbolom `↳` — vizuálne pôsobia ako stromová štruktúra.
+
+## [2.37.0] — 2026-07-15
+### Zmenené
+- Polia **Projekt** a **Zákazník** v úlohe sú teraz rozbaľovacie polia
+  (`<select>`) s existujúcimi hodnotami z číselníka namiesto voľného textu
+  s našepkávačom — výber existujúcej hodnoty predchádza duplicitám
+  (case-insensitive porovnanie v `models/TaskCatalog.js`), voľba
+  „+ Pridať nový…" pridá novú hodnotu do číselníka.
+
+## [2.36.0] — 2026-07-15
+### Pridané
+- **Grid** je predvolený pohľad úloh (namiesto Zoznamu).
+- **Filtre stĺpcov v Grid pohľade** — riadok pod hlavičkou tabuľky s
+  textovými/select filtrami pre každý stĺpec (Názov, Stav, Priorita,
+  Projekt, Zákazník, Termín, Tagy).
+- **Vnorené zoskupenie v Grid pohľade** — úlohy sa zoskupujú podľa
+  Zákazníka a následne podľa Projektu, so skladateľnými (collapsible)
+  hlavičkami skupín a počtami úloh.
+- **Číselník projektov a zákazníkov** (`models/TaskCatalog.js`,
+  `GET /api/tasks/catalog`) — hodnoty použité v poliach Projekt/Zákazník
+  sa automaticky ukladajú a ponúkajú pri vytváraní ďalších úloh, aj keď
+  pôvodné úlohy medzitým zaniknú.
+
+## [2.35.0] — 2026-07-15
+### Pridané
+- **Grid pohľad úloh** — nový tretí view (Zoznam / Kanban / **Grid**) na
+  stránke Úlohy: tabuľka so stĺpcami názov, stav, priorita, projekt,
+  zákazník, termín, tagy a progres, s triedením kliknutím na hlavičku stĺpca.
+
+## [2.34.0] — 2026-07-15
+### Pridané
+- **Úlohy** rozšírené o task-management prvky:
+  - hierarchia — voliteľná **nadradená úloha** (parent), s ochranou proti cyklom
+  - **závislosti** medzi úlohami (`dependsOn`) — úlohu nemožno označiť ako hotovú,
+    kým jej závislosti, podúlohy alebo podradené úlohy nie sú dokončené
+  - **tagy** (voľné, oddelené čiarkou) s filtrom v toolbare
+  - rozšírené stavy: `todo`, `inprogress`, **`blocked`**, **`review`**, `done`,
+    **`cancelled`** (6-stĺpcový Kanban)
+  - rozšírená priorita o **`critical`**
+  - **progres celého zoznamu** (X / Y dokončených, %) nad zoznamom úloh
+- Backend (`routes/tasks.js`): validácia pri dokončovaní úlohy (nesplnené
+  závislosti/podúlohy/podradené úlohy), detekcia cyklických závislostí a
+  cyklickej hierarchie.
+
 ## [2.33.0] — 2026-07-15
 ### Pridané
 - **Oficiálne logo SYLEX** (červený emblém so slovom „sylex", `#E2001A`)

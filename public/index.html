@@ -173,7 +173,10 @@
 
       <!-- Notifikácie -->
       <div id="notifPanel" class="hdr-popover hdr-popover-wide hidden" onclick="event.stopPropagation()">
-        <div class="hdr-popover-title">Notifikácie</div>
+        <div class="notif-panel-hdr">
+          <div class="hdr-popover-title">Notifikácie</div>
+          <button class="notif-markall" onclick="dismissAllNotif()">Označiť všetky ako prečítané</button>
+        </div>
         <div id="notifList"></div>
       </div>
     </div>
@@ -2007,7 +2010,7 @@
 
   <!-- ===== TASKS (Úlohy) PAGE ===== -->
   <main id="page-tasks" class="page tasks-page">
-    <div class="tasks-inner">
+    <div class="tasks-inner tasks-wide">
       <div class="proc-hdr">
         <div>
           <h1 class="proc-title">Moje úlohy</h1>
@@ -2024,38 +2027,57 @@
           <button class="tasks-filter" data-tfilter="all" onclick="setTaskFilter('all')">Všetky</button>
           <button class="tasks-filter" data-tfilter="done" onclick="setTaskFilter('done')">Hotové</button>
         </div>
-        <button class="tasks-filter active" id="taskGroupBtn" onclick="toggleTaskGroup()" title="Zoskupiť úlohy podľa projektu a zákazníka">🗂️ Zoskupiť</button>
+        <select id="tkTagFilter" class="tk-tag-filter" onchange="setTaskTagFilter(this.value)" title="Filtrovať podľa tagu">
+          <option value="">Všetky tagy</option>
+        </select>
+        <button class="tasks-filter hidden" id="taskGroupBtn" onclick="toggleTaskGroup()" title="Zoskupiť úlohy podľa projektu a zákazníka">🗂️ Zoskupiť</button>
         <div class="tasks-viewtoggle">
-          <button class="tasks-view active" data-tview="list" onclick="setTaskView('list')" title="Zoznam">☰ Zoznam</button>
+          <button class="tasks-view" data-tview="list" onclick="setTaskView('list')" title="Zoznam">☰ Zoznam</button>
           <button class="tasks-view" data-tview="kanban" onclick="setTaskView('kanban')" title="Kanban">▦ Kanban</button>
+          <button class="tasks-view active" data-tview="grid" onclick="setTaskView('grid')" title="Grid (tabuľka)">▤ Grid</button>
         </div>
       </div>
-      <div id="tasksList" class="tasks-list"></div>
+      <div id="tasksProgress" class="tasks-progress"></div>
+      <div id="tasksList" class="tasks-list hidden"></div>
       <div id="tasksKanban" class="kanban hidden"></div>
+      <div id="tasksGrid" class="tasks-grid-wrap"></div>
     </div>
   </main>
 
   <!-- ===== TASK MODAL ===== -->
   <div id="taskModal" class="modal hidden">
     <div class="modal-backdrop" onclick="closeTaskModal()"></div>
-    <div class="modal-box modal-sm">
+    <div class="modal-box modal-md">
       <div class="modal-header"><h2 id="tkModalTitle">Nová úloha</h2><button class="modal-close" onclick="closeTaskModal()">✕</button></div>
       <div class="modal-body">
         <input type="hidden" id="tkId">
         <div class="form-group"><label>Názov *</label><input type="text" id="tkTitle" placeholder="Čo treba spraviť"></div>
         <div class="form-row">
-          <div class="form-group"><label>Projekt</label><input type="text" id="tkProject" list="tkProjectList" placeholder="napr. FOS senzor X1" autocomplete="off"><datalist id="tkProjectList"></datalist></div>
-          <div class="form-group"><label>Zákazník</label><input type="text" id="tkCustomer" list="tkCustomerList" placeholder="napr. US CONEC" autocomplete="off"><datalist id="tkCustomerList"></datalist></div>
+          <div class="form-group"><label>Projekt</label>
+            <select id="tkProject" onchange="taskCatalogSelectChange('tkProject')"><option value="">— žiadny —</option></select>
+            <input type="text" id="tkProjectNew" class="hidden" placeholder="Názov nového projektu">
+          </div>
+          <div class="form-group"><label>Zákazník</label>
+            <select id="tkCustomer" onchange="taskCatalogSelectChange('tkCustomer')"><option value="">— žiadny —</option></select>
+            <input type="text" id="tkCustomerNew" class="hidden" placeholder="Názov nového zákazníka">
+          </div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Termín</label><input type="date" id="tkDue"></div>
           <div class="form-group"><label>Priorita</label>
-            <select id="tkPriority"><option value="low">Nízka</option><option value="normal" selected>Normálna</option><option value="high">Vysoká</option></select>
+            <select id="tkPriority"><option value="low">Nízka</option><option value="normal" selected>Normálna</option><option value="high">Vysoká</option><option value="critical">Kritická</option></select>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Stav</label>
-            <select id="tkStatus"><option value="todo">Čaká</option><option value="inprogress">Prebieha</option><option value="done">Hotové</option></select>
+            <select id="tkStatus">
+              <option value="todo">Čaká</option>
+              <option value="inprogress">Prebieha</option>
+              <option value="blocked">Blokované</option>
+              <option value="review">Na kontrolu</option>
+              <option value="done">Hotové</option>
+              <option value="cancelled">Zrušené</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Progres — <span id="tkProgressVal">0</span> %</label>
@@ -2063,19 +2085,40 @@
             <div class="tk-prog-hint" id="tkProgHint"></div>
           </div>
         </div>
-
-        <!-- Podúlohy (checklist) -->
-        <div class="form-group">
-          <label>Podúlohy <span id="tkSubCount" class="tk-sub-count"></span></label>
-          <div id="tkSubList" class="tk-sub-list"></div>
-          <div class="tk-sub-add">
-            <input type="text" id="tkSubInput" placeholder="Nová podúloha — Enter pridá" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtask();}">
-            <button type="button" class="btn-secondary btn-sm" onclick="addSubtask()">+ Pridať</button>
+        <div class="form-row">
+          <div class="form-group"><label>Nadradená úloha</label>
+            <select id="tkParent"><option value="">— žiadna —</option></select>
+          </div>
+          <div class="form-group"><label>Tagy</label>
+            <input type="text" id="tkTags" placeholder="backend, urgent, api (oddelené čiarkou)">
+          </div>
+        </div>
+        <div class="form-row form-row-top">
+          <div class="form-group"><label>Závisí od</label>
+            <select id="tkDependsOn" multiple size="5" class="tk-scroll-list"></select>
+            <div class="tk-prog-hint">Podrž Ctrl/Cmd pre výber viacerých. Úlohu nemožno dokončiť, kým závislosti nie sú hotové.</div>
+          </div>
+          <!-- Podúlohy (checklist) -->
+          <div class="form-group">
+            <label>Podúlohy <span id="tkSubCount" class="tk-sub-count"></span></label>
+            <div id="tkSubList" class="tk-sub-list tk-scroll-list"></div>
+            <div class="tk-sub-add">
+              <input type="text" id="tkSubInput" placeholder="Nová podúloha — Enter pridá" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtask();}">
+              <button type="button" class="btn-secondary btn-sm" onclick="addSubtask()">+ Pridať</button>
+            </div>
           </div>
         </div>
 
-        <div class="form-group"><label>Popis</label><textarea id="tkDesc" rows="2"></textarea></div>
-        <div class="form-group"><label>Poznámka</label><textarea id="tkNote" rows="2" placeholder="Krátka poznámka k úlohe"></textarea></div>
+        <!-- Aktualizácie / poznámky k stavu — denník so záznamom kto a kedy -->
+        <div class="form-group">
+          <label>Aktualizácie <span id="tkUpdCount" class="tk-sub-count"></span></label>
+          <div id="tkUpdList" class="tk-upd-list tk-scroll-list-lg"></div>
+          <div class="tk-sub-add">
+            <input type="text" id="tkUpdInput" placeholder="Nová aktualizácia — Enter pridá" onkeydown="if(event.key==='Enter'){event.preventDefault();addTaskUpdate();}">
+            <button type="button" class="btn-secondary btn-sm" onclick="addTaskUpdate()">+ Pridať</button>
+          </div>
+          <div class="tk-prog-hint" id="tkUpdHint"></div>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn-delete" id="tkDeleteBtn" onclick="deleteTask(document.getElementById('tkId').value)" style="display:none">Odstrániť</button>

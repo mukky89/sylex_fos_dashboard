@@ -5328,45 +5328,81 @@ function quickAdd(type) {
 }
 
 // ── Notifikácie (🔔) ──────────────────────────────────────────────────────────
-let notifData = { newAnns: [], todayEvs: [] };
+// Každá položka nesie "key" (typ:id:relevantná-hodnota) — potvrdenie (dismiss) sa
+// pamätá per-user na serveri; ak sa relevantná hodnota zmení (napr. nový termín),
+// key sa zmení a notifikácia sa objaví znova.
+let notifData = { newAnns: [], todayEvs: [], calDue: [], tasksDue: [], procRevDue: [], gpnAttention: [] };
+let notifDismissed = new Set();
 async function loadNotif() {
   try {
     const key = calYmd(new Date());
-    const [anns, evs, instr, tasks, procs, gpn] = await Promise.all([
+    const [anns, evs, instr, tasks, procs, gpn, dismissed] = await Promise.all([
       fetch('/api/announcements').then(r => r.json()).catch(() => []),
       fetch(`/api/calendar?from=${key}&to=${key}`).then(r => r.json()).catch(() => []),
       fetch('/api/instruments').then(r => r.json()).catch(() => []),
       fetch('/api/tasks').then(r => r.json()).catch(() => []),
       fetch('/api/procedures').then(r => r.json()).catch(() => []),
       fetch('/api/gpn').then(r => r.json()).catch(() => []),
+      fetch('/api/notifications/dismissed').then(r => r.json()).catch(() => ({ keys: [] })),
     ]);
+    notifDismissed = new Set((dismissed && dismissed.keys) || []);
     const weekAgo = new Date(Date.now() - 7 * 864e5);
-    const newAnns = (Array.isArray(anns) ? anns : []).filter(a => new Date(a.date || a.createdAt) >= weekAgo);
-    const todayEvs = Array.isArray(evs) ? evs : [];
+    const newAnns = (Array.isArray(anns) ? anns : []).filter(a => new Date(a.date || a.createdAt) >= weekAgo)
+      .map(a => ({ item: a, key: 'ann:' + a._id }));
+    const todayEvs = (Array.isArray(evs) ? evs : []).map(ev => ({ item: ev, key: 'cal:' + ev._id + ':' + key }));
     // Kalibrácie po termíne alebo do 30 dní
     const calDue = (Array.isArray(instr) ? instr : []).filter(i => {
       if (!i.nextCalibration) return false;
       const days = Math.ceil((new Date(i.nextCalibration) - new Date()) / 864e5);
       return days <= 30;
-    });
+    }).map(i => ({ item: i, key: 'instr:' + i._id + ':' + i.nextCalibration }));
     // Nedokončené úlohy po termíne / dnes
     const todayEnd = new Date(new Date().toDateString()); todayEnd.setHours(23, 59, 59);
-    const tasksDue = (Array.isArray(tasks) ? tasks : []).filter(t => !t.done && t.due && new Date(t.due) <= todayEnd);
+    const tasksDue = (Array.isArray(tasks) ? tasks : []).filter(t => !t.done && t.due && new Date(t.due) <= todayEnd)
+      .map(t => ({ item: t, key: 'task:' + t._id + ':' + t.due }));
     // Pracovné postupy s nasledujúcou revíziou po termíne alebo do 30 dní (okrem archivovaných)
     const procRevDue = (Array.isArray(procs) ? procs : []).filter(p => {
       if (p.status === 'archived') return false;
       const nr = p.validity && p.validity.nextRevision;
       if (!nr) return false;
       return Math.ceil((new Date(nr) - new Date()) / 864e5) <= 30;
-    });
+    }).map(p => ({ item: p, key: 'proc:' + p._id + ':' + p.validity.nextRevision }));
     // GPN požiadavky vyžadujúce pozornosť: nové/na kontrolu + čakajúce na doplnenie
     const gpnAll = Array.isArray(gpn) ? gpn : [];
-    const gpnAttention = gpnAll.filter(t => ['new', 'waiting_review', 'waiting_info'].includes(t.status));
-    notifData = { newAnns, todayEvs, calDue, tasksDue, procRevDue, gpnAttention };
-    const count = newAnns.length + todayEvs.length + calDue.length + tasksDue.length + procRevDue.length + gpnAttention.length;
-    const b = document.getElementById('notifBadge');
-    if (b) { b.textContent = count > 9 ? '9+' : count; b.classList.toggle('hidden', count === 0); }
+    const gpnAttention = gpnAll.filter(t => ['new', 'waiting_review', 'waiting_info'].includes(t.status))
+      .map(t => ({ item: t, key: 'gpn:' + t._id + ':' + t.status }));
+
+    const undismissed = (arr) => arr.filter(x => !notifDismissed.has(x.key));
+    notifData = {
+      newAnns: undismissed(newAnns), todayEvs: undismissed(todayEvs), calDue: undismissed(calDue),
+      tasksDue: undismissed(tasksDue), procRevDue: undismissed(procRevDue), gpnAttention: undismissed(gpnAttention)
+    };
+    updateNotifBadge();
   } catch (e) {}
+}
+function updateNotifBadge() {
+  const count = Object.values(notifData).reduce((s, arr) => s + (arr ? arr.length : 0), 0);
+  const b = document.getElementById('notifBadge');
+  if (b) { b.textContent = count > 9 ? '9+' : count; b.classList.toggle('hidden', count === 0); }
+}
+// Potvrdí (skryje) jednu notifikáciu — zapamätá sa per-user na serveri
+async function dismissNotifItem(itemKey, evt) {
+  if (evt) evt.stopPropagation();
+  notifDismissed.add(itemKey);
+  Object.keys(notifData).forEach(k => { notifData[k] = notifData[k].filter(x => x.key !== itemKey); });
+  renderNotif();
+  updateNotifBadge();
+  try { await fetch('/api/notifications/dismiss', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keys: [itemKey] }) }); } catch {}
+}
+// Potvrdí všetky aktuálne zobrazené notifikácie naraz
+async function dismissAllNotif() {
+  const keys = Object.values(notifData).flat().map(x => x.key);
+  if (!keys.length) return;
+  keys.forEach(k => notifDismissed.add(k));
+  notifData = { newAnns: [], todayEvs: [], calDue: [], tasksDue: [], procRevDue: [], gpnAttention: [] };
+  renderNotif();
+  updateNotifBadge();
+  try { await fetch('/api/notifications/dismiss', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keys }) }); } catch {}
 }
 function toggleNotif(e) {
   e.stopPropagation();
@@ -5376,46 +5412,58 @@ function toggleNotif(e) {
   renderNotif();
   m.classList.toggle('hidden');
 }
+// Zostaví jednu položku notifikácie: klikom na telo sa prejde na súvisiacu stránku,
+// tlačidlom ✕ sa potvrdí (dismissNotifItem) bez toho, aby sa spustila navigácia.
+function notifItemHtml(icon, label, itemKey, navigateJs) {
+  return `<div class="notif-item">
+    <div class="notif-item-body" onclick="closeHdrPopovers();${navigateJs}"><span>${icon}</span><span>${label}</span></div>
+    <button class="notif-dismiss" onclick="dismissNotifItem('${itemKey}', event)" title="Označiť ako prečítané">✕</button>
+  </div>`;
+}
 function renderNotif() {
   const el = document.getElementById('notifList'); if (!el) return;
   let h = '';
   if (notifData.todayEvs.length) {
     h += '<div class="notif-group">Dnes v kalendári</div>';
-    notifData.todayEvs.forEach(ev => { h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('calendar')"><span>📅</span><span>${escHtml(ev.title)}${calEvTimeRange(ev) ? ' · ' + escHtml(calEvTimeRange(ev)) : ''}</span></div>`; });
+    notifData.todayEvs.forEach(({ item: ev, key }) => {
+      h += notifItemHtml('📅', `${escHtml(ev.title)}${calEvTimeRange(ev) ? ' · ' + escHtml(calEvTimeRange(ev)) : ''}`, key, "showPage('calendar')");
+    });
   }
   if ((notifData.tasksDue || []).length) {
     h += '<div class="notif-group">Úlohy — termín dnes / po termíne</div>';
-    notifData.tasksDue.forEach(t => {
+    notifData.tasksDue.forEach(({ item: t, key }) => {
       const od = new Date(t.due) < new Date(new Date().toDateString());
-      h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('tasks')"><span>✅</span><span>${escHtml(t.title)}${od ? ' — po termíne' : ' — dnes'}</span></div>`;
+      h += notifItemHtml('✅', `${escHtml(t.title)}${od ? ' — po termíne' : ' — dnes'}`, key, "showPage('tasks')");
     });
   }
   if ((notifData.calDue || []).length) {
     h += '<div class="notif-group">Kalibrácie (≤30 dní / po termíne)</div>';
-    notifData.calDue.forEach(i => {
+    notifData.calDue.forEach(({ item: i, key }) => {
       const days = Math.ceil((new Date(i.nextCalibration) - new Date()) / 864e5);
       const lbl = days < 0 ? 'po termíne' : `o ${days} dní`;
-      h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('dev');setTimeout(()=>switchDevTab('instruments'),100)"><span>📐</span><span>${escHtml(i.name)} — ${lbl}</span></div>`;
+      h += notifItemHtml('📐', `${escHtml(i.name)} — ${lbl}`, key, "showPage('dev');setTimeout(()=>switchDevTab('instruments'),100)");
     });
   }
   if ((notifData.procRevDue || []).length) {
     h += '<div class="notif-group">Pracovné postupy — revízia (≤30 dní / po termíne)</div>';
-    notifData.procRevDue.forEach(p => {
+    notifData.procRevDue.forEach(({ item: p, key }) => {
       const days = Math.ceil((new Date(p.validity.nextRevision) - new Date()) / 864e5);
       const lbl = days < 0 ? 'po termíne' : `o ${days} dní`;
-      h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('procedures');setTimeout(()=>openProcedureById('${p._id}'),250)"><span>📋</span><span>${escHtml(p.title)} — revízia ${lbl}</span></div>`;
+      h += notifItemHtml('📋', `${escHtml(p.title)} — revízia ${lbl}`, key, `showPage('procedures');setTimeout(()=>openProcedureById('${p._id}'),250)`);
     });
   }
   if ((notifData.gpnAttention || []).length) {
     h += '<div class="notif-group">GPN požiadavky — vyžadujú pozornosť</div>';
-    notifData.gpnAttention.slice(0, 8).forEach(t => {
+    notifData.gpnAttention.slice(0, 8).forEach(({ item: t, key }) => {
       const m = { new: 'nová', waiting_review: 'na kontrolu', waiting_info: 'čaká na doplnenie' }[t.status] || t.status;
-      h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('gpn');setTimeout(()=>openGpnDetail('${t._id}'),250)"><span>🧩</span><span>${escHtml(t.number || '')} · ${escHtml(t.product || t.customer || '')} — ${m}</span></div>`;
+      h += notifItemHtml('🧩', `${escHtml(t.number || '')} · ${escHtml(t.product || t.customer || '')} — ${m}`, key, `showPage('gpn');setTimeout(()=>openGpnDetail('${t._id}'),250)`);
     });
   }
   if (notifData.newAnns.length) {
     h += '<div class="notif-group">Nové novinky (7 dní)</div>';
-    notifData.newAnns.slice(0, 6).forEach(a => { h += `<div class="notif-item" onclick="closeHdrPopovers();showPage('home')"><span>📢</span><span>${escHtml(a.title)}</span></div>`; });
+    notifData.newAnns.slice(0, 6).forEach(({ item: a, key }) => {
+      h += notifItemHtml('📢', escHtml(a.title), key, "showPage('home')");
+    });
   }
   if (!h) h = '<div class="cmd-hint" style="padding:14px">Žiadne nové notifikácie.</div>';
   el.innerHTML = h;
@@ -6557,6 +6605,39 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.40.0', date: '15. 7. 2026', tag: 'feat', items: [
+    'Grid pohľad úloh je predvolene <strong>zoradený podľa priority</strong> (kritická → nízka) a riadky majú <strong>farebné pozadie podľa priority</strong> (kritická/vysoká červeno, nízka jemne šedo).',
+    'Stĺpec <strong>Názov</strong> v Grid pohľade je 2× širší, menej sa zalamuje.',
+    'Stĺpec <strong>Posledná aktualizácia</strong> teraz pri prejdení myšou zobrazí celý text v prehľadnom tooltipe (namiesto orezaného textu).',
+  ] },
+  { v: '2.39.1', date: '15. 7. 2026', tag: 'fix', items: [
+    'Grid pohľad úloh: riadky úloh v zoskupení <strong>Zákazník → Projekt</strong> sú teraz odsadené zľava viac než hlavička skupiny Projekt, takže je hneď vidno, pod ktorý projekt úloha patrí.',
+  ] },
+  { v: '2.39.0', date: '15. 7. 2026', tag: 'feat', items: [
+    '<strong>Notifikácie</strong> (🔔) sa teraz dajú potvrdiť (✕ pri položke, alebo „Označiť všetky ako prečítané" v paneli) a odvtedy prestanú svietiť ako nové — znova sa objavia, len ak sa zmení dôvod (napr. posunutý termín).',
+    'Modal <strong>Upraviť úlohu</strong> je širší (780 px) a opravená chyba layoutu, kvôli ktorej sa modal vodorovne roztiahol a časť polí nebolo vidieť.',
+    'Popis a Poznámka nahradené <strong>denníkom aktualizácií</strong> — každý záznam má autora a dátum/čas, takže je vidieť kto a kedy zmenil stav úlohy. Posledná aktualizácia sa zobrazuje aj v novom stĺpci Grid pohľadu.',
+  ] },
+  { v: '2.38.1', date: '15. 7. 2026', tag: 'fix', items: [
+    'Odsadenie podradených úloh v pohľade <strong>Zoznam</strong> teraz posúva doprava celý riadok (nielen text názvu), takže hierarchia je vizuálne zreteľnejšia.',
+  ] },
+  { v: '2.38.0', date: '15. 7. 2026', tag: 'style', items: [
+    'Modal <strong>Upraviť úlohu</strong> je širší (660 px) a prehľadnejšie usporiadaný — Závislosti a Podúlohy sú vedľa seba v skrolovateľných zoznamoch, Popis a Poznámka tiež vedľa seba, takže sa toho zmestí viac bez zbytočného skrolovania.',
+    'Podradené úlohy (s nadradenou úlohou) sú v Zozname aj v Grid pohľade <strong>odsadené zľava</strong> podľa hĺbky hierarchie — vizuálne pôsobia ako stromová štruktúra.',
+  ] },
+  { v: '2.37.0', date: '15. 7. 2026', tag: 'feat', items: [
+    'Polia <strong>Projekt</strong> a <strong>Zákazník</strong> v úlohe sú teraz <strong>rozbaľovacie polia</strong> s existujúcimi hodnotami z číselníka (namiesto voľného textu) — výber existujúcej hodnoty predchádza duplicitám (aj s ohľadom na veľkosť písmen), voľba „+ Pridať nový…" umožní zapísať novú hodnotu do číselníka.',
+  ] },
+  { v: '2.36.0', date: '15. 7. 2026', tag: 'feat', items: [
+    '<strong>Grid</strong> je teraz predvolený pohľad úloh, s <strong>filtrami pod hlavičkou každého stĺpca</strong> (text/výber) a dvojúrovňovým <strong>zoskupením podľa Zákazníka a následne Projektu</strong> (rozbaľovacie skupiny s počtami).',
+    'Projekt a Zákazník sa teraz ukladajú do <strong>číselníka</strong> — ponuka pri vytváraní úlohy zostáva dostupná aj po vymazaní úloh, ktoré ich pôvodne použili.',
+  ] },
+  { v: '2.35.0', date: '15. 7. 2026', tag: 'feat', items: [
+    'Nový <strong>Grid</strong> pohľad úloh (tretí view vedľa Zoznamu a Kanbanu) — tabuľka so stĺpcami názov, stav, priorita, projekt, zákazník, termín, tagy a progres, s triedením kliknutím na hlavičku stĺpca.',
+  ] },
+  { v: '2.34.0', date: '15. 7. 2026', tag: 'feat', items: [
+    'Rozšírené <strong>Úlohy</strong> o hierarchiu (nadradená úloha), <strong>závislosti</strong> medzi úlohami (nemožno dokončiť, kým závislosť nie je hotová), <strong>tagy</strong> s filtrom a stavy <strong>Blokované / Na kontrolu / Zrušené</strong> + prioritu <strong>Kritická</strong>. Pribudol aj celkový <strong>progres úloh</strong> (X / Y dokončených, %) nad zoznamom a Kanban má teraz 6 stĺpcov.',
+  ] },
   { v: '2.33.0', date: '15. 7. 2026', tag: 'feat', items: [
     'Oficiálne <strong>logo SYLEX</strong> (červený emblém so slovom „sylex") nasadené naprieč celou aplikáciou: v <strong>hlavičke</strong> (pred názvom FOS Dashboard), na <strong>prihlasovacej obrazovke</strong>, v <strong>alternatívnom bočnom paneli</strong>, na stránke <strong>overenia e-mailu</strong>, v <strong>overovacom e-maile</strong> (hostované PNG s textovým fallbackom) a v exportovaných <strong>pracovných postupoch</strong> (Word/PDF). Logo je vektorové (SVG) a funguje na svetlom aj tmavom podklade.',
   ] },
@@ -7092,27 +7173,103 @@ function updateDateTime() {
 // ==============================
 let tasksData = [];
 let taskFilter = 'open';
-let taskView = 'list';
+let taskTagFilter = '';
+let taskSortKey = 'priority';
+let taskSortDir = -1;
+let taskView = 'grid';
 let taskGroup = true;   // zoskupiť podľa projektu + zákazníka
 let _dragTaskId = null;
 let tkSubtasks = [];   // pracovná kópia podúloh v modale
-const TK_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#ef4444' } };
-const TK_STATUS = [{ key: 'todo', label: 'Čaká' }, { key: 'inprogress', label: 'Prebieha' }, { key: 'done', label: 'Hotové' }];
+const TK_PRIO = {
+  low:      { l: 'Nízka',     c: '#64748b', rank: 1 },
+  normal:   { l: 'Normálna',  c: '#3b82f6', rank: 2 },
+  high:     { l: 'Vysoká',    c: '#ef4444', rank: 3 },
+  critical: { l: 'Kritická',  c: '#b91c1c', rank: 4 }
+};
+const TK_STATUS = [
+  { key: 'todo', label: 'Čaká' }, { key: 'inprogress', label: 'Prebieha' }, { key: 'blocked', label: 'Blokované' },
+  { key: 'review', label: 'Na kontrolu' }, { key: 'done', label: 'Hotové' }, { key: 'cancelled', label: 'Zrušené' }
+];
+const TK_STATUS_LABEL = Object.fromEntries(TK_STATUS.map(s => [s.key, s.label]));
 function taskStatusOf(t) { return t.status || (t.done ? 'done' : 'todo'); }
+// Úloha čaká na nesplnené závislosti (iné úlohy, ktoré ešte nie sú hotové)
+function taskUnmetDeps(t) {
+  if (!t.dependsOn || !t.dependsOn.length) return [];
+  return t.dependsOn.map(id => tasksData.find(x => x._id === (id._id || id))).filter(d => d && d.status !== 'done');
+}
+// Hĺbka úlohy v hierarchii (0 = koreňová) — podľa reťazca "parent", s ochranou proti cyklu
+const TASK_MAX_DEPTH = 6;
+function taskDepth(t) {
+  let depth = 0, cur = t, seen = new Set();
+  while (cur && cur.parent && depth < TASK_MAX_DEPTH) {
+    const parentId = cur.parent._id || cur.parent;
+    if (seen.has(parentId)) break;
+    seen.add(parentId);
+    cur = tasksData.find(x => x._id === parentId);
+    if (!cur) break;
+    depth++;
+  }
+  return depth;
+}
 
 async function loadTasks() {
   const sub = document.getElementById('tasksSub');
   if (sub && CURRENT_USER) sub.textContent = 'Osobný zoznam úloh — ' + (CURRENT_USER.name || CURRENT_USER.username);
   try { tasksData = await fetch('/api/tasks').then(r => r.json()); if (!Array.isArray(tasksData)) tasksData = []; }
   catch { tasksData = []; }
-  fillTaskDatalists();
+  await fillTaskDatalists();
+  fillTaskTagFilter();
+  renderTaskProgress();
   renderTasks();
 }
-// Combobox: ponuka projektov a zákazníkov z uložených úloh
-function fillTaskDatalists() {
-  const uniq = (key) => [...new Set(tasksData.map(t => (t[key] || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'sk'));
-  const pl = document.getElementById('tkProjectList'); if (pl) pl.innerHTML = uniq('project').map(x => `<option value="${escHtml(x)}">`).join('');
-  const cl = document.getElementById('tkCustomerList'); if (cl) cl.innerHTML = uniq('customer').map(x => `<option value="${escHtml(x)}">`).join('');
+// Číselník projektov a zákazníkov (perzistuje aj po vymazaní úloh, ktoré ich používali)
+let taskCatalog = { customers: [], projects: [] };
+async function fillTaskDatalists() {
+  try { taskCatalog = await fetch('/api/tasks/catalog').then(r => r.json()); }
+  catch { taskCatalog = { customers: [], projects: [] }; }
+}
+// Naplní rozbaľovacie pole existujúcimi hodnotami číselníka + voľbou "Pridať nový"
+function renderTaskCatalogSelect(baseId, list, current) {
+  const sel = document.getElementById(baseId); if (!sel) return;
+  const opts = [...new Set(list || [])];
+  if (current && !opts.some(x => x.toLowerCase() === current.toLowerCase())) opts.push(current);
+  opts.sort((a, b) => a.localeCompare(b, 'sk'));
+  const curMatch = opts.find(x => x.toLowerCase() === (current || '').toLowerCase()) || '';
+  sel.innerHTML = '<option value="">— žiadny —</option>'
+    + opts.map(x => `<option value="${escHtml(x)}" ${x === curMatch ? 'selected' : ''}>${escHtml(x)}</option>`).join('')
+    + '<option value="__new__">+ Pridať nový…</option>';
+  const newInp = document.getElementById(baseId + 'New');
+  if (newInp) { newInp.classList.add('hidden'); newInp.value = ''; }
+}
+function taskCatalogSelectChange(baseId) {
+  const sel = document.getElementById(baseId);
+  const newInp = document.getElementById(baseId + 'New');
+  if (sel.value === '__new__') { newInp.classList.remove('hidden'); newInp.value = ''; newInp.focus(); }
+  else { newInp.classList.add('hidden'); newInp.value = ''; }
+}
+// Vráti aktuálnu hodnotu poľa (vybranú z číselníka alebo novo zadanú)
+function taskCatalogValue(baseId) {
+  const sel = document.getElementById(baseId);
+  if (sel.value === '__new__') return (document.getElementById(baseId + 'New').value || '').trim();
+  return sel.value;
+}
+// Filter podľa tagu — ponuka všetkých použitých tagov
+function fillTaskTagFilter() {
+  const sel = document.getElementById('tkTagFilter'); if (!sel) return;
+  const tags = [...new Set(tasksData.flatMap(t => t.tags || []))].sort((a, b) => a.localeCompare(b, 'sk'));
+  sel.innerHTML = '<option value="">Všetky tagy</option>' + tags.map(x => `<option value="${escHtml(x)}">${escHtml(x)}</option>`).join('');
+  sel.value = taskTagFilter;
+}
+function setTaskTagFilter(v) { taskTagFilter = v; renderTasks(); }
+// Progres celého zoznamu úloh — X / Y dokončených (%)
+function renderTaskProgress() {
+  const el = document.getElementById('tasksProgress'); if (!el) return;
+  const relevant = tasksData.filter(t => t.status !== 'cancelled');
+  const done = relevant.filter(t => t.status === 'done').length;
+  const total = relevant.length;
+  if (!total) { el.innerHTML = ''; return; }
+  const pct = Math.round(done / total * 100);
+  el.innerHTML = `<div class="tasks-progress-track"><div class="tasks-progress-fill" style="width:${pct}%"></div></div><span class="tasks-progress-txt">${done} / ${total} dokončených — ${pct}%</span>`;
 }
 function toggleTaskGroup() {
   taskGroup = !taskGroup;
@@ -7128,8 +7285,8 @@ function setTaskView(v) {
   taskView = v;
   document.querySelectorAll('.tasks-view').forEach(b => b.classList.toggle('active', b.dataset.tview === v));
   document.querySelector('.tasks-filters')?.classList.toggle('hidden', v === 'kanban');
-  document.getElementById('taskGroupBtn')?.classList.toggle('hidden', v === 'kanban');
-  document.querySelector('.tasks-inner')?.classList.toggle('tasks-wide', v === 'kanban');
+  document.getElementById('taskGroupBtn')?.classList.toggle('hidden', v !== 'list');
+  document.querySelector('.tasks-inner')?.classList.toggle('tasks-wide', v === 'kanban' || v === 'grid');
   renderTasks();
 }
 function taskOverdue(t) { return !t.done && t.due && new Date(t.due) < new Date(new Date().toDateString()); }
@@ -7139,6 +7296,10 @@ function taskChipsHtml(t) {
   const chips = [];
   if (t.project)  chips.push(`<span class="task-chip task-chip-pj">🗂️ ${escHtml(t.project)}</span>`);
   if (t.customer) chips.push(`<span class="task-chip task-chip-cust">🏢 ${escHtml(t.customer)}</span>`);
+  const parentId = t.parent && (t.parent._id || t.parent);
+  const parent = parentId ? tasksData.find(x => x._id === parentId) : null;
+  if (parent) chips.push(`<span class="task-chip task-chip-parent">⬆ ${escHtml(parent.title)}</span>`);
+  (t.tags || []).forEach(tag => chips.push(`<span class="task-chip task-chip-tag">#${escHtml(tag)}</span>`));
   return chips.length ? `<div class="task-chips">${chips.join('')}</div>` : '';
 }
 function taskProgressHtml(t) {
@@ -7155,6 +7316,8 @@ function taskMetaHtml(t) {
     const done = t.subtasks.filter(s => s.done).length;
     parts.push(`<span class="task-subbadge ${done === t.subtasks.length ? 'all' : ''}" title="Podúlohy">☑ ${done}/${t.subtasks.length}</span>`);
   }
+  const unmet = taskUnmetDeps(t);
+  if (unmet.length) parts.push(`<span class="task-depbadge" title="${escHtml(unmet.map(d => d.title).join(', '))}">⛔ čaká na ${unmet.length} závislosť(i)</span>`);
   if (t.createdAt) parts.push(`<span class="task-created" title="Dátum pridania">➕ ${fmtDate(t.createdAt)}</span>`);
   return `<div class="task-meta">${parts.join('')}</div>`;
 }
@@ -7172,24 +7335,30 @@ function taskSubInlineHtml(t) {
 function renderTasks() {
   const listEl = document.getElementById('tasksList');
   const kanbanEl = document.getElementById('tasksKanban');
-  if (!listEl || !kanbanEl) return;
-  if (taskView === 'kanban') {
-    listEl.classList.add('hidden'); kanbanEl.classList.remove('hidden');
-    renderTaskKanban();
-  } else {
-    kanbanEl.classList.add('hidden'); listEl.classList.remove('hidden');
-    renderTaskList();
-  }
+  const gridEl = document.getElementById('tasksGrid');
+  if (!listEl || !kanbanEl || !gridEl) return;
+  listEl.classList.add('hidden'); kanbanEl.classList.add('hidden'); gridEl.classList.add('hidden');
+  if (taskView === 'kanban') { kanbanEl.classList.remove('hidden'); renderTaskKanban(); }
+  else if (taskView === 'grid') { gridEl.classList.remove('hidden'); renderTaskGrid(); }
+  else { listEl.classList.remove('hidden'); renderTaskList(); }
 }
 
 // Vnútro riadka úlohy (zdieľané pre plochý aj zoskupený pohľad)
-function taskRowClass(t) { return 'task-row' + (t.done ? ' task-done' : '') + (taskOverdue(t) ? ' task-overdue' : ''); }
+function taskRowClass(t) { return 'task-row' + (t.done ? ' task-done' : '') + (t.status === 'cancelled' ? ' task-cancelled' : '') + (taskOverdue(t) ? ' task-overdue' : ''); }
+// Celý riadok sa posunie doprava podľa hĺbky hierarchie (--prio + margin-left)
+function taskRowStyle(t) {
+  const depth = taskDepth(t);
+  const prio = (TK_PRIO[t.priority] || TK_PRIO.normal).c;
+  const indent = depth * 26;
+  return `--prio:${prio}${indent ? `;margin-left:${indent}px;width:calc(100% - ${indent}px)` : ''}`;
+}
 function taskRowInner(t, withGrip) {
+  const depth = taskDepth(t);
   return `
       ${withGrip ? '<span class="task-grip" title="Potiahni na zmenu poradia">⠿</span>' : '<span class="task-grip task-grip-off">•</span>'}
       <button class="task-check" onclick="toggleTask('${t._id}', ${t.done ? 'false' : 'true'})" title="${t.done ? 'Označiť ako nehotové' : 'Označiť ako hotové'}">${t.done ? '✓' : ''}</button>
       <div class="task-body" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
-        <div class="task-title">${escHtml(t.title)}</div>
+        <div class="task-title">${depth ? '<span class="task-tree-indent">↳</span>' : ''}${escHtml(t.title)}</div>
         ${taskChipsHtml(t)}
         ${taskMetaHtml(t)}
         ${(t.progress || taskStatusOf(t) === 'inprogress' || (t.subtasks && t.subtasks.length)) ? taskProgressHtml(t) : ''}
@@ -7203,8 +7372,9 @@ function taskRowInner(t, withGrip) {
 function renderTaskList() {
   const el = document.getElementById('tasksList'); if (!el) return;
   let items = tasksData.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
-  if (taskFilter === 'open') items = items.filter(t => !t.done);
+  if (taskFilter === 'open') items = items.filter(t => !t.done && t.status !== 'cancelled');
   else if (taskFilter === 'done') items = items.filter(t => t.done);
+  if (taskTagFilter) items = items.filter(t => (t.tags || []).includes(taskTagFilter));
   el.ondragover = null; el.ondrop = null;
   if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne úlohy v tomto filtri.</div>'; return; }
 
@@ -7215,7 +7385,7 @@ function renderTaskList() {
   items.forEach(t => {
     const row = document.createElement('div');
     row.className = taskRowClass(t);
-    row.style.setProperty('--prio', (TK_PRIO[t.priority] || TK_PRIO.normal).c);
+    row.style.cssText = taskRowStyle(t);
     row.dataset.tid = t._id;
     row.draggable = true;
     row.addEventListener('dragstart', (e) => { _dragTaskId = t._id; row.classList.add('kanban-dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', t._id); } catch (_) {} });
@@ -7249,7 +7419,7 @@ function renderTaskListGrouped(el, items) {
     const label = [g.project ? `🗂️ ${escHtml(g.project)}` : '', g.customer ? `🏢 ${escHtml(g.customer)}` : ''].filter(Boolean).join(' · ') || '📋 Bez projektu / zákazníka';
     const open = g.items.filter(t => !t.done).length;
     const rows = g.items.sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map(t => `<div class="${taskRowClass(t)}" style="--prio:${(TK_PRIO[t.priority] || TK_PRIO.normal).c}" data-tid="${t._id}">${taskRowInner(t, false)}</div>`).join('');
+      .map(t => `<div class="${taskRowClass(t)}" style="${taskRowStyle(t)}" data-tid="${t._id}">${taskRowInner(t, false)}</div>`).join('');
     return `<div class="task-group">
       <div class="task-group-hdr"><span class="task-group-name">${label}</span><span class="task-group-count">${open} / ${g.items.length}</span></div>
       <div class="task-group-body">${rows}</div>
@@ -7263,7 +7433,7 @@ function renderTaskKanban() {
   TK_STATUS.forEach(col => {
     const colEl = document.createElement('div');
     colEl.className = 'kanban-col';
-    const items = tasksData.filter(t => taskStatusOf(t) === col.key).sort((a, b) => (a.order || 0) - (b.order || 0));
+    const items = tasksData.filter(t => taskStatusOf(t) === col.key && (!taskTagFilter || (t.tags || []).includes(taskTagFilter))).sort((a, b) => (a.order || 0) - (b.order || 0));
     colEl.innerHTML = `<div class="kanban-col-hdr">${col.label} <span class="kanban-count">${items.length}</span></div>`;
     const body = document.createElement('div'); body.className = 'kanban-col-body'; body.dataset.status = col.key;
     body.addEventListener('dragover', (e) => {
@@ -7285,7 +7455,7 @@ function taskKanbanCard(t) {
   const prio = TK_PRIO[t.priority] || TK_PRIO.normal;
   const od = taskOverdue(t);
   const card = document.createElement('div');
-  card.className = 'kanban-card task-kanban-card' + (od ? ' task-overdue' : '');
+  card.className = 'kanban-card task-kanban-card' + (od ? ' task-overdue' : '') + (t.status === 'cancelled' ? ' task-cancelled' : '');
   card.style.setProperty('--prio', prio.c);
   card.draggable = true;
   card.dataset.tid = t._id;
@@ -7305,6 +7475,173 @@ function taskKanbanCard(t) {
       <button onclick="deleteTask('${t._id}')" title="Odstrániť">✕</button>
     </div>`;
   return card;
+}
+
+// ── Grid (tabuľkový) pohľad ────────────────────────────────────────────────────
+const TASK_GRID_COLS = [
+  { key: 'title', label: 'Názov', filter: 'text' },
+  { key: 'status', label: 'Stav', filter: 'status' },
+  { key: 'priority', label: 'Priorita', filter: 'priority' },
+  { key: 'project', label: 'Projekt', filter: 'text' },
+  { key: 'customer', label: 'Zákazník', filter: 'text' },
+  { key: 'due', label: 'Termín', filter: 'text' },
+  { key: 'tags', label: 'Tagy', filter: 'text' },
+  { key: 'progress', label: 'Progres', filter: null },
+  { key: 'lastUpdate', label: 'Posledná aktualizácia', filter: 'text' }
+];
+let taskGridColFilters = { title: '', status: '', priority: '', project: '', customer: '', due: '', tags: '', lastUpdate: '' };
+function setTaskSort(key) {
+  if (taskSortKey === key) taskSortDir = -taskSortDir;
+  else { taskSortKey = key; taskSortDir = 1; }
+  renderTaskGrid();
+}
+function setTaskGridColFilter(key, val) {
+  taskGridColFilters[key] = val;
+  renderTaskGridBody();
+}
+function taskGridSortVal(t, key) {
+  switch (key) {
+    case 'status': return TK_STATUS_LABEL[taskStatusOf(t)] || '';
+    case 'priority': return (TK_PRIO[t.priority] || TK_PRIO.normal).rank;
+    case 'due': return t.due ? new Date(t.due).getTime() : -Infinity;
+    case 'tags': return (t.tags || []).join(',');
+    case 'progress': return t.progress || 0;
+    case 'order': return t.order || 0;
+    case 'lastUpdate': { const lu = taskLatestUpdate(t); return lu ? new Date(lu.createdAt).getTime() : -Infinity; }
+    default: return (t[key] || '').toString().toLowerCase();
+  }
+}
+// Vyfiltrované + zoradené úlohy pre grid (globálne filtre + filtre stĺpcov)
+function taskGridItems() {
+  let items = tasksData.slice();
+  if (taskFilter === 'open') items = items.filter(t => !t.done && t.status !== 'cancelled');
+  else if (taskFilter === 'done') items = items.filter(t => t.done);
+  if (taskTagFilter) items = items.filter(t => (t.tags || []).includes(taskTagFilter));
+  const f = taskGridColFilters;
+  if (f.title) items = items.filter(t => (t.title || '').toLowerCase().includes(f.title.toLowerCase()));
+  if (f.status) items = items.filter(t => taskStatusOf(t) === f.status);
+  if (f.priority) items = items.filter(t => (t.priority || 'normal') === f.priority);
+  if (f.project) items = items.filter(t => (t.project || '').toLowerCase().includes(f.project.toLowerCase()));
+  if (f.customer) items = items.filter(t => (t.customer || '').toLowerCase().includes(f.customer.toLowerCase()));
+  if (f.due) items = items.filter(t => t.due && fmtDate(t.due).toLowerCase().includes(f.due.toLowerCase()));
+  if (f.tags) items = items.filter(t => (t.tags || []).some(tag => tag.toLowerCase().includes(f.tags.toLowerCase())));
+  if (f.lastUpdate) items = items.filter(t => { const lu = taskLatestUpdate(t); return lu && (lu.text || '').toLowerCase().includes(f.lastUpdate.toLowerCase()); });
+  items.sort((a, b) => {
+    const av = taskGridSortVal(a, taskSortKey), bv = taskGridSortVal(b, taskSortKey);
+    if (av < bv) return -taskSortDir; if (av > bv) return taskSortDir; return 0;
+  });
+  return items;
+}
+function taskGridFilterCellHtml(c) {
+  if (c.filter === 'status') {
+    return `<select onchange="setTaskGridColFilter('status', this.value)"><option value="">Všetky</option>${TK_STATUS.map(s => `<option value="${s.key}" ${taskGridColFilters.status === s.key ? 'selected' : ''}>${s.label}</option>`).join('')}</select>`;
+  }
+  if (c.filter === 'priority') {
+    return `<select onchange="setTaskGridColFilter('priority', this.value)"><option value="">Všetky</option>${Object.entries(TK_PRIO).map(([k, p]) => `<option value="${k}" ${taskGridColFilters.priority === k ? 'selected' : ''}>${p.l}</option>`).join('')}</select>`;
+  }
+  if (c.filter === 'text') {
+    return `<input type="text" placeholder="Filter…" value="${escHtml(taskGridColFilters[c.key] || '')}" oninput="setTaskGridColFilter('${c.key}', this.value)">`;
+  }
+  return '';
+}
+// Postaví kostru tabuľky (hlavička + riadok filtrov) — volá sa len raz pri prepnutí na grid
+function buildTaskGridSkeleton(el) {
+  const thead = TASK_GRID_COLS.map(c => {
+    const active = taskSortKey === c.key;
+    const arrow = active ? (taskSortDir === 1 ? '▲' : '▼') : '';
+    return `<th onclick="setTaskSort('${c.key}')" class="${active ? 'task-grid-sorted' : ''}" data-key="${c.key}">${c.label} <span class="task-grid-arrow">${arrow}</span></th>`;
+  }).join('');
+  const filterRow = TASK_GRID_COLS.map(c => `<th class="task-grid-filtercell">${taskGridFilterCellHtml(c)}</th>`).join('');
+  el.innerHTML = `<table class="task-grid"><thead><tr>${thead}</tr><tr class="task-grid-filterrow">${filterRow}</tr></thead><tbody id="tasksGridTbody"></tbody></table>`;
+}
+// Aktualizuje len šípky triedenia v hlavičke (bez straty fokusu vo filtroch)
+function updateTaskGridHeader(el) {
+  el.querySelectorAll('thead th[data-key]').forEach(th => {
+    const key = th.dataset.key;
+    const active = taskSortKey === key;
+    th.classList.toggle('task-grid-sorted', active);
+    const arrow = th.querySelector('.task-grid-arrow');
+    if (arrow) arrow.textContent = active ? (taskSortDir === 1 ? '▲' : '▼') : '';
+  });
+}
+function taskGridRowHtml(t, groupIndent) {
+  const prio = TK_PRIO[t.priority] || TK_PRIO.normal;
+  const od = taskOverdue(t);
+  const depth = taskDepth(t);
+  const indent = (groupIndent || 0) + depth * 18;
+  const lu = taskLatestUpdate(t);
+  const luText = lu ? (lu.text.length > 50 ? lu.text.slice(0, 50) + '…' : lu.text) : '';
+  const rowCls = 'task-grid-row task-grid-prio-' + (t.priority || 'normal')
+    + (t.done ? ' task-grid-done' : '') + (t.status === 'cancelled' ? ' task-grid-cancelled' : '') + (od ? ' task-grid-overdue' : '');
+  return `<tr class="${rowCls}" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
+      <td class="task-grid-title"${indent ? ` style="padding-left:${12 + indent}px"` : ''}>${depth ? '<span class="task-tree-indent">↳</span>' : ''}${escHtml(t.title)}</td>
+      <td><span class="task-grid-status task-grid-status-${taskStatusOf(t)}">${TK_STATUS_LABEL[taskStatusOf(t)] || ''}</span></td>
+      <td><span class="task-prio" style="color:${prio.c}">${prio.l}</span></td>
+      <td>${escHtml(t.project || '')}</td>
+      <td>${escHtml(t.customer || '')}</td>
+      <td class="${od ? 'task-od' : ''}">${t.due ? fmtDate(t.due) : ''}</td>
+      <td>${(t.tags || []).map(tag => `<span class="task-chip task-chip-tag">#${escHtml(tag)}</span>`).join(' ')}</td>
+      <td>${taskProgressHtml(t)}</td>
+      <td class="task-grid-lastupd"${lu ? ` data-tooltip="${escHtml(lu.text)}"` : ''}>${lu ? `<div class="task-grid-lastupd-text">${escHtml(luText)}</div><div class="task-grid-lastupd-meta">${escHtml(lu.authorName || '')} · ${fmtDateTime(lu.createdAt)}</div>` : ''}</td>
+    </tr>`;
+}
+// Kľúče zbalených skupín (2-úrovňové zoskupenie Zákazník → Projekt)
+let taskGridCollapsed = new Set();
+function toggleTaskGridGroup(key) {
+  if (taskGridCollapsed.has(key)) taskGridCollapsed.delete(key); else taskGridCollapsed.add(key);
+  renderTaskGridBody();
+}
+function taskGridGroupSort(keys, noneLabel) {
+  return keys.sort((a, b) => (a === noneLabel ? 1 : b === noneLabel ? -1 : a.localeCompare(b, 'sk')));
+}
+function renderTaskGridBody() {
+  const tbody = document.getElementById('tasksGridTbody'); if (!tbody) return;
+  const items = taskGridItems();
+  if (!items.length) { tbody.innerHTML = `<tr><td colspan="${TASK_GRID_COLS.length}" class="proc-empty">Žiadne úlohy v tomto filtri.</td></tr>`; return; }
+
+  // zoskupenie: Zákazník → Projekt (poradie úloh v rámci skupiny podľa aktívneho triedenia)
+  const NO_CUST = 'Bez zákazníka', NO_PROJ = 'Bez projektu';
+  const custMap = new Map();
+  items.forEach(t => {
+    const cust = (t.customer || '').trim() || NO_CUST;
+    const proj = (t.project || '').trim() || NO_PROJ;
+    if (!custMap.has(cust)) custMap.set(cust, new Map());
+    const projMap = custMap.get(cust);
+    if (!projMap.has(proj)) projMap.set(proj, []);
+    projMap.get(proj).push(t);
+  });
+
+  let html = '';
+  taskGridGroupSort([...custMap.keys()], NO_CUST).forEach(cust => {
+    const projMap = custMap.get(cust);
+    const custKey = 'c:' + cust;
+    const custTotal = [...projMap.values()].reduce((s, arr) => s + arr.length, 0);
+    const custCollapsed = taskGridCollapsed.has(custKey);
+    html += `<tr class="task-grid-group task-grid-group-cust" data-gkey="${escHtml(custKey)}">
+      <td colspan="${TASK_GRID_COLS.length}"><span class="task-grid-group-arrow">${custCollapsed ? '▸' : '▾'}</span>🏢 ${escHtml(cust)} <span class="task-grid-group-count">${custTotal}</span></td>
+    </tr>`;
+    if (custCollapsed) return;
+    taskGridGroupSort([...projMap.keys()], NO_PROJ).forEach(proj => {
+      const arr = projMap.get(proj);
+      const projKey = custKey + '|p:' + proj;
+      const projCollapsed = taskGridCollapsed.has(projKey);
+      html += `<tr class="task-grid-group task-grid-group-proj" data-gkey="${escHtml(projKey)}">
+        <td colspan="${TASK_GRID_COLS.length}"><span class="task-grid-group-arrow">${projCollapsed ? '▸' : '▾'}</span>🗂️ ${escHtml(proj)} <span class="task-grid-group-count">${arr.length}</span></td>
+      </tr>`;
+      if (projCollapsed) return;
+      arr.forEach(t => { html += taskGridRowHtml(t, 30); });
+    });
+  });
+  tbody.innerHTML = html;
+  tbody.querySelectorAll('.task-grid-group').forEach(row => {
+    row.onclick = () => toggleTaskGridGroup(row.dataset.gkey);
+  });
+}
+function renderTaskGrid() {
+  const el = document.getElementById('tasksGrid'); if (!el) return;
+  if (!el.querySelector('table.task-grid')) buildTaskGridSkeleton(el);
+  else updateTaskGridHeader(el);
+  renderTaskGridBody();
 }
 
 function getTaskDragAfter(container, y) {
@@ -7335,36 +7672,62 @@ async function persistTaskOrderFromDom() {
     t.order = p.order;
     if (p.status) { t.status = p.status; t.done = p.status === 'done'; }
   });
+  const movedToDone = payload.some(p => p.status === 'done');
   try { await fetch('/api/tasks/reorder', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: payload }) }); }
   catch { /* ignore — re-render aj tak */ }
-  renderTasks();
+  // presun do "Hotové" môže byť serverom odmietnutý (nesplnené závislosti/podúlohy) — resynchronizuj zo servera
+  if (movedToDone) loadTasks(); else renderTasks();
   loadNotif();
 }
 
 async function toggleTask(id, done) {
-  try { await fetch('/api/tasks/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done }) }); loadTasks(); loadNotif(); }
-  catch { alert('Chyba'); }
+  try {
+    const r = await fetch('/api/tasks/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done }) });
+    if (!r.ok) { const er = await r.json().catch(() => ({})); toast(er.error || 'Úlohu nemožno dokončiť', 'error'); return; }
+    loadTasks(); loadNotif();
+  } catch { toast('Chyba', 'error'); }
 }
 function openTaskModal(t = null) {
   const e = t && typeof t === 'object';
   document.getElementById('tkModalTitle').textContent = e ? 'Upraviť úlohu' : 'Nová úloha';
   document.getElementById('tkId').value = e ? t._id : '';
   document.getElementById('tkTitle').value = e ? (t.title || '') : '';
-  document.getElementById('tkProject').value = e ? (t.project || '') : '';
-  document.getElementById('tkCustomer').value = e ? (t.customer || '') : '';
+  renderTaskCatalogSelect('tkProject', taskCatalog.projects, e ? (t.project || '') : '');
+  renderTaskCatalogSelect('tkCustomer', taskCatalog.customers, e ? (t.customer || '') : '');
   document.getElementById('tkDue').value = e && t.due ? String(t.due).slice(0, 10) : '';
   document.getElementById('tkPriority').value = e ? (t.priority || 'normal') : 'normal';
   document.getElementById('tkStatus').value = e ? taskStatusOf(t) : 'todo';
   const prog = e ? (t.progress || 0) : 0;
   document.getElementById('tkProgress').value = prog;
   document.getElementById('tkProgressVal').textContent = prog;
-  document.getElementById('tkDesc').value = e ? (t.description || '') : '';
-  document.getElementById('tkNote').value = e ? (t.note || '') : '';
+  document.getElementById('tkTags').value = e ? (t.tags || []).join(', ') : '';
   tkSubtasks = e && Array.isArray(t.subtasks) ? t.subtasks.map(s => ({ title: s.title, done: !!s.done })) : [];
   renderSubtaskEditor();
+  fillTaskParentSelect(e ? t : null);
+  fillTaskDependsSelect(e ? t : null);
+  renderTaskUpdateEditor(e ? t : null);
   document.getElementById('tkDeleteBtn').style.display = e ? '' : 'none';
   document.getElementById('taskModal').classList.remove('hidden');
   modalSnapshot('taskModal');
+}
+// Nadradená úloha — vylúči seba a všetkých potomkov (aby nevznikol cyklus)
+function fillTaskParentSelect(t) {
+  const sel = document.getElementById('tkParent'); if (!sel) return;
+  const excluded = new Set(t ? [t._id, ...taskDescendantIds(t._id)] : []);
+  const opts = tasksData.filter(x => !excluded.has(x._id)).sort((a, b) => a.title.localeCompare(b.title, 'sk'));
+  const cur = t && t.parent ? (t.parent._id || t.parent) : '';
+  sel.innerHTML = '<option value="">— žiadna —</option>' + opts.map(x => `<option value="${x._id}" ${x._id === cur ? 'selected' : ''}>${escHtml(x.title)}</option>`).join('');
+}
+function taskDescendantIds(id) {
+  const out = [];
+  tasksData.filter(x => (x.parent && (x.parent._id || x.parent)) === id).forEach(child => { out.push(child._id); out.push(...taskDescendantIds(child._id)); });
+  return out;
+}
+function fillTaskDependsSelect(t) {
+  const sel = document.getElementById('tkDependsOn'); if (!sel) return;
+  const opts = tasksData.filter(x => !t || x._id !== t._id).sort((a, b) => a.title.localeCompare(b.title, 'sk'));
+  const cur = new Set((t && t.dependsOn || []).map(d => d._id || d));
+  sel.innerHTML = opts.map(x => `<option value="${x._id}" ${cur.has(x._id) ? 'selected' : ''}>${escHtml(x.title)}</option>`).join('');
 }
 function closeTaskModal() { modalGuardClose('taskModal'); }
 
@@ -7422,6 +7785,48 @@ async function toggleSubtaskInline(taskId, subId) {
   } catch {}
   renderTasks(); loadNotif();
 }
+// ── Aktualizácie (denník popisov/poznámok k stavu, s autorom a časom) ─────────
+// Zlúči nový denník (t.updates) s prípadným starším voľným popisom/poznámkou
+// (spred zavedenia denníka), zoradené od najnovšej.
+function taskAllUpdates(t) {
+  if (!t) return [];
+  const list = (t.updates || []).map(u => ({ text: u.text, authorName: u.authorName, createdAt: u.createdAt }));
+  if (t.description) list.push({ text: t.description, authorName: '(pôvodný popis)', createdAt: t.createdAt });
+  if (t.note) list.push({ text: t.note, authorName: '(pôvodná poznámka)', createdAt: t.createdAt });
+  return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+function taskLatestUpdate(t) { return taskAllUpdates(t)[0] || null; }
+function renderTaskUpdateEditor(t) {
+  const list = document.getElementById('tkUpdList');
+  const cnt = document.getElementById('tkUpdCount');
+  const hint = document.getElementById('tkUpdHint');
+  const input = document.getElementById('tkUpdInput');
+  if (!list) return;
+  const updates = taskAllUpdates(t);
+  list.innerHTML = updates.length
+    ? updates.map(u => `<div class="tk-upd-item"><div class="tk-upd-meta"><strong>${escHtml(u.authorName || 'neznámy')}</strong> · ${fmtDateTime(u.createdAt)}</div><div class="tk-upd-text">${escHtml(u.text)}</div></div>`).join('')
+    : '<div class="tk-sub-empty">Zatiaľ žiadne aktualizácie.</div>';
+  if (cnt) cnt.textContent = updates.length ? `(${updates.length})` : '';
+  const canAdd = !!(t && t._id);
+  if (input) input.disabled = !canAdd;
+  if (hint) hint.textContent = canAdd ? '' : 'Najprv úlohu uložte, potom môžete pridávať aktualizácie.';
+}
+async function addTaskUpdate() {
+  const id = document.getElementById('tkId').value;
+  const input = document.getElementById('tkUpdInput');
+  const text = (input.value || '').trim();
+  if (!id) { toast('Najprv uložte úlohu', 'warn'); return; }
+  if (!text) return;
+  try {
+    const r = await fetch(`/api/tasks/${id}/updates`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+    if (!r.ok) { const er = await r.json().catch(() => ({})); toast(er.error || 'Chyba', 'error'); return; }
+    const updated = await r.json();
+    const t = tasksData.find(x => x._id === id); if (t) Object.assign(t, updated);
+    input.value = '';
+    renderTaskUpdateEditor(updated);
+    renderTasks();
+  } catch { toast('Sieťová chyba', 'error'); }
+}
 async function saveTask() {
   const title = document.getElementById('tkTitle').value.trim();
   if (!title) { alert('Zadajte názov úlohy'); return; }
@@ -7430,11 +7835,12 @@ async function saveTask() {
     priority: document.getElementById('tkPriority').value,
     status: document.getElementById('tkStatus').value,
     progress: Number(document.getElementById('tkProgress').value) || 0,
-    project: document.getElementById('tkProject').value.trim(),
-    customer: document.getElementById('tkCustomer').value.trim(),
-    note: document.getElementById('tkNote').value.trim(),
-    description: document.getElementById('tkDesc').value.trim(),
-    subtasks: tkSubtasks.filter(s => (s.title || '').trim()).map(s => ({ title: s.title.trim(), done: !!s.done }))
+    project: taskCatalogValue('tkProject'),
+    customer: taskCatalogValue('tkCustomer'),
+    subtasks: tkSubtasks.filter(s => (s.title || '').trim()).map(s => ({ title: s.title.trim(), done: !!s.done })),
+    tags: document.getElementById('tkTags').value.split(',').map(x => x.trim()).filter(Boolean),
+    parent: document.getElementById('tkParent').value || null,
+    dependsOn: [...document.getElementById('tkDependsOn').selectedOptions].map(o => o.value)
   };
   const id = document.getElementById('tkId').value;
   try {
