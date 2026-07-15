@@ -6605,6 +6605,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.40.5', date: '15. 7. 2026', tag: 'style', items: [
+    'Okno stránky Úlohy (Grid/Kanban) rozšírené (1240 px → 1640 px), aby sa tabuľka Grid pohľadu zmestila bez horizontálneho skrolovania.',
+  ] },
   { v: '2.40.4', date: '15. 7. 2026', tag: 'style', items: [
     'Grid pohľad úloh: stĺpec <strong>Aktualizácia</strong> rozšírený o 50 %.',
     'Filter <strong>Všetky tagy</strong> presunutý k filtrom Aktívne/Všetky/Hotové (zarovnaný vľavo v toolbare).',
