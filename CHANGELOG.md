@@ -8,6 +8,12 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.44.0] — 2026-07-15
+### Odstránené
+- **Modul „Termostatický kúpeľ — SIKA TP"** (teplotné kalibrátory TP37 / TP3M,
+  ethernet REST-API) bol z appky odstránený — vrátane stránky, položiek v
+  navigácii, backend routy a modelu.
+
 ## [2.43.0] — 2026-07-15
 ### Pridané
 - **Moje úlohy — rýchly prehľad na dnes a zajtra:** nad zoznamom úloh
