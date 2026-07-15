@@ -3985,10 +3985,16 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .task-grid tbody tr { cursor: pointer; border-bottom: 1px solid rgba(var(--dz-fg-rgb),0.07); transition: background var(--transition); }
 .task-grid tbody tr:hover { background: rgba(var(--dz-fg-rgb),0.05); }
 .task-grid tbody td { padding: 9px 12px; color: rgba(var(--dz-fg-rgb),0.75); vertical-align: middle; }
+.task-grid th[data-key="title"], .task-grid td.task-grid-title { min-width: 380px; }
 .task-grid-title { font-weight: 600; color: var(--dz-text); }
 .task-grid-row.task-grid-done .task-grid-title { text-decoration: line-through; color: rgba(var(--dz-fg-rgb),0.45); }
 .task-grid-row.task-grid-cancelled { opacity: 0.55; text-decoration: line-through; }
-.task-grid-row.task-grid-overdue { background: rgba(239,68,68,0.06); }
+/* farba riadku podľa priority (prebije ju len po termíne — pozri .task-grid-overdue nižšie) */
+.task-grid-row.task-grid-prio-critical { background: rgba(185,28,28,0.12); }
+.task-grid-row.task-grid-prio-high { background: rgba(239,68,68,0.07); }
+.task-grid-row.task-grid-prio-normal { background: transparent; }
+.task-grid-row.task-grid-prio-low { background: rgba(100,116,139,0.05); }
+.task-grid-row.task-grid-overdue { background: rgba(239,68,68,0.16); }
 .task-grid-status { padding: 3px 10px; border-radius: 100px; font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
 .task-grid-status-todo { background: rgba(100,116,139,0.16); color: #94a3b8; }
 .task-grid-status-inprogress { background: rgba(59,130,246,0.16); color: #60a5fa; }
@@ -4000,6 +4006,16 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .task-grid-lastupd { max-width: 220px; }
 .task-grid-lastupd-text { color: rgba(var(--dz-fg-rgb),0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .task-grid-lastupd-meta { font-size: 0.68rem; color: rgba(var(--dz-fg-rgb),0.4); margin-top: 2px; }
+/* Vlastný hover tooltip s celým textom poslednej aktualizácie (namiesto natívneho title, s krátkym oneskorením a zalomením) */
+.task-grid-lastupd[data-tooltip] { position: relative; cursor: help; }
+.task-grid-lastupd[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute; right: 0; left: auto; top: 100%; margin-top: 6px; z-index: 60;
+  width: max-content; max-width: 320px; white-space: pre-wrap; word-break: break-word;
+  background: #0f172a; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 8px; padding: 8px 11px; font-size: 0.76rem; font-weight: 400; line-height: 1.45;
+  box-shadow: var(--shadow-lg); pointer-events: none;
+}
 .task-grid thead .task-grid-filterrow th { background: rgba(var(--dz-fg-rgb),0.03); padding: 6px 8px; cursor: default; }
 .task-grid thead .task-grid-filterrow th:hover { color: inherit; }
 .task-grid-filtercell input, .task-grid-filtercell select {
