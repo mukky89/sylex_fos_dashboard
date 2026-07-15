@@ -6605,6 +6605,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.40.4', date: '15. 7. 2026', tag: 'style', items: [
+    'Grid pohľad úloh: stĺpec <strong>Aktualizácia</strong> rozšírený o 50 %.',
+    'Filter <strong>Všetky tagy</strong> presunutý k filtrom Aktívne/Všetky/Hotové (zarovnaný vľavo v toolbare).',
+  ] },
   { v: '2.40.3', date: '15. 7. 2026', tag: 'fix', items: [
     'Grid pohľad úloh: stĺpec <strong>Termín</strong> sa už nezalamuje a stĺpec <strong>Aktualizácia</strong> (skrátené z „Posledná aktualizácia") je celý vidno bez skrolovania — zmenšený stĺpec Názov (320 px namiesto 380 px) uvoľnil miesto.',
   ] },
@@ -7579,7 +7583,7 @@ function taskGridRowHtml(t, groupIndent) {
   const depth = taskDepth(t);
   const indent = (groupIndent || 0) + depth * 18;
   const lu = taskLatestUpdate(t);
-  const luText = lu ? (lu.text.length > 50 ? lu.text.slice(0, 50) + '…' : lu.text) : '';
+  const luText = lu ? (lu.text.length > 75 ? lu.text.slice(0, 75) + '…' : lu.text) : '';
   const rowCls = 'task-grid-row task-grid-prio-' + (t.priority || 'normal')
     + (t.done ? ' task-grid-done' : '') + (t.status === 'cancelled' ? ' task-grid-cancelled' : '') + (od ? ' task-grid-overdue' : '');
   return `<tr class="${rowCls}" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
