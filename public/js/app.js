@@ -6557,6 +6557,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.38.1', date: '15. 7. 2026', tag: 'fix', items: [
+    'Odsadenie podradených úloh v pohľade <strong>Zoznam</strong> teraz posúva doprava celý riadok (nielen text názvu), takže hierarchia je vizuálne zreteľnejšia.',
+  ] },
   { v: '2.38.0', date: '15. 7. 2026', tag: 'style', items: [
     'Modal <strong>Upraviť úlohu</strong> je širší (660 px) a prehľadnejšie usporiadaný — Závislosti a Podúlohy sú vedľa seba v skrolovateľných zoznamoch, Popis a Poznámka tiež vedľa seba, takže sa toho zmestí viac bez zbytočného skrolovania.',
     'Podradené úlohy (s nadradenou úlohou) sú v Zozname aj v Grid pohľade <strong>odsadené zľava</strong> podľa hĺbky hierarchie — vizuálne pôsobia ako stromová štruktúra.',
@@ -7276,13 +7279,20 @@ function renderTasks() {
 
 // Vnútro riadka úlohy (zdieľané pre plochý aj zoskupený pohľad)
 function taskRowClass(t) { return 'task-row' + (t.done ? ' task-done' : '') + (t.status === 'cancelled' ? ' task-cancelled' : '') + (taskOverdue(t) ? ' task-overdue' : ''); }
+// Celý riadok sa posunie doprava podľa hĺbky hierarchie (--prio + margin-left)
+function taskRowStyle(t) {
+  const depth = taskDepth(t);
+  const prio = (TK_PRIO[t.priority] || TK_PRIO.normal).c;
+  const indent = depth * 26;
+  return `--prio:${prio}${indent ? `;margin-left:${indent}px;width:calc(100% - ${indent}px)` : ''}`;
+}
 function taskRowInner(t, withGrip) {
   const depth = taskDepth(t);
   return `
       ${withGrip ? '<span class="task-grip" title="Potiahni na zmenu poradia">⠿</span>' : '<span class="task-grip task-grip-off">•</span>'}
       <button class="task-check" onclick="toggleTask('${t._id}', ${t.done ? 'false' : 'true'})" title="${t.done ? 'Označiť ako nehotové' : 'Označiť ako hotové'}">${t.done ? '✓' : ''}</button>
       <div class="task-body" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
-        <div class="task-title"${depth ? ` style="margin-left:${depth * 18}px"` : ''}>${depth ? '<span class="task-tree-indent">↳</span>' : ''}${escHtml(t.title)}</div>
+        <div class="task-title">${depth ? '<span class="task-tree-indent">↳</span>' : ''}${escHtml(t.title)}</div>
         ${taskChipsHtml(t)}
         ${taskMetaHtml(t)}
         ${(t.progress || taskStatusOf(t) === 'inprogress' || (t.subtasks && t.subtasks.length)) ? taskProgressHtml(t) : ''}
@@ -7309,7 +7319,7 @@ function renderTaskList() {
   items.forEach(t => {
     const row = document.createElement('div');
     row.className = taskRowClass(t);
-    row.style.setProperty('--prio', (TK_PRIO[t.priority] || TK_PRIO.normal).c);
+    row.style.cssText = taskRowStyle(t);
     row.dataset.tid = t._id;
     row.draggable = true;
     row.addEventListener('dragstart', (e) => { _dragTaskId = t._id; row.classList.add('kanban-dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', t._id); } catch (_) {} });
@@ -7343,7 +7353,7 @@ function renderTaskListGrouped(el, items) {
     const label = [g.project ? `🗂️ ${escHtml(g.project)}` : '', g.customer ? `🏢 ${escHtml(g.customer)}` : ''].filter(Boolean).join(' · ') || '📋 Bez projektu / zákazníka';
     const open = g.items.filter(t => !t.done).length;
     const rows = g.items.sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map(t => `<div class="${taskRowClass(t)}" style="--prio:${(TK_PRIO[t.priority] || TK_PRIO.normal).c}" data-tid="${t._id}">${taskRowInner(t, false)}</div>`).join('');
+      .map(t => `<div class="${taskRowClass(t)}" style="${taskRowStyle(t)}" data-tid="${t._id}">${taskRowInner(t, false)}</div>`).join('');
     return `<div class="task-group">
       <div class="task-group-hdr"><span class="task-group-name">${label}</span><span class="task-group-count">${open} / ${g.items.length}</span></div>
       <div class="task-group-body">${rows}</div>
