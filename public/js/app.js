@@ -6557,6 +6557,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.34.0', date: '15. 7. 2026', tag: 'feat', items: [
+    'Rozšírené <strong>Úlohy</strong> o hierarchiu (nadradená úloha), <strong>závislosti</strong> medzi úlohami (nemožno dokončiť, kým závislosť nie je hotová), <strong>tagy</strong> s filtrom a stavy <strong>Blokované / Na kontrolu / Zrušené</strong> + prioritu <strong>Kritická</strong>. Pribudol aj celkový <strong>progres úloh</strong> (X / Y dokončených, %) nad zoznamom a Kanban má teraz 6 stĺpcov.',
+  ] },
   { v: '2.33.0', date: '15. 7. 2026', tag: 'feat', items: [
     'Oficiálne <strong>logo SYLEX</strong> (červený emblém so slovom „sylex") nasadené naprieč celou aplikáciou: v <strong>hlavičke</strong> (pred názvom FOS Dashboard), na <strong>prihlasovacej obrazovke</strong>, v <strong>alternatívnom bočnom paneli</strong>, na stránke <strong>overenia e-mailu</strong>, v <strong>overovacom e-maile</strong> (hostované PNG s textovým fallbackom) a v exportovaných <strong>pracovných postupoch</strong> (Word/PDF). Logo je vektorové (SVG) a funguje na svetlom aj tmavom podklade.',
   ] },
@@ -7092,13 +7095,23 @@ function updateDateTime() {
 // ==============================
 let tasksData = [];
 let taskFilter = 'open';
+let taskTagFilter = '';
 let taskView = 'list';
 let taskGroup = true;   // zoskupiť podľa projektu + zákazníka
 let _dragTaskId = null;
 let tkSubtasks = [];   // pracovná kópia podúloh v modale
-const TK_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#ef4444' } };
-const TK_STATUS = [{ key: 'todo', label: 'Čaká' }, { key: 'inprogress', label: 'Prebieha' }, { key: 'done', label: 'Hotové' }];
+const TK_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#ef4444' }, critical: { l: 'Kritická', c: '#b91c1c' } };
+const TK_STATUS = [
+  { key: 'todo', label: 'Čaká' }, { key: 'inprogress', label: 'Prebieha' }, { key: 'blocked', label: 'Blokované' },
+  { key: 'review', label: 'Na kontrolu' }, { key: 'done', label: 'Hotové' }, { key: 'cancelled', label: 'Zrušené' }
+];
+const TK_STATUS_LABEL = Object.fromEntries(TK_STATUS.map(s => [s.key, s.label]));
 function taskStatusOf(t) { return t.status || (t.done ? 'done' : 'todo'); }
+// Úloha čaká na nesplnené závislosti (iné úlohy, ktoré ešte nie sú hotové)
+function taskUnmetDeps(t) {
+  if (!t.dependsOn || !t.dependsOn.length) return [];
+  return t.dependsOn.map(id => tasksData.find(x => x._id === (id._id || id))).filter(d => d && d.status !== 'done');
+}
 
 async function loadTasks() {
   const sub = document.getElementById('tasksSub');
@@ -7106,6 +7119,8 @@ async function loadTasks() {
   try { tasksData = await fetch('/api/tasks').then(r => r.json()); if (!Array.isArray(tasksData)) tasksData = []; }
   catch { tasksData = []; }
   fillTaskDatalists();
+  fillTaskTagFilter();
+  renderTaskProgress();
   renderTasks();
 }
 // Combobox: ponuka projektov a zákazníkov z uložených úloh
@@ -7113,6 +7128,24 @@ function fillTaskDatalists() {
   const uniq = (key) => [...new Set(tasksData.map(t => (t[key] || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'sk'));
   const pl = document.getElementById('tkProjectList'); if (pl) pl.innerHTML = uniq('project').map(x => `<option value="${escHtml(x)}">`).join('');
   const cl = document.getElementById('tkCustomerList'); if (cl) cl.innerHTML = uniq('customer').map(x => `<option value="${escHtml(x)}">`).join('');
+}
+// Filter podľa tagu — ponuka všetkých použitých tagov
+function fillTaskTagFilter() {
+  const sel = document.getElementById('tkTagFilter'); if (!sel) return;
+  const tags = [...new Set(tasksData.flatMap(t => t.tags || []))].sort((a, b) => a.localeCompare(b, 'sk'));
+  sel.innerHTML = '<option value="">Všetky tagy</option>' + tags.map(x => `<option value="${escHtml(x)}">${escHtml(x)}</option>`).join('');
+  sel.value = taskTagFilter;
+}
+function setTaskTagFilter(v) { taskTagFilter = v; renderTasks(); }
+// Progres celého zoznamu úloh — X / Y dokončených (%)
+function renderTaskProgress() {
+  const el = document.getElementById('tasksProgress'); if (!el) return;
+  const relevant = tasksData.filter(t => t.status !== 'cancelled');
+  const done = relevant.filter(t => t.status === 'done').length;
+  const total = relevant.length;
+  if (!total) { el.innerHTML = ''; return; }
+  const pct = Math.round(done / total * 100);
+  el.innerHTML = `<div class="tasks-progress-track"><div class="tasks-progress-fill" style="width:${pct}%"></div></div><span class="tasks-progress-txt">${done} / ${total} dokončených — ${pct}%</span>`;
 }
 function toggleTaskGroup() {
   taskGroup = !taskGroup;
@@ -7139,6 +7172,10 @@ function taskChipsHtml(t) {
   const chips = [];
   if (t.project)  chips.push(`<span class="task-chip task-chip-pj">🗂️ ${escHtml(t.project)}</span>`);
   if (t.customer) chips.push(`<span class="task-chip task-chip-cust">🏢 ${escHtml(t.customer)}</span>`);
+  const parentId = t.parent && (t.parent._id || t.parent);
+  const parent = parentId ? tasksData.find(x => x._id === parentId) : null;
+  if (parent) chips.push(`<span class="task-chip task-chip-parent">⬆ ${escHtml(parent.title)}</span>`);
+  (t.tags || []).forEach(tag => chips.push(`<span class="task-chip task-chip-tag">#${escHtml(tag)}</span>`));
   return chips.length ? `<div class="task-chips">${chips.join('')}</div>` : '';
 }
 function taskProgressHtml(t) {
@@ -7155,6 +7192,8 @@ function taskMetaHtml(t) {
     const done = t.subtasks.filter(s => s.done).length;
     parts.push(`<span class="task-subbadge ${done === t.subtasks.length ? 'all' : ''}" title="Podúlohy">☑ ${done}/${t.subtasks.length}</span>`);
   }
+  const unmet = taskUnmetDeps(t);
+  if (unmet.length) parts.push(`<span class="task-depbadge" title="${escHtml(unmet.map(d => d.title).join(', '))}">⛔ čaká na ${unmet.length} závislosť(i)</span>`);
   if (t.createdAt) parts.push(`<span class="task-created" title="Dátum pridania">➕ ${fmtDate(t.createdAt)}</span>`);
   return `<div class="task-meta">${parts.join('')}</div>`;
 }
@@ -7183,7 +7222,7 @@ function renderTasks() {
 }
 
 // Vnútro riadka úlohy (zdieľané pre plochý aj zoskupený pohľad)
-function taskRowClass(t) { return 'task-row' + (t.done ? ' task-done' : '') + (taskOverdue(t) ? ' task-overdue' : ''); }
+function taskRowClass(t) { return 'task-row' + (t.done ? ' task-done' : '') + (t.status === 'cancelled' ? ' task-cancelled' : '') + (taskOverdue(t) ? ' task-overdue' : ''); }
 function taskRowInner(t, withGrip) {
   return `
       ${withGrip ? '<span class="task-grip" title="Potiahni na zmenu poradia">⠿</span>' : '<span class="task-grip task-grip-off">•</span>'}
@@ -7203,8 +7242,9 @@ function taskRowInner(t, withGrip) {
 function renderTaskList() {
   const el = document.getElementById('tasksList'); if (!el) return;
   let items = tasksData.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
-  if (taskFilter === 'open') items = items.filter(t => !t.done);
+  if (taskFilter === 'open') items = items.filter(t => !t.done && t.status !== 'cancelled');
   else if (taskFilter === 'done') items = items.filter(t => t.done);
+  if (taskTagFilter) items = items.filter(t => (t.tags || []).includes(taskTagFilter));
   el.ondragover = null; el.ondrop = null;
   if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne úlohy v tomto filtri.</div>'; return; }
 
@@ -7263,7 +7303,7 @@ function renderTaskKanban() {
   TK_STATUS.forEach(col => {
     const colEl = document.createElement('div');
     colEl.className = 'kanban-col';
-    const items = tasksData.filter(t => taskStatusOf(t) === col.key).sort((a, b) => (a.order || 0) - (b.order || 0));
+    const items = tasksData.filter(t => taskStatusOf(t) === col.key && (!taskTagFilter || (t.tags || []).includes(taskTagFilter))).sort((a, b) => (a.order || 0) - (b.order || 0));
     colEl.innerHTML = `<div class="kanban-col-hdr">${col.label} <span class="kanban-count">${items.length}</span></div>`;
     const body = document.createElement('div'); body.className = 'kanban-col-body'; body.dataset.status = col.key;
     body.addEventListener('dragover', (e) => {
@@ -7285,7 +7325,7 @@ function taskKanbanCard(t) {
   const prio = TK_PRIO[t.priority] || TK_PRIO.normal;
   const od = taskOverdue(t);
   const card = document.createElement('div');
-  card.className = 'kanban-card task-kanban-card' + (od ? ' task-overdue' : '');
+  card.className = 'kanban-card task-kanban-card' + (od ? ' task-overdue' : '') + (t.status === 'cancelled' ? ' task-cancelled' : '');
   card.style.setProperty('--prio', prio.c);
   card.draggable = true;
   card.dataset.tid = t._id;
@@ -7335,15 +7375,20 @@ async function persistTaskOrderFromDom() {
     t.order = p.order;
     if (p.status) { t.status = p.status; t.done = p.status === 'done'; }
   });
+  const movedToDone = payload.some(p => p.status === 'done');
   try { await fetch('/api/tasks/reorder', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: payload }) }); }
   catch { /* ignore — re-render aj tak */ }
-  renderTasks();
+  // presun do "Hotové" môže byť serverom odmietnutý (nesplnené závislosti/podúlohy) — resynchronizuj zo servera
+  if (movedToDone) loadTasks(); else renderTasks();
   loadNotif();
 }
 
 async function toggleTask(id, done) {
-  try { await fetch('/api/tasks/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done }) }); loadTasks(); loadNotif(); }
-  catch { alert('Chyba'); }
+  try {
+    const r = await fetch('/api/tasks/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done }) });
+    if (!r.ok) { const er = await r.json().catch(() => ({})); toast(er.error || 'Úlohu nemožno dokončiť', 'error'); return; }
+    loadTasks(); loadNotif();
+  } catch { toast('Chyba', 'error'); }
 }
 function openTaskModal(t = null) {
   const e = t && typeof t === 'object';
@@ -7360,11 +7405,33 @@ function openTaskModal(t = null) {
   document.getElementById('tkProgressVal').textContent = prog;
   document.getElementById('tkDesc').value = e ? (t.description || '') : '';
   document.getElementById('tkNote').value = e ? (t.note || '') : '';
+  document.getElementById('tkTags').value = e ? (t.tags || []).join(', ') : '';
   tkSubtasks = e && Array.isArray(t.subtasks) ? t.subtasks.map(s => ({ title: s.title, done: !!s.done })) : [];
   renderSubtaskEditor();
+  fillTaskParentSelect(e ? t : null);
+  fillTaskDependsSelect(e ? t : null);
   document.getElementById('tkDeleteBtn').style.display = e ? '' : 'none';
   document.getElementById('taskModal').classList.remove('hidden');
   modalSnapshot('taskModal');
+}
+// Nadradená úloha — vylúči seba a všetkých potomkov (aby nevznikol cyklus)
+function fillTaskParentSelect(t) {
+  const sel = document.getElementById('tkParent'); if (!sel) return;
+  const excluded = new Set(t ? [t._id, ...taskDescendantIds(t._id)] : []);
+  const opts = tasksData.filter(x => !excluded.has(x._id)).sort((a, b) => a.title.localeCompare(b.title, 'sk'));
+  const cur = t && t.parent ? (t.parent._id || t.parent) : '';
+  sel.innerHTML = '<option value="">— žiadna —</option>' + opts.map(x => `<option value="${x._id}" ${x._id === cur ? 'selected' : ''}>${escHtml(x.title)}</option>`).join('');
+}
+function taskDescendantIds(id) {
+  const out = [];
+  tasksData.filter(x => (x.parent && (x.parent._id || x.parent)) === id).forEach(child => { out.push(child._id); out.push(...taskDescendantIds(child._id)); });
+  return out;
+}
+function fillTaskDependsSelect(t) {
+  const sel = document.getElementById('tkDependsOn'); if (!sel) return;
+  const opts = tasksData.filter(x => !t || x._id !== t._id).sort((a, b) => a.title.localeCompare(b.title, 'sk'));
+  const cur = new Set((t && t.dependsOn || []).map(d => d._id || d));
+  sel.innerHTML = opts.map(x => `<option value="${x._id}" ${cur.has(x._id) ? 'selected' : ''}>${escHtml(x.title)}</option>`).join('');
 }
 function closeTaskModal() { modalGuardClose('taskModal'); }
 
@@ -7434,7 +7501,10 @@ async function saveTask() {
     customer: document.getElementById('tkCustomer').value.trim(),
     note: document.getElementById('tkNote').value.trim(),
     description: document.getElementById('tkDesc').value.trim(),
-    subtasks: tkSubtasks.filter(s => (s.title || '').trim()).map(s => ({ title: s.title.trim(), done: !!s.done }))
+    subtasks: tkSubtasks.filter(s => (s.title || '').trim()).map(s => ({ title: s.title.trim(), done: !!s.done })),
+    tags: document.getElementById('tkTags').value.split(',').map(x => x.trim()).filter(Boolean),
+    parent: document.getElementById('tkParent').value || null,
+    dependsOn: [...document.getElementById('tkDependsOn').selectedOptions].map(o => o.value)
   };
   const id = document.getElementById('tkId').value;
   try {

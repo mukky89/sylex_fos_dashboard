@@ -14,11 +14,14 @@ const taskSchema = new mongoose.Schema({
   customer:    { type: String, default: '' },   // zákazník
   note:        { type: String, default: '' },   // poznámka
   progress:    { type: Number, default: 0, min: 0, max: 100 },  // % dokončenia
-  status:      { type: String, enum: ['todo', 'inprogress', 'done'], default: 'todo' }, // kanban stĺpec
+  status:      { type: String, enum: ['todo', 'inprogress', 'blocked', 'review', 'done', 'cancelled'], default: 'todo' }, // kanban stĺpec
   order:       { type: Number, default: 0 },    // poradie (drag & drop)
   due:         { type: Date, default: null },
-  priority:    { type: String, enum: ['low', 'normal', 'high'], default: 'normal' },
+  priority:    { type: String, enum: ['low', 'normal', 'high', 'critical'], default: 'normal' },
   subtasks:    { type: [subtaskSchema], default: [] },   // podúlohy / checklist
+  tags:        { type: [String], default: [] },
+  parent:      { type: mongoose.Schema.Types.ObjectId, ref: 'Task', default: null },   // nadradená úloha (hierarchia)
+  dependsOn:   { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }], default: [] },  // závislosti
   done:        { type: Boolean, default: false },
   doneAt:      { type: Date, default: null }
 }, { timestamps: true });

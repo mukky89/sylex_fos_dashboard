@@ -8,6 +8,21 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.34.0] — 2026-07-15
+### Pridané
+- **Úlohy** rozšírené o task-management prvky:
+  - hierarchia — voliteľná **nadradená úloha** (parent), s ochranou proti cyklom
+  - **závislosti** medzi úlohami (`dependsOn`) — úlohu nemožno označiť ako hotovú,
+    kým jej závislosti, podúlohy alebo podradené úlohy nie sú dokončené
+  - **tagy** (voľné, oddelené čiarkou) s filtrom v toolbare
+  - rozšírené stavy: `todo`, `inprogress`, **`blocked`**, **`review`**, `done`,
+    **`cancelled`** (6-stĺpcový Kanban)
+  - rozšírená priorita o **`critical`**
+  - **progres celého zoznamu** (X / Y dokončených, %) nad zoznamom úloh
+- Backend (`routes/tasks.js`): validácia pri dokončovaní úlohy (nesplnené
+  závislosti/podúlohy/podradené úlohy), detekcia cyklických závislostí a
+  cyklickej hierarchie.
+
 ## [2.33.0] — 2026-07-15
 ### Pridané
 - **Oficiálne logo SYLEX** (červený emblém so slovom „sylex", `#E2001A`)
