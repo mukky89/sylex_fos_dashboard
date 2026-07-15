@@ -6607,6 +6607,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.43.0', date: '15. 7. 2026', tag: 'feat', items: [
+    'Stránka <strong>Moje úlohy</strong>: nový rýchly prehľad úloh s termínom <strong>na dnes a na zajtra</strong> (dve kartičky nad zoznamom) — vidno hneď, na čo sa treba nachystať.',
+  ] },
   { v: '2.42.0', date: '15. 7. 2026', tag: 'feat', items: [
     'Nový modul <strong>Termostatický kúpeľ — SIKA TP</strong> (teplotné kalibrátory TP37 / TP3M) s <strong>komunikáciou cez ethernet</strong> (REST-API, port 8081). Podpora <strong>viacerých zariadení</strong> (výber v hornej lište, správa cez ⚙ Zariadenia).',
     'Živý prehľad: <strong>referenčná teplota</strong> a <strong>set point</strong>, hodnoty referenčných senzorov (TR_Ext/Int + surové), <strong>stav kalibrácie</strong> (stav, testpoint, hold-time, možnosť kalibrácie) a informácie o zariadení (sériové č., model, firmvér, rozsah, posledná kalibrácia…). Auto-obnova každých 5 s.',
@@ -7250,7 +7253,31 @@ async function loadTasks() {
   if (!taskUsers.length) await loadTaskUsers();
   fillTaskTagFilter();
   renderTaskProgress();
+  renderTaskTodayTomorrow();
   renderTasks();
+}
+// Rýchly prehľad úloh s termínom dnes a zajtra
+function renderTaskTodayTomorrow() {
+  const el = document.getElementById('tasksTodayTomorrow'); if (!el) return;
+  const today = new Date();
+  const tomorrow = new Date(today.getTime() + 86400000);
+  const todayKey = calYmd(today), tomorrowKey = calYmd(tomorrow);
+  const open = tasksData.filter(t => !t.done && t.status !== 'cancelled' && t.due);
+  const todayTasks = open.filter(t => String(t.due).slice(0, 10) === todayKey);
+  const tomorrowTasks = open.filter(t => String(t.due).slice(0, 10) === tomorrowKey);
+  if (!todayTasks.length && !tomorrowTasks.length) { el.innerHTML = ''; el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  const col = (label, icon, list) => `
+    <div class="tk-preview-col">
+      <div class="tk-preview-hdr">${icon} ${label} <span class="tk-preview-count">${list.length}</span></div>
+      ${list.length ? list.map(t => `
+        <div class="tk-preview-item" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
+          <span class="tk-preview-prio" style="--prio:${(TK_PRIO[t.priority] || TK_PRIO.normal).c}"></span>
+          <span class="tk-preview-title">${escHtml(t.title)}</span>
+          ${t.assignedTo ? `<span class="tk-preview-assignee">👁 ${escHtml(t.assignedTo.name || t.assignedTo.username || '')}</span>` : ''}
+        </div>`).join('') : `<div class="tk-preview-empty">Žiadne úlohy</div>`}
+    </div>`;
+  el.innerHTML = col('Dnes', '📅', todayTasks) + col('Zajtra', '⏭', tomorrowTasks);
 }
 // Používatelia Dashboardu — ponuka pre pole Zadávateľ
 let taskUsers = [];

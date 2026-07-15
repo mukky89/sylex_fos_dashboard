@@ -8,6 +8,13 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.43.0] — 2026-07-15
+### Pridané
+- **Moje úlohy — rýchly prehľad na dnes a zajtra:** nad zoznamom úloh
+  pribudli dve kartičky (📅 Dnes / ⏭ Zajtra), ktoré zobrazujú len
+  nedokončené úlohy s termínom v tento alebo nasledujúci deň, aby bolo
+  hneď vidno, na čo sa treba nachystať. Klik na položku otvorí detail úlohy.
+
 ## [2.42.0] — 2026-07-15
 ### Pridané
 - **Nový typ zariadenia „Termostatický kúpeľ — SIKA TP"** (teplotné

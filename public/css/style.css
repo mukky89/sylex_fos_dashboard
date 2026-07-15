@@ -3969,6 +3969,31 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 
 .task-row.task-cancelled, .task-kanban-card.task-cancelled { opacity: 0.55; text-decoration: line-through; }
 
+/* rýchly prehľad úloh na dnes / zajtra */
+.tk-preview-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 4px 0 16px; }
+.tk-preview-col {
+  background: rgba(var(--dz-fg-rgb),0.05); border: 1px solid rgba(var(--dz-fg-rgb),0.1);
+  border-radius: 12px; padding: 10px 12px;
+}
+.tk-preview-hdr {
+  display: flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 700;
+  color: rgba(var(--dz-fg-rgb),0.8); margin-bottom: 6px;
+}
+.tk-preview-count {
+  background: rgba(var(--dz-fg-rgb),0.12); border-radius: 100px; padding: 1px 8px;
+  font-size: 0.7rem; color: rgba(var(--dz-fg-rgb),0.7);
+}
+.tk-preview-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-radius: 8px;
+  cursor: pointer; font-size: 0.8rem; color: rgba(var(--dz-fg-rgb),0.85);
+}
+.tk-preview-item:hover { background: rgba(var(--dz-fg-rgb),0.08); }
+.tk-preview-prio { width: 6px; height: 6px; border-radius: 50%; background: var(--prio); flex-shrink: 0; }
+.tk-preview-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tk-preview-assignee { font-size: 0.68rem; color: rgba(var(--dz-fg-rgb),0.5); flex-shrink: 0; }
+.tk-preview-empty { font-size: 0.76rem; color: rgba(var(--dz-fg-rgb),0.4); padding: 4px; }
+@media (max-width: 720px) { .tk-preview-wrap { grid-template-columns: 1fr; } }
+
 /* Grid (tabuľkový) pohľad úloh */
 .tasks-grid-wrap { overflow-x: auto; border: 1px solid rgba(var(--dz-fg-rgb),0.1); border-radius: var(--radius-lg); }
 .task-grid { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
