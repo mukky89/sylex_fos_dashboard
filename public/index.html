@@ -83,6 +83,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="13" x2="14" y2="13"/><line x1="10" y1="17" x2="18" y2="17"/></svg>
           <span class="nav-lbl">Vyťaženie</span>
         </a>
+        <a class="nav-link" onclick="showPage('thermalbath')" data-page="thermalbath" title="Termostatický kúpeľ — SIKA TP (kalibrátory)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/><line x1="9" y1="9" x2="14" y2="9"/></svg>
+          <span class="nav-lbl">Kalibrátor</span>
+        </a>
         <a class="nav-link" onclick="showPage('prod')" data-page="prod" title="Plánovanie výroby">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20h20"/><path d="M4 20V8l6 4V8l6 4V8l4 3v9"/></svg>
           <span class="nav-lbl">Výroba</span>
@@ -230,6 +234,10 @@
       <a class="asb-link" data-page="util" onclick="showPage('util')" title="Vyťaženie technológií">
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="13" x2="14" y2="13"/><line x1="10" y1="17" x2="18" y2="17"/></svg></span>
         <span class="asb-lbl">Vyťaženie technológií</span>
+      </a>
+      <a class="asb-link" data-page="thermalbath" onclick="showPage('thermalbath')" title="Termostatický kúpeľ — SIKA TP">
+        <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/><line x1="9" y1="9" x2="14" y2="9"/></svg></span>
+        <span class="asb-lbl">Termostatický kúpeľ</span>
       </a>
       <a class="asb-link" data-page="prod" onclick="showPage('prod')" title="Plánovanie výroby">
         <span class="asb-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20h20"/><path d="M4 20V8l6 4V8l6 4V8l4 3v9"/></svg></span>
@@ -3257,6 +3265,114 @@
       <div id="ghList" class="gh-grid"></div>
     </div>
   </main>
+
+  <!-- ===== TERMOSTATICKÝ KÚPEĽ / TEPLOTNÝ KALIBRÁTOR — SIKA TP Premium (REST-API cez ethernet) ===== -->
+  <main id="page-thermalbath" class="page tb-page">
+    <div class="dev-inner">
+      <div class="tb-hero">
+        <div class="tb-hero-txt">
+          <h1 class="admin-title">Termostatický kúpeľ — SIKA TP</h1>
+          <p class="admin-sub">Teplotné kalibrátory TP37 / TP3M · živá komunikácia cez ethernet (REST-API, port 8081)</p>
+          <div class="tb-toolbar">
+            <select id="tbDeviceSel" onchange="tbSelectDevice(this.value)"></select>
+            <button class="btn-secondary" onclick="tbRefresh()">↻ Obnoviť</button>
+            <button class="btn-secondary" onclick="openTbManager()">⚙ Zariadenia</button>
+            <span id="tbStatus" class="tb-status">—</span>
+          </div>
+        </div>
+        <img src="/assets/equipment/thermalbath.svg" alt="Termostatický kúpeľ s ventilátorom" class="tb-hero-img">
+      </div>
+
+      <div id="tbEmpty" class="proc-empty hidden">
+        Zatiaľ nie je pridané žiadne zariadenie.
+        <div class="proc-empty-actions"><button class="btn-primary" onclick="openTbManager()">+ Pridať kalibrátor</button></div>
+      </div>
+
+      <div id="tbLive" class="tb-live hidden">
+        <!-- veľké karty: referenčná teplota, set point, nastavenie -->
+        <div class="tb-cards">
+          <div class="tb-card">
+            <div class="tb-card-lbl">Referenčná teplota</div>
+            <div class="tb-card-val"><span id="tbRefTemp">--.-</span><span class="tb-unit">°C</span></div>
+            <div class="tb-card-sub" id="tbRefTime">—</div>
+          </div>
+          <div class="tb-card">
+            <div class="tb-card-lbl">Cieľová hodnota (set point)</div>
+            <div class="tb-card-val"><span id="tbSetPoint">--.-</span><span class="tb-unit">°C</span></div>
+            <div class="tb-card-sub" id="tbSetTime">—</div>
+          </div>
+          <div class="tb-card tb-card-set">
+            <div class="tb-card-lbl">Nastaviť cieľovú teplotu</div>
+            <div class="tb-set-row">
+              <input type="number" id="tbSpInput" step="0.1" placeholder="°C" onkeydown="if(event.key==='Enter')tbSetSetpoint()">
+              <button class="btn-primary" onclick="tbSetSetpoint()">Nastaviť a prejsť</button>
+            </div>
+            <div class="tb-hint">Vyžaduje aktivované „Remote Control" na zariadení.</div>
+          </div>
+        </div>
+
+        <!-- panely: senzory, stav kalibrácie, chyby -->
+        <div class="tb-grid">
+          <div class="tb-panel">
+            <h3 class="tb-panel-h">Referenčné senzory</h3>
+            <div class="tb-kv"><span>Externý (TR_Ext)</span><b id="tbTrExt">—</b></div>
+            <div class="tb-kv"><span>Interný (TR_Int)</span><b id="tbTrInt">—</b></div>
+            <div class="tb-kv"><span>Surový externý</span><b id="tbTrRawExt">—</b></div>
+            <div class="tb-kv"><span>Surový interný</span><b id="tbTrRawInt">—</b></div>
+          </div>
+          <div class="tb-panel">
+            <h3 class="tb-panel-h">Stav kalibrácie</h3>
+            <div class="tb-kv"><span>Stav</span><b id="tbCalState">—</b></div>
+            <div class="tb-kv"><span>Prebieha</span><b id="tbCalRunning">—</b></div>
+            <div class="tb-kv"><span>Testpoint</span><b id="tbCalTp">—</b></div>
+            <div class="tb-kv"><span>Zvyšný hold-time</span><b id="tbCalHold">—</b></div>
+            <div class="tb-kv"><span>Kalibrácia možná</span><b id="tbCalPossible">—</b></div>
+          </div>
+          <div class="tb-panel tb-panel-err">
+            <h3 class="tb-panel-h">Chyby zariadenia</h3>
+            <div id="tbErrors" class="tb-errors tb-errors-ok">Žiadne aktívne chyby.</div>
+          </div>
+        </div>
+
+        <!-- informácie o zariadení -->
+        <div class="tb-panel">
+          <h3 class="tb-panel-h">Informácie o zariadení <button class="btn-sm" onclick="tbLoadInfo()">Načítať</button></h3>
+          <div id="tbInfo" class="tb-info-grid"><span class="tb-muted">Klikni „Načítať" pre detaily (sériové číslo, model, rozsah, posledná kalibrácia…).</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Správa termostatických kúpeľov (CRUD) -->
+  <div id="tbManagerModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeTbManager()"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header"><h2>Termostatické kúpele — zariadenia</h2><button class="modal-close" onclick="closeTbManager()">✕</button></div>
+      <div class="modal-body">
+        <div id="tbMgrList" class="equip-mgr-list"></div>
+        <div class="equip-mgr-form">
+          <input type="hidden" id="tbId">
+          <div class="form-row">
+            <div class="form-group"><label>Názov *</label><input type="text" id="tbName" placeholder="napr. Kalibrátor TP37 — lab"></div>
+            <div class="form-group"><label>Kód</label><input type="text" id="tbCode" placeholder="TP37-01"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>IP adresa *</label><input type="text" id="tbIp" placeholder="10.88.x.x"></div>
+            <div class="form-group"><label>Port</label><input type="number" id="tbPort" placeholder="8081" value="8081"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Model</label><input type="text" id="tbModel" placeholder="TP37450E / TP3M"></div>
+            <div class="form-group"><label>Umiestnenie</label><input type="text" id="tbLocation" placeholder="lab, dielňa..."></div>
+          </div>
+          <div class="form-group"><label>Poznámka</label><textarea id="tbNote" rows="2"></textarea></div>
+          <div class="equip-mgr-actions">
+            <button class="btn-sm" id="tbCancelBtn" onclick="resetTbForm()" style="display:none">Zrušiť úpravu</button>
+            <button class="btn-primary" onclick="saveTb()">Uložiť zariadenie</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== VZDIALENÉ PRIPOJENIE — RUSTDESK ===== -->
   <main id="page-remote" class="page remote-page">
