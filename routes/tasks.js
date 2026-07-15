@@ -165,13 +165,13 @@ function normalizeTags(arr) {
   return [...new Set(arr.map(x => String(x || '').trim()).filter(Boolean))];
 }
 
-// Zapíše hodnotu do číselníka projektov/zákazníkov (ak tam ešte nie je)
+// Zapíše hodnotu do číselníka projektov/zákazníkov (ak tam ešte nie je, bez ohľadu na veľkosť písmen)
 async function upsertCatalog(userId, type, name) {
   const n = String(name || '').trim();
   if (!n) return;
   await TaskCatalog.updateOne(
-    { user: userId, type, name: n },
-    { $setOnInsert: { user: userId, type, name: n } },
+    { user: userId, type, nameLower: n.toLowerCase() },
+    { $setOnInsert: { user: userId, type, name: n, nameLower: n.toLowerCase() } },
     { upsert: true }
   );
 }
