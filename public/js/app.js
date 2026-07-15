@@ -6557,6 +6557,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.38.0', date: '15. 7. 2026', tag: 'style', items: [
+    'Modal <strong>Upraviť úlohu</strong> je širší (660 px) a prehľadnejšie usporiadaný — Závislosti a Podúlohy sú vedľa seba v skrolovateľných zoznamoch, Popis a Poznámka tiež vedľa seba, takže sa toho zmestí viac bez zbytočného skrolovania.',
+    'Podradené úlohy (s nadradenou úlohou) sú v Zozname aj v Grid pohľade <strong>odsadené zľava</strong> podľa hĺbky hierarchie — vizuálne pôsobia ako stromová štruktúra.',
+  ] },
   { v: '2.37.0', date: '15. 7. 2026', tag: 'feat', items: [
     'Polia <strong>Projekt</strong> a <strong>Zákazník</strong> v úlohe sú teraz <strong>rozbaľovacie polia</strong> s existujúcimi hodnotami z číselníka (namiesto voľného textu) — výber existujúcej hodnoty predchádza duplicitám (aj s ohľadom na veľkosť písmen), voľba „+ Pridať nový…" umožní zapísať novú hodnotu do číselníka.',
   ] },
@@ -7124,6 +7128,20 @@ function taskUnmetDeps(t) {
   if (!t.dependsOn || !t.dependsOn.length) return [];
   return t.dependsOn.map(id => tasksData.find(x => x._id === (id._id || id))).filter(d => d && d.status !== 'done');
 }
+// Hĺbka úlohy v hierarchii (0 = koreňová) — podľa reťazca "parent", s ochranou proti cyklu
+const TASK_MAX_DEPTH = 6;
+function taskDepth(t) {
+  let depth = 0, cur = t, seen = new Set();
+  while (cur && cur.parent && depth < TASK_MAX_DEPTH) {
+    const parentId = cur.parent._id || cur.parent;
+    if (seen.has(parentId)) break;
+    seen.add(parentId);
+    cur = tasksData.find(x => x._id === parentId);
+    if (!cur) break;
+    depth++;
+  }
+  return depth;
+}
 
 async function loadTasks() {
   const sub = document.getElementById('tasksSub');
@@ -7259,11 +7277,12 @@ function renderTasks() {
 // Vnútro riadka úlohy (zdieľané pre plochý aj zoskupený pohľad)
 function taskRowClass(t) { return 'task-row' + (t.done ? ' task-done' : '') + (t.status === 'cancelled' ? ' task-cancelled' : '') + (taskOverdue(t) ? ' task-overdue' : ''); }
 function taskRowInner(t, withGrip) {
+  const depth = taskDepth(t);
   return `
       ${withGrip ? '<span class="task-grip" title="Potiahni na zmenu poradia">⠿</span>' : '<span class="task-grip task-grip-off">•</span>'}
       <button class="task-check" onclick="toggleTask('${t._id}', ${t.done ? 'false' : 'true'})" title="${t.done ? 'Označiť ako nehotové' : 'Označiť ako hotové'}">${t.done ? '✓' : ''}</button>
       <div class="task-body" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
-        <div class="task-title">${escHtml(t.title)}</div>
+        <div class="task-title"${depth ? ` style="margin-left:${depth * 18}px"` : ''}>${depth ? '<span class="task-tree-indent">↳</span>' : ''}${escHtml(t.title)}</div>
         ${taskChipsHtml(t)}
         ${taskMetaHtml(t)}
         ${(t.progress || taskStatusOf(t) === 'inprogress' || (t.subtasks && t.subtasks.length)) ? taskProgressHtml(t) : ''}
@@ -7469,9 +7488,10 @@ function updateTaskGridHeader(el) {
 function taskGridRowHtml(t) {
   const prio = TK_PRIO[t.priority] || TK_PRIO.normal;
   const od = taskOverdue(t);
+  const depth = taskDepth(t);
   const rowCls = 'task-grid-row' + (t.done ? ' task-grid-done' : '') + (t.status === 'cancelled' ? ' task-grid-cancelled' : '') + (od ? ' task-grid-overdue' : '');
   return `<tr class="${rowCls}" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
-      <td class="task-grid-title">${escHtml(t.title)}</td>
+      <td class="task-grid-title"${depth ? ` style="padding-left:${12 + depth * 18}px"` : ''}>${depth ? '<span class="task-tree-indent">↳</span>' : ''}${escHtml(t.title)}</td>
       <td><span class="task-grid-status task-grid-status-${taskStatusOf(t)}">${TK_STATUS_LABEL[taskStatusOf(t)] || ''}</span></td>
       <td><span class="task-prio" style="color:${prio.c}">${prio.l}</span></td>
       <td>${escHtml(t.project || '')}</td>

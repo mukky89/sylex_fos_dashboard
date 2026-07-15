@@ -2044,7 +2044,7 @@
   <!-- ===== TASK MODAL ===== -->
   <div id="taskModal" class="modal hidden">
     <div class="modal-backdrop" onclick="closeTaskModal()"></div>
-    <div class="modal-box modal-sm">
+    <div class="modal-box modal-md">
       <div class="modal-header"><h2 id="tkModalTitle">Nová úloha</h2><button class="modal-close" onclick="closeTaskModal()">✕</button></div>
       <div class="modal-body">
         <input type="hidden" id="tkId">
@@ -2090,23 +2090,26 @@
             <input type="text" id="tkTags" placeholder="backend, urgent, api (oddelené čiarkou)">
           </div>
         </div>
-        <div class="form-group"><label>Závisí od</label>
-          <select id="tkDependsOn" multiple size="4"></select>
-          <div class="tk-prog-hint">Podrž Ctrl/Cmd pre výber viacerých. Úlohu nemožno dokončiť, kým závislosti nie sú hotové.</div>
-        </div>
-
-        <!-- Podúlohy (checklist) -->
-        <div class="form-group">
-          <label>Podúlohy <span id="tkSubCount" class="tk-sub-count"></span></label>
-          <div id="tkSubList" class="tk-sub-list"></div>
-          <div class="tk-sub-add">
-            <input type="text" id="tkSubInput" placeholder="Nová podúloha — Enter pridá" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtask();}">
-            <button type="button" class="btn-secondary btn-sm" onclick="addSubtask()">+ Pridať</button>
+        <div class="form-row form-row-top">
+          <div class="form-group"><label>Závisí od</label>
+            <select id="tkDependsOn" multiple size="5" class="tk-scroll-list"></select>
+            <div class="tk-prog-hint">Podrž Ctrl/Cmd pre výber viacerých. Úlohu nemožno dokončiť, kým závislosti nie sú hotové.</div>
+          </div>
+          <!-- Podúlohy (checklist) -->
+          <div class="form-group">
+            <label>Podúlohy <span id="tkSubCount" class="tk-sub-count"></span></label>
+            <div id="tkSubList" class="tk-sub-list tk-scroll-list"></div>
+            <div class="tk-sub-add">
+              <input type="text" id="tkSubInput" placeholder="Nová podúloha — Enter pridá" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtask();}">
+              <button type="button" class="btn-secondary btn-sm" onclick="addSubtask()">+ Pridať</button>
+            </div>
           </div>
         </div>
 
-        <div class="form-group"><label>Popis</label><textarea id="tkDesc" rows="2"></textarea></div>
-        <div class="form-group"><label>Poznámka</label><textarea id="tkNote" rows="2" placeholder="Krátka poznámka k úlohe"></textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label>Popis</label><textarea id="tkDesc" rows="3"></textarea></div>
+          <div class="form-group"><label>Poznámka</label><textarea id="tkNote" rows="3" placeholder="Krátka poznámka k úlohe"></textarea></div>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn-delete" id="tkDeleteBtn" onclick="deleteTask(document.getElementById('tkId').value)" style="display:none">Odstrániť</button>

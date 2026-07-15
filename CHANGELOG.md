@@ -8,6 +8,16 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.38.0] — 2026-07-15
+### Zmenené
+- Modal **Upraviť úlohu** rozšírený na 660 px (`.modal-md`) a preusporiadaný:
+  Závislosti a Podúlohy sú vedľa seba v skrolovateľných zoznamoch
+  (`.tk-scroll-list`, max. výška 128 px), Popis a Poznámka tiež vedľa seba —
+  menej skrolovania, viac viditeľné naraz.
+- Podradené úlohy (s nastavenou nadradenou úlohou) sú v pohľadoch Zoznam
+  a Grid odsadené zľava podľa hĺbky hierarchie (`taskDepth()`), so
+  symbolom `↳` — vizuálne pôsobia ako stromová štruktúra.
+
 ## [2.37.0] — 2026-07-15
 ### Zmenené
 - Polia **Projekt** a **Zákazník** v úlohe sú teraz rozbaľovacie polia
