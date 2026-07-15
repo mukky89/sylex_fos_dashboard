@@ -6,6 +6,13 @@ const subtaskSchema = new mongoose.Schema({
   done:  { type: Boolean, default: false }
 }, { _id: true });
 
+// Aktualizácia / poznámka k stavu úlohy — nemenný, časovo a autorsky označený záznam (denník)
+const taskUpdateSchema = new mongoose.Schema({
+  text:       { type: String, required: true, trim: true },
+  authorName: { type: String, default: '' },
+  createdAt:  { type: Date, default: Date.now }
+}, { _id: true });
+
 const taskSchema = new mongoose.Schema({
   user:        { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   title:       { type: String, required: true, trim: true },
@@ -19,6 +26,7 @@ const taskSchema = new mongoose.Schema({
   due:         { type: Date, default: null },
   priority:    { type: String, enum: ['low', 'normal', 'high', 'critical'], default: 'normal' },
   subtasks:    { type: [subtaskSchema], default: [] },   // podúlohy / checklist
+  updates:     { type: [taskUpdateSchema], default: [] },   // denník aktualizácií (kto, kedy, čo)
   tags:        { type: [String], default: [] },
   parent:      { type: mongoose.Schema.Types.ObjectId, ref: 'Task', default: null },   // nadradená úloha (hierarchia)
   dependsOn:   { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }], default: [] },  // závislosti

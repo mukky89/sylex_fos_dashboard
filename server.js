@@ -297,6 +297,7 @@ app.use('/api/tests', require('./routes/tests'));
 app.use('/api/instruments', require('./routes/instruments'));
 app.use('/api/prototypes', require('./routes/prototypes'));
 app.use('/api/tasks', require('./routes/tasks'));
+app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/crm', require('./routes/crm'));
 app.use('/api/owners', require('./routes/owners'));

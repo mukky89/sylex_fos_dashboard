@@ -128,6 +128,19 @@ router.put('/:id', async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+// Pridá záznam do denníka aktualizácií (nemenný, s autorom a časom)
+router.post('/:id/updates', async (req, res) => {
+  try {
+    const text = String(req.body.text || '').trim();
+    if (!text) return res.status(400).json({ error: 'Text aktualizácie je povinný' });
+    const t = await Task.findOne({ _id: req.params.id, user: req.user.id });
+    if (!t) return res.status(404).json({ error: 'Not found' });
+    t.updates.push({ text, authorName: req.user.name || req.user.username || '', createdAt: new Date() });
+    await t.save();
+    res.status(201).json(t);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 router.delete('/:id', async (req, res) => {
   try {
     const id = req.params.id;

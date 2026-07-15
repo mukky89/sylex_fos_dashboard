@@ -173,7 +173,10 @@
 
       <!-- Notifikácie -->
       <div id="notifPanel" class="hdr-popover hdr-popover-wide hidden" onclick="event.stopPropagation()">
-        <div class="hdr-popover-title">Notifikácie</div>
+        <div class="notif-panel-hdr">
+          <div class="hdr-popover-title">Notifikácie</div>
+          <button class="notif-markall" onclick="dismissAllNotif()">Označiť všetky ako prečítané</button>
+        </div>
         <div id="notifList"></div>
       </div>
     </div>
@@ -2106,9 +2109,15 @@
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group"><label>Popis</label><textarea id="tkDesc" rows="3"></textarea></div>
-          <div class="form-group"><label>Poznámka</label><textarea id="tkNote" rows="3" placeholder="Krátka poznámka k úlohe"></textarea></div>
+        <!-- Aktualizácie / poznámky k stavu — denník so záznamom kto a kedy -->
+        <div class="form-group">
+          <label>Aktualizácie <span id="tkUpdCount" class="tk-sub-count"></span></label>
+          <div id="tkUpdList" class="tk-upd-list tk-scroll-list-lg"></div>
+          <div class="tk-sub-add">
+            <input type="text" id="tkUpdInput" placeholder="Nová aktualizácia — Enter pridá" onkeydown="if(event.key==='Enter'){event.preventDefault();addTaskUpdate();}">
+            <button type="button" class="btn-secondary btn-sm" onclick="addTaskUpdate()">+ Pridať</button>
+          </div>
+          <div class="tk-prog-hint" id="tkUpdHint"></div>
         </div>
       </div>
       <div class="modal-footer">
