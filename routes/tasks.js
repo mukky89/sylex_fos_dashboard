@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Task = require('../models/Task');
+const TaskCatalog = require('../models/TaskCatalog');
 const { requireAuth } = require('../middleware/auth');
 
 router.use(requireAuth);
@@ -15,6 +16,17 @@ router.get('/', async (req, res) => {
     if (req.query.priority && PRIORITIES.includes(req.query.priority)) q.priority = req.query.priority;
     if (req.query.tag) q.tags = req.query.tag;
     res.json(await Task.find(q).sort({ order: 1, createdAt: 1 }));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Číselník projektov a zákazníkov použitých v úlohách — ponuka pre nové záznamy
+router.get('/catalog', async (req, res) => {
+  try {
+    const rows = await TaskCatalog.find({ user: req.user.id }).sort({ name: 1 }).lean();
+    res.json({
+      customers: rows.filter(r => r.type === 'customer').map(r => r.name),
+      projects: rows.filter(r => r.type === 'project').map(r => r.name)
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -42,6 +54,8 @@ router.post('/', async (req, res) => {
       order: (last?.order || 0) + 1,
       due: req.body.due || null, priority: PRIORITIES.includes(req.body.priority) ? req.body.priority : 'normal'
     });
+    await upsertCatalog(req.user.id, 'project', t.project);
+    await upsertCatalog(req.user.id, 'customer', t.customer);
     res.status(201).json(t);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -108,6 +122,8 @@ router.put('/:id', async (req, res) => {
     t.doneAt = t.done ? (t.doneAt || new Date()) : null;
 
     await t.save();
+    if (req.body.project !== undefined) await upsertCatalog(req.user.id, 'project', t.project);
+    if (req.body.customer !== undefined) await upsertCatalog(req.user.id, 'customer', t.customer);
     res.json(t);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -147,6 +163,17 @@ function subtaskProgress(subs) {
 function normalizeTags(arr) {
   if (!Array.isArray(arr)) return [];
   return [...new Set(arr.map(x => String(x || '').trim()).filter(Boolean))];
+}
+
+// Zapíše hodnotu do číselníka projektov/zákazníkov (ak tam ešte nie je)
+async function upsertCatalog(userId, type, name) {
+  const n = String(name || '').trim();
+  if (!n) return;
+  await TaskCatalog.updateOne(
+    { user: userId, type, name: n },
+    { $setOnInsert: { user: userId, type, name: n } },
+    { upsert: true }
+  );
 }
 
 // Over nadradenú úlohu (existuje, patrí používateľovi, nevytvorí cyklus)
