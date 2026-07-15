@@ -1089,6 +1089,7 @@ body {
   display: flex; flex-direction: column; overflow: hidden;
 }
 .modal-sm { max-width: 420px; }
+.modal-md { max-width: 660px; max-height: 94vh; }
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 20px; border-bottom: 1px solid var(--border);
@@ -1119,6 +1120,7 @@ body {
    FORM
    ============================== */
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-row-top { align-items: start; }
 @media (max-width: 560px) { .form-row { grid-template-columns: 1fr; } }
 .form-group { display: flex; flex-direction: column; gap: 5px; }
 .form-group label {
@@ -3232,7 +3234,8 @@ body.logged-out .thermo-corner { display: none !important; }
 }
 .task-done .task-check { background: #10b981; border-color: #10b981; color: #fff; }
 .task-body { flex: 1; min-width: 0; cursor: pointer; }
-.task-title { font-size: 0.92rem; font-weight: 600; color: var(--dz-text); }
+.task-title { font-size: 0.92rem; font-weight: 600; color: var(--dz-text); transition: margin-left var(--transition); }
+.task-tree-indent { color: rgba(var(--dz-fg-rgb),0.35); font-weight: 400; margin-right: 4px; }
 .task-done .task-title { text-decoration: line-through; color: rgba(var(--dz-fg-rgb),0.45); }
 .task-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.74rem; color: rgba(var(--dz-fg-rgb),0.5); margin-top: 4px; }
 .task-prio { color: var(--prio, #3b82f6); font-weight: 600; }
@@ -4725,6 +4728,9 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .tk-sub-count { font-weight: 500; color: var(--text-dim); font-size: 0.78rem; }
 .tk-prog-hint { font-size: 0.68rem; color: var(--text-dim); margin-top: 4px; }
 .tk-sub-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.tk-scroll-list { max-height: 128px; overflow-y: auto; }
+.tk-scroll-list::-webkit-scrollbar { width: 4px; }
+.tk-scroll-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 .tk-sub-empty { font-size: 0.78rem; color: var(--text-xdim); padding: 4px 0; }
 .tk-sub-item { display: flex; align-items: center; gap: 8px; }
 .tk-sub-item.done .tk-sub-title { text-decoration: line-through; color: var(--text-xdim); }
