@@ -6605,6 +6605,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.40.3', date: '15. 7. 2026', tag: 'fix', items: [
+    'Grid pohľad úloh: stĺpec <strong>Termín</strong> sa už nezalamuje a stĺpec <strong>Aktualizácia</strong> (skrátené z „Posledná aktualizácia") je celý vidno bez skrolovania — zmenšený stĺpec Názov (320 px namiesto 380 px) uvoľnil miesto.',
+  ] },
   { v: '2.40.2', date: '15. 7. 2026', tag: 'fix', items: [
     'Oprava farby ikony FOS Dashboard v alternatívnom bočnom paneli — vrátené aj pôvodné pozadie (tyrkysovo-fialový gradient) a farba ikony, ktoré ostali nedopatrením biele po vrátení ikony.',
   ] },
@@ -7493,7 +7496,7 @@ const TASK_GRID_COLS = [
   { key: 'due', label: 'Termín', filter: 'text' },
   { key: 'tags', label: 'Tagy', filter: 'text' },
   { key: 'progress', label: 'Progres', filter: null },
-  { key: 'lastUpdate', label: 'Posledná aktualizácia', filter: 'text' }
+  { key: 'lastUpdate', label: 'Aktualizácia', filter: 'text' }
 ];
 let taskGridColFilters = { title: '', status: '', priority: '', project: '', customer: '', due: '', tags: '', lastUpdate: '' };
 function setTaskSort(key) {
