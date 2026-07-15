@@ -6605,6 +6605,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.39.1', date: '15. 7. 2026', tag: 'fix', items: [
+    'Grid pohľad úloh: riadky úloh v zoskupení <strong>Zákazník → Projekt</strong> sú teraz odsadené zľava viac než hlavička skupiny Projekt, takže je hneď vidno, pod ktorý projekt úloha patrí.',
+  ] },
   { v: '2.39.0', date: '15. 7. 2026', tag: 'feat', items: [
     '<strong>Notifikácie</strong> (🔔) sa teraz dajú potvrdiť (✕ pri položke, alebo „Označiť všetky ako prečítané" v paneli) a odvtedy prestanú svietiť ako nové — znova sa objavia, len ak sa zmení dôvod (napr. posunutý termín).',
     'Modal <strong>Upraviť úlohu</strong> je širší (780 px) a opravená chyba layoutu, kvôli ktorej sa modal vodorovne roztiahol a časť polí nebolo vidieť.',
@@ -7551,15 +7554,16 @@ function updateTaskGridHeader(el) {
     if (arrow) arrow.textContent = active ? (taskSortDir === 1 ? '▲' : '▼') : '';
   });
 }
-function taskGridRowHtml(t) {
+function taskGridRowHtml(t, groupIndent) {
   const prio = TK_PRIO[t.priority] || TK_PRIO.normal;
   const od = taskOverdue(t);
   const depth = taskDepth(t);
+  const indent = (groupIndent || 0) + depth * 18;
   const lu = taskLatestUpdate(t);
   const luText = lu ? (lu.text.length > 50 ? lu.text.slice(0, 50) + '…' : lu.text) : '';
   const rowCls = 'task-grid-row' + (t.done ? ' task-grid-done' : '') + (t.status === 'cancelled' ? ' task-grid-cancelled' : '') + (od ? ' task-grid-overdue' : '');
   return `<tr class="${rowCls}" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
-      <td class="task-grid-title"${depth ? ` style="padding-left:${12 + depth * 18}px"` : ''}>${depth ? '<span class="task-tree-indent">↳</span>' : ''}${escHtml(t.title)}</td>
+      <td class="task-grid-title"${indent ? ` style="padding-left:${12 + indent}px"` : ''}>${depth ? '<span class="task-tree-indent">↳</span>' : ''}${escHtml(t.title)}</td>
       <td><span class="task-grid-status task-grid-status-${taskStatusOf(t)}">${TK_STATUS_LABEL[taskStatusOf(t)] || ''}</span></td>
       <td><span class="task-prio" style="color:${prio.c}">${prio.l}</span></td>
       <td>${escHtml(t.project || '')}</td>
@@ -7614,7 +7618,7 @@ function renderTaskGridBody() {
         <td colspan="${TASK_GRID_COLS.length}"><span class="task-grid-group-arrow">${projCollapsed ? '▸' : '▾'}</span>🗂️ ${escHtml(proj)} <span class="task-grid-group-count">${arr.length}</span></td>
       </tr>`;
       if (projCollapsed) return;
-      arr.forEach(t => { html += taskGridRowHtml(t); });
+      arr.forEach(t => { html += taskGridRowHtml(t, 30); });
     });
   });
   tbody.innerHTML = html;
