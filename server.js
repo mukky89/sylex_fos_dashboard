@@ -284,6 +284,7 @@ app.use('/api/calendar', require('./routes/calendar'));
 app.use('/api/procedures', require('./routes/procedures'));
 app.use('/api/guides', require('./routes/guides'));
 app.use('/api/equipment', require('./routes/equipment'));
+app.use('/api/thermal-baths', require('./routes/thermalBath'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/production', require('./routes/production'));
 app.use('/api/manufacturing', require('./routes/manufacturing'));

@@ -815,6 +815,7 @@ async function handleHash(hash) {
     return;
   }
   if (hash === 'util')    { _activatePage('util');    loadUtil(); return; }
+  if (hash === 'thermalbath') { _activatePage('thermalbath'); loadThermalBaths(); return; }
   if (hash === 'prod')    { _activatePage('prod');    loadProd(); return; }
   if (hash === 'mfg')     { _activatePage('mfg');     loadMfg(); return; }
   if (hash === 'pwf')     { _activatePage('pwf');     loadPwf(); return; }
@@ -860,6 +861,7 @@ function showPage(name) {
   if (name === 'guides')  loadGuides();
   if (name === 'dev')     loadDev();
   if (name === 'util')    loadUtil();
+  if (name === 'thermalbath') loadThermalBaths();
   if (name === 'prod')    loadProd();
   if (name === 'mfg')     loadMfg();
   if (name === 'pwf')     loadPwf();
@@ -6605,6 +6607,12 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.41.0', date: '15. 7. 2026', tag: 'feat', items: [
+    'Nový modul <strong>Termostatický kúpeľ — SIKA TP</strong> (teplotné kalibrátory TP37 / TP3M) s <strong>komunikáciou cez ethernet</strong> (REST-API, port 8081). Podpora <strong>viacerých zariadení</strong> (výber v hornej lište, správa cez ⚙ Zariadenia).',
+    'Živý prehľad: <strong>referenčná teplota</strong> a <strong>set point</strong>, hodnoty referenčných senzorov (TR_Ext/Int + surové), <strong>stav kalibrácie</strong> (stav, testpoint, hold-time, možnosť kalibrácie) a informácie o zariadení (sériové č., model, firmvér, rozsah, posledná kalibrácia…). Auto-obnova každých 5 s.',
+    '<strong>Nastavenie cieľovej teploty</strong> priamo z appky (príkaz setSP) a <strong>dekódovanie chybových masiek</strong> zariadenia (fatálne aj prechodné chyby) do zrozumiteľných slovenských hlášok.',
+    'Nová ilustrácia zariadenia (SVG s animovaným ventilátorom) a položka v hlavnej navigácii aj bočnom paneli.',
+  ] },
   { v: '2.40.0', date: '15. 7. 2026', tag: 'feat', items: [
     'Grid pohľad úloh je predvolene <strong>zoradený podľa priority</strong> (kritická → nízka) a riadky majú <strong>farebné pozadie podľa priority</strong> (kritická/vysoká červeno, nízka jemne šedo).',
     'Stĺpec <strong>Názov</strong> v Grid pohľade je 2× širší, menej sa zalamuje.',
@@ -8136,6 +8144,223 @@ async function deleteEquipment(id) {
     utilEquipment = utilEquipment.filter(e => e._id !== id);
     renderEquipMgr(); renderUtil();
   } catch { alert('Chyba'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  TERMOSTATICKÝ KÚPEĽ — SIKA TP Premium (TP37/TP3M), komunikácia cez ethernet
+//  Živé dáta sa čítajú zo zariadenia cez server proxy /api/thermal-baths/:id/...
+// ══════════════════════════════════════════════════════════════════════════════
+let tbDevices   = [];
+let tbCurrentId = null;
+let tbPollTimer = null;
+const TB_POLL_MS = 5000;
+
+const tbFmt = (v, d = 2) => (v === null || v === undefined || isNaN(v)) ? '—' : Number(v).toFixed(d);
+const tbTime = ts => ts ? new Date(ts * 1000).toLocaleTimeString('sk-SK') : '—';
+
+async function loadThermalBaths() {
+  try { tbDevices = await fetch('/api/thermal-baths').then(r => r.json()); if (!Array.isArray(tbDevices)) tbDevices = []; }
+  catch { tbDevices = []; }
+  tbFillSelector();
+  const empty = document.getElementById('tbEmpty'), live = document.getElementById('tbLive');
+  if (!tbDevices.length) {
+    empty?.classList.remove('hidden'); live?.classList.add('hidden');
+    if (tbPollTimer) { clearTimeout(tbPollTimer); tbPollTimer = null; }
+    return;
+  }
+  empty?.classList.add('hidden'); live?.classList.remove('hidden');
+  // ak aktuálne vybrané zariadenie zmizlo, vyber prvé
+  if (!tbCurrentId || !tbDevices.some(d => d._id === tbCurrentId)) tbCurrentId = tbDevices[0]._id;
+  const sel = document.getElementById('tbDeviceSel'); if (sel) sel.value = tbCurrentId;
+  tbStartPolling();
+}
+
+function tbFillSelector() {
+  const sel = document.getElementById('tbDeviceSel'); if (!sel) return;
+  sel.innerHTML = tbDevices.map(d =>
+    `<option value="${d._id}">${escHtml(d.name)}${d.code ? ' · ' + escHtml(d.code) : ''} (${escHtml(d.ip)})</option>`).join('');
+}
+
+function tbSelectDevice(id) {
+  tbCurrentId = id;
+  document.getElementById('tbInfo').innerHTML = '<span class="tb-muted">Klikni „Načítať" pre detaily…</span>';
+  tbStartPolling();
+}
+
+function tbRefresh() { tbPollStatus(); }
+
+function tbStartPolling() {
+  if (tbPollTimer) { clearTimeout(tbPollTimer); tbPollTimer = null; }
+  tbPollStatus();
+}
+
+async function tbPollStatus() {
+  // zastav, ak stránka nie je aktívna
+  if (!document.getElementById('page-thermalbath')?.classList.contains('active')) { tbPollTimer = null; return; }
+  if (!tbCurrentId) return;
+  const id = tbCurrentId;
+  try {
+    const data = await fetch('/api/thermal-baths/' + id + '/status').then(r => r.json());
+    if (id !== tbCurrentId) return;   // medzičasom sa prepol výber
+    tbRenderStatus(data);
+  } catch {
+    tbSetStatus(false, 'Chyba spojenia');
+  }
+  // naplánuj ďalší poll, kým je stránka aktívna
+  if (document.getElementById('page-thermalbath')?.classList.contains('active'))
+    tbPollTimer = setTimeout(tbPollStatus, TB_POLL_MS);
+}
+
+function tbSetStatus(online, msg) {
+  const el = document.getElementById('tbStatus'); if (!el) return;
+  el.textContent = online ? '● ONLINE' : ('○ ' + (msg || 'OFFLINE'));
+  el.className = 'tb-status ' + (online ? 'tb-online' : 'tb-offline');
+}
+
+function tbRenderStatus(data) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  if (!data || !data.online) {
+    tbSetStatus(false, data && data.error);
+    ['tbRefTemp', 'tbSetPoint'].forEach(i => set(i, '--.-'));
+    ['tbTrExt', 'tbTrInt', 'tbTrRawExt', 'tbTrRawInt', 'tbCalState', 'tbCalRunning', 'tbCalTp', 'tbCalHold', 'tbCalPossible'].forEach(i => set(i, '—'));
+    return;
+  }
+  tbSetStatus(true);
+  set('tbRefTemp', tbFmt(data.referenceTemp, 2));
+  set('tbRefTime', data.referenceTime ? ('meranie ' + tbTime(data.referenceTime)) : '—');
+  set('tbSetPoint', tbFmt(data.setPoint, 2));
+  set('tbSetTime', data.setPointTime ? ('nastavené ' + tbTime(data.setPointTime)) : '—');
+
+  const s = data.sensors || {};
+  set('tbTrExt', s.TR_Ext != null ? tbFmt(s.TR_Ext) + ' °C' : '—');
+  set('tbTrInt', s.TR_Int != null ? tbFmt(s.TR_Int) + ' °C' : '—');
+  set('tbTrRawExt', s.TR_Raw_Ext != null ? tbFmt(s.TR_Raw_Ext) + ' °C' : '—');
+  set('tbTrRawInt', s.TR_Raw_Int != null ? tbFmt(s.TR_Raw_Int) + ' °C' : '—');
+
+  const c = data.calibration || {};
+  set('tbCalState', c.currentStateStr || '—');
+  set('tbCalRunning', c.running ? 'áno' : 'nie');
+  set('tbCalTp', c.currentTestpointInC != null ? tbFmt(c.currentTestpointInC) + ' °C' : '—');
+  set('tbCalHold', c.holdtimeRemaining != null && c.holdtimeRemaining >= 0 ? c.holdtimeRemaining + ' s' : '—');
+  set('tbCalPossible', c.calibrationPossible ? 'áno' : (c.noCalibrationIsPossibleBecauseOf || 'nie'));
+
+  // chyby
+  const errEl = document.getElementById('tbErrors');
+  if (errEl) {
+    const e = data.errors || { fatal: [], transient: [] };
+    const all = [...(e.fatal || []).map(x => ({ ...x, sev: 'fatal' })), ...(e.transient || []).map(x => ({ ...x, sev: 'transient' }))];
+    if (!all.length) {
+      errEl.className = 'tb-errors tb-errors-ok';
+      errEl.textContent = 'Žiadne aktívne chyby.';
+    } else {
+      errEl.className = 'tb-errors tb-errors-bad';
+      errEl.innerHTML = all.map(x =>
+        `<div class="tb-err-row"><span class="tb-err-badge tb-err-${x.sev}">${x.sev === 'fatal' ? 'FATAL' : 'PREChodná'}</span>
+         <span class="tb-err-name">${escHtml(x.description)}</span><code>${escHtml(x.code)}</code></div>`).join('');
+    }
+  }
+}
+
+async function tbSetSetpoint() {
+  if (!tbCurrentId) return;
+  const inp = document.getElementById('tbSpInput');
+  const value = parseFloat(inp.value);
+  if (isNaN(value)) { toast('Zadaj číselnú hodnotu teploty.', 'warn'); return; }
+  try {
+    const r = await fetch('/api/thermal-baths/' + tbCurrentId + '/setpoint', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok) {
+      toast('Cieľová teplota nastavená na ' + tbFmt(d.setPoint, 1) + ' °C.', 'success');
+      inp.value = '';
+      tbPollStatus();
+    } else {
+      toast('Nastavenie zlyhalo: ' + (d.error || r.status), 'error');
+    }
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+
+async function tbLoadInfo() {
+  if (!tbCurrentId) return;
+  const el = document.getElementById('tbInfo');
+  el.innerHTML = '<span class="tb-muted">Načítavam…</span>';
+  try {
+    const d = await fetch('/api/thermal-baths/' + tbCurrentId + '/info').then(r => r.json());
+    if (!d.online || !d.info) { el.innerHTML = '<span class="tb-muted">Zariadenie neodpovedalo' + (d.error ? ' (' + escHtml(d.error) + ')' : '') + '.</span>'; return; }
+    const i = d.info;
+    const opH = i.OperationSeconds ? Math.round(i.OperationSeconds / 3600).toLocaleString('sk-SK') + ' h' : '—';
+    const rows = [
+      ['Sériové číslo', i.Serial], ['Zariadenie', i.Device], ['Typ', i.Type],
+      ['Model', i.Model], ['Firmvér', i.FirmwareVersion], ['Softvér', i.Version],
+      ['Rozsah', (i.MinTemp != null && i.MaxTemp != null) ? (i.MinTemp + ' … ' + i.MaxTemp + ' °C') : null],
+      ['Prvé nastavenie', i.Date], ['Posledná kalibrácia', i.LastCalib],
+      ['Prevádzkové hodiny', opH], ['Číslo dielu', i.ItemNumber], ['HW sériové', i.HardwareSerial],
+    ].filter(r => r[1] != null && r[1] !== '');
+    el.innerHTML = rows.map(([k, v]) => `<div class="tb-info-cell"><span>${escHtml(k)}</span><b>${escHtml(String(v))}</b></div>`).join('');
+  } catch (e) { el.innerHTML = '<span class="tb-muted">Chyba: ' + escHtml(e.message) + '</span>'; }
+}
+
+// ── Správa zariadení (CRUD) ──
+function openTbManager() { renderTbMgr(); resetTbForm(); document.getElementById('tbManagerModal').classList.remove('hidden'); }
+function closeTbManager() { document.getElementById('tbManagerModal').classList.add('hidden'); }
+function renderTbMgr() {
+  const el = document.getElementById('tbMgrList'); if (!el) return;
+  el.innerHTML = tbDevices.map(d => `
+    <div class="equip-mgr-row">
+      <span class="equip-mgr-name">${escHtml(d.name)} <span class="equip-mgr-code">${escHtml(d.code || '')} · ${escHtml(d.ip)}:${d.port || 8081}</span></span>
+      <button class="btn-xs" onclick="editTb('${d._id}')">✎</button>
+      <button class="btn-xs" onclick="deleteTb('${d._id}')">✕</button>
+    </div>`).join('') || '<div class="proc-empty">Žiadne zariadenia.</div>';
+}
+function resetTbForm() {
+  ['tbId', 'tbName', 'tbCode', 'tbIp', 'tbModel', 'tbLocation', 'tbNote'].forEach(i => { const e = document.getElementById(i); if (e) e.value = ''; });
+  document.getElementById('tbPort').value = '8081';
+  document.getElementById('tbCancelBtn').style.display = 'none';
+}
+function editTb(id) {
+  const d = tbDevices.find(x => x._id === id); if (!d) return;
+  document.getElementById('tbId').value = d._id;
+  document.getElementById('tbName').value = d.name || '';
+  document.getElementById('tbCode').value = d.code || '';
+  document.getElementById('tbIp').value = d.ip || '';
+  document.getElementById('tbPort').value = d.port || 8081;
+  document.getElementById('tbModel').value = d.model || '';
+  document.getElementById('tbLocation').value = d.location || '';
+  document.getElementById('tbNote').value = d.note || '';
+  document.getElementById('tbCancelBtn').style.display = '';
+}
+async function saveTb() {
+  const body = {
+    name: document.getElementById('tbName').value.trim(),
+    code: document.getElementById('tbCode').value.trim(),
+    ip: document.getElementById('tbIp').value.trim(),
+    port: Number(document.getElementById('tbPort').value) || 8081,
+    model: document.getElementById('tbModel').value.trim(),
+    location: document.getElementById('tbLocation').value.trim(),
+    note: document.getElementById('tbNote').value.trim(),
+  };
+  if (!body.name) { toast('Zadaj názov zariadenia.', 'warn'); return; }
+  if (!body.ip) { toast('Zadaj IP adresu zariadenia.', 'warn'); return; }
+  const id = document.getElementById('tbId').value;
+  try {
+    const r = await fetch(id ? '/api/thermal-baths/' + id : '/api/thermal-baths', {
+      method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    if (!r.ok) { const er = await r.json().catch(() => ({})); toast('Chyba: ' + (er.error || r.status), 'error'); return; }
+    await loadThermalBaths();
+    renderTbMgr(); resetTbForm();
+    toast('Zariadenie uložené.', 'success');
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
+}
+async function deleteTb(id) {
+  if (!await uiConfirm('Odstrániť tento termostatický kúpeľ?')) return;
+  try {
+    await fetch('/api/thermal-baths/' + id, { method: 'DELETE' });
+    if (tbCurrentId === id) tbCurrentId = null;
+    await loadThermalBaths();
+    renderTbMgr();
+  } catch { toast('Chyba pri mazaní.', 'error'); }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

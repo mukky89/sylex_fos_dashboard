@@ -8,6 +8,32 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.41.0] — 2026-07-15
+### Pridané
+- **Nový typ zariadenia „Termostatický kúpeľ — SIKA TP"** (teplotné
+  kalibrátory TP37 / TP3M) s komunikáciou cez **ethernet / REST-API**
+  (port 8081, endpointy `/ajax/...`). Nové súbory: `models/ThermalBath.js`,
+  `routes/thermalBath.js` (`/api/thermal-baths`), sekcia `page-thermalbath`
+  v `index.html`, funkcie v `app.js`, štýly v `style.css` a ilustrácia
+  `public/assets/equipment/thermalbath.svg` (SVG s animovaným ventilátorom).
+- **Podpora viacerých zariadení** — výber zariadenia v hornej lište a CRUD
+  správa (názov, kód, IP, port, model, umiestnenie) cez „⚙ Zariadenia".
+- **Server-side proxy** číta živé dáta zo zariadenia (aby prehliadač
+  neriešil mixed-content/CORS voči HTTP zariadeniu):
+  - `GET /api/thermal-baths/:id/status` — agreguje referenčnú teplotu
+    (`getRegister?register=TRset_TR`), set point (`TRset_SP`), senzory a
+    chybové masky (`getTR`) a stav kalibrácie (`getCalibrationStatus`),
+  - `GET /api/thermal-baths/:id/info` — `getInfoReport`,
+  - `GET /api/thermal-baths/:id/shells` — `getShells`,
+  - `POST /api/thermal-baths/:id/setpoint` — nastavenie cieľovej teploty
+    (`setSP`).
+- **Dekódovanie chybových masiek** (fatálne `0x8...` aj prechodné `0x4...`)
+  do zrozumiteľných slovenských popisov podľa dokumentácie.
+- Živý prehľad s auto-obnovou (5 s): referenčná teplota, set point,
+  referenčné senzory, stav kalibrácie, aktívne chyby a informácie o
+  zariadení. Položka v hlavičke aj bočnom paneli („Kalibrátor" /
+  „Termostatický kúpeľ").
+
 ## [2.40.0] — 2026-07-15
 ### Pridané
 - Grid pohľad úloh: predvolené triedenie **podľa priority** (kritická →
