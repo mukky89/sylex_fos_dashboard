@@ -6557,6 +6557,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.37.0', date: '15. 7. 2026', tag: 'feat', items: [
+    'Polia <strong>Projekt</strong> a <strong>Zákazník</strong> v úlohe sú teraz <strong>rozbaľovacie polia</strong> s existujúcimi hodnotami z číselníka (namiesto voľného textu) — výber existujúcej hodnoty predchádza duplicitám (aj s ohľadom na veľkosť písmen), voľba „+ Pridať nový…" umožní zapísať novú hodnotu do číselníka.',
+  ] },
   { v: '2.36.0', date: '15. 7. 2026', tag: 'feat', items: [
     '<strong>Grid</strong> je teraz predvolený pohľad úloh, s <strong>filtrami pod hlavičkou každého stĺpca</strong> (text/výber) a dvojúrovňovým <strong>zoskupením podľa Zákazníka a následne Projektu</strong> (rozbaľovacie skupiny s počtami).',
     'Projekt a Zákazník sa teraz ukladajú do <strong>číselníka</strong> — ponuka pri vytváraní úlohy zostáva dostupná aj po vymazaní úloh, ktoré ich pôvodne použili.',
@@ -7127,18 +7130,41 @@ async function loadTasks() {
   if (sub && CURRENT_USER) sub.textContent = 'Osobný zoznam úloh — ' + (CURRENT_USER.name || CURRENT_USER.username);
   try { tasksData = await fetch('/api/tasks').then(r => r.json()); if (!Array.isArray(tasksData)) tasksData = []; }
   catch { tasksData = []; }
-  fillTaskDatalists();
+  await fillTaskDatalists();
   fillTaskTagFilter();
   renderTaskProgress();
   renderTasks();
 }
-// Combobox: ponuka projektov a zákazníkov z číselníka (perzistuje aj po vymazaní úloh)
+// Číselník projektov a zákazníkov (perzistuje aj po vymazaní úloh, ktoré ich používali)
+let taskCatalog = { customers: [], projects: [] };
 async function fillTaskDatalists() {
-  let cat = { customers: [], projects: [] };
-  try { cat = await fetch('/api/tasks/catalog').then(r => r.json()); } catch { /* ignore */ }
-  const sorted = (arr) => (arr || []).slice().sort((a, b) => a.localeCompare(b, 'sk'));
-  const pl = document.getElementById('tkProjectList'); if (pl) pl.innerHTML = sorted(cat.projects).map(x => `<option value="${escHtml(x)}">`).join('');
-  const cl = document.getElementById('tkCustomerList'); if (cl) cl.innerHTML = sorted(cat.customers).map(x => `<option value="${escHtml(x)}">`).join('');
+  try { taskCatalog = await fetch('/api/tasks/catalog').then(r => r.json()); }
+  catch { taskCatalog = { customers: [], projects: [] }; }
+}
+// Naplní rozbaľovacie pole existujúcimi hodnotami číselníka + voľbou "Pridať nový"
+function renderTaskCatalogSelect(baseId, list, current) {
+  const sel = document.getElementById(baseId); if (!sel) return;
+  const opts = [...new Set(list || [])];
+  if (current && !opts.some(x => x.toLowerCase() === current.toLowerCase())) opts.push(current);
+  opts.sort((a, b) => a.localeCompare(b, 'sk'));
+  const curMatch = opts.find(x => x.toLowerCase() === (current || '').toLowerCase()) || '';
+  sel.innerHTML = '<option value="">— žiadny —</option>'
+    + opts.map(x => `<option value="${escHtml(x)}" ${x === curMatch ? 'selected' : ''}>${escHtml(x)}</option>`).join('')
+    + '<option value="__new__">+ Pridať nový…</option>';
+  const newInp = document.getElementById(baseId + 'New');
+  if (newInp) { newInp.classList.add('hidden'); newInp.value = ''; }
+}
+function taskCatalogSelectChange(baseId) {
+  const sel = document.getElementById(baseId);
+  const newInp = document.getElementById(baseId + 'New');
+  if (sel.value === '__new__') { newInp.classList.remove('hidden'); newInp.value = ''; newInp.focus(); }
+  else { newInp.classList.add('hidden'); newInp.value = ''; }
+}
+// Vráti aktuálnu hodnotu poľa (vybranú z číselníka alebo novo zadanú)
+function taskCatalogValue(baseId) {
+  const sel = document.getElementById(baseId);
+  if (sel.value === '__new__') return (document.getElementById(baseId + 'New').value || '').trim();
+  return sel.value;
 }
 // Filter podľa tagu — ponuka všetkých použitých tagov
 function fillTaskTagFilter() {
@@ -7562,8 +7588,8 @@ function openTaskModal(t = null) {
   document.getElementById('tkModalTitle').textContent = e ? 'Upraviť úlohu' : 'Nová úloha';
   document.getElementById('tkId').value = e ? t._id : '';
   document.getElementById('tkTitle').value = e ? (t.title || '') : '';
-  document.getElementById('tkProject').value = e ? (t.project || '') : '';
-  document.getElementById('tkCustomer').value = e ? (t.customer || '') : '';
+  renderTaskCatalogSelect('tkProject', taskCatalog.projects, e ? (t.project || '') : '');
+  renderTaskCatalogSelect('tkCustomer', taskCatalog.customers, e ? (t.customer || '') : '');
   document.getElementById('tkDue').value = e && t.due ? String(t.due).slice(0, 10) : '';
   document.getElementById('tkPriority').value = e ? (t.priority || 'normal') : 'normal';
   document.getElementById('tkStatus').value = e ? taskStatusOf(t) : 'todo';
@@ -7664,8 +7690,8 @@ async function saveTask() {
     priority: document.getElementById('tkPriority').value,
     status: document.getElementById('tkStatus').value,
     progress: Number(document.getElementById('tkProgress').value) || 0,
-    project: document.getElementById('tkProject').value.trim(),
-    customer: document.getElementById('tkCustomer').value.trim(),
+    project: taskCatalogValue('tkProject'),
+    customer: taskCatalogValue('tkCustomer'),
     note: document.getElementById('tkNote').value.trim(),
     description: document.getElementById('tkDesc').value.trim(),
     subtasks: tkSubtasks.filter(s => (s.title || '').trim()).map(s => ({ title: s.title.trim(), done: !!s.done })),

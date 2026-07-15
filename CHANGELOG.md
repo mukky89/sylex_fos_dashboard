@@ -8,6 +8,14 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.37.0] — 2026-07-15
+### Zmenené
+- Polia **Projekt** a **Zákazník** v úlohe sú teraz rozbaľovacie polia
+  (`<select>`) s existujúcimi hodnotami z číselníka namiesto voľného textu
+  s našepkávačom — výber existujúcej hodnoty predchádza duplicitám
+  (case-insensitive porovnanie v `models/TaskCatalog.js`), voľba
+  „+ Pridať nový…" pridá novú hodnotu do číselníka.
+
 ## [2.36.0] — 2026-07-15
 ### Pridané
 - **Grid** je predvolený pohľad úloh (namiesto Zoznamu).

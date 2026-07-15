@@ -2050,8 +2050,14 @@
         <input type="hidden" id="tkId">
         <div class="form-group"><label>Názov *</label><input type="text" id="tkTitle" placeholder="Čo treba spraviť"></div>
         <div class="form-row">
-          <div class="form-group"><label>Projekt</label><input type="text" id="tkProject" list="tkProjectList" placeholder="napr. FOS senzor X1" autocomplete="off"><datalist id="tkProjectList"></datalist></div>
-          <div class="form-group"><label>Zákazník</label><input type="text" id="tkCustomer" list="tkCustomerList" placeholder="napr. US CONEC" autocomplete="off"><datalist id="tkCustomerList"></datalist></div>
+          <div class="form-group"><label>Projekt</label>
+            <select id="tkProject" onchange="taskCatalogSelectChange('tkProject')"><option value="">— žiadny —</option></select>
+            <input type="text" id="tkProjectNew" class="hidden" placeholder="Názov nového projektu">
+          </div>
+          <div class="form-group"><label>Zákazník</label>
+            <select id="tkCustomer" onchange="taskCatalogSelectChange('tkCustomer')"><option value="">— žiadny —</option></select>
+            <input type="text" id="tkCustomerNew" class="hidden" placeholder="Názov nového zákazníka">
+          </div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Termín</label><input type="date" id="tkDue"></div>
