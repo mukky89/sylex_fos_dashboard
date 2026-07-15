@@ -122,27 +122,152 @@ async function sendMail({ to, subject, html, text }) {
   }
 }
 
-// Šablóna overovacieho e-mailu (jednoduchý brandovaný HTML).
+// Escape textu, ktorý vkladáme do HTML (ochrana proti rozbitiu šablóny / injektáži).
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Šablóna overovacieho e-mailu.
+// Table-based, inline štýly, bulletproof CTA (vrátane VML pre Outlook),
+// preheader a responzívne správanie — aby vyzeral rovnako v Gmaile aj Outlooku.
 function verificationEmail({ name, verifyUrl }) {
-  const who = name ? `Ahoj ${name},` : 'Ahoj,';
+  const who = name ? `Ahoj ${esc(name)},` : 'Ahoj,';
+  const url = esc(verifyUrl);
+  const preheader = 'Potvrď svoju e-mailovú adresu a aktivuj prístup do FOS Dashboardu.';
+
+  const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Overenie e-mailu — FOS Dashboard</title>
+<!--[if mso]><style>*{font-family:Arial,Helvetica,sans-serif!important}</style><![endif]-->
+<style>
+  body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}
+  table,td{mso-table-lspace:0;mso-table-rspace:0}
+  img{-ms-interpolation-mode:bicubic;border:0;line-height:100%;outline:none;text-decoration:none}
+  body{margin:0!important;padding:0!important;width:100%!important}
+  a{color:#0e7490}
+  @media only screen and (max-width:600px){
+    .container{width:100%!important}
+    .px{padding-left:24px!important;padding-right:24px!important}
+    .btn a{display:block!important}
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#eef2f7;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:#eef2f7;">${esc(preheader)}&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f7;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 28px rgba(13,18,37,.10);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:#0d1225;background:linear-gradient(135deg,#0d1225 0%,#122043 100%);padding:30px 40px;" class="px">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:800;letter-spacing:.3px;color:#f0f9ff;">
+                    FOS&nbsp;<span style="color:#67e8f9;">Dashboard</span>
+                  </td>
+                  <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#94a3b8;letter-spacing:1px;text-transform:uppercase;">
+                    SYLEX
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Accent line -->
+          <tr><td style="height:4px;line-height:4px;font-size:0;background:#22d3ee;background:linear-gradient(90deg,#22d3ee,#0891b2);">&nbsp;</td></tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:38px 40px 8px;font-family:Arial,Helvetica,sans-serif;color:#1e293b;" class="px">
+              <p style="margin:0 0 16px;font-size:18px;font-weight:700;color:#0f172a;">${who}</p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#475569;">
+                tvoj účet vo <strong style="color:#0f172a;">FOS Dashboarde</strong> bol vytvorený.
+                Ostáva už len jeden krok — potvrď, že tento e-mail patrí tebe.
+              </p>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td align="center" style="padding:24px 40px 12px;" class="px">
+              <!--[if mso]>
+              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${url}" style="height:50px;v-text-anchor:middle;width:260px;" arcsize="16%" strokecolor="#0891b2" fillcolor="#0891b2">
+                <w:anchorlock/>
+                <center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Overiť e-mail</center>
+              </v:roundrect>
+              <![endif]-->
+              <!--[if !mso]><!-->
+              <table role="presentation" class="btn" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                <tr>
+                  <td align="center" style="border-radius:10px;background:#0891b2;background:linear-gradient(135deg,#0891b2,#0e7490);box-shadow:0 6px 16px rgba(8,145,178,.35);">
+                    <a href="${url}" style="display:inline-block;padding:15px 40px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;">Overiť e-mail</a>
+                  </td>
+                </tr>
+              </table>
+              <!--<![endif]-->
+            </td>
+          </tr>
+
+          <!-- Fallback link -->
+          <tr>
+            <td style="padding:16px 40px 8px;font-family:Arial,Helvetica,sans-serif;" class="px">
+              <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;">Ak tlačidlo nefunguje, skopíruj tento odkaz do prehliadača:</p>
+              <p style="margin:0;font-size:13px;line-height:1.5;word-break:break-all;">
+                <a href="${url}" style="color:#0e7490;text-decoration:underline;">${url}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr><td style="padding:24px 40px 0;" class="px"><div style="border-top:1px solid #e2e8f0;height:1px;line-height:1px;font-size:0;">&nbsp;</div></td></tr>
+
+          <!-- Note -->
+          <tr>
+            <td style="padding:16px 40px 34px;font-family:Arial,Helvetica,sans-serif;" class="px">
+              <p style="margin:0;font-size:12px;line-height:1.6;color:#94a3b8;">
+                🔒 Odkaz je platný <strong style="color:#64748b;">24 hodín</strong>.
+                Ak si účet nevytváral(a) ty, tento e-mail pokojne ignoruj — nič sa nestane.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+        <!-- Footer -->
+        <table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:560px;">
+          <tr>
+            <td align="center" style="padding:20px 40px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.6;color:#94a3b8;">
+              FOS Dashboard · SYLEX Fiber Optics<br>
+              Táto správa bola odoslaná automaticky, prosím neodpovedaj na ňu.
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
   return {
     subject: 'Overenie e-mailu — FOS Dashboard',
-    text: `${who}\n\nPotvrď svoj e-mail otvorením odkazu:\n${verifyUrl}\n\nOdkaz je platný 24 hodín.\n\nFOS Dashboard · SYLEX`,
-    html: `
-<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;color:#1e293b">
-  <div style="background:#0d1225;color:#f0f9ff;padding:22px 26px;border-radius:12px 12px 0 0">
-    <div style="font-size:1.3rem;font-weight:800;letter-spacing:.02em">FOS <span style="color:#67e8f9">Dashboard</span></div>
-    <div style="font-size:.8rem;color:#94a3b8;margin-top:2px">SYLEX · Fiber Optics</div>
-  </div>
-  <div style="border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;padding:24px 26px">
-    <p style="margin:0 0 14px">${who}</p>
-    <p style="margin:0 0 18px">tvoj účet bol vytvorený. Prosím potvrď svoju e-mailovú adresu kliknutím na tlačidlo nižšie:</p>
-    <p style="margin:0 0 22px"><a href="${verifyUrl}" style="display:inline-block;background:#0891b2;color:#fff;text-decoration:none;padding:11px 22px;border-radius:8px;font-weight:700">Overiť e-mail</a></p>
-    <p style="margin:0 0 6px;font-size:.82rem;color:#64748b">Ak tlačidlo nefunguje, skopíruj tento odkaz do prehliadača:</p>
-    <p style="margin:0 0 18px;font-size:.8rem;word-break:break-all"><a href="${verifyUrl}" style="color:#0891b2">${verifyUrl}</a></p>
-    <p style="margin:0;font-size:.78rem;color:#94a3b8">Odkaz je platný 24 hodín. Ak si účet nevytváral(a) ty, tento e-mail ignoruj.</p>
-  </div>
-</div>`
+    text: `${name ? `Ahoj ${name},` : 'Ahoj,'}\n\n`
+      + `tvoj účet vo FOS Dashboarde bol vytvorený. Potvrď svoju e-mailovú adresu otvorením odkazu:\n\n`
+      + `${verifyUrl}\n\n`
+      + `Odkaz je platný 24 hodín. Ak si účet nevytváral(a) ty, tento e-mail ignoruj.\n\n`
+      + `FOS Dashboard · SYLEX Fiber Optics`,
+    html
   };
 }
 

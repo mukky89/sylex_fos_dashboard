@@ -6557,6 +6557,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.32.0', date: '15. 7. 2026', tag: 'feat', items: [
+    'Nový <strong>dizajn overovacieho e-mailu</strong>: table-based responzívna šablóna s brandovanou hlavičkou (FOS Dashboard · SYLEX), akcentovou linkou, „bulletproof" CTA tlačidlom (vrátane VML fallbacku pre Outlook), preheaderom a čistým pätičkovým blokom. Vyzerá rovnako v Gmaile aj Outlooku. Meno príjemcu sa teraz HTML-escapuje.',
+  ] },
   { v: '2.31.2', date: '14. 7. 2026', tag: 'fix', items: [
     'Hotfix štartu: <code>engines.node</code> zvýšené na <code>&gt;=20</code>. Predchádzajúce <code>&gt;=18</code> spôsobilo, že Railway nainštaloval Node 18, na ktorom padal balík <code>node-ical</code> (používa regex flag <code>v</code> dostupný až od Node 20) a appka sa nespustila.',
   ] },
