@@ -6605,6 +6605,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.40.1', date: '15. 7. 2026', tag: 'style', items: [
+    'Ikona <strong>FOS Dashboard</strong> v alternatívnom bočnom paneli vrátená späť na pôvodnú (graf-ikonu) — logo SYLEX zostáva na prihlasovacej obrazovke a v ľavom hornom rohu hlavičky.',
+  ] },
   { v: '2.40.0', date: '15. 7. 2026', tag: 'feat', items: [
     'Grid pohľad úloh je predvolene <strong>zoradený podľa priority</strong> (kritická → nízka) a riadky majú <strong>farebné pozadie podľa priority</strong> (kritická/vysoká červeno, nízka jemne šedo).',
     'Stĺpec <strong>Názov</strong> v Grid pohľade je 2× širší, menej sa zalamuje.',
