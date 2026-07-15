@@ -4003,7 +4003,7 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .task-grid-status-done { background: rgba(16,185,129,0.16); color: #34d399; }
 .task-grid-status-cancelled { background: rgba(var(--dz-fg-rgb),0.1); color: rgba(var(--dz-fg-rgb),0.45); }
 .task-grid .task-prog { margin-top: 0; min-width: 110px; }
-.task-grid-lastupd { min-width: 160px; max-width: 220px; }
+.task-grid-lastupd { min-width: 240px; max-width: 330px; }
 .task-grid-lastupd-text { color: rgba(var(--dz-fg-rgb),0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .task-grid-lastupd-meta { font-size: 0.68rem; color: rgba(var(--dz-fg-rgb),0.4); margin-top: 2px; }
 /* Vlastný hover tooltip s celým textom poslednej aktualizácie (namiesto natívneho title, s krátkym oneskorením a zalomením) */

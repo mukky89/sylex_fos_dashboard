@@ -2026,10 +2026,10 @@
           <button class="tasks-filter active" data-tfilter="open" onclick="setTaskFilter('open')">Aktívne</button>
           <button class="tasks-filter" data-tfilter="all" onclick="setTaskFilter('all')">Všetky</button>
           <button class="tasks-filter" data-tfilter="done" onclick="setTaskFilter('done')">Hotové</button>
+          <select id="tkTagFilter" class="tk-tag-filter" onchange="setTaskTagFilter(this.value)" title="Filtrovať podľa tagu">
+            <option value="">Všetky tagy</option>
+          </select>
         </div>
-        <select id="tkTagFilter" class="tk-tag-filter" onchange="setTaskTagFilter(this.value)" title="Filtrovať podľa tagu">
-          <option value="">Všetky tagy</option>
-        </select>
         <button class="tasks-filter hidden" id="taskGroupBtn" onclick="toggleTaskGroup()" title="Zoskupiť úlohy podľa projektu a zákazníka">🗂️ Zoskupiť</button>
         <div class="tasks-viewtoggle">
           <button class="tasks-view" data-tview="list" onclick="setTaskView('list')" title="Zoznam">☰ Zoznam</button>

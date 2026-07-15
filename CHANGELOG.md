@@ -8,6 +8,13 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.40.4] — 2026-07-15
+### Zmenené
+- Grid pohľad úloh: stĺpec Aktualizácia rozšírený o 50 % (min-width
+  160→240px, max-width 220→330px, orezanie textu 50→75 znakov).
+- Filter „Všetky tagy" presunutý z osobitného miesta v toolbare priamo
+  do skupiny `.tasks-filters` (Aktívne/Všetky/Hotové) — zarovnaný vľavo.
+
 ## [2.40.3] — 2026-07-15
 ### Opravené
 - Grid pohľad úloh: stĺpec Termín mal zalamovaný text (chýbajúci
