@@ -96,6 +96,7 @@ body {
   cursor: pointer; flex-shrink: 0; margin-right: 20px;
   text-decoration: none;
 }
+.logo-img { height: 26px; width: auto; display: block; flex-shrink: 0; }
 .logo-wordmark {
   font-family: var(--font-title); font-weight: 700;
   font-size: 1.05rem; letter-spacing: 0.06em;
@@ -3186,6 +3187,7 @@ body.logged-out .thermo-corner { display: none !important; }
   border: 1px solid rgba(var(--dz-fg-rgb),0.12); border-radius: 16px;
   padding: 32px 28px; box-shadow: var(--shadow-lg); text-align: center;
 }
+.login-logo-img { display: block; height: 52px; width: auto; margin: 0 auto 16px; }
 .login-logo { font-family: var(--font-title); font-size: 1.6rem; font-weight: 700; color: var(--dz-text); letter-spacing: 0.04em; }
 .login-logo span { color: var(--dz-cyan); }
 .login-sub { font-size: 0.82rem; color: rgba(var(--dz-fg-rgb),0.5); margin: 6px 0 22px; }
@@ -3540,8 +3542,10 @@ body.layout-sidebar .tour-fab { left: calc(var(--appsb-w) + 16px); }
 .asb-logo {
   width: 34px; height: 34px; flex-shrink: 0; border-radius: 9px;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(140deg, #00d4ff, #6366f1); color: #06121f;
+  background: #fff; padding: 5px; box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
 }
+.asb-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .asb-brand-txt { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
 .asb-brand-name { font-family: var(--font-title); font-weight: 700; font-size: 1.02rem; white-space: nowrap; }
 .asb-brand-sub { font-size: 0.62rem; letter-spacing: 0.18em; opacity: 0.5; }

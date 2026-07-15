@@ -132,10 +132,15 @@ function esc(s) {
 // Šablóna overovacieho e-mailu.
 // Table-based, inline štýly, bulletproof CTA (vrátane VML pre Outlook),
 // preheader a responzívne správanie — aby vyzeral rovnako v Gmaile aj Outlooku.
-function verificationEmail({ name, verifyUrl }) {
+function verificationEmail({ name, verifyUrl, logoUrl }) {
   const who = name ? `Ahoj ${esc(name)},` : 'Ahoj,';
   const url = esc(verifyUrl);
   const preheader = 'Potvrď svoju e-mailovú adresu a aktivuj prístup do FOS Dashboardu.';
+  // Logo SYLEX vpravo v hlavičke — cez absolútnu URL (obrázky v maile potrebujú hostovanú adresu).
+  // Ak nepoznáme verejnú adresu appky, ponecháme textový fallback „SYLEX".
+  const brandCell = logoUrl
+    ? `<img src="${esc(logoUrl)}" alt="SYLEX" height="30" style="display:block;height:30px;width:auto;border:0;outline:none;text-decoration:none;">`
+    : `SYLEX`;
 
   const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="sk">
@@ -176,8 +181,8 @@ function verificationEmail({ name, verifyUrl }) {
                   <td style="font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:800;letter-spacing:.3px;color:#f0f9ff;">
                     FOS&nbsp;<span style="color:#67e8f9;">Dashboard</span>
                   </td>
-                  <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#94a3b8;letter-spacing:1px;text-transform:uppercase;">
-                    SYLEX
+                  <td align="right" valign="middle" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#94a3b8;letter-spacing:1px;text-transform:uppercase;">
+                    ${brandCell}
                   </td>
                 </tr>
               </table>

@@ -30,10 +30,11 @@ router.get('/verify-email', async (req, res) => {
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>
 <style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0d1225;font-family:Arial,Helvetica,sans-serif;color:#e2e8f0}
 .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:34px 40px;max-width:420px;text-align:center}
+.logo-img{height:46px;width:auto;display:block;margin:0 auto 14px}
 .logo{font-size:1.4rem;font-weight:800;margin-bottom:18px}.logo span{color:#67e8f9}
 .ico{font-size:3rem;margin-bottom:10px}.t{font-size:1.15rem;font-weight:700;margin:0 0 8px;color:${ok ? '#4ade80' : '#fca5a5'}}
 .m{font-size:.9rem;color:#94a3b8;line-height:1.5}a{display:inline-block;margin-top:20px;color:#67e8f9;text-decoration:none;font-weight:700}</style></head>
-<body><div class="card"><div class="logo">FOS <span>Dashboard</span></div><div class="ico">${ok ? '✅' : '⚠️'}</div>
+<body><div class="card"><img class="logo-img" src="/img/sylex-logo.svg" alt="SYLEX"><div class="logo">FOS <span>Dashboard</span></div><div class="ico">${ok ? '✅' : '⚠️'}</div>
 <p class="t">${title}</p><p class="m">${msg}</p><a href="/">← Prejsť na prihlásenie</a></div></body></html>`;
   try {
     if (!token) return res.status(400).send(page(false, 'Chýbajúci token', 'Odkaz na overenie je neplatný.'));

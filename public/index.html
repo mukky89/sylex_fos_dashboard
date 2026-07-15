@@ -22,6 +22,7 @@
   <!-- ===== LOGIN ===== -->
   <div id="loginOverlay" class="login-overlay">
     <div class="login-box">
+      <img class="login-logo-img" src="/img/sylex-logo.svg" alt="SYLEX">
       <div class="login-logo">FOS <span>Dashboard</span></div>
       <p class="login-sub">Prihlásenie do systému</p>
       <form onsubmit="doLogin(event)">
@@ -37,9 +38,9 @@
   <header class="header">
     <div class="header-inner">
       <div class="logo" onclick="showPage('home')">
-        <span class="logo-wordmark">FOS Dashboard</span>
+        <img class="logo-img" src="/img/sylex-logo.svg" alt="SYLEX" width="34" height="26">
         <div class="logo-divider"></div>
-        <span class="logo-sub-text">SYLEX</span>
+        <span class="logo-wordmark">FOS Dashboard</span>
       </div>
 
       <!-- Quick link tiles in header — loaded dynamically from DB -->
@@ -182,7 +183,7 @@
   <aside id="appSidebar" class="app-sidebar" aria-label="Hlavná navigácia">
     <div class="asb-brand" onclick="showPage('home')">
       <div class="asb-logo">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h3l2-7 4 14 2-7h3l2 4h2"/></svg>
+        <img src="/img/sylex-logo.svg" alt="SYLEX">
       </div>
       <div class="asb-brand-txt">
         <span class="asb-brand-name">FOS Dashboard</span>

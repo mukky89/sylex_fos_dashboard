@@ -8,6 +8,25 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.33.0] — 2026-07-15
+### Pridané
+- **Oficiálne logo SYLEX** (červený emblém so slovom „sylex", `#E2001A`)
+  nasadené naprieč celou aplikáciou:
+  - webové assety `public/img/sylex-logo.svg` (vektor, self-contained) a
+    `public/img/sylex-logo.png`,
+  - **hlavička** (`.logo` v `index.html`) — logo pred názvom *FOS Dashboard*,
+  - **prihlasovacia obrazovka** (`.login-logo-img`),
+  - **alternatívny bočný panel** (`.asb-logo`, biela plôška s logom),
+  - stránka **overenia e-mailu** (`routes/auth.js`),
+  - **overovací e-mail** (`utils/mailer.js`) — logo cez hostované PNG
+    (absolútna URL z `APP_URL`/requestu) s textovým fallbackom „SYLEX",
+  - export **pracovných postupov** do Wordu/PDF
+    (`routes/procedures.js`, `public/assets/guides/sylex-logo.png`,
+    zachovaný pomer strán 59×45).
+### Zmenené
+- Logo v hlavičke nahradilo pôvodný textový emblém; funguje na svetlom aj
+  tmavom podklade (červená je čitateľná na oboch).
+
 ## [2.32.0] — 2026-07-15
 ### Pridané
 - **Nový dizajn overovacieho e-mailu** (`utils/mailer.js`) — table-based

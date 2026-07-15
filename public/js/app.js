@@ -6557,6 +6557,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.33.0', date: '15. 7. 2026', tag: 'feat', items: [
+    'Oficiálne <strong>logo SYLEX</strong> (červený emblém so slovom „sylex") nasadené naprieč celou aplikáciou: v <strong>hlavičke</strong> (pred názvom FOS Dashboard), na <strong>prihlasovacej obrazovke</strong>, v <strong>alternatívnom bočnom paneli</strong>, na stránke <strong>overenia e-mailu</strong>, v <strong>overovacom e-maile</strong> (hostované PNG s textovým fallbackom) a v exportovaných <strong>pracovných postupoch</strong> (Word/PDF). Logo je vektorové (SVG) a funguje na svetlom aj tmavom podklade.',
+  ] },
   { v: '2.32.0', date: '15. 7. 2026', tag: 'feat', items: [
     'Nový <strong>dizajn overovacieho e-mailu</strong>: table-based responzívna šablóna s brandovanou hlavičkou (FOS Dashboard · SYLEX), akcentovou linkou, „bulletproof" CTA tlačidlom (vrátane VML fallbacku pre Outlook), preheaderom a čistým pätičkovým blokom. Vyzerá rovnako v Gmaile aj Outlooku. Meno príjemcu sa teraz HTML-escapuje.',
   ] },

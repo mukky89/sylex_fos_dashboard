@@ -33,7 +33,8 @@ async function issueVerification(user, req) {
   await user.save();
   const base = mailer.baseUrl(req);
   const verifyUrl = `${base}/api/auth/verify-email?token=${token}`;
-  const tpl = mailer.verificationEmail({ name: user.name, verifyUrl });
+  const logoUrl = base ? `${base}/img/sylex-logo.png` : '';
+  const tpl = mailer.verificationEmail({ name: user.name, verifyUrl, logoUrl });
   const r = await mailer.sendMail({ to: user.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
   return { emailSent: r.sent, verifyUrl, mailError: r.error };
 }
