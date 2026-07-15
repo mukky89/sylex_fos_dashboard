@@ -6605,6 +6605,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.40.2', date: '15. 7. 2026', tag: 'fix', items: [
+    'Oprava farby ikony FOS Dashboard v alternatívnom bočnom paneli — vrátené aj pôvodné pozadie (tyrkysovo-fialový gradient) a farba ikony, ktoré ostali nedopatrením biele po vrátení ikony.',
+  ] },
   { v: '2.40.1', date: '15. 7. 2026', tag: 'style', items: [
     'Ikona <strong>FOS Dashboard</strong> v alternatívnom bočnom paneli vrátená späť na pôvodnú (graf-ikonu) — logo SYLEX zostáva na prihlasovacej obrazovke a v ľavom hornom rohu hlavičky.',
   ] },

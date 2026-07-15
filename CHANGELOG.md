@@ -8,6 +8,13 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.40.2] — 2026-07-15
+### Opravené
+- `.asb-logo` pozadie a farba ikony vo v2.40.1 ostali nastavené pre
+  logo SYLEX (biele pozadie), takže po vrátení pôvodnej grafovej SVG
+  ikony bola nesprávnej farby. Vrátené aj pôvodné pozadie
+  (`linear-gradient(140deg, #00d4ff, #6366f1)`) a farba ikony (`#06121f`).
+
 ## [2.40.1] — 2026-07-15
 ### Zmenené
 - Ikona FOS Dashboard v alternatívnom bočnom paneli (`#appSidebar .asb-logo`)

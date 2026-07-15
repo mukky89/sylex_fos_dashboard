@@ -3562,8 +3562,7 @@ body.layout-sidebar .tour-fab { left: calc(var(--appsb-w) + 16px); }
 .asb-logo {
   width: 34px; height: 34px; flex-shrink: 0; border-radius: 9px;
   display: flex; align-items: center; justify-content: center;
-  background: #fff; padding: 5px; box-sizing: border-box;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  background: linear-gradient(140deg, #00d4ff, #6366f1); color: #06121f;
 }
 .asb-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .asb-brand-txt { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
