@@ -6557,6 +6557,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.35.0', date: '15. 7. 2026', tag: 'feat', items: [
+    'Nový <strong>Grid</strong> pohľad úloh (tretí view vedľa Zoznamu a Kanbanu) — tabuľka so stĺpcami názov, stav, priorita, projekt, zákazník, termín, tagy a progres, s triedením kliknutím na hlavičku stĺpca.',
+  ] },
   { v: '2.34.0', date: '15. 7. 2026', tag: 'feat', items: [
     'Rozšírené <strong>Úlohy</strong> o hierarchiu (nadradená úloha), <strong>závislosti</strong> medzi úlohami (nemožno dokončiť, kým závislosť nie je hotová), <strong>tagy</strong> s filtrom a stavy <strong>Blokované / Na kontrolu / Zrušené</strong> + prioritu <strong>Kritická</strong>. Pribudol aj celkový <strong>progres úloh</strong> (X / Y dokončených, %) nad zoznamom a Kanban má teraz 6 stĺpcov.',
   ] },
@@ -7096,6 +7099,8 @@ function updateDateTime() {
 let tasksData = [];
 let taskFilter = 'open';
 let taskTagFilter = '';
+let taskSortKey = 'order';
+let taskSortDir = 1;
 let taskView = 'list';
 let taskGroup = true;   // zoskupiť podľa projektu + zákazníka
 let _dragTaskId = null;
@@ -7161,8 +7166,8 @@ function setTaskView(v) {
   taskView = v;
   document.querySelectorAll('.tasks-view').forEach(b => b.classList.toggle('active', b.dataset.tview === v));
   document.querySelector('.tasks-filters')?.classList.toggle('hidden', v === 'kanban');
-  document.getElementById('taskGroupBtn')?.classList.toggle('hidden', v === 'kanban');
-  document.querySelector('.tasks-inner')?.classList.toggle('tasks-wide', v === 'kanban');
+  document.getElementById('taskGroupBtn')?.classList.toggle('hidden', v !== 'list');
+  document.querySelector('.tasks-inner')?.classList.toggle('tasks-wide', v === 'kanban' || v === 'grid');
   renderTasks();
 }
 function taskOverdue(t) { return !t.done && t.due && new Date(t.due) < new Date(new Date().toDateString()); }
@@ -7211,14 +7216,12 @@ function taskSubInlineHtml(t) {
 function renderTasks() {
   const listEl = document.getElementById('tasksList');
   const kanbanEl = document.getElementById('tasksKanban');
-  if (!listEl || !kanbanEl) return;
-  if (taskView === 'kanban') {
-    listEl.classList.add('hidden'); kanbanEl.classList.remove('hidden');
-    renderTaskKanban();
-  } else {
-    kanbanEl.classList.add('hidden'); listEl.classList.remove('hidden');
-    renderTaskList();
-  }
+  const gridEl = document.getElementById('tasksGrid');
+  if (!listEl || !kanbanEl || !gridEl) return;
+  listEl.classList.add('hidden'); kanbanEl.classList.add('hidden'); gridEl.classList.add('hidden');
+  if (taskView === 'kanban') { kanbanEl.classList.remove('hidden'); renderTaskKanban(); }
+  else if (taskView === 'grid') { gridEl.classList.remove('hidden'); renderTaskGrid(); }
+  else { listEl.classList.remove('hidden'); renderTaskList(); }
 }
 
 // Vnútro riadka úlohy (zdieľané pre plochý aj zoskupený pohľad)
@@ -7345,6 +7348,67 @@ function taskKanbanCard(t) {
       <button onclick="deleteTask('${t._id}')" title="Odstrániť">✕</button>
     </div>`;
   return card;
+}
+
+// ── Grid (tabuľkový) pohľad ────────────────────────────────────────────────────
+const TASK_GRID_COLS = [
+  { key: 'title', label: 'Názov' },
+  { key: 'status', label: 'Stav' },
+  { key: 'priority', label: 'Priorita' },
+  { key: 'project', label: 'Projekt' },
+  { key: 'customer', label: 'Zákazník' },
+  { key: 'due', label: 'Termín' },
+  { key: 'tags', label: 'Tagy' },
+  { key: 'progress', label: 'Progres' }
+];
+function setTaskSort(key) {
+  if (taskSortKey === key) taskSortDir = -taskSortDir;
+  else { taskSortKey = key; taskSortDir = 1; }
+  renderTaskGrid();
+}
+function taskGridSortVal(t, key) {
+  switch (key) {
+    case 'status': return TK_STATUS_LABEL[taskStatusOf(t)] || '';
+    case 'priority': return (TK_PRIO[t.priority] || TK_PRIO.normal).l;
+    case 'due': return t.due ? new Date(t.due).getTime() : -Infinity;
+    case 'tags': return (t.tags || []).join(',');
+    case 'progress': return t.progress || 0;
+    case 'order': return t.order || 0;
+    default: return (t[key] || '').toString().toLowerCase();
+  }
+}
+function renderTaskGrid() {
+  const el = document.getElementById('tasksGrid'); if (!el) return;
+  let items = tasksData.slice();
+  if (taskFilter === 'open') items = items.filter(t => !t.done && t.status !== 'cancelled');
+  else if (taskFilter === 'done') items = items.filter(t => t.done);
+  if (taskTagFilter) items = items.filter(t => (t.tags || []).includes(taskTagFilter));
+  items.sort((a, b) => {
+    const av = taskGridSortVal(a, taskSortKey), bv = taskGridSortVal(b, taskSortKey);
+    if (av < bv) return -taskSortDir; if (av > bv) return taskSortDir; return 0;
+  });
+  if (!items.length) { el.innerHTML = '<div class="proc-empty">Žiadne úlohy v tomto filtri.</div>'; return; }
+  const thead = TASK_GRID_COLS.map(c => {
+    const active = taskSortKey === c.key;
+    const arrow = active ? (taskSortDir === 1 ? '▲' : '▼') : '';
+    return `<th onclick="setTaskSort('${c.key}')" class="${active ? 'task-grid-sorted' : ''}">${c.label} <span class="task-grid-arrow">${arrow}</span></th>`;
+  }).join('');
+  const rows = items.map(t => {
+    const prio = TK_PRIO[t.priority] || TK_PRIO.normal;
+    const od = taskOverdue(t);
+    const rowCls = 'task-grid-row' + (t.done ? ' task-grid-done' : '') + (t.status === 'cancelled' ? ' task-grid-cancelled' : '') + (od ? ' task-grid-overdue' : '');
+    return `<tr class="${rowCls}" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
+      <td class="task-grid-title">${escHtml(t.title)}</td>
+      <td><span class="task-grid-status task-grid-status-${taskStatusOf(t)}">${TK_STATUS_LABEL[taskStatusOf(t)] || ''}</span></td>
+      <td><span class="task-prio" style="color:${prio.c}">${prio.l}</span></td>
+      <td>${escHtml(t.project || '')}</td>
+      <td>${escHtml(t.customer || '')}</td>
+      <td class="${od ? 'task-od' : ''}">${t.due ? fmtDate(t.due) : ''}</td>
+      <td>${(t.tags || []).map(tag => `<span class="task-chip task-chip-tag">#${escHtml(tag)}</span>`).join(' ')}</td>
+      <td>${taskProgressHtml(t)}</td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<table class="task-grid"><thead><tr>${thead}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function getTaskDragAfter(container, y) {

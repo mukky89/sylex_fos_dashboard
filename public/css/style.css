@@ -3951,6 +3951,33 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 
 .task-row.task-cancelled, .task-kanban-card.task-cancelled { opacity: 0.55; text-decoration: line-through; }
 
+/* Grid (tabuľkový) pohľad úloh */
+.tasks-grid-wrap { overflow-x: auto; border: 1px solid rgba(var(--dz-fg-rgb),0.1); border-radius: var(--radius-lg); }
+.task-grid { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.task-grid thead th {
+  text-align: left; padding: 10px 12px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+  color: rgba(var(--dz-fg-rgb),0.5); background: rgba(var(--dz-fg-rgb),0.06); border-bottom: 1px solid rgba(var(--dz-fg-rgb),0.12);
+  cursor: pointer; white-space: nowrap; user-select: none;
+}
+.task-grid thead th:hover { color: var(--dz-text); }
+.task-grid thead th.task-grid-sorted { color: var(--accent); }
+.task-grid-arrow { font-size: 0.62rem; }
+.task-grid tbody tr { cursor: pointer; border-bottom: 1px solid rgba(var(--dz-fg-rgb),0.07); transition: background var(--transition); }
+.task-grid tbody tr:hover { background: rgba(var(--dz-fg-rgb),0.05); }
+.task-grid tbody td { padding: 9px 12px; color: rgba(var(--dz-fg-rgb),0.75); vertical-align: middle; }
+.task-grid-title { font-weight: 600; color: var(--dz-text); }
+.task-grid-row.task-grid-done .task-grid-title { text-decoration: line-through; color: rgba(var(--dz-fg-rgb),0.45); }
+.task-grid-row.task-grid-cancelled { opacity: 0.55; text-decoration: line-through; }
+.task-grid-row.task-grid-overdue { background: rgba(239,68,68,0.06); }
+.task-grid-status { padding: 3px 10px; border-radius: 100px; font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
+.task-grid-status-todo { background: rgba(100,116,139,0.16); color: #94a3b8; }
+.task-grid-status-inprogress { background: rgba(59,130,246,0.16); color: #60a5fa; }
+.task-grid-status-blocked { background: rgba(239,68,68,0.16); color: #f87171; }
+.task-grid-status-review { background: rgba(234,179,8,0.16); color: #eab308; }
+.task-grid-status-done { background: rgba(16,185,129,0.16); color: #34d399; }
+.task-grid-status-cancelled { background: rgba(var(--dz-fg-rgb),0.1); color: rgba(var(--dz-fg-rgb),0.45); }
+.task-grid .task-prog { margin-top: 0; min-width: 110px; }
+
 /* karta úlohy v kanbane */
 .task-kanban-card .kanban-card-actions button { width: 24px; height: 22px; background: rgba(var(--dz-fg-rgb),0.06); border: 1px solid rgba(var(--dz-fg-rgb),0.12); border-radius: 6px; color: var(--dz-red); cursor: pointer; font-size: 0.78rem; }
 .task-kanban-card .kanban-card-actions button:hover { background: rgba(239,68,68,0.2); }

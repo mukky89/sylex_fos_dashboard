@@ -8,6 +8,12 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.35.0] — 2026-07-15
+### Pridané
+- **Grid pohľad úloh** — nový tretí view (Zoznam / Kanban / **Grid**) na
+  stránke Úlohy: tabuľka so stĺpcami názov, stav, priorita, projekt,
+  zákazník, termín, tagy a progres, s triedením kliknutím na hlavičku stĺpca.
+
 ## [2.34.0] — 2026-07-15
 ### Pridané
 - **Úlohy** rozšírené o task-management prvky:
