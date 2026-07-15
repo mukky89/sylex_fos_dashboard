@@ -8,6 +8,19 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.46.0] — 2026-07-15
+### Opravené
+- **Vývoj výrobkov → Projekty (zoznam): filtre predaj/vývoj strácali kontext.**
+  Rozbaľovacie filtre nad stĺpcom „Procesy & výstupy" po výbere hodnoty
+  (napr. „Testovanie") už neukazovali, či ide o filter predaja alebo vývoja.
+  Pridané trvalé ikony 💼 / 🛠 / 📦 pri každom z troch filtrov (zostávajú
+  viditeľné aj po výbere) a filtre sú vizuálne zoskupené do jedného rámčeka.
+
+### Zmenené
+- Tlačidlo „✕ zrušiť filtre" má teraz aj `aria-label` (predtým len title).
+- Mierne zväčšené popisky PREDAJ/VÝVOJ/VÝSTUPY pri riadkoch projektov
+  (0.6rem → 0.64rem) pre lepšiu čitateľnosť.
+
 ## [2.45.0] — 2026-07-15
 ### Pridané
 - **WIKI FOS — prílohy (súbory) s drag & drop:** k záznamu je teraz možné

@@ -3140,7 +3140,7 @@ tr.pdv-hl { outline: none; box-shadow: none; }
 .pj-list-wrap .prod-t-num { white-space: nowrap; }
 .pj-proc-stack { display: flex; flex-direction: column; gap: 9px; padding: 4px 0; }
 .pj-proc-line { display: flex; align-items: center; gap: 10px; }
-.pj-proc-tag { flex-shrink: 0; width: 58px; text-align: right; font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.pj-proc-tag { flex-shrink: 0; width: 58px; text-align: right; font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 .pj-proc-tag-sales { color: #60a5fa; }
 .pj-proc-tag-dev { color: var(--dz-green); }
 .pj-proc-tag-deliv { color: #2dd4bf; }
@@ -3166,8 +3166,14 @@ tr.pdv-hl { outline: none; box-shadow: none; }
 .pj-col-filter:focus { outline: none; border-color: var(--accent); }
 /* filtračný riadok nad stĺpcami zoznamu projektov */
 .pj-filter-row th { padding: 7px 10px !important; background: rgba(var(--dz-fg-rgb),0.015); border-bottom: 1px solid rgba(var(--dz-fg-rgb),0.1); vertical-align: top; }
-.pj-fcell { display: flex; flex-direction: column; gap: 5px; max-width: 230px; }
+.pj-fcell {
+  display: flex; flex-direction: column; gap: 5px; max-width: 230px;
+  background: rgba(var(--dz-fg-rgb),0.03); border: 1px solid rgba(var(--dz-fg-rgb),0.08);
+  border-radius: 8px; padding: 6px;
+}
 .pj-fcell .pj-col-filter { cursor: pointer; }
+.pj-fcell-row { display: flex; align-items: center; gap: 6px; }
+.pj-fcell-tag { flex-shrink: 0; width: 15px; text-align: center; font-size: 0.72rem; line-height: 1; }
 .pj-filter-row th:last-child { display: flex; align-items: center; gap: 6px; }
 .pj-filter-clear { flex-shrink: 0; width: 26px; height: 26px; border-radius: 7px; border: 1px solid rgba(var(--dz-fg-rgb),0.15); background: rgba(var(--dz-fg-rgb),0.06); color: var(--dz-red); cursor: pointer; font-size: 0.8rem; }
 .pj-filter-clear:hover { background: rgba(239,68,68,0.18); }

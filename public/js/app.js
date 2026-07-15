@@ -5924,7 +5924,7 @@ function pjStatusFilterOptions() {
   return `<option value="">— všetky —</option>` + PJ_STATUS_ORDER.map(k => `<option value="${k}"${pjFilters.status === k ? ' selected' : ''}>${PJ_STATUS[k].l}</option>`).join('');
 }
 function pjStageFilterOptions(wf, sel) {
-  return `<option value="">${wf === 'sales' ? '💼 predaj' : '🛠 vývoj'}: všetky</option>` + pjStages(wf).map(s => `<option value="${s.key}"${sel === s.key ? ' selected' : ''}>${escHtml(s.label)}</option>`).join('');
+  return `<option value="">všetky</option>` + pjStages(wf).map(s => `<option value="${s.key}"${sel === s.key ? ' selected' : ''}>${escHtml(s.label)}</option>`).join('');
 }
 function pjDeadlineFilterOptions() {
   const opt = (v, l) => `<option value="${v}"${pjFilters.deadline === v ? ' selected' : ''}>${l}</option>`;
@@ -5932,15 +5932,15 @@ function pjDeadlineFilterOptions() {
 }
 function pjListFilterRow() {
   return `<tr class="pj-filter-row">
-    <th><input type="text" class="pj-col-filter" placeholder="Hľadať projekt / kód…" value="${escHtml(pjFilters.text)}" oninput="pjSetFilter('text',this.value)"></th>
+    <th><input type="text" class="pj-col-filter" placeholder="Hľadať projekt / kód…" aria-label="Hľadať projekt alebo kód" value="${escHtml(pjFilters.text)}" oninput="pjSetFilter('text',this.value)"></th>
     <th><select class="pj-col-filter" onchange="pjSetFilter('status',this.value)">${pjStatusFilterOptions()}</select></th>
     <th><div class="pj-fcell">
-      <select class="pj-col-filter" onchange="pjSetFilter('sales',this.value)">${pjStageFilterOptions('sales', pjFilters.sales)}</select>
-      <select class="pj-col-filter" onchange="pjSetFilter('dev',this.value)">${pjStageFilterOptions('development', pjFilters.dev)}</select>
-      ${pjDelivFilterOpts()}
+      <div class="pj-fcell-row"><span class="pj-fcell-tag" title="Predaj">💼</span><select class="pj-col-filter" onchange="pjSetFilter('sales',this.value)">${pjStageFilterOptions('sales', pjFilters.sales)}</select></div>
+      <div class="pj-fcell-row"><span class="pj-fcell-tag" title="Vývoj">🛠</span><select class="pj-col-filter" onchange="pjSetFilter('dev',this.value)">${pjStageFilterOptions('development', pjFilters.dev)}</select></div>
+      <div class="pj-fcell-row"><span class="pj-fcell-tag" title="Výstupy">📦</span>${pjDelivFilterOpts()}</div>
     </div></th>
     <th><select class="pj-col-filter" onchange="pjSetFilter('owner',this.value)">${pjOwnerOptions()}</select></th>
-    <th><select class="pj-col-filter" onchange="pjSetFilter('deadline',this.value)">${pjDeadlineFilterOptions()}</select><button class="pj-filter-clear" title="Zrušiť filtre" onclick="pjClearFilters()">✕</button></th>
+    <th><select class="pj-col-filter" onchange="pjSetFilter('deadline',this.value)">${pjDeadlineFilterOptions()}</select><button class="pj-filter-clear" title="Zrušiť filtre" aria-label="Zrušiť filtre" onclick="pjClearFilters()">✕</button></th>
   </tr>`;
 }
 function renderProjects() {
@@ -6666,6 +6666,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.46.0', date: '15. 7. 2026', tag: 'fix', items: [
+    'Vývoj výrobkov → Projekty (zoznam): filtre <strong>predaj/vývoj strácali kontext</strong> po výbere hodnoty — pridané trvalé ikony 💼/🛠/📦 a vizuálne zoskupenie filtrov.',
+    'Zlepšená prístupnosť tlačidla „zrušiť filtre" (aria-label) a čitateľnosť popiskov PREDAJ/VÝVOJ/VÝSTUPY.',
+  ] },
   { v: '2.45.0', date: '15. 7. 2026', tag: 'feat', items: [
     'WIKI FOS: nová možnosť pridávať k záznamu <strong>prílohy (súbory)</strong> pretiahnutím (drag & drop) alebo kliknutím — zobrazujú sa v detaile ako zoznam na stiahnutie.',
     'WIKI FOS: celý modul (bočný panel, prehľad, kategórie, detail záznamu, editačné modaly) prerobený na <strong>tmavý dizajn</strong> zladený so zvyškom appky.',
