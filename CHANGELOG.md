@@ -8,6 +8,12 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.40.5] — 2026-07-15
+### Zmenené
+- `.tasks-inner.tasks-wide` max-width zväčšený z 1240px na 1640px —
+  po rozšírení stĺpca Aktualizácia o 50 % sa Grid tabuľka opäť zmestí
+  bez horizontálneho scrollbaru na bežných obrazovkách.
+
 ## [2.40.4] — 2026-07-15
 ### Zmenené
 - Grid pohľad úloh: stĺpec Aktualizácia rozšírený o 50 % (min-width
