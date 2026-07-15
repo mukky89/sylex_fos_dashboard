@@ -35,6 +35,10 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 // Zvukové nahrávky (hlasový diktát v pracovných postupoch) — väčší limit
 const uploadAudio = multer({ storage, limits: { fileSize: 25 * 1024 * 1024 } });
+// Ľubovoľné súbory (prílohy k WIKI záznamom a pod.)
+const uploadFile = multer({ storage, limits: { fileSize: 25 * 1024 * 1024 } });
+// multer dáva originalname v latin1 — oprava diakritiky
+function fixFileName(n) { try { return Buffer.from(n, 'latin1').toString('utf8'); } catch { return n; } }
 
 // In-memory sensor config — updated live by admin routes
 const sensorCfg = { ip: '10.88.5.184', path: '/values.xml', interval: 60 };
@@ -368,6 +372,20 @@ app.post('/api/upload/audio', (req, res) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: 'Žiadny zvukový súbor' });
     return res.json({ url: `/uploads/${req.file.filename}` });
+  });
+});
+
+// Generický upload súboru (prílohy — WIKI a pod.), vracia aj pôvodný názov a veľkosť
+app.post('/api/upload/file', (req, res) => {
+  uploadFile.single('file')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'Súbor presahuje limit 25 MB' : err.message });
+    if (!req.file) return res.status(400).json({ error: 'Žiadny súbor' });
+    return res.json({
+      url: `/uploads/${req.file.filename}`,
+      name: fixFileName(req.file.originalname),
+      size: req.file.size,
+      mime: req.file.mimetype || ''
+    });
   });
 });
 

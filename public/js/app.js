@@ -544,6 +544,7 @@ let currentCategoryId = null;
 let editingProductId  = null;
 let quill       = null;
 let pendingImages = [];
+let pendingAttachments = [];
 
 // ==============================
 // PARTICLES (home page)
@@ -1455,6 +1456,20 @@ function renderProductDetail(p) {
       ${img.caption ? `<div class="pd-image-caption">${escHtml(img.caption)}</div>` : ''}`;
     imgEl.appendChild(card);
   });
+
+  // Prílohy (súbory)
+  const attEl = document.getElementById('detailAttachments');
+  const atts = p.attachments || [];
+  attEl.innerHTML = atts.length ? '<div class="pd-attachments-h">Prílohy</div>' + atts.map(a => `
+    <a class="pd-att-card" href="${a.url}" download="${escHtml(a.name || '')}" target="_blank" rel="noopener">
+      <svg class="pd-att-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+      <div class="pd-att-body">
+        <div class="pd-att-name">${escHtml(a.name || '')}</div>
+        <div class="pd-att-size">${fsFmtSize(a.size)}</div>
+      </div>
+      <svg class="pd-att-dl" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </a>`).join('') : '';
+  attEl.classList.toggle('hidden', !atts.length);
 }
 
 function goBackToCategory() {
@@ -1489,6 +1504,7 @@ async function deleteCurrentProduct() {
 function openProductModal(product = null) {
   editingProductId = product ? product._id : null;
   pendingImages = product ? [...(product.images || [])] : [];
+  pendingAttachments = product ? [...(product.attachments || [])] : [];
 
   document.getElementById('modalTitle').textContent = product ? 'Upraviť záznam' : 'Nový záznam';
   document.getElementById('fName').value    = product?.name        || '';
@@ -1537,12 +1553,15 @@ function openProductModal(product = null) {
   renderImagePreviews();
   enableFileDrop(document.querySelector('#productModal .image-upload-zone'), (files) =>
     dropImagesTo(files, (url) => { pendingImages.push({ url, caption: '' }); renderImagePreviews(); }));
+
+  renderAttachmentPreviews();
+  enableFileDrop(document.querySelector('#productModal .file-upload-zone'), (files) => dropAttachmentsTo(files));
   document.getElementById('productModal').classList.remove('hidden');
 }
 
 function closeProductModal() {
   document.getElementById('productModal').classList.add('hidden');
-  editingProductId = null; pendingImages = []; quill = null;
+  editingProductId = null; pendingImages = []; pendingAttachments = []; quill = null;
 }
 
 // ==============================
@@ -1593,6 +1612,47 @@ function renderImagePreviews() {
 function removeImage(i) { pendingImages.splice(i, 1); renderImagePreviews(); }
 
 // ==============================
+// PRÍLOHY (súbory) — drag & drop upload
+// ==============================
+async function uploadAttachmentFile(file) {
+  const fd = new FormData(); fd.append('file', file);
+  try {
+    const r = await fetch('/api/upload/file', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    return d;
+  } catch (e) { toast('Chyba pri nahrávaní súboru: ' + e.message, 'error'); return null; }
+}
+
+async function dropAttachmentsTo(files) {
+  toast(`Nahrávam ${files.length} súbor(ov)…`, 'info');
+  for (const f of files) {
+    const d = await uploadAttachmentFile(f);
+    if (d) pendingAttachments.push({ url: d.url, name: d.name, size: d.size, mime: d.mime });
+  }
+  renderAttachmentPreviews();
+}
+
+async function handleFileUpload(input) {
+  if (input.files && input.files.length) await dropAttachmentsTo([...input.files]);
+  input.value = '';
+}
+
+function renderAttachmentPreviews() {
+  const list = document.getElementById('filePreviewList');
+  if (!list) return;
+  list.innerHTML = pendingAttachments.map((a, i) => `
+    <div class="file-preview-item">
+      <svg class="file-preview-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+      <span class="file-preview-name" title="${escHtml(a.name || '')}">${escHtml(a.name || '')}</span>
+      <span class="file-preview-size">${fsFmtSize(a.size)}</span>
+      <button class="file-preview-remove" onclick="removeAttachment(${i})">✕</button>
+    </div>`).join('');
+}
+
+function removeAttachment(i) { pendingAttachments.splice(i, 1); renderAttachmentPreviews(); }
+
+// ==============================
 // SAVE PRODUCT
 // ==============================
 async function saveProduct() {
@@ -1609,6 +1669,7 @@ async function saveProduct() {
     status:      document.querySelector('input[name="fStatus"]:checked').value,
     content:     quill ? quill.root.innerHTML : '',
     images:      pendingImages,
+    attachments: pendingAttachments,
     tags:        document.getElementById('fTags').value.split(',').map(t => t.trim()).filter(Boolean)
   };
 
@@ -6605,6 +6666,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.45.0', date: '15. 7. 2026', tag: 'feat', items: [
+    'WIKI FOS: nová možnosť pridávať k záznamu <strong>prílohy (súbory)</strong> pretiahnutím (drag & drop) alebo kliknutím — zobrazujú sa v detaile ako zoznam na stiahnutie.',
+    'WIKI FOS: celý modul (bočný panel, prehľad, kategórie, detail záznamu, editačné modaly) prerobený na <strong>tmavý dizajn</strong> zladený so zvyškom appky.',
+  ] },
   { v: '2.44.0', date: '15. 7. 2026', tag: 'chore', items: [
     'Odstránený modul <strong>Termostatický kúpeľ — SIKA TP</strong> (teplotné kalibrátory TP37 / TP3M cez ethernet) — vrátane stránky, položiek v navigácii, backend routy a modelu.',
   ] },
