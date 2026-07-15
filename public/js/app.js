@@ -6605,6 +6605,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.40.0', date: '15. 7. 2026', tag: 'feat', items: [
+    'Grid pohľad úloh je predvolene <strong>zoradený podľa priority</strong> (kritická → nízka) a riadky majú <strong>farebné pozadie podľa priority</strong> (kritická/vysoká červeno, nízka jemne šedo).',
+    'Stĺpec <strong>Názov</strong> v Grid pohľade je 2× širší, menej sa zalamuje.',
+    'Stĺpec <strong>Posledná aktualizácia</strong> teraz pri prejdení myšou zobrazí celý text v prehľadnom tooltipe (namiesto orezaného textu).',
+  ] },
   { v: '2.39.1', date: '15. 7. 2026', tag: 'fix', items: [
     'Grid pohľad úloh: riadky úloh v zoskupení <strong>Zákazník → Projekt</strong> sú teraz odsadené zľava viac než hlavička skupiny Projekt, takže je hneď vidno, pod ktorý projekt úloha patrí.',
   ] },
@@ -7169,13 +7174,18 @@ function updateDateTime() {
 let tasksData = [];
 let taskFilter = 'open';
 let taskTagFilter = '';
-let taskSortKey = 'order';
-let taskSortDir = 1;
+let taskSortKey = 'priority';
+let taskSortDir = -1;
 let taskView = 'grid';
 let taskGroup = true;   // zoskupiť podľa projektu + zákazníka
 let _dragTaskId = null;
 let tkSubtasks = [];   // pracovná kópia podúloh v modale
-const TK_PRIO = { low: { l: 'Nízka', c: '#64748b' }, normal: { l: 'Normálna', c: '#3b82f6' }, high: { l: 'Vysoká', c: '#ef4444' }, critical: { l: 'Kritická', c: '#b91c1c' } };
+const TK_PRIO = {
+  low:      { l: 'Nízka',     c: '#64748b', rank: 1 },
+  normal:   { l: 'Normálna',  c: '#3b82f6', rank: 2 },
+  high:     { l: 'Vysoká',    c: '#ef4444', rank: 3 },
+  critical: { l: 'Kritická',  c: '#b91c1c', rank: 4 }
+};
 const TK_STATUS = [
   { key: 'todo', label: 'Čaká' }, { key: 'inprogress', label: 'Prebieha' }, { key: 'blocked', label: 'Blokované' },
   { key: 'review', label: 'Na kontrolu' }, { key: 'done', label: 'Hotové' }, { key: 'cancelled', label: 'Zrušené' }
@@ -7492,7 +7502,7 @@ function setTaskGridColFilter(key, val) {
 function taskGridSortVal(t, key) {
   switch (key) {
     case 'status': return TK_STATUS_LABEL[taskStatusOf(t)] || '';
-    case 'priority': return (TK_PRIO[t.priority] || TK_PRIO.normal).l;
+    case 'priority': return (TK_PRIO[t.priority] || TK_PRIO.normal).rank;
     case 'due': return t.due ? new Date(t.due).getTime() : -Infinity;
     case 'tags': return (t.tags || []).join(',');
     case 'progress': return t.progress || 0;
@@ -7561,7 +7571,8 @@ function taskGridRowHtml(t, groupIndent) {
   const indent = (groupIndent || 0) + depth * 18;
   const lu = taskLatestUpdate(t);
   const luText = lu ? (lu.text.length > 50 ? lu.text.slice(0, 50) + '…' : lu.text) : '';
-  const rowCls = 'task-grid-row' + (t.done ? ' task-grid-done' : '') + (t.status === 'cancelled' ? ' task-grid-cancelled' : '') + (od ? ' task-grid-overdue' : '');
+  const rowCls = 'task-grid-row task-grid-prio-' + (t.priority || 'normal')
+    + (t.done ? ' task-grid-done' : '') + (t.status === 'cancelled' ? ' task-grid-cancelled' : '') + (od ? ' task-grid-overdue' : '');
   return `<tr class="${rowCls}" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
       <td class="task-grid-title"${indent ? ` style="padding-left:${12 + indent}px"` : ''}>${depth ? '<span class="task-tree-indent">↳</span>' : ''}${escHtml(t.title)}</td>
       <td><span class="task-grid-status task-grid-status-${taskStatusOf(t)}">${TK_STATUS_LABEL[taskStatusOf(t)] || ''}</span></td>
@@ -7571,7 +7582,7 @@ function taskGridRowHtml(t, groupIndent) {
       <td class="${od ? 'task-od' : ''}">${t.due ? fmtDate(t.due) : ''}</td>
       <td>${(t.tags || []).map(tag => `<span class="task-chip task-chip-tag">#${escHtml(tag)}</span>`).join(' ')}</td>
       <td>${taskProgressHtml(t)}</td>
-      <td class="task-grid-lastupd" title="${lu ? escHtml(lu.text) : ''}">${lu ? `<div class="task-grid-lastupd-text">${escHtml(luText)}</div><div class="task-grid-lastupd-meta">${escHtml(lu.authorName || '')} · ${fmtDateTime(lu.createdAt)}</div>` : ''}</td>
+      <td class="task-grid-lastupd"${lu ? ` data-tooltip="${escHtml(lu.text)}"` : ''}>${lu ? `<div class="task-grid-lastupd-text">${escHtml(luText)}</div><div class="task-grid-lastupd-meta">${escHtml(lu.authorName || '')} · ${fmtDateTime(lu.createdAt)}</div>` : ''}</td>
     </tr>`;
 }
 // Kľúče zbalených skupín (2-úrovňové zoskupenie Zákazník → Projekt)
