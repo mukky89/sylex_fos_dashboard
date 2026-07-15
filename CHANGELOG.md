@@ -8,6 +8,26 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.41.0] — 2026-07-15
+### Pridané
+- **Zadávateľ úlohy** (`Task.assignedTo`, `GET /api/tasks/options`
+  cez existujúci `/api/users/options`) — priradenie úlohy inému
+  používateľovi Dashboardu. Priradený vidí úlohu vo svojom zozname
+  Úloh (`GET /api/tasks` teraz vracia aj `$or: [{user}, {assignedTo}]`
+  s vypočítaným `readOnly` príznakom), ale nemôže ju editovať ani
+  ukončiť — PUT/DELETE/POST updates zostávajú prísne obmedzené na
+  vlastníka (`user: req.user.id`), takže vynucovanie je na serveri,
+  nie len v UI. V zozname/Grid/Kanbane sa zobrazuje badge
+  „👁 len na čítanie" a checkbox/drag/mazanie sú pre tieto úlohy skryté.
+- **Sticky hlavička Grid pohľadu** — `<thead>` (vrátane riadku
+  filtrov) zostáva prilepený pod hlavičkou appky pri scrollovaní.
+
+### Zmenené
+- Modal **Upraviť úlohu** kompletne prerobený: tmavá téma (`#131c35`,
+  zladená s dark stránkou Úlohy) a polia zoskupené do logických sekcií
+  s nadpismi (Základné · Stav a termín · Kontext · Priradenie a väzby ·
+  Podúlohy · Aktualizácie) namiesto jedného dlhého svetlého formulára.
+
 ## [2.40.5] — 2026-07-15
 ### Zmenené
 - `.tasks-inner.tasks-wide` max-width zväčšený z 1240px na 1640px —

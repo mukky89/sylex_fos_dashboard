@@ -30,6 +30,7 @@ const taskSchema = new mongoose.Schema({
   tags:        { type: [String], default: [] },
   parent:      { type: mongoose.Schema.Types.ObjectId, ref: 'Task', default: null },   // nadradená úloha (hierarchia)
   dependsOn:   { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }], default: [] },  // závislosti
+  assignedTo:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },   // zadávateľ — vidí úlohu, needituje ju
   done:        { type: Boolean, default: false },
   doneAt:      { type: Date, default: null }
 }, { timestamps: true });

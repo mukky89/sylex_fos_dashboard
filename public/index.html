@@ -2047,28 +2047,17 @@
   <!-- ===== TASK MODAL ===== -->
   <div id="taskModal" class="modal hidden">
     <div class="modal-backdrop" onclick="closeTaskModal()"></div>
-    <div class="modal-box modal-md">
+    <div class="modal-box modal-md tk-modal-box">
       <div class="modal-header"><h2 id="tkModalTitle">Nová úloha</h2><button class="modal-close" onclick="closeTaskModal()">✕</button></div>
       <div class="modal-body">
         <input type="hidden" id="tkId">
-        <div class="form-group"><label>Názov *</label><input type="text" id="tkTitle" placeholder="Čo treba spraviť"></div>
-        <div class="form-row">
-          <div class="form-group"><label>Projekt</label>
-            <select id="tkProject" onchange="taskCatalogSelectChange('tkProject')"><option value="">— žiadny —</option></select>
-            <input type="text" id="tkProjectNew" class="hidden" placeholder="Názov nového projektu">
-          </div>
-          <div class="form-group"><label>Zákazník</label>
-            <select id="tkCustomer" onchange="taskCatalogSelectChange('tkCustomer')"><option value="">— žiadny —</option></select>
-            <input type="text" id="tkCustomerNew" class="hidden" placeholder="Názov nového zákazníka">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Termín</label><input type="date" id="tkDue"></div>
-          <div class="form-group"><label>Priorita</label>
-            <select id="tkPriority"><option value="low">Nízka</option><option value="normal" selected>Normálna</option><option value="high">Vysoká</option><option value="critical">Kritická</option></select>
-          </div>
-        </div>
-        <div class="form-row">
+        <div id="tkReadonlyBanner" class="tk-readonly-banner hidden"></div>
+
+        <div class="tk-sec-lbl tk-sec-lbl-first">Základné</div>
+        <div class="form-group"><label>Názov *</label><input type="text" id="tkTitle" class="tk-title-input" placeholder="Čo treba spraviť"></div>
+
+        <div class="tk-sec-lbl">Stav a termín</div>
+        <div class="form-row-3">
           <div class="form-group"><label>Stav</label>
             <select id="tkStatus">
               <option value="todo">Čaká</option>
@@ -2079,39 +2068,58 @@
               <option value="cancelled">Zrušené</option>
             </select>
           </div>
-          <div class="form-group">
-            <label>Progres — <span id="tkProgressVal">0</span> %</label>
-            <input type="range" id="tkProgress" min="0" max="100" step="5" value="0" oninput="document.getElementById('tkProgressVal').textContent=this.value">
-            <div class="tk-prog-hint" id="tkProgHint"></div>
+          <div class="form-group"><label>Priorita</label>
+            <select id="tkPriority"><option value="low">Nízka</option><option value="normal" selected>Normálna</option><option value="high">Vysoká</option><option value="critical">Kritická</option></select>
+          </div>
+          <div class="form-group"><label>Termín</label><input type="date" id="tkDue"></div>
+        </div>
+        <div class="form-group">
+          <label>Progres — <span id="tkProgressVal">0</span> %</label>
+          <input type="range" id="tkProgress" min="0" max="100" step="5" value="0" oninput="document.getElementById('tkProgressVal').textContent=this.value">
+          <div class="tk-prog-hint" id="tkProgHint"></div>
+        </div>
+
+        <div class="tk-sec-lbl">Kontext</div>
+        <div class="form-row">
+          <div class="form-group"><label>Projekt</label>
+            <select id="tkProject" onchange="taskCatalogSelectChange('tkProject')"><option value="">— žiadny —</option></select>
+            <input type="text" id="tkProjectNew" class="hidden" placeholder="Názov nového projektu">
+          </div>
+          <div class="form-group"><label>Zákazník</label>
+            <select id="tkCustomer" onchange="taskCatalogSelectChange('tkCustomer')"><option value="">— žiadny —</option></select>
+            <input type="text" id="tkCustomerNew" class="hidden" placeholder="Názov nového zákazníka">
           </div>
         </div>
+        <div class="form-group"><label>Tagy</label>
+          <input type="text" id="tkTags" placeholder="backend, urgent, api (oddelené čiarkou)">
+        </div>
+
+        <div class="tk-sec-lbl">Priradenie a väzby</div>
         <div class="form-row">
           <div class="form-group"><label>Nadradená úloha</label>
             <select id="tkParent"><option value="">— žiadna —</option></select>
           </div>
-          <div class="form-group"><label>Tagy</label>
-            <input type="text" id="tkTags" placeholder="backend, urgent, api (oddelené čiarkou)">
+          <div class="form-group"><label>Zadávateľ <span class="tk-field-hint-inline">(vidí, needituje)</span></label>
+            <select id="tkAssignedTo"><option value="">— nikto —</option></select>
           </div>
         </div>
-        <div class="form-row form-row-top">
-          <div class="form-group"><label>Závisí od</label>
-            <select id="tkDependsOn" multiple size="5" class="tk-scroll-list"></select>
-            <div class="tk-prog-hint">Podrž Ctrl/Cmd pre výber viacerých. Úlohu nemožno dokončiť, kým závislosti nie sú hotové.</div>
-          </div>
-          <!-- Podúlohy (checklist) -->
-          <div class="form-group">
-            <label>Podúlohy <span id="tkSubCount" class="tk-sub-count"></span></label>
-            <div id="tkSubList" class="tk-sub-list tk-scroll-list"></div>
-            <div class="tk-sub-add">
-              <input type="text" id="tkSubInput" placeholder="Nová podúloha — Enter pridá" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtask();}">
-              <button type="button" class="btn-secondary btn-sm" onclick="addSubtask()">+ Pridať</button>
-            </div>
+        <div class="form-group">
+          <label>Závisí od</label>
+          <select id="tkDependsOn" multiple size="4" class="tk-scroll-list"></select>
+          <div class="tk-prog-hint">Podrž Ctrl/Cmd pre výber viacerých. Úlohu nemožno dokončiť, kým závislosti nie sú hotové.</div>
+        </div>
+
+        <div class="tk-sec-lbl">Podúlohy <span id="tkSubCount" class="tk-sub-count"></span></div>
+        <div class="form-group">
+          <div id="tkSubList" class="tk-sub-list tk-scroll-list"></div>
+          <div class="tk-sub-add">
+            <input type="text" id="tkSubInput" placeholder="Nová podúloha — Enter pridá" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtask();}">
+            <button type="button" class="btn-secondary btn-sm" onclick="addSubtask()">+ Pridať</button>
           </div>
         </div>
 
-        <!-- Aktualizácie / poznámky k stavu — denník so záznamom kto a kedy -->
+        <div class="tk-sec-lbl">Aktualizácie <span id="tkUpdCount" class="tk-sub-count"></span></div>
         <div class="form-group">
-          <label>Aktualizácie <span id="tkUpdCount" class="tk-sub-count"></span></label>
           <div id="tkUpdList" class="tk-upd-list tk-scroll-list-lg"></div>
           <div class="tk-sub-add">
             <input type="text" id="tkUpdInput" placeholder="Nová aktualizácia — Enter pridá" onkeydown="if(event.key==='Enter'){event.preventDefault();addTaskUpdate();}">
@@ -2123,7 +2131,7 @@
       <div class="modal-footer">
         <button class="btn-delete" id="tkDeleteBtn" onclick="deleteTask(document.getElementById('tkId').value)" style="display:none">Odstrániť</button>
         <button class="btn-secondary" onclick="closeTaskModal()">Zrušiť</button>
-        <button class="btn-primary" onclick="saveTask()">Uložiť</button>
+        <button class="btn-primary" id="tkSaveBtn" onclick="saveTask()">Uložiť</button>
       </div>
     </div>
   </div>
