@@ -8,6 +8,15 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.40.3] — 2026-07-15
+### Opravené
+- Grid pohľad úloh: stĺpec Termín mal zalamovaný text (chýbajúci
+  `white-space: nowrap`), stĺpec Posledná aktualizácia sa kvôli
+  dlhému nadpisu (`nowrap` v hlavičke) vytláčal mimo viditeľnú šírku.
+  Skrátený nadpis na „Aktualizácia", stĺpec Názov zmenšený z 380px na
+  320px — tabuľka sa teraz zmestí bez horizontálneho skrolovania na
+  bežných obrazovkách.
+
 ## [2.40.2] — 2026-07-15
 ### Opravené
 - `.asb-logo` pozadie a farba ikony vo v2.40.1 ostali nastavené pre
