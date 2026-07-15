@@ -8,6 +8,14 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.39.1] — 2026-07-15
+### Opravené
+- Grid pohľad úloh: riadky úloh v zoskupení Zákazník → Projekt teraz majú
+  vlastné odsadenie (`taskGridRowHtml(t, groupIndent)`, 30px navyše nad
+  odsadením hlavičky skupiny Projekt), takže sú vizuálne jasne vnorené
+  pod svoj projekt — predtým začínali na rovnakej ľavej hrane ako
+  hlavička skupiny Zákazník.
+
 ## [2.39.0] — 2026-07-15
 ### Pridané
 - **Potvrdzovanie notifikácií** — nový model `NotifDismiss` a route
