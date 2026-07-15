@@ -2024,12 +2024,16 @@
           <button class="tasks-filter" data-tfilter="all" onclick="setTaskFilter('all')">Všetky</button>
           <button class="tasks-filter" data-tfilter="done" onclick="setTaskFilter('done')">Hotové</button>
         </div>
+        <select id="tkTagFilter" class="tk-tag-filter" onchange="setTaskTagFilter(this.value)" title="Filtrovať podľa tagu">
+          <option value="">Všetky tagy</option>
+        </select>
         <button class="tasks-filter active" id="taskGroupBtn" onclick="toggleTaskGroup()" title="Zoskupiť úlohy podľa projektu a zákazníka">🗂️ Zoskupiť</button>
         <div class="tasks-viewtoggle">
           <button class="tasks-view active" data-tview="list" onclick="setTaskView('list')" title="Zoznam">☰ Zoznam</button>
           <button class="tasks-view" data-tview="kanban" onclick="setTaskView('kanban')" title="Kanban">▦ Kanban</button>
         </div>
       </div>
+      <div id="tasksProgress" class="tasks-progress"></div>
       <div id="tasksList" class="tasks-list"></div>
       <div id="tasksKanban" class="kanban hidden"></div>
     </div>
@@ -2050,18 +2054,37 @@
         <div class="form-row">
           <div class="form-group"><label>Termín</label><input type="date" id="tkDue"></div>
           <div class="form-group"><label>Priorita</label>
-            <select id="tkPriority"><option value="low">Nízka</option><option value="normal" selected>Normálna</option><option value="high">Vysoká</option></select>
+            <select id="tkPriority"><option value="low">Nízka</option><option value="normal" selected>Normálna</option><option value="high">Vysoká</option><option value="critical">Kritická</option></select>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Stav</label>
-            <select id="tkStatus"><option value="todo">Čaká</option><option value="inprogress">Prebieha</option><option value="done">Hotové</option></select>
+            <select id="tkStatus">
+              <option value="todo">Čaká</option>
+              <option value="inprogress">Prebieha</option>
+              <option value="blocked">Blokované</option>
+              <option value="review">Na kontrolu</option>
+              <option value="done">Hotové</option>
+              <option value="cancelled">Zrušené</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Progres — <span id="tkProgressVal">0</span> %</label>
             <input type="range" id="tkProgress" min="0" max="100" step="5" value="0" oninput="document.getElementById('tkProgressVal').textContent=this.value">
             <div class="tk-prog-hint" id="tkProgHint"></div>
           </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Nadradená úloha</label>
+            <select id="tkParent"><option value="">— žiadna —</option></select>
+          </div>
+          <div class="form-group"><label>Tagy</label>
+            <input type="text" id="tkTags" placeholder="backend, urgent, api (oddelené čiarkou)">
+          </div>
+        </div>
+        <div class="form-group"><label>Závisí od</label>
+          <select id="tkDependsOn" multiple size="4"></select>
+          <div class="tk-prog-hint">Podrž Ctrl/Cmd pre výber viacerých. Úlohu nemožno dokončiť, kým závislosti nie sú hotové.</div>
         </div>
 
         <!-- Podúlohy (checklist) -->
