@@ -8,6 +8,7 @@ const productSchema = new mongoose.Schema({
   content: { type: String, default: '' },
   url: { type: String, default: '' },
   images: [{ url: String, caption: String }],
+  attachments: [{ url: String, name: String, size: Number, mime: String }],
   tags: [String],
   version: { type: String, default: '' },
   status: { type: String, enum: ['active', 'discontinued', 'development'], default: 'active' }

@@ -8,6 +8,19 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.45.0] — 2026-07-15
+### Pridané
+- **WIKI FOS — prílohy (súbory) s drag & drop:** k záznamu je teraz možné
+  pridať ľubovoľné súbory (manuály, exporty, dokumenty…) — pretiahnutím
+  do zóny v editačnom formulári alebo kliknutím. Prílohy sa zobrazujú
+  v detaile záznamu ako zoznam na stiahnutie (názov + veľkosť).
+
+### Zmenené
+- **WIKI FOS — tmavý dizajn:** celý modul (bočný panel, prehľad, kategórie,
+  detail záznamu, editačné modaly) prerobený z pôvodnej svetlej „knowledge
+  base" témy na tmavú, zladenú so zvyškom appky (rovnaké farby/kontrast
+  ako Postupy, Úlohy, Výroba a pod.).
+
 ## [2.44.0] — 2026-07-15
 ### Odstránené
 - **Modul „Termostatický kúpeľ — SIKA TP"** (teplotné kalibrátory TP37 / TP3M,
