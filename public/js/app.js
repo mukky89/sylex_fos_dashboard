@@ -6605,6 +6605,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.41.0', date: '15. 7. 2026', tag: 'feat', items: [
+    '<strong>Zadávateľ úlohy</strong> — priraď úlohu inému používateľovi Dashboardu; ten ju uvidí vo svojich Úlohách, ale nebude ju môcť editovať ani ukončiť (badge „👁 len na čítanie" v zozname/Grid/Kanbane).',
+    'Modal <strong>Upraviť úlohu</strong> kompletne prerobený: tmavá téma zladená so stránkou Úlohy, polia zoskupené do logických sekcií (Základné · Stav a termín · Kontext · Priradenie a väzby · Podúlohy · Aktualizácie) pre lepšiu prehľadnosť.',
+    'Grid pohľad úloh: hlavička tabuľky (aj s filtrami) je teraz <strong>prilepená hore</strong> pri scrollovaní zoznamu.',
+  ] },
   { v: '2.40.5', date: '15. 7. 2026', tag: 'style', items: [
     'Okno stránky Úlohy (Grid/Kanban) rozšírené (1240 px → 1640 px), aby sa tabuľka Grid pohľadu zmestila bez horizontálneho skrolovania.',
   ] },
@@ -7234,9 +7239,16 @@ async function loadTasks() {
   try { tasksData = await fetch('/api/tasks').then(r => r.json()); if (!Array.isArray(tasksData)) tasksData = []; }
   catch { tasksData = []; }
   await fillTaskDatalists();
+  if (!taskUsers.length) await loadTaskUsers();
   fillTaskTagFilter();
   renderTaskProgress();
   renderTasks();
+}
+// Používatelia Dashboardu — ponuka pre pole Zadávateľ
+let taskUsers = [];
+async function loadTaskUsers() {
+  try { taskUsers = await fetch('/api/users/options').then(r => r.json()); if (!Array.isArray(taskUsers)) taskUsers = []; }
+  catch { taskUsers = []; }
 }
 // Číselník projektov a zákazníkov (perzistuje aj po vymazaní úloh, ktoré ich používali)
 let taskCatalog = { customers: [], projects: [] };
@@ -7315,6 +7327,8 @@ function taskChipsHtml(t) {
   const parentId = t.parent && (t.parent._id || t.parent);
   const parent = parentId ? tasksData.find(x => x._id === parentId) : null;
   if (parent) chips.push(`<span class="task-chip task-chip-parent">⬆ ${escHtml(parent.title)}</span>`);
+  if (t.readOnly) chips.push(`<span class="task-chip task-chip-readonly" title="Zadal(a): ${escHtml(t.user?.name || t.user?.username || '')}">👁 len na čítanie</span>`);
+  else if (t.assignedTo) chips.push(`<span class="task-chip task-chip-assignee">👁 ${escHtml(t.assignedTo.name || t.assignedTo.username || '')}</span>`);
   (t.tags || []).forEach(tag => chips.push(`<span class="task-chip task-chip-tag">#${escHtml(tag)}</span>`));
   return chips.length ? `<div class="task-chips">${chips.join('')}</div>` : '';
 }
@@ -7341,9 +7355,10 @@ function taskMetaHtml(t) {
 // Inline checklist podúloh (zoznamový pohľad) — klik prepína stav
 function taskSubInlineHtml(t) {
   if (!t.subtasks || !t.subtasks.length) return '';
+  const ro = !!t.readOnly;
   return `<div class="task-sub-inline" onclick="event.stopPropagation()">${t.subtasks.map(s => `
     <label class="task-sub-il ${s.done ? 'done' : ''}">
-      <input type="checkbox" ${s.done ? 'checked' : ''} onclick="event.stopPropagation();toggleSubtaskInline('${t._id}','${s._id}')">
+      <input type="checkbox" ${s.done ? 'checked' : ''} ${ro ? 'disabled' : `onclick="event.stopPropagation();toggleSubtaskInline('${t._id}','${s._id}')"`}>
       <span>${escHtml(s.title)}</span>
     </label>`).join('')}</div>`;
 }
@@ -7370,9 +7385,10 @@ function taskRowStyle(t) {
 }
 function taskRowInner(t, withGrip) {
   const depth = taskDepth(t);
+  const ro = !!t.readOnly;
   return `
-      ${withGrip ? '<span class="task-grip" title="Potiahni na zmenu poradia">⠿</span>' : '<span class="task-grip task-grip-off">•</span>'}
-      <button class="task-check" onclick="toggleTask('${t._id}', ${t.done ? 'false' : 'true'})" title="${t.done ? 'Označiť ako nehotové' : 'Označiť ako hotové'}">${t.done ? '✓' : ''}</button>
+      ${withGrip && !ro ? '<span class="task-grip" title="Potiahni na zmenu poradia">⠿</span>' : '<span class="task-grip task-grip-off">•</span>'}
+      <button class="task-check" ${ro ? 'disabled title="Len na čítanie"' : `onclick="toggleTask('${t._id}', ${t.done ? 'false' : 'true'})" title="${t.done ? 'Označiť ako nehotové' : 'Označiť ako hotové'}"`}>${t.done ? '✓' : ''}</button>
       <div class="task-body" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
         <div class="task-title">${depth ? '<span class="task-tree-indent">↳</span>' : ''}${escHtml(t.title)}</div>
         ${taskChipsHtml(t)}
@@ -7382,7 +7398,7 @@ function taskRowInner(t, withGrip) {
         ${t.description ? `<div class="task-desc">${escHtml(t.description)}</div>` : ''}
         ${taskSubInlineHtml(t)}
       </div>
-      <button class="admin-icon-btn danger" onclick="deleteTask('${t._id}')" title="Odstrániť">✕</button>`;
+      ${ro ? '' : `<button class="admin-icon-btn danger" onclick="deleteTask('${t._id}')" title="Odstrániť">✕</button>`}`;
 }
 
 function renderTaskList() {
@@ -7471,15 +7487,18 @@ function taskKanbanCard(t) {
   const prio = TK_PRIO[t.priority] || TK_PRIO.normal;
   const od = taskOverdue(t);
   const card = document.createElement('div');
+  const ro = !!t.readOnly;
   card.className = 'kanban-card task-kanban-card' + (od ? ' task-overdue' : '') + (t.status === 'cancelled' ? ' task-cancelled' : '');
   card.style.setProperty('--prio', prio.c);
-  card.draggable = true;
+  card.draggable = !ro;
   card.dataset.tid = t._id;
-  card.addEventListener('dragstart', (e) => { _dragTaskId = t._id; card.classList.add('kanban-dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', t._id); } catch (_) {} });
-  card.addEventListener('dragend', () => { _dragTaskId = null; card.classList.remove('kanban-dragging'); document.querySelectorAll('.kanban-col-drop').forEach(c => c.classList.remove('kanban-col-drop')); });
+  if (!ro) {
+    card.addEventListener('dragstart', (e) => { _dragTaskId = t._id; card.classList.add('kanban-dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', t._id); } catch (_) {} });
+    card.addEventListener('dragend', () => { _dragTaskId = null; card.classList.remove('kanban-dragging'); document.querySelectorAll('.kanban-col-drop').forEach(c => c.classList.remove('kanban-col-drop')); });
+  }
   card.innerHTML = `
     <div class="kanban-card-top" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
-      <span class="kanban-card-title"><span class="kanban-grip" title="Potiahni">⠿</span>${escHtml(t.title)}</span>
+      <span class="kanban-card-title">${ro ? '' : '<span class="kanban-grip" title="Potiahni">⠿</span>'}${escHtml(t.title)}</span>
     </div>
     ${taskChipsHtml(t)}
     ${taskProgressHtml(t)}
@@ -7488,7 +7507,7 @@ function taskKanbanCard(t) {
     ${taskSubInlineHtml(t)}
     <div class="kanban-card-actions">
       <span class="task-prio" style="color:${prio.c}">${prio.l}</span>
-      <button onclick="deleteTask('${t._id}')" title="Odstrániť">✕</button>
+      ${ro ? '' : `<button onclick="deleteTask('${t._id}')" title="Odstrániť">✕</button>`}
     </div>`;
   return card;
 }
@@ -7590,7 +7609,7 @@ function taskGridRowHtml(t, groupIndent) {
   const rowCls = 'task-grid-row task-grid-prio-' + (t.priority || 'normal')
     + (t.done ? ' task-grid-done' : '') + (t.status === 'cancelled' ? ' task-grid-cancelled' : '') + (od ? ' task-grid-overdue' : '');
   return `<tr class="${rowCls}" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
-      <td class="task-grid-title"${indent ? ` style="padding-left:${12 + indent}px"` : ''}>${depth ? '<span class="task-tree-indent">↳</span>' : ''}${escHtml(t.title)}</td>
+      <td class="task-grid-title"${indent ? ` style="padding-left:${12 + indent}px"` : ''}>${depth ? '<span class="task-tree-indent">↳</span>' : ''}${t.readOnly ? `<span class="task-chip task-chip-readonly" title="Zadal(a): ${escHtml(t.user?.name || t.user?.username || '')}">👁</span> ` : ''}${escHtml(t.title)}</td>
       <td><span class="task-grid-status task-grid-status-${taskStatusOf(t)}">${TK_STATUS_LABEL[taskStatusOf(t)] || ''}</span></td>
       <td><span class="task-prio" style="color:${prio.c}">${prio.l}</span></td>
       <td>${escHtml(t.project || '')}</td>
@@ -7705,7 +7724,8 @@ async function toggleTask(id, done) {
 }
 function openTaskModal(t = null) {
   const e = t && typeof t === 'object';
-  document.getElementById('tkModalTitle').textContent = e ? 'Upraviť úlohu' : 'Nová úloha';
+  const ro = !!(e && t.readOnly);
+  document.getElementById('tkModalTitle').textContent = ro ? 'Úloha (len na čítanie)' : (e ? 'Upraviť úlohu' : 'Nová úloha');
   document.getElementById('tkId').value = e ? t._id : '';
   document.getElementById('tkTitle').value = e ? (t.title || '') : '';
   renderTaskCatalogSelect('tkProject', taskCatalog.projects, e ? (t.project || '') : '');
@@ -7721,9 +7741,18 @@ function openTaskModal(t = null) {
   renderSubtaskEditor();
   fillTaskParentSelect(e ? t : null);
   fillTaskDependsSelect(e ? t : null);
+  fillTaskAssigneeSelect(e ? t : null);
   renderTaskUpdateEditor(e ? t : null);
-  document.getElementById('tkDeleteBtn').style.display = e ? '' : 'none';
-  document.getElementById('taskModal').classList.remove('hidden');
+
+  const modal = document.getElementById('taskModal');
+  modal.classList.toggle('tk-readonly', ro);
+  const banner = document.getElementById('tkReadonlyBanner');
+  banner.classList.toggle('hidden', !ro);
+  if (ro) banner.textContent = `👁 Len na čítanie — zadal(a): ${t.user?.name || t.user?.username || 'neznámy'}`;
+  document.getElementById('tkSaveBtn').style.display = ro ? 'none' : '';
+  document.getElementById('tkDeleteBtn').style.display = (e && !ro) ? '' : 'none';
+
+  modal.classList.remove('hidden');
   modalSnapshot('taskModal');
 }
 // Nadradená úloha — vylúči seba a všetkých potomkov (aby nevznikol cyklus)
@@ -7744,6 +7773,13 @@ function fillTaskDependsSelect(t) {
   const opts = tasksData.filter(x => !t || x._id !== t._id).sort((a, b) => a.title.localeCompare(b.title, 'sk'));
   const cur = new Set((t && t.dependsOn || []).map(d => d._id || d));
   sel.innerHTML = opts.map(x => `<option value="${x._id}" ${cur.has(x._id) ? 'selected' : ''}>${escHtml(x.title)}</option>`).join('');
+}
+// Zadávateľ — osoba s účtom v Dashboarde, ktorá úlohu uvidí, ale nebude ju môcť editovať
+function fillTaskAssigneeSelect(t) {
+  const sel = document.getElementById('tkAssignedTo'); if (!sel) return;
+  const cur = t && t.assignedTo ? (t.assignedTo._id || t.assignedTo) : '';
+  const opts = taskUsers.slice().sort((a, b) => (a.name || a.username).localeCompare(b.name || b.username, 'sk'));
+  sel.innerHTML = '<option value="">— nikto —</option>' + opts.map(u => `<option value="${u._id}" ${u._id === cur ? 'selected' : ''}>${escHtml(u.name || u.username)}</option>`).join('');
 }
 function closeTaskModal() { modalGuardClose('taskModal'); }
 
@@ -7844,6 +7880,7 @@ async function addTaskUpdate() {
   } catch { toast('Sieťová chyba', 'error'); }
 }
 async function saveTask() {
+  if (document.getElementById('taskModal').classList.contains('tk-readonly')) return; // len na čítanie — needituje sa
   const title = document.getElementById('tkTitle').value.trim();
   if (!title) { alert('Zadajte názov úlohy'); return; }
   const body = {
@@ -7856,7 +7893,8 @@ async function saveTask() {
     subtasks: tkSubtasks.filter(s => (s.title || '').trim()).map(s => ({ title: s.title.trim(), done: !!s.done })),
     tags: document.getElementById('tkTags').value.split(',').map(x => x.trim()).filter(Boolean),
     parent: document.getElementById('tkParent').value || null,
-    dependsOn: [...document.getElementById('tkDependsOn').selectedOptions].map(o => o.value)
+    dependsOn: [...document.getElementById('tkDependsOn').selectedOptions].map(o => o.value),
+    assignedTo: document.getElementById('tkAssignedTo').value || null
   };
   const id = document.getElementById('tkId').value;
   try {

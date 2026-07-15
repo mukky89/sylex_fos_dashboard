@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Task = require('../models/Task');
 const TaskCatalog = require('../models/TaskCatalog');
+const User = require('../models/User');
 const { requireAuth } = require('../middleware/auth');
 
 router.use(requireAuth);
@@ -9,13 +10,16 @@ router.use(requireAuth);
 const STATUSES = ['todo', 'inprogress', 'blocked', 'review', 'done', 'cancelled'];
 const PRIORITIES = ['low', 'normal', 'high', 'critical'];
 
+// Vlastné úlohy + úlohy, kde je používateľ zadávateľ (vidí, needituje — pozri readOnly nižšie)
 router.get('/', async (req, res) => {
   try {
-    const q = { user: req.user.id };
+    const q = { $or: [{ user: req.user.id }, { assignedTo: req.user.id }] };
     if (req.query.status && STATUSES.includes(req.query.status)) q.status = req.query.status;
     if (req.query.priority && PRIORITIES.includes(req.query.priority)) q.priority = req.query.priority;
     if (req.query.tag) q.tags = req.query.tag;
-    res.json(await Task.find(q).sort({ order: 1, createdAt: 1 }));
+    const tasks = await Task.find(q).sort({ order: 1, createdAt: 1 })
+      .populate('assignedTo', 'name username').populate('user', 'name username').lean();
+    res.json(tasks.map(t => ({ ...t, readOnly: String(t.user._id) !== String(req.user.id) })));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -39,6 +43,7 @@ router.post('/', async (req, res) => {
     const tags = normalizeTags(req.body.tags);
     const parent = await resolveParent(req.user.id, req.body.parent, null);
     const dependsOn = await resolveDepends(req.user.id, req.body.dependsOn, null);
+    const assignedTo = await resolveAssignedTo(req.body.assignedTo);
     if (status === 'done') {
       const err = await blockedCompletionReason(req.user.id, null, subtasks, dependsOn);
       if (err) return res.status(400).json({ error: err });
@@ -49,13 +54,14 @@ router.post('/', async (req, res) => {
       project: req.body.project || '', customer: req.body.customer || '',
       note: req.body.note || '',
       progress,
-      status, subtasks, tags, parent, dependsOn,
+      status, subtasks, tags, parent, dependsOn, assignedTo,
       done: status === 'done', doneAt: status === 'done' ? new Date() : null,
       order: (last?.order || 0) + 1,
       due: req.body.due || null, priority: PRIORITIES.includes(req.body.priority) ? req.body.priority : 'normal'
     });
     await upsertCatalog(req.user.id, 'project', t.project);
     await upsertCatalog(req.user.id, 'customer', t.customer);
+    await t.populate('assignedTo', 'name username');
     res.status(201).json(t);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -101,6 +107,7 @@ router.put('/:id', async (req, res) => {
       const dependsOn = await resolveDepends(req.user.id, req.body.dependsOn, t._id);
       t.dependsOn = dependsOn;
     }
+    if (req.body.assignedTo !== undefined) t.assignedTo = await resolveAssignedTo(req.body.assignedTo);
     // Progres: ak existujú podúlohy, odvoď ho z nich; inak ber zadanú hodnotu
     if (t.subtasks && t.subtasks.length) t.progress = subtaskProgress(t.subtasks);
     else if (req.body.progress !== undefined) t.progress = clampProgress(req.body.progress);
@@ -124,6 +131,7 @@ router.put('/:id', async (req, res) => {
     await t.save();
     if (req.body.project !== undefined) await upsertCatalog(req.user.id, 'project', t.project);
     if (req.body.customer !== undefined) await upsertCatalog(req.user.id, 'customer', t.customer);
+    await t.populate('assignedTo', 'name username');
     res.json(t);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -137,6 +145,7 @@ router.post('/:id/updates', async (req, res) => {
     if (!t) return res.status(404).json({ error: 'Not found' });
     t.updates.push({ text, authorName: req.user.name || req.user.username || '', createdAt: new Date() });
     await t.save();
+    await t.populate('assignedTo', 'name username');
     res.status(201).json(t);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -190,6 +199,13 @@ async function upsertCatalog(userId, type, name) {
 }
 
 // Over nadradenú úlohu (existuje, patrí používateľovi, nevytvorí cyklus)
+// Over zadávateľa (musí byť existujúci aktívny používateľ) — smie vidieť úlohu, nie ju editovať
+async function resolveAssignedTo(userId) {
+  if (!userId) return null;
+  const u = await User.findOne({ _id: userId, active: true }).select('_id').lean();
+  return u ? u._id : null;
+}
+
 async function resolveParent(userId, parentId, selfId) {
   if (!parentId) return null;
   if (selfId && String(parentId) === String(selfId)) return null;
