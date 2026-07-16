@@ -8,6 +8,23 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.54.0] — 2026-07-16
+### Pridané
+- **PWA — inštalovateľná appka „Úlohy" pre Android aj iPhone.**
+  - Manifest (`manifest.webmanifest`): `start_url` → `/#tasks` (appka sa
+    otvorí rovno na Úlohách), názov **FOS Úlohy**, `display: standalone`,
+    `shortcuts` (Úlohy, Nová úloha → `/#tasks/new`, Kalendár, Výroba).
+  - Nový hash `#tasks/new` v `handleHash` otvorí rovno formulár novej úlohy
+    (pre skratku ikony na ploche).
+  - **Install banner** (`initPwaInstall` v `app.js`): Android/Chrome používa
+    `beforeinstallprompt` + tlačidlo Inštalovať; iPhone/Safari ukáže návod
+    „Zdieľať → Pridať na plochu". Zavretie sa pamätá (`fos_pwa_dismissed`),
+    po inštalácii (`appinstalled`) sa banner skryje.
+### Opravené
+- **iPhone s notchom (PWA/standalone):** fixná hlavička sa už neschováva pod
+  stavovým riadkom — `.header` a `.page` rešpektujú
+  `env(safe-area-inset-top)` (na zariadeniach bez výrezu je to 0, bez zmeny).
+
 ## [2.53.0] — 2026-07-16
 ### Opravené
 - **Mobil — „appka sa neprispôsobuje obrazovke" pri layoute Bočný sidebar.**
