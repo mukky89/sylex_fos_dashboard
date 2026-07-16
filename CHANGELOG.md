@@ -8,6 +8,20 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.50.1] — 2026-07-16
+### Opravené
+- **Kritická regresia z 2.50.0: hlavná navigácia úplne zmizla na desktope.**
+  Pri úprave mobilného `@media (max-width: 900px)` bloku (skrytie ikon
+  Senzory/meno/Odhlásiť sa) som blok predčasne zatvoril `}` — pravidlá pre
+  `.app-sidebar` a súvisiaci drawer (pôvodne určené len pre mobil) tak unikli
+  mimo media query a platili aj na desktope (`.app-sidebar { display:flex
+  !important; transform: translateX(-100%); ... }` bez obmedzenia na mobil).
+  Pri layout režime „Bočný panel" to bočný panel natrvalo posunulo mimo
+  obrazovku a odstránilo miesto preň vyhradené (`padding-left:0`) —
+  navigácia tak úplne zmizla. Opravené správnym vnorením CSS blokov;
+  overené Playwright testom na desktope (header aj sidebar layout) aj
+  mobile, že menu je viditeľné a funkčné v oboch režimoch.
+
 ## [2.50.0] — 2026-07-16
 ### Opravené
 - **Mobil — hlavičkové ikony mimo obrazovky.** Pri užších oknách/telefónoch
