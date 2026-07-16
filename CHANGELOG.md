@@ -8,6 +8,26 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.53.0] — 2026-07-16
+### Opravené
+- **Mobil — „appka sa neprispôsobuje obrazovke" pri layoute Bočný sidebar.**
+  Pri zapnutom sidebar layoute sa na telefóne obsah odtláčal o `264px`
+  (`--appsb-w`) doprava a nezmestil sa na obrazovku — a to na **každej**
+  stránke (dalo sa preto ťažko scrollovať aj ovládať).
+  - Príčina: desktopové pravidlo `body.layout-sidebar .page { padding-left:
+    var(--appsb-w) }` malo rovnakú špecificitu ako mobilný reset
+    (`padding-left: 0` v `@media (max-width:900px)`), ale bolo v CSS **neskôr**,
+    takže pri zhode vyhralo aj na mobile.
+  - Riešenie: desktopové rozloženie sidebaru (pozícia `.app-sidebar`, padding
+    `.page`, posun tlačidla Pomoc) je uzavreté do `@media (min-width: 901px)`,
+    takže na mobile (≤900px) sa už neuplatní a preberá to mobilný drawer.
+- **Výroba — pohľad Zoznam:** široká tabuľka (~870px) sa na mobile orezávala
+  mimo obrazovku (`.prod-list` mala `overflow: hidden`); teraz sa scrolluje
+  horizontálne vo vlastnom kontajneri (`overflow-x: auto`).
+### Pridané
+- Diagnostický skript `scripts/analyzeMobileControls.js` a audit responzivity
+  naprieč stránkami v mobilnej emulácii (odhaľovanie pretekajúcich prvkov).
+
 ## [2.52.0] — 2026-07-16
 ### Pridané
 - **Mobil — veľký balík responzivity (Android + iPhone).**

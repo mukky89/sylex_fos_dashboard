@@ -6718,6 +6718,12 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.53.0', date: '16. 7. 2026', tag: 'fix', items: [
+    '<strong>Mobil — oprava „appka sa neprispôsobuje obrazovke".</strong> Pri zapnutom layoute <strong>Bočný sidebar</strong> sa na telefóne obsah odtláčal o 264px doprava a nezmestil sa na obrazovku (nedalo sa poriadne scrollovať ani ovládať) — a to na <strong>každej stránke</strong>.',
+    'Príčina: desktopové pravidlo <code>padding-left</code> pre <code>.page</code> v sidebar režime malo rovnakú špecificitu ako mobilný reset, ale bolo v CSS neskôr, takže vyhralo aj na mobile. Desktopové rozloženie sidebaru je teraz uzavreté do <code>@media (min-width: 901px)</code>, čiže na mobile (≤900px) sa už neuplatní.',
+    '<strong>Výroba — zoznam zákaziek:</strong> široká tabuľka (~870px) sa na mobile orezávala mimo obrazovku; teraz sa scrolluje horizontálne vo vlastnom rámčeku.',
+    'Pridaný diagnostický skript <code>scripts/analyzeMobileControls.js</code> a audit responzivity naprieč stránkami (mobilná emulácia) na odhaľovanie pretekajúcich prvkov.',
+  ] },
   { v: '2.52.0', date: '16. 7. 2026', tag: 'new', items: [
     '<strong>Mobil — veľký balík responzivity.</strong> Appka je na telefóne (Android aj iPhone) konečne pohodlne ovládateľná.',
     '<strong>Spodný tab bar:</strong> na mobile pribudla lišta pod palcom s najpoužívanejšími stránkami — Domov, Úlohy, Výroba, Kalendár a Menu (otvorí celú navigáciu).',

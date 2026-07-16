@@ -3641,20 +3641,26 @@ body.mobile-nav-open {
 body.layout-sidebar .nav { display: none; }
 /* .nav (margin-left:auto) je skrytý → header-right treba zarovnať doprava sám */
 body.layout-sidebar .header-right { margin-left: auto; }
-body.layout-sidebar .app-sidebar {
-  display: flex; flex-direction: column;
-  position: fixed; top: var(--header-h); left: 0; bottom: 0;
-  width: var(--appsb-w); z-index: 190;
-  border-right: 1px solid rgba(var(--dz-fg-rgb),0.06);
-  transition: width .22s ease;
+/* Desktopové rozloženie sidebaru — LEN nad mobilným breakpointom (>900px).
+   Bez min-width by pevný `.app-sidebar` a najmä `padding-left` na `.page`
+   (rovnaká špecificita ako mobilný reset, ale neskôr v súbore → vyhral by)
+   presakovali aj na mobil a odtláčali obsah o 264px mimo obrazovku. */
+@media (min-width: 901px) {
+  body.layout-sidebar .app-sidebar {
+    display: flex; flex-direction: column;
+    position: fixed; top: var(--header-h); left: 0; bottom: 0;
+    width: var(--appsb-w); z-index: 190;
+    border-right: 1px solid rgba(var(--dz-fg-rgb),0.06);
+    transition: width .22s ease;
+  }
+  body.layout-sidebar .page { padding-left: var(--appsb-w); transition: padding-left .22s ease; }
+  /* „Pomoc" (tour-fab) je vľavo dole — v sidebar layoute by prekrývala pätičku
+     sidebaru (meno/avatar), preto ju posunieme napravo od sidebaru */
+  body.layout-sidebar .tour-fab { left: calc(var(--appsb-w) + 16px); }
 }
-body.layout-sidebar .page { padding-left: var(--appsb-w); transition: padding-left .22s ease; }
 body.layout-sidebar .thermo-corner,
 body.layout-sidebar .bot-fab,
 body.layout-sidebar .bot-panel { /* ostávajú vpravo dole */ }
-/* „Pomoc" (tour-fab) je vľavo dole — v sidebar layoute by prekrývala pätičku
-   sidebaru (meno/avatar), preto ju posunieme napravo od sidebaru */
-body.layout-sidebar .tour-fab { left: calc(var(--appsb-w) + 16px); }
 
 .asb-brand {
   display: flex; align-items: center; gap: 11px;
@@ -4508,7 +4514,7 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .prod-card .task-prog { margin: 7px 0; }
 
 /* Zoznam */
-.prod-list { background: rgba(var(--dz-fg-rgb),0.03); border: 1px solid rgba(var(--dz-fg-rgb),0.1); border-radius: 12px; overflow: hidden; }
+.prod-list { background: rgba(var(--dz-fg-rgb),0.03); border: 1px solid rgba(var(--dz-fg-rgb),0.1); border-radius: 12px; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
 .prod-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
 .prod-table th { text-align: left; padding: 11px 12px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: #94a3b8; border-bottom: 1px solid rgba(var(--dz-fg-rgb),0.1); background: rgba(var(--dz-fg-rgb),0.02); }
 .prod-table td { padding: 10px 12px; border-bottom: 1px solid rgba(var(--dz-fg-rgb),0.06); color: var(--dz-text2); vertical-align: middle; }
