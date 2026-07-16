@@ -4022,6 +4022,30 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 /* =============================================================================
    ÚLOHY — toolbar, prepínač zobrazenia, kanban, progress, chips
    ============================================================================= */
+/* Zmrazená (sticky) hlavička stránky — nadpis, tlačidlo „Nová úloha" a filtre
+   ostávajú viditeľné aj pri scrollovaní nadol, hneď pod hlavičkou appky. */
+.tasks-sticky-hdr {
+  position: sticky; top: var(--header-h); z-index: 60;
+  background: var(--hdr-bg);
+  padding-top: 36px; margin: -36px -28px 0; padding-left: 28px; padding-right: 28px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(var(--dz-fg-rgb),0.08);
+}
+.tasks-sticky-hdr .proc-hdr { margin-bottom: 14px; }
+.tasks-sticky-hdr .tasks-toolbar { margin-bottom: 0; }
+
+/* Plávajúce tlačidlo „Nová úloha" — vždy viditeľné vpravo dole, aj mimo hlavičky */
+.tasks-fab {
+  position: fixed; right: 22px; bottom: 90px; z-index: 480;
+  width: 52px; height: 52px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(140deg, var(--accent) 0%, var(--accent2) 100%);
+  border: none; color: #fff; cursor: pointer; touch-action: manipulation;
+  box-shadow: 0 8px 24px rgba(8,145,178,0.4);
+  transition: transform .2s, box-shadow .2s;
+}
+.tasks-fab:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 12px 30px rgba(8,145,178,0.5); }
+
 .tasks-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
 .tasks-toolbar .tasks-filters { margin-bottom: 0; }
 .tasks-viewtoggle { display: inline-flex; border: 1px solid rgba(var(--dz-fg-rgb),0.12); border-radius: 20px; overflow: hidden; }
@@ -4050,35 +4074,55 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 
 .task-row.task-cancelled, .task-kanban-card.task-cancelled { opacity: 0.55; text-decoration: line-through; }
 
-/* rýchly prehľad úloh na dnes / zajtra */
-.tk-preview-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 4px 0 16px; }
+/* rýchly prehľad úloh — zmeškané / dnes / zajtra */
+.tk-preview-wrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0 16px; }
 .tk-preview-col {
   background: rgba(var(--dz-fg-rgb),0.05); border: 1px solid rgba(var(--dz-fg-rgb),0.1);
-  border-radius: 12px; padding: 10px 12px;
+  border-radius: 12px; padding: 12px 14px;
+}
+.tk-preview-col.tk-preview-missed {
+  background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.3);
 }
 .tk-preview-hdr {
-  display: flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 700;
-  color: rgba(var(--dz-fg-rgb),0.8); margin-bottom: 6px;
+  display: flex; align-items: center; gap: 7px; font-size: 0.8rem; font-weight: 700;
+  color: rgba(var(--dz-fg-rgb),0.85); margin-bottom: 8px;
 }
+.tk-preview-hdr svg { flex-shrink: 0; opacity: 0.85; }
+.tk-preview-missed .tk-preview-hdr { color: #fca5a5; }
+.tk-preview-missed .tk-preview-hdr svg { color: #f87171; opacity: 1; }
 .tk-preview-count {
   background: rgba(var(--dz-fg-rgb),0.12); border-radius: 100px; padding: 1px 8px;
   font-size: 0.7rem; color: rgba(var(--dz-fg-rgb),0.7);
 }
+.tk-preview-missed .tk-preview-count { background: rgba(239,68,68,0.22); color: #fecaca; }
 .tk-preview-item {
-  display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-radius: 8px;
+  display: flex; align-items: center; gap: 8px; padding: 7px 5px; border-radius: 8px;
   cursor: pointer; font-size: 0.8rem; color: rgba(var(--dz-fg-rgb),0.85);
 }
 .tk-preview-item:hover { background: rgba(var(--dz-fg-rgb),0.08); }
 .tk-preview-prio { width: 6px; height: 6px; border-radius: 50%; background: var(--prio); flex-shrink: 0; }
-.tk-preview-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tk-preview-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .tk-preview-assignee { font-size: 0.68rem; color: rgba(var(--dz-fg-rgb),0.5); flex-shrink: 0; }
+.tk-preview-due { font-size: 0.68rem; color: #f87171; font-weight: 600; flex-shrink: 0; white-space: nowrap; }
 .tk-preview-empty { font-size: 0.76rem; color: rgba(var(--dz-fg-rgb),0.4); padding: 4px; }
+.tk-postpone-btn {
+  display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+  padding: 4px 9px; border-radius: 100px; font-size: 0.68rem; font-weight: 700;
+  background: rgba(239,68,68,0.14); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5;
+  cursor: pointer; transition: background .16s, color .16s; font-family: inherit;
+}
+.tk-postpone-btn:hover { background: rgba(239,68,68,0.28); color: #fff; }
+.tk-postpone-btn svg { flex-shrink: 0; }
 @media (max-width: 720px) { .tk-preview-wrap { grid-template-columns: 1fr; } }
 
 /* Grid (tabuľkový) pohľad úloh */
-.tasks-grid-wrap { overflow-x: auto; border: 1px solid rgba(var(--dz-fg-rgb),0.1); border-radius: var(--radius-lg); }
+/* Horizontálny scroll len na užších obrazovkách — overflow-x:auto by na
+   širokej obrazovke zbytočne urobil z elementu nový scroll kontajner a
+   rozbil by position:sticky hlavičky tabuľky voči stránke (viď nižšie). */
+.tasks-grid-wrap { border: 1px solid rgba(var(--dz-fg-rgb),0.1); border-radius: var(--radius-lg); }
+@media (max-width: 900px) { .tasks-grid-wrap { overflow-x: auto; } }
 .task-grid { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-.task-grid thead { position: sticky; top: var(--header-h); z-index: 15; }
+.task-grid thead { position: sticky; top: 0; z-index: 15; }
 .task-grid thead th {
   text-align: left; padding: 10px 12px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
   color: rgba(var(--dz-fg-rgb),0.5); background-color: var(--hdr-bg); background-image: linear-gradient(rgba(var(--dz-fg-rgb),0.06), rgba(var(--dz-fg-rgb),0.06));

@@ -8,6 +8,33 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.48.0] — 2026-07-16
+### Pridané
+- **Moje úlohy — zmrazená (sticky) hlavička.** Nadpis, tlačidlo „Nová úloha" a
+  filtre ostávajú viditeľné navrchu stránky aj pri scrollovaní nadol. Tlačidlo
+  „Nová úloha" má navyše plávajúcu (floating) verziu vpravo dole, vždy na
+  dosah bez ohľadu na scroll.
+- **Sekcia Zmeškané** v rýchlom prehľade nad zoznamom úloh — úlohy s termínom
+  v minulosti, každá s tlačidlom „→ +1 deň" na rýchly posun termínu (nový
+  endpoint `PUT /api/tasks/:id/postpone`).
+- **Denný e-mailový súhrn úloh** — každý deň (predvolene o 7:00, Europe/
+  Bratislava) dostane každý používateľ s vyplneným e-mailom prehľad
+  zmeškaných úloh a úloh na dnes/zajtra; bez úloh sa e-mail neposiela.
+  Nastavenie/ručné odoslanie/stav v **Administrácia → Používatelia → Denný
+  súhrn úloh**. Nové súbory `utils/taskDigest.js`, šablóna e-mailu v
+  `utils/mailer.js` (`taskDigestEmail`), plánovač v `server.js` (bez
+  ďalšej závislosti — kontrola raz za minútu + `AppConfig` na
+  zapamätanie posledného odoslania, prežije reštart appky).
+
+### Opravené
+- **Grid tabuľka úloh: hlavička (NÁZOV/STAV/PRIORITA…) sa pri scrollovaní
+  prekrývala s riadkami úloh** namiesto toho, aby zostala nad nimi zamrazená
+  (`.tasks-grid-wrap` s `overflow-x:auto` rozbíjal `position:sticky` voči
+  stránke). Opravené — hlavička tabuľky teraz zostáva viditeľná počas celého
+  scrollovania, vrátane úplného spodku zoznamu.
+- Rozbitá ikona „⏭" pri „Zajtra" (a emoji pri „Dnes") nahradené SVG ikonami
+  v štýle zvyšku appky.
+
 ## [2.47.0] — 2026-07-16
 ### Pridané
 - **Mobilná optimalizácia celej appky.** Hlavná navigácia (22 položiek) sa

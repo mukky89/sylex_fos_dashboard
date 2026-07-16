@@ -2019,38 +2019,43 @@
   <!-- ===== TASKS (Úlohy) PAGE ===== -->
   <main id="page-tasks" class="page tasks-page">
     <div class="tasks-inner tasks-wide">
-      <div class="proc-hdr">
-        <div>
-          <h1 class="proc-title">Moje úlohy</h1>
-          <p class="proc-sub" id="tasksSub">Osobný zoznam úloh</p>
+      <div class="tasks-sticky-hdr" id="tasksStickyHdr">
+        <div class="proc-hdr">
+          <div>
+            <h1 class="proc-title">Moje úlohy</h1>
+            <p class="proc-sub" id="tasksSub">Osobný zoznam úloh</p>
+          </div>
+          <button class="btn-primary" onclick="openTaskModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nová úloha
+          </button>
         </div>
-        <button class="btn-primary" onclick="openTaskModal()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Nová úloha
-        </button>
+        <div class="tasks-toolbar">
+          <div class="tasks-filters">
+            <button class="tasks-filter active" data-tfilter="open" onclick="setTaskFilter('open')">Aktívne</button>
+            <button class="tasks-filter" data-tfilter="all" onclick="setTaskFilter('all')">Všetky</button>
+            <button class="tasks-filter" data-tfilter="done" onclick="setTaskFilter('done')">Hotové</button>
+            <select id="tkTagFilter" class="tk-tag-filter" onchange="setTaskTagFilter(this.value)" title="Filtrovať podľa tagu">
+              <option value="">Všetky tagy</option>
+            </select>
+          </div>
+          <button class="tasks-filter hidden" id="taskGroupBtn" onclick="toggleTaskGroup()" title="Zoskupiť úlohy podľa projektu a zákazníka">🗂️ Zoskupiť</button>
+          <div class="tasks-viewtoggle">
+            <button class="tasks-view" data-tview="list" onclick="setTaskView('list')" title="Zoznam">☰ Zoznam</button>
+            <button class="tasks-view" data-tview="kanban" onclick="setTaskView('kanban')" title="Kanban">▦ Kanban</button>
+            <button class="tasks-view active" data-tview="grid" onclick="setTaskView('grid')" title="Grid (tabuľka)">▤ Grid</button>
+          </div>
+        </div>
       </div>
       <div id="tasksTodayTomorrow" class="tk-preview-wrap hidden"></div>
-      <div class="tasks-toolbar">
-        <div class="tasks-filters">
-          <button class="tasks-filter active" data-tfilter="open" onclick="setTaskFilter('open')">Aktívne</button>
-          <button class="tasks-filter" data-tfilter="all" onclick="setTaskFilter('all')">Všetky</button>
-          <button class="tasks-filter" data-tfilter="done" onclick="setTaskFilter('done')">Hotové</button>
-          <select id="tkTagFilter" class="tk-tag-filter" onchange="setTaskTagFilter(this.value)" title="Filtrovať podľa tagu">
-            <option value="">Všetky tagy</option>
-          </select>
-        </div>
-        <button class="tasks-filter hidden" id="taskGroupBtn" onclick="toggleTaskGroup()" title="Zoskupiť úlohy podľa projektu a zákazníka">🗂️ Zoskupiť</button>
-        <div class="tasks-viewtoggle">
-          <button class="tasks-view" data-tview="list" onclick="setTaskView('list')" title="Zoznam">☰ Zoznam</button>
-          <button class="tasks-view" data-tview="kanban" onclick="setTaskView('kanban')" title="Kanban">▦ Kanban</button>
-          <button class="tasks-view active" data-tview="grid" onclick="setTaskView('grid')" title="Grid (tabuľka)">▤ Grid</button>
-        </div>
-      </div>
       <div id="tasksProgress" class="tasks-progress"></div>
       <div id="tasksList" class="tasks-list hidden"></div>
       <div id="tasksKanban" class="kanban hidden"></div>
       <div id="tasksGrid" class="tasks-grid-wrap"></div>
     </div>
+    <button class="tasks-fab" onclick="openTaskModal()" title="Nová úloha" aria-label="Nová úloha">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
   </main>
 
   <!-- ===== TASK MODAL ===== -->
@@ -3898,6 +3903,18 @@
             <button class="btn-primary btn-sm" onclick="sendMailTest()">✉ Poslať testovací e-mail</button>
           </div>
           <div id="mailTestResult" class="mail-test-result"></div>
+        </div>
+
+        <!-- Denný e-mailový súhrn úloh -->
+        <div class="admin-section">
+          <div class="admin-section-hdr">
+            <h2 class="admin-section-title">Denný súhrn úloh (e-mail)</h2>
+            <button class="btn-secondary btn-sm" onclick="loadTaskDigestStatus()">↻ Obnoviť stav</button>
+          </div>
+          <p class="admin-section-desc">Každý deň (predvolene o 7:00) dostane každý používateľ s vyplneným e-mailom prehľad zmeškaných úloh a úloh na dnes/zajtra — ak žiadne nemá, e-mail sa neposiela.</p>
+          <div id="taskDigestStatus" class="mail-status"><div class="admin-loading">Klikni na „Obnoviť stav".</div></div>
+          <button class="btn-primary btn-sm" onclick="runTaskDigestNow()">✉ Odoslať teraz (všetkým s úlohami)</button>
+          <div id="taskDigestResult" class="mail-test-result"></div>
         </div>
       </div>
 

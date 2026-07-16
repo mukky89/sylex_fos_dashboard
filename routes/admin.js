@@ -261,5 +261,21 @@ module.exports = function(sensorCfg) {
     res.status(r.sent ? 200 : 502).json({ ok: r.sent, error: r.error || null, to, method: process.env.BREVO_API_KEY ? 'Brevo HTTP API' : 'SMTP' });
   });
 
+  // ── Denný súhrn úloh (e-mail) ─────────────────────────────────────────────────
+  const { runTaskDigest } = require('../utils/taskDigest');
+  router.get('/task-digest/status', async (req, res) => {
+    try {
+      const flag = await AppConfig.findOne({ key: 'taskDigest.lastSentDate' }).lean();
+      res.json({ lastSentDate: flag ? flag.value : null, hour: process.env.TASK_DIGEST_HOUR || '07:00', mailConfigured: mailer.isConfigured() });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+  // Okamžite spustí súhrn pre všetkých používateľov (testovanie/ručné vyvolanie) — mimo plánu.
+  router.post('/task-digest/run-now', async (req, res) => {
+    try {
+      const result = await runTaskDigest({ appUrl: mailer.baseUrl(req) });
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   return router;
 };

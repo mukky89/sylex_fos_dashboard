@@ -150,6 +150,22 @@ router.post('/:id/updates', async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+// Posunie termín úlohy o 1 deň dopredu (rýchla akcia pre zmeškané úlohy).
+// Bez termínu nastaví zajtrajší dátum. Počíta sa na serveri, aby to nezávisel
+// od časovej zóny klienta.
+router.put('/:id/postpone', async (req, res) => {
+  try {
+    const t = await Task.findOne({ _id: req.params.id, user: req.user.id });
+    if (!t) return res.status(404).json({ error: 'Not found' });
+    const base = t.due ? new Date(t.due) : new Date();
+    base.setDate(base.getDate() + 1);
+    t.due = base;
+    await t.save();
+    await t.populate('assignedTo', 'name username');
+    res.json(t);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 router.delete('/:id', async (req, res) => {
   try {
     const id = req.params.id;
