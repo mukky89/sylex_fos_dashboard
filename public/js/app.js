@@ -6694,6 +6694,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.50.1', date: '16. 7. 2026', tag: 'fix', items: [
+    '<strong>Kritická oprava:</strong> hlavná navigácia (horizontálne menu aj alternatívny bočný panel) na desktope úplne zmizla — v predošlom vydaní (2.50.0) sa nesprávne zatvorila zátvorka CSS media query, takže mobilné pravidlá pre výsuvné menu (skryté mimo obrazovku) unikli mimo `@media` a platili aj na desktope. Opravené.',
+  ] },
   { v: '2.50.0', date: '16. 7. 2026', tag: 'fix', items: [
     'Oprava: na mobile boli hlavičkové ikony (hľadanie, notifikácie, senzory, odhlásenie…) vytláčané mimo viditeľnú obrazovku a nedali sa použiť — na mobile (≤900px) sú teraz skryté ikony Senzory/meno/odhlásenie (dostupné v drawer menu, senzory aj cez plávajúci teplomer), takže sa zvyšné ikony vždy zmestia a sú klikateľné.',
     'Logo „FOS Dashboard" v hlavičke sa na úzkych obrazovkách skracuje (a na najužších skrýva), aby nevytláčalo ostatné ikony mimo obrazovku.',

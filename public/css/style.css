@@ -3454,10 +3454,6 @@ body.logged-out .thermo-corner { display: none !important; }
      (pätička appSidebar). Skryté, aby sa hlavičkové ikony nevytláčali mimo
      viditeľnú obrazovku (a stali sa neklikateľné). */
   #hdrSensorBtn, .hdr-logout-btn, .hdr-sep-v, .hdr-user { display: none !important; }
-}
-@media (max-width: 360px) {
-  .logo-wordmark { display: none; }
-}
 
   /* appSidebar sa na mobile správa vždy ako drawer, nezávisle od
      zvoleného desktop layoutu (header / sidebar) */
@@ -3480,6 +3476,9 @@ body.logged-out .thermo-corner { display: none !important; }
   /* Kým je drawer otvorený, plávajúce FAB tlačidlá (Pomoc, chatbot) neprekážajú */
   body.mobile-nav-open .tour-fab,
   body.mobile-nav-open .bot-fab { display: none; }
+}
+@media (max-width: 360px) {
+  .logo-wordmark { display: none; }
 }
 
 /* Zamknutie scrollu stránky pri otvorenom drawer — `overflow:hidden` na body
