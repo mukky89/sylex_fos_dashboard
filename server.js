@@ -35,6 +35,10 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 // Zvukové nahrávky (hlasový diktát v pracovných postupoch) — väčší limit
 const uploadAudio = multer({ storage, limits: { fileSize: 25 * 1024 * 1024 } });
+// Ľubovoľné súbory (prílohy k WIKI záznamom a pod.)
+const uploadFile = multer({ storage, limits: { fileSize: 25 * 1024 * 1024 } });
+// multer dáva originalname v latin1 — oprava diakritiky
+function fixFileName(n) { try { return Buffer.from(n, 'latin1').toString('utf8'); } catch { return n; } }
 
 // In-memory sensor config — updated live by admin routes
 const sensorCfg = { ip: '10.88.5.184', path: '/values.xml', interval: 60 };
@@ -288,6 +292,7 @@ app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/production', require('./routes/production'));
 app.use('/api/manufacturing', require('./routes/manufacturing'));
 app.use('/api/product-workflows', require('./routes/productWorkflow'));
+app.use('/api/gpn', require('./routes/gpn'));
 app.use('/api/product-owners', require('./routes/productOwners'));
 app.use('/api/backbones', require('./routes/backbones'));
 app.use('/api/announcements', require('./routes/announcements'));
@@ -296,6 +301,7 @@ app.use('/api/tests', require('./routes/tests'));
 app.use('/api/instruments', require('./routes/instruments'));
 app.use('/api/prototypes', require('./routes/prototypes'));
 app.use('/api/tasks', require('./routes/tasks'));
+app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/crm', require('./routes/crm'));
 app.use('/api/owners', require('./routes/owners'));
@@ -369,6 +375,20 @@ app.post('/api/upload/audio', (req, res) => {
   });
 });
 
+// Generický upload súboru (prílohy — WIKI a pod.), vracia aj pôvodný názov a veľkosť
+app.post('/api/upload/file', (req, res) => {
+  uploadFile.single('file')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'Súbor presahuje limit 25 MB' : err.message });
+    if (!req.file) return res.status(400).json({ error: 'Žiadny súbor' });
+    return res.json({
+      url: `/uploads/${req.file.filename}`,
+      name: fixFileName(req.file.originalname),
+      size: req.file.size,
+      mime: req.file.mimetype || ''
+    });
+  });
+});
+
 // File server: verejná zákaznícka stránka zdieľania (/s/<token>)
 app.get('/s/:token', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'share.html'));
@@ -392,6 +412,34 @@ app.use((err, req, res, next) => {
 const server = app.listen(PORT, () => {
   console.log(`FOS Dashboard running on http://localhost:${PORT}`);
 });
+
+// ── Denný e-mailový súhrn úloh ────────────────────────────────────────────────
+// Bez pridávania cron balíčka: každú minútu skontroluje čas (Europe/Bratislava);
+// keď je po nastavenej hodine (TASK_DIGEST_HOUR, default '07:00') a súhrn ešte
+// dnes neodišiel (AppConfig.taskDigest.lastSentDate), rozošle ho a dátum uloží
+// do DB (prežije reštart appky na Railway).
+(function scheduleTaskDigest() {
+  const [digestH, digestM] = String(process.env.TASK_DIGEST_HOUR || '07:00').split(':').map(Number);
+  async function tick() {
+    try {
+      if (mongoose.connection.readyState !== 1) return;
+      const now = new Date();
+      const parts = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Bratislava', hour12: false, hour: '2-digit', minute: '2-digit' }).formatToParts(now);
+      const h = Number(parts.find(p => p.type === 'hour').value), m = Number(parts.find(p => p.type === 'minute').value);
+      const todayKey = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Bratislava' }).format(now); // YYYY-MM-DD
+      if (h < digestH || (h === digestH && m < digestM)) return;
+      const AppConfig = require('./models/AppConfig');
+      const flag = await AppConfig.findOne({ key: 'taskDigest.lastSentDate' }).lean();
+      if (flag && flag.value === todayKey) return;
+      const { runTaskDigest } = require('./utils/taskDigest');
+      const result = await runTaskDigest({ appUrl: process.env.APP_URL || '' });
+      await AppConfig.updateOne({ key: 'taskDigest.lastSentDate' }, { $set: { key: 'taskDigest.lastSentDate', value: todayKey, group: 'taskDigest' } }, { upsert: true });
+      console.log(`Denný súhrn úloh: odoslané ${result.sent}, preskočené ${result.skipped}, chyby ${result.errors.length}`);
+    } catch (e) { console.error('Chyba pri dennom súhrne úloh:', e.message); }
+  }
+  setInterval(tick, 60 * 1000);
+  setTimeout(tick, 15 * 1000); // aj krátko po štarte appky (bez čakania na prvý celý interval)
+})();
 
 // Čisté ukončenie pri redeploy/škálovaní (Railway posiela SIGTERM) — bez „npm error signal SIGTERM"
 function gracefulShutdown(sig) {
