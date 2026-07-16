@@ -8,6 +8,19 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.51.0] — 2026-07-16
+### Opravené
+- **Changelog nezobrazoval HTML značky.** Položky zoznamu zmien sa pri
+  vykresľovaní escapovali (`escHtml`), takže napr. `<strong>text</strong>`
+  sa vypisovalo doslovne aj so značkami namiesto tučného písma. Keďže pole
+  `CHANGELOG` je statický dôveryhodný obsah písaný priamo v kóde (nie
+  užívateľský vstup), escapovanie odstránené — značky sa teraz vykresľujú
+  správne.
+### Vylepšené
+- Vytunené štýly changelogu: `<code>` značky pre technické výrazy (napr.
+  `@media`) majú vlastné oddelené pozadie a farbu, tučný text (`<strong>`)
+  je kontrastnejší na tmavom pozadí.
+
 ## [2.50.1] — 2026-07-16
 ### Opravené
 - **Kritická regresia z 2.50.0: hlavná navigácia úplne zmizla na desktope.**

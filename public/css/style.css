@@ -4917,6 +4917,8 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .cl-items { list-style: none; display: flex; flex-direction: column; gap: 6px; padding: 0; }
 .cl-items li { position: relative; padding-left: 18px; font-size: 0.86rem; color: var(--dz-text2); line-height: 1.5; }
 .cl-items li::before { content: '▸'; position: absolute; left: 2px; top: 0; color: var(--dz-cyan); }
+.cl-items li strong { color: var(--dz-text); font-weight: 700; }
+.cl-items li code { background: rgba(var(--dz-fg-rgb),0.1); border: 1px solid rgba(var(--dz-fg-rgb),0.14); border-radius: 4px; padding: 1px 5px; font-size: 0.82em; color: var(--dz-cyan); }
 .cl-entry.cl-latest .cl-body { background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.18); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; }
 @media (max-width: 600px) { .cl-date { margin-left: 0; } }
 
