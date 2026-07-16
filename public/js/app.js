@@ -6686,6 +6686,15 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.48.0', date: '16. 7. 2026', tag: 'feat', items: [
+    '<strong>Moje úlohy — prepracovaná hlavička a prehľad termínov.</strong> Nadpis, tlačidlo „Nová úloha" a filtre sú teraz zmrazené (sticky) navrchu stránky pri scrollovaní, tlačidlo „Nová úloha" má navyše aj plávajúcu verziu vpravo dole.',
+    'Oprava: hlavička Grid tabuľky (NÁZOV/STAV/PRIORITA…) sa pri scrollovaní prekrývala s prvým riadkom úloh — teraz je správne „zamrazená" a viditeľná stále, aj pri scrollovaní úplne dole.',
+    'Opravená rozbitá ikona pri „Zajtra" (nahradené emoji za SVG ikony aj pri „Dnes"/„Zmeškané").',
+    'Nová sekcia <strong>Zmeškané</strong> v prehľade nad zoznamom úloh — úlohy s termínom v minulosti, každá s tlačidlom „→ +1 deň" na rýchle posunutie termínu.',
+    'Nový endpoint <code>PUT /api/tasks/:id/postpone</code> na posun termínu o deň.',
+    '<strong>Denný e-mailový súhrn úloh</strong> — každý deň (predvolene o 7:00) príde používateľom s vyplneným e-mailom prehľad zmeškaných úloh a úloh na dnes/zajtra (bez úloh sa e-mail neposiela). Nastavenie a ručné odoslanie v Administrácia → Používatelia.',
+    'Termíny úloh (dnes / po termíne) sa už predtým zobrazovali v notifikáciách (🔔) — overené a zachované.',
+  ] },
   { v: '2.47.0', date: '16. 7. 2026', tag: 'feat', items: [
     'Mobilná navigácia prerobená na <strong>výsuvný bočný panel (drawer)</strong> — namiesto vodorovnej posuvnej lišty s 20+ ikonami sa na mobile/tablete (≤900px) otvára cez hamburger tlačidlo v hlavičke, so zoskupenými sekciami a väčšími dotykovými plochami.',
     'Zväčšené dotykové plochy hlavičkových tlačidiel (hľadanie, rýchle pridať, notifikácie) na mobile na min. 40×40px.',
@@ -7349,29 +7358,64 @@ async function loadTasks() {
   renderTaskProgress();
   renderTaskTodayTomorrow();
   renderTasks();
+  syncTasksStickyOffset();
 }
-// Rýchly prehľad úloh s termínom dnes a zajtra
+// Zarovná sticky hlavičku Grid tabuľky (thead) presne pod zmrazenú lištu
+// (proc-hdr + toolbar), ktorej výška sa mení podľa obsahu (zalomenie filtrov
+// na užších obrazovkách). Nastavuje sa priamo inline štýlom (synchrónne),
+// aby nedochádzalo k pretekaniu s výpočtom position:sticky v prehliadači.
+function syncTasksStickyOffset() {
+  const hdr = document.getElementById('tasksStickyHdr');
+  const thead = document.querySelector('#tasksGrid .task-grid thead');
+  if (!hdr || !thead) return;
+  const headerH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 58;
+  thead.style.top = Math.ceil(headerH + hdr.offsetHeight) + 'px';
+}
+window.addEventListener('resize', () => { if (document.getElementById('page-tasks')?.classList.contains('active')) syncTasksStickyOffset(); });
+
+const TK_PREVIEW_ICONS = {
+  missed: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  today:  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  tomorrow: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>'
+};
+// Rýchly prehľad úloh — zmeškané (po termíne), dnes, zajtra
 function renderTaskTodayTomorrow() {
   const el = document.getElementById('tasksTodayTomorrow'); if (!el) return;
   const today = new Date();
   const tomorrow = new Date(today.getTime() + 86400000);
   const todayKey = calYmd(today), tomorrowKey = calYmd(tomorrow);
   const open = tasksData.filter(t => !t.done && t.status !== 'cancelled' && t.due);
+  const missedTasks = open.filter(t => String(t.due).slice(0, 10) < todayKey);
   const todayTasks = open.filter(t => String(t.due).slice(0, 10) === todayKey);
   const tomorrowTasks = open.filter(t => String(t.due).slice(0, 10) === tomorrowKey);
-  if (!todayTasks.length && !tomorrowTasks.length) { el.innerHTML = ''; el.classList.add('hidden'); return; }
+  if (!missedTasks.length && !todayTasks.length && !tomorrowTasks.length) { el.innerHTML = ''; el.classList.add('hidden'); return; }
   el.classList.remove('hidden');
-  const col = (label, icon, list) => `
-    <div class="tk-preview-col">
-      <div class="tk-preview-hdr">${icon} ${label} <span class="tk-preview-count">${list.length}</span></div>
-      ${list.length ? list.map(t => `
-        <div class="tk-preview-item" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
-          <span class="tk-preview-prio" style="--prio:${(TK_PRIO[t.priority] || TK_PRIO.normal).c}"></span>
-          <span class="tk-preview-title">${escHtml(t.title)}</span>
-          ${t.assignedTo ? `<span class="tk-preview-assignee">👁 ${escHtml(t.assignedTo.name || t.assignedTo.username || '')}</span>` : ''}
-        </div>`).join('') : `<div class="tk-preview-empty">Žiadne úlohy</div>`}
+  const item = (t, missed) => `
+    <div class="tk-preview-item" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
+      <span class="tk-preview-prio" style="--prio:${(TK_PRIO[t.priority] || TK_PRIO.normal).c}"></span>
+      <span class="tk-preview-title">${escHtml(t.title)}</span>
+      ${missed ? `<span class="tk-preview-due">${escHtml(String(t.due).slice(0, 10).split('-').reverse().join('.'))}</span>
+        <button class="tk-postpone-btn" title="Posunúť termín o 1 deň" onclick="event.stopPropagation(); postponeTask('${t._id}')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="13 17 18 12 13 7"/><line x1="6" y1="12" x2="18" y2="12"/></svg>
+          +1 deň
+        </button>` : (t.assignedTo ? `<span class="tk-preview-assignee">👁 ${escHtml(t.assignedTo.name || t.assignedTo.username || '')}</span>` : '')}
     </div>`;
-  el.innerHTML = col('Dnes', '📅', todayTasks) + col('Zajtra', '⏭', tomorrowTasks);
+  const col = (label, iconKey, list, missed) => `
+    <div class="tk-preview-col ${missed ? 'tk-preview-missed' : ''}">
+      <div class="tk-preview-hdr">${TK_PREVIEW_ICONS[iconKey]} ${label} <span class="tk-preview-count">${list.length}</span></div>
+      ${list.length ? list.map(t => item(t, missed)).join('') : `<div class="tk-preview-empty">Žiadne úlohy</div>`}
+    </div>`;
+  el.innerHTML = (missedTasks.length ? col('Zmeškané', 'missed', missedTasks, true) : '')
+    + col('Dnes', 'today', todayTasks, false) + col('Zajtra', 'tomorrow', tomorrowTasks, false);
+}
+// Posunie termín úlohy o 1 deň dopredu (rýchla akcia pri zmeškaných úlohách)
+async function postponeTask(id) {
+  try {
+    const resp = await fetch('/api/tasks/' + id + '/postpone', { method: 'PUT' });
+    if (!resp.ok) { const er = await resp.json().catch(() => ({})); toast('Chyba: ' + (er.error || resp.status), 'error'); return; }
+    toast('Termín posunutý o 1 deň.', 'success');
+    loadTasks(); loadNotif();
+  } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
 }
 // Používatelia Dashboardu — ponuka pre pole Zadávateľ
 let taskUsers = [];
@@ -7806,6 +7850,7 @@ function renderTaskGrid() {
   if (!el.querySelector('table.task-grid')) buildTaskGridSkeleton(el);
   else updateTaskGridHeader(el);
   renderTaskGridBody();
+  syncTasksStickyOffset();
 }
 
 function getTaskDragAfter(container, y) {
@@ -11097,6 +11142,37 @@ async function sendMailTest() {
     } else {
       res.innerHTML = `<span class="mail-bad">❌ Neodoslané: ${escHtml(d.error || 'neznáma chyba')}</span>`;
       toast('E-mail zlyhal — pozri detail chyby.', 'error', 5000);
+    }
+  } catch (e) { res.innerHTML = `<span class="mail-bad">Sieťová chyba: ${escHtml(e.message)}</span>`; }
+}
+
+// ── Denný súhrn úloh (Admin → Používatelia) ─────────────────────────────────────
+async function loadTaskDigestStatus() {
+  const el = document.getElementById('taskDigestStatus'); if (!el) return;
+  el.innerHTML = '<div class="admin-loading">Načítavam…</div>';
+  try {
+    const d = await fetch('/api/admin/task-digest/status').then(r => r.json());
+    el.innerHTML = `
+      <div class="mail-status-head ${d.mailConfigured ? 'mail-ok' : 'mail-bad'}">
+        ${d.mailConfigured ? '✅ E-mail je nakonfigurovaný' : '⚠️ E-mail NIE je nakonfigurovaný — súhrn sa nebude posielať'}
+      </div>
+      <div class="mail-kv"><span class="mail-k">Čas odoslania</span><span class="mail-v">${escHtml(d.hour)}</span></div>
+      <div class="mail-kv"><span class="mail-k">Naposledy odoslané</span><span class="mail-v">${d.lastSentDate ? escHtml(d.lastSentDate) : '<em>zatiaľ nikdy</em>'}</span></div>
+    `;
+  } catch (e) { el.innerHTML = '<div class="mail-bad">Chyba načítania stavu.</div>'; }
+}
+async function runTaskDigestNow() {
+  const res = document.getElementById('taskDigestResult');
+  res.innerHTML = '<span class="admin-loading">Odosielam…</span>';
+  try {
+    const r = await fetch('/api/admin/task-digest/run-now', { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      res.innerHTML = `<span class="mail-ok">✅ Odoslané: ${d.sent}, preskočené (bez úloh): ${d.skipped}${d.errors.length ? `, chyby: ${d.errors.length}` : ''}</span>`;
+      toast('Denný súhrn odoslaný.', 'success');
+      loadTaskDigestStatus();
+    } else {
+      res.innerHTML = `<span class="mail-bad">❌ Chyba: ${escHtml(d.error || 'neznáma chyba')}</span>`;
     }
   } catch (e) { res.innerHTML = `<span class="mail-bad">Sieťová chyba: ${escHtml(e.message)}</span>`; }
 }
