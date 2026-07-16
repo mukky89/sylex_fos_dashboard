@@ -37,6 +37,9 @@
   <!-- ===== HEADER ===== -->
   <header class="header">
     <div class="header-inner">
+      <button class="mobile-nav-btn" id="mobileNavBtn" onclick="toggleMobileNav()" aria-label="Otvoriť navigáciu" aria-expanded="false" aria-controls="appSidebar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
       <div class="logo" onclick="showPage('home')">
         <img class="logo-img" src="/img/sylex-logo.svg" alt="SYLEX" width="34" height="26">
         <div class="logo-divider"></div>
@@ -183,6 +186,7 @@
   </header>
 
   <!-- ===== ALTERNATÍVNY SIDEBAR (konfigurovateľný v Admin → Vzhľad) ===== -->
+  <div id="mobileNavBackdrop" class="mobile-nav-backdrop" onclick="closeMobileNav()"></div>
   <aside id="appSidebar" class="app-sidebar" aria-label="Hlavná navigácia">
     <div class="asb-brand" onclick="showPage('home')">
       <div class="asb-logo">
@@ -192,6 +196,9 @@
         <span class="asb-brand-name">FOS Dashboard</span>
         <span class="asb-brand-sub">SYLEX</span>
       </div>
+      <button class="asb-close" onclick="event.stopPropagation(); closeMobileNav()" aria-label="Zavrieť navigáciu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
 
     <nav class="asb-nav">

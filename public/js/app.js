@@ -352,10 +352,29 @@ function applyHiddenModules() {
   });
 }
 
+// Mobilná výsuvná navigácia (appSidebar ako drawer) — otvorenie/zatvorenie
+function toggleMobileNav() {
+  document.body.classList.contains('mobile-nav-open') ? closeMobileNav() : openMobileNav();
+}
+function openMobileNav() {
+  document.body.classList.add('mobile-nav-open');
+  document.getElementById('mobileNavBackdrop')?.classList.add('show');
+  document.getElementById('mobileNavBtn')?.setAttribute('aria-expanded', 'true');
+  document.body.style.overflow = 'hidden';
+}
+function closeMobileNav() {
+  document.body.classList.remove('mobile-nav-open');
+  document.getElementById('mobileNavBackdrop')?.classList.remove('show');
+  document.getElementById('mobileNavBtn')?.setAttribute('aria-expanded', 'false');
+  document.body.style.overflow = '';
+}
+
 function applyUiLayout() {
   const b = document.body, r = document.documentElement;
   b.classList.toggle('layout-sidebar', UI_CFG.nav === 'sidebar');
-  SB_THEMES.forEach(t => b.classList.toggle('sbt-' + t, UI_CFG.nav === 'sidebar' && UI_CFG.sidebarTheme === t));
+  // Téma sidebaru sa aplikuje vždy (nielen pri nav==='sidebar'), lebo appSidebar
+  // slúži aj ako mobilný výsuvný drawer bez ohľadu na zvolený desktop layout.
+  SB_THEMES.forEach(t => b.classList.toggle('sbt-' + t, UI_CFG.sidebarTheme === t));
 
   // Akcentová farba
   const acc = UI_ACCENTS[UI_CFG.accent] || UI_ACCENTS.cyan;
@@ -848,6 +867,7 @@ function _activatePage(name) {
   document.querySelectorAll('.asb-link').forEach(l => l.classList.toggle('active', l.dataset.page === name));
   const pg = document.getElementById('page-' + name);
   if (pg) pg.classList.add('active');
+  closeMobileNav();
 }
 
 function showPage(name) {
@@ -5539,7 +5559,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter')  { e.preventDefault(); _confirmDone(true); return; }
   }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openCmdPalette(); }
-  if (e.key === 'Escape') { closeCmdPalette(); closeHdrPopovers(); }
+  if (e.key === 'Escape') { closeCmdPalette(); closeHdrPopovers(); closeMobileNav(); }
 });
 
 // ── Generický sortovač tabuliek (klik na hlavičku) — funguje na ľubovoľnej .sortable ──
@@ -6666,6 +6686,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.47.0', date: '16. 7. 2026', tag: 'feat', items: [
+    'Mobilná navigácia prerobená na <strong>výsuvný bočný panel (drawer)</strong> — namiesto vodorovnej posuvnej lišty s 20+ ikonami sa na mobile/tablete (≤900px) otvára cez hamburger tlačidlo v hlavičke, so zoskupenými sekciami a väčšími dotykovými plochami.',
+    'Zväčšené dotykové plochy hlavičkových tlačidiel (hľadanie, rýchle pridať, notifikácie) na mobile na min. 40×40px.',
+  ] },
   { v: '2.46.0', date: '15. 7. 2026', tag: 'fix', items: [
     'Vývoj výrobkov → Projekty (zoznam): filtre <strong>predaj/vývoj strácali kontext</strong> po výbere hodnoty — pridané trvalé ikony 💼/🛠/📦 a vizuálne zoskupenie filtrov.',
     'Zlepšená prístupnosť tlačidla „zrušiť filtre" (aria-label) a čitateľnosť popiskov PREDAJ/VÝVOJ/VÝSTUPY.',

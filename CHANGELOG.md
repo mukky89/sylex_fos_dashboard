@@ -8,6 +8,18 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.47.0] — 2026-07-16
+### Pridané
+- **Mobilná optimalizácia celej appky.** Hlavná navigácia (22 položiek) sa
+  na mobile/tablete (šírka ≤900px) už neposúva vodorovne v hlavičke, ale
+  otvára sa ako výsuvný bočný panel (drawer) cez nové hamburger tlačidlo —
+  so zoskupenými sekciami (Znalosti / Výroba / …), rovnako ako v alternatívnom
+  desktop sidebar layoute. Drawer sa zatvára cez podložku (backdrop), tlačidlo
+  ✕, kláves Esc alebo automaticky pri prechode na inú stránku.
+- Zväčšené dotykové plochy hlavičkových ikon (hľadanie, rýchle pridať,
+  notifikácie) na mobile na min. 40×40px a odkazov v drawer navigácii na
+  min. 44px výšky (súlad s odporúčaním WCAG/Material pre dotykové ciele).
+
 ## [2.46.0] — 2026-07-15
 ### Opravené
 - **Vývoj výrobkov → Projekty (zoznam): filtre predaj/vývoj strácali kontext.**
