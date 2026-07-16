@@ -8,6 +8,29 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.52.0] — 2026-07-16
+### Pridané
+- **Mobil — veľký balík responzivity (Android + iPhone).**
+  - **Spodný tab bar** (≤900px): Domov, Úlohy, Výroba, Kalendár + „Menu"
+    (otvorí drawer s celou navigáciou). Aktívna stránka sa zvýrazňuje,
+    rešpektuje skryté moduly z nastavení aj safe-area iPhonu.
+  - **Filter v draweri:** input navrchu výsuvnej navigácie filtruje položky
+    aj skupinové nadpisy (`filterAppSidebar`), pri zatvorení sa vyčistí.
+### Vylepšené
+- **Modaly na mobile ako bottom-sheet:** `.modal-box` sa pri ≤640px prilepí
+  odspodu na celú šírku, tlačidlá v pätičke sa roztiahnu a dostanú
+  `safe-area-inset-bottom` padding.
+- **iOS anti-zoom:** všetky textové inputy/selecty/textarey majú na mobile
+  `font-size: 16px !important` — Safari už nezoomuje pri fokuse do poľa.
+- Dotykové ciele: `.btn-primary/.btn-secondary` min. 44px,
+  `.btn-sm/.btn-edit/.btn-delete` min. 38px, `.modal-close` 42px (≤900px).
+- Kanban (Úlohy, Výroba, projekty): na mobile stĺpce `min(82vw, 320px)`
+  so `scroll-snap` — posúvanie „docvakuje" po stĺpcoch.
+- `100dvh` jednotky pre `.page` a modaly (fallback `100vh`) — obsah už nie je
+  odrezaný pod adresným riadkom mobilných prehliadačov; obsah stránok má na
+  mobile spodný padding, aby nekončil pod tab barom; FAB tlačidlá vyzdvihnuté.
+- Hlavičkové quicklink dlaždice sa na mobile skrývajú (sú v draweri).
+
 ## [2.51.0] — 2026-07-16
 ### Opravené
 - **Changelog nezobrazoval HTML značky.** Položky zoznamu zmien sa pri

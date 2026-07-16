@@ -346,7 +346,7 @@ const MODULES = [
 // Skry/zobraz navigačné položky podľa UI_CFG.hiddenModules
 function applyHiddenModules() {
   const hidden = new Set(UI_CFG.hiddenModules || []);
-  document.querySelectorAll('.nav-link[data-page], .asb-link[data-page]').forEach(l => {
+  document.querySelectorAll('.nav-link[data-page], .asb-link[data-page], .tabbar-item[data-page]').forEach(l => {
     if (l.dataset.page === 'home' || l.dataset.page === 'admin') return; // nikdy neskrývať
     l.classList.toggle('nav-hidden', hidden.has(l.dataset.page));
   });
@@ -375,6 +375,29 @@ function closeMobileNav() {
   if (wasOpen) window.scrollTo(0, _mobileNavScrollY);
   document.getElementById('mobileNavBackdrop')?.classList.remove('show');
   document.getElementById('mobileNavBtn')?.setAttribute('aria-expanded', 'false');
+  // Vyčistiť filter menu, aby bol drawer pri ďalšom otvorení kompletný
+  const asbF = document.getElementById('asbFilter');
+  if (asbF && asbF.value) { asbF.value = ''; filterAppSidebar(''); }
+}
+
+// Filter položiek v draweri (input v hlavičke appSidebar) — skryje nezhodujúce
+// sa odkazy a prázdne skupinové nadpisy
+function filterAppSidebar(q) {
+  q = (q || '').trim().toLowerCase();
+  const nav = document.querySelector('#appSidebar .asb-nav');
+  if (!nav) return;
+  nav.querySelectorAll('.asb-link').forEach(l => {
+    const hit = !q || l.textContent.toLowerCase().includes(q) || (l.title || '').toLowerCase().includes(q);
+    l.classList.toggle('asb-filtered-out', !hit);
+  });
+  nav.querySelectorAll('.asb-group').forEach(g => {
+    let el = g.nextElementSibling, any = false;
+    while (el && !el.classList.contains('asb-group')) {
+      if (el.classList.contains('asb-link') && !el.classList.contains('asb-filtered-out') && !el.classList.contains('nav-hidden')) { any = true; break; }
+      el = el.nextElementSibling;
+    }
+    g.classList.toggle('asb-filtered-out', !any);
+  });
 }
 
 function applyUiLayout() {
@@ -873,6 +896,7 @@ function _activatePage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(l => l.classList.toggle('active', l.dataset.page === name));
   document.querySelectorAll('.asb-link').forEach(l => l.classList.toggle('active', l.dataset.page === name));
+  document.querySelectorAll('.tabbar-item[data-page]').forEach(l => l.classList.toggle('active', l.dataset.page === name));
   const pg = document.getElementById('page-' + name);
   if (pg) pg.classList.add('active');
   closeMobileNav();
@@ -6694,6 +6718,17 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.52.0', date: '16. 7. 2026', tag: 'new', items: [
+    '<strong>Mobil — veľký balík responzivity.</strong> Appka je na telefóne (Android aj iPhone) konečne pohodlne ovládateľná.',
+    '<strong>Spodný tab bar:</strong> na mobile pribudla lišta pod palcom s najpoužívanejšími stránkami — Domov, Úlohy, Výroba, Kalendár a Menu (otvorí celú navigáciu).',
+    '<strong>Hľadanie v menu:</strong> výsuvná navigácia (drawer) má navrchu filter — stačí písať a 20+ položiek sa zúži na hľadané.',
+    '<strong>Modaly ako bottom-sheet:</strong> na mobile sa formulárové okná otvárajú cez celú šírku odspodu obrazovky so sticky tlačidlami Uložiť/Zrušiť (rešpektujú aj výrez/safe-area iPhonu).',
+    '<strong>Koniec samovoľného zoomovania na iPhone:</strong> všetky vstupné polia majú na mobile písmo min. 16px, takže Safari pri ťuknutí do poľa už nepriblíži stránku.',
+    'Väčšie dotykové ciele: tlačidlá (Uložiť, Upraviť, Zmazať, zatváranie modalov…) majú na mobile minimálne rozmery pre prst (38–44px).',
+    'Kanban tabule (Úlohy, Výroba): stĺpce sú na mobile široké ~4/5 obrazovky a pri posúvaní „docvaknú" na celý stĺpec (scroll-snap).',
+    'Obsah stránok už nekončí schovaný pod spodnou lištou; plávajúce tlačidlá (Pomoc, AI asistent) sú vyzdvihnuté nad ňu.',
+    'Výška stránok používa <code>dvh</code> jednotky — spodok obsahu už nie je odrezaný pod adresným riadkom mobilného Safari/Chrome.',
+  ] },
   { v: '2.51.0', date: '16. 7. 2026', tag: 'fix', items: [
     '<strong>Changelog — oprava zobrazenia HTML značiek.</strong> Zvýraznenia ako <code>&lt;strong&gt;</code> sa v zázname zmien vypisovali doslovne ako text namiesto tučného písma — položky sa už nezneškodňujú (escapujú), takže sa formátovanie správne vykreslí.',
     'Vytunené zvýraznenie v changelogu: <code>&lt;code&gt;</code> značky pre technické výrazy majú teraz vlastný štýl (odlíšené pozadie a farba) a tučný text je čitateľnejší na tmavom pozadí.',

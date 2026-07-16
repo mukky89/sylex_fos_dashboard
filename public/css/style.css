@@ -246,7 +246,7 @@ body {
 /* ==============================
    PAGES
    ============================== */
-.page { display: none; padding-top: var(--header-h); min-height: 100vh; }
+.page { display: none; padding-top: var(--header-h); min-height: 100vh; min-height: 100dvh; }
 .page.active { display: block; }
 .wiki-page.active { display: flex; flex-direction: column; }
 
@@ -6554,3 +6554,117 @@ body.theme-light .prod-sub, body.theme-warm .prod-sub { color: #64748b; }
 .mail-test-result .mail-ok { color: #4ade80; }
 .mail-test-result .mail-bad { color: #fca5a5; font-weight: 600; }
 
+
+/* =============================================
+   MOBIL — responzívne základy (Fáza 1 + 2)
+   Dotykové ovládanie, bottom-sheet modaly, spodný
+   tab bar, kanban so scroll-snap, filter draweru.
+   POZOR: každé pravidlo pre mobil MUSÍ ostať vnútri
+   svojho @media bloku (viď regresia 2.50.0)!
+   ============================================= */
+
+/* --- Filter v draweri (asb-search) — dark zone štýl --- */
+.asb-search {
+  display: flex; align-items: center; gap: 8px;
+  margin: 10px 12px 0; padding: 0 10px;
+  background: rgba(var(--dz-fg-rgb),0.08);
+  border: 1px solid rgba(var(--dz-fg-rgb),0.14);
+  border-radius: 9px; color: rgba(var(--dz-fg-rgb),0.45);
+}
+.asb-search:focus-within { border-color: rgba(8,145,178,0.7); }
+.asb-search svg { flex-shrink: 0; }
+.asb-search input {
+  flex: 1; min-width: 0; padding: 9px 0; background: none; border: none; outline: none;
+  color: var(--dz-text); font-family: inherit; font-size: 0.85rem;
+}
+.asb-search input::placeholder { color: rgba(var(--dz-fg-rgb),0.35); }
+/* Svetlé témy sidebaru — tmavý text na svetlom podklade (kontrast!) */
+body.sbt-light .asb-search, body.sbt-minimal .asb-search { background: #f1f5f9; border-color: #e2e8f0; color: #94a3b8; }
+body.sbt-light .asb-search input, body.sbt-minimal .asb-search input { color: #1f2937; }
+body.sbt-light .asb-search input::placeholder, body.sbt-minimal .asb-search input::placeholder { color: #94a3b8; }
+/* V icon-only sidebar layoute na desktope filter nedáva zmysel */
+body.sbt-icon .asb-search { display: none; }
+.asb-filtered-out { display: none !important; }
+
+/* --- Spodný tab bar — na desktope skrytý --- */
+.tabbar { display: none; }
+
+@media (max-width: 900px) {
+  /* iOS Safari: input s písmom < 16px spôsobí automatický zoom pri fokuse —
+     najčastejší dôvod „rozbitého" mobilného UX. !important je tu zámerné,
+     aby prebilo všetky špecifické veľkosti inputov v appke. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  select, textarea { font-size: 16px !important; }
+
+  /* Dotykové ciele — minimálne rozmery pre prst */
+  .btn-primary, .btn-secondary { min-height: 44px; }
+  .btn-sm, .btn-edit, .btn-delete, .btn-danger-sm { min-height: 38px; min-width: 38px; }
+  .modal-close { min-width: 42px; min-height: 42px; }
+  button, a { -webkit-tap-highlight-color: transparent; }
+
+  /* Plynulý dotykový scroll pre vodorovné kontajnery */
+  .proc-table-wrap, .owners-table-wrap, .powners-table-wrap, .prod-calib-tablewrap,
+  .pj-list-wrap, .rt-ops-table-wrap, .gpn-subtable-wrap, .tasks-grid-wrap,
+  .pdv-table-wrap, .kanban { -webkit-overflow-scrolling: touch; }
+
+  /* Quicklink dlaždice v hlavičke — na mobile niet miesta (menu je v draweri) */
+  .header-quicklinks { display: none; }
+
+  /* Spodný tab bar */
+  .tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 350;
+    display: flex; align-items: stretch; gap: 2px;
+    background: #0d1430; border-top: 1px solid rgba(var(--dz-fg-rgb),0.12);
+    padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
+  }
+  body.logged-out .tabbar { display: none !important; }
+  body.mobile-nav-open .tabbar { display: none; }
+  .tabbar-item {
+    flex: 1; min-width: 0; min-height: 52px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    background: none; border: none; border-radius: 10px; cursor: pointer;
+    font-family: inherit; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.02em;
+    color: rgba(var(--dz-fg-rgb),0.55); touch-action: manipulation;
+  }
+  .tabbar-item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tabbar-item.active { color: #67e8f9; background: rgba(8,145,178,0.16); }
+  .tabbar-item:active { background: rgba(var(--dz-fg-rgb),0.08); }
+
+  /* Otvorený modal musí prekryť plávajúce FAB tlačidlá (bot-fab má z-index 600) */
+  .modal { z-index: 700; }
+
+  /* Obsah stránky nesmie končiť pod tab barom; FAB tlačidlá vyzdvihnúť nad neho */
+  .page { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+  .bot-fab { bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .tour-fab { bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .bot-panel { max-height: calc(100dvh - 160px); }
+}
+
+@media (max-width: 640px) {
+  /* --- Modaly ako bottom-sheet: celá šírka, prilepené dole, sticky pätička --- */
+  .modal-box {
+    top: auto; bottom: 0; left: 0; right: 0;
+    transform: none;
+    width: 100%; max-width: none;
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+    border-radius: 18px 18px 0 0;
+    border-left: none; border-right: none; border-bottom: none;
+  }
+  .modal-header { padding: 14px 16px; }
+  .modal-body { padding: 16px 14px; }
+  .modal-footer { padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); flex-wrap: wrap; }
+  .modal-footer .btn-primary, .modal-footer .btn-secondary {
+    flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* --- Kanban: stĺpce ~4/5 obrazovky so scroll-snap („docvaknutie") --- */
+  .kanban, #tasksKanban.kanban, .prod-kanban.kanban {
+    grid-template-columns: none !important;
+    grid-auto-flow: column;
+    grid-auto-columns: min(82vw, 320px);
+    scroll-snap-type: x proximity;
+    padding-bottom: 8px;
+  }
+  .kanban > * { scroll-snap-align: start; }
+}
