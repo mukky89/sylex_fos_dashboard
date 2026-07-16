@@ -871,6 +871,7 @@ async function handleHash(hash) {
   if (hash === 'pwf')     { _activatePage('pwf');     loadPwf(); return; }
   if (hash === 'gpn')     { _activatePage('gpn');     loadGpn(); return; }
   if (hash === 'powners') { _activatePage('powners'); loadPowners(); return; }
+  if (hash === 'tasks/new') { _activatePage('tasks'); await loadTasks(); openTaskModal(); return; }  // PWA skratka „Nová úloha"
   if (hash === 'tasks')   { _activatePage('tasks');   loadTasks(); return; }
   if (hash === 'crm')     { _activatePage('crm');     loadCrm(); return; }
   if (hash === 'mgmt')    { _activatePage('mgmt');    loadManagement(); return; }
@@ -6718,6 +6719,13 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.54.0', date: '16. 7. 2026', tag: 'new', items: [
+    '<strong>Appka na plochu (Android + iPhone) — PWA so štartom na Úlohách.</strong> Dashboard sa dá nainštalovať ako appka, ktorá sa otvorí rovno na module <strong>Úlohy</strong> a beží na celú obrazovku bez panela prehliadača.',
+    '<strong>Android/Chrome:</strong> pri návšteve sa dole objaví banner <em>„Nainštalovať appku Úlohy"</em> s tlačidlom Inštalovať (natívna výzva). <strong>iPhone/Safari:</strong> banner s návodom <em>Zdieľať → „Pridať na plochu"</em>.',
+    'Ikona na ploche má <strong>skratky</strong> (podržanie ikony): Úlohy, <strong>Nová úloha</strong> (otvorí rovno formulár), Kalendár, Výroba.',
+    '<strong>iPhone s výrezom (notch):</strong> oprava — hlavička už nie je schovaná pod stavovým riadkom v režime appky (rešpektuje <code>safe-area</code>).',
+    'Funguje aj offline (základný obsah cez service worker, network-first — nové verzie sa prejavia hneď po nasadení).',
+  ] },
   { v: '2.53.0', date: '16. 7. 2026', tag: 'fix', items: [
     '<strong>Mobil — oprava „appka sa neprispôsobuje obrazovke".</strong> Pri zapnutom layoute <strong>Bočný sidebar</strong> sa na telefóne obsah odtláčal o 264px doprava a nezmestil sa na obrazovku (nedalo sa poriadne scrollovať ani ovládať) — a to na <strong>každej stránke</strong>.',
     'Príčina: desktopové pravidlo <code>padding-left</code> pre <code>.page</code> v sidebar režime malo rovnakú špecificitu ako mobilný reset, ale bolo v CSS neskôr, takže vyhralo aj na mobile. Desktopové rozloženie sidebaru je teraz uzavreté do <code>@media (min-width: 901px)</code>, čiže na mobile (≤900px) sa už neuplatní.',
@@ -13924,3 +13932,97 @@ async function fsDeleteFile(id, fileId) {
 
 // Štart: over prihlásenie, potom spusti appku
 bootstrap();
+
+// ==============================
+// PWA — inštalácia na plochu (Android + iPhone)
+// ==============================
+(function initPwaInstall() {
+  // Už spustené ako nainštalovaná appka? → nič neponúkaj.
+  const isStandalone = () =>
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: minimal-ui)').matches ||
+    window.navigator.standalone === true;
+  if (isStandalone()) return;
+  if (localStorage.getItem('fos_pwa_dismissed') === '1') return;
+
+  const ua = navigator.userAgent || '';
+  const isIOS = /iphone|ipad|ipod/i.test(ua) && !window.MSStream;
+  const isIOSSafari = isIOS && /safari/i.test(ua) && !/crios|fxios|edgios/i.test(ua);
+  let deferredPrompt = null;
+
+  function buildBanner(innerHtml) {
+    if (document.getElementById('pwaInstallBanner')) return;
+    const b = document.createElement('div');
+    b.id = 'pwaInstallBanner';
+    b.style.cssText = [
+      'position:fixed', 'left:12px', 'right:12px',
+      'bottom:calc(76px + env(safe-area-inset-bottom))', 'z-index:3500',
+      'max-width:520px', 'margin:0 auto',
+      'display:flex', 'align-items:center', 'gap:12px',
+      'padding:12px 14px', 'border-radius:14px',
+      'background:#131c35', 'border:1px solid rgba(255,255,255,0.14)',
+      'box-shadow:0 10px 34px rgba(0,0,0,0.45)', 'color:#e7edfb',
+      'font-family:var(--font, system-ui)'
+    ].join(';');
+    b.innerHTML = innerHtml;
+    document.body.appendChild(b);
+    b.querySelector('[data-pwa-dismiss]')?.addEventListener('click', () => {
+      localStorage.setItem('fos_pwa_dismissed', '1');
+      b.remove();
+    });
+    return b;
+  }
+
+  const iconCell =
+    '<div style="width:38px;height:38px;flex-shrink:0;border-radius:10px;background:linear-gradient(140deg,#00d4ff,#6366f1);display:flex;align-items:center;justify-content:center;font-size:1.2rem">✅</div>';
+  const closeBtn =
+    '<button data-pwa-dismiss aria-label="Zavrieť" style="flex-shrink:0;width:30px;height:30px;border:none;border-radius:8px;background:rgba(255,255,255,0.08);color:#c7d2e8;font-size:1.1rem;cursor:pointer">×</button>';
+
+  // Android / Chrome / Edge — natívna výzva na inštaláciu
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (isStandalone()) return;
+    const banner = buildBanner(
+      iconCell +
+      '<div style="flex:1;min-width:0;line-height:1.3">' +
+        '<div style="font-weight:700;font-size:0.92rem">Nainštalovať appku Úlohy</div>' +
+        '<div style="font-size:0.76rem;color:#9fb0d0">Rýchly prístup z plochy telefónu — funguje aj offline.</div>' +
+      '</div>' +
+      '<button id="pwaInstallBtn" style="flex-shrink:0;padding:9px 14px;border:none;border-radius:9px;background:var(--accent,#06b6d4);color:#06121f;font-weight:700;font-size:0.85rem;cursor:pointer">Inštalovať</button>' +
+      closeBtn
+    );
+    banner?.querySelector('#pwaInstallBtn')?.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      try { await deferredPrompt.userChoice; } catch (_) {}
+      deferredPrompt = null;
+      document.getElementById('pwaInstallBanner')?.remove();
+    });
+  });
+
+  window.addEventListener('appinstalled', () => {
+    localStorage.setItem('fos_pwa_dismissed', '1');
+    document.getElementById('pwaInstallBanner')?.remove();
+    if (typeof toast === 'function') toast('Appka nainštalovaná na plochu', 'success');
+  });
+
+  // iPhone (Safari) — nemá beforeinstallprompt, ukáž návod „Zdieľať → Na plochu"
+  if (isIOSSafari) {
+    // počkaj na prihlásenie, aby banner neprekrýval login
+    const showIOSHint = () => {
+      if (document.body.classList.contains('logged-out')) return setTimeout(showIOSHint, 1500);
+      buildBanner(
+        iconCell +
+        '<div style="flex:1;min-width:0;line-height:1.35">' +
+          '<div style="font-weight:700;font-size:0.92rem">Pridať Úlohy na plochu</div>' +
+          '<div style="font-size:0.76rem;color:#9fb0d0">Ťukni na <span style="color:#67e8f9">Zdieľať</span> ' +
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#67e8f9" stroke-width="2" style="vertical-align:-2px"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 12v6a2 2 0 002 2h12a2 2 0 002-2v-6"/></svg>' +
+          ' a zvoľ <b>„Pridať na plochu"</b>.</div>' +
+        '</div>' +
+        closeBtn
+      );
+    };
+    setTimeout(showIOSHint, 2500);
+  }
+})();

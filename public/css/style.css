@@ -79,7 +79,11 @@ body {
    ============================== */
 .header {
   position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-  height: var(--header-h);
+  /* +safe-area: v PWA (standalone) na iPhone s notchom prekrýva stavový riadok
+     obsah hlavičky; padding ho posunie pod notch, pozadie vyplní aj oblasť notchu.
+     Na zariadeniach bez výrezu je env() = 0, takže sa nič nemení. */
+  height: calc(var(--header-h) + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
   background: var(--hdr-bg);
   border-bottom: 1px solid var(--hdr-border);
   backdrop-filter: blur(12px);
@@ -246,7 +250,7 @@ body {
 /* ==============================
    PAGES
    ============================== */
-.page { display: none; padding-top: var(--header-h); min-height: 100vh; min-height: 100dvh; }
+.page { display: none; padding-top: calc(var(--header-h) + env(safe-area-inset-top)); min-height: 100vh; min-height: 100dvh; }
 .page.active { display: block; }
 .wiki-page.active { display: flex; flex-direction: column; }
 
