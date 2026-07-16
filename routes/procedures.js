@@ -609,7 +609,7 @@ function buildDoc(p) {
   let logoRun = null;
   try {
     if (fs.existsSync(LOGO_PATH)) {
-      logoRun = new ImageRun({ data: fs.readFileSync(LOGO_PATH), transformation: { width: 178, height: 45 }, type: 'png' });
+      logoRun = new ImageRun({ data: fs.readFileSync(LOGO_PATH), transformation: { width: 59, height: 45 }, type: 'png' });
     }
   } catch (e) {}
   if (logoRun) children.push(new Paragraph({ spacing: { after: 160 }, children: [logoRun] }));
