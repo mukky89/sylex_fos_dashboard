@@ -3442,12 +3442,22 @@ body.logged-out .thermo-corner { display: none !important; }
 @media (max-width: 900px) {
   .header-inner { padding: 0 10px; }
   .mobile-nav-btn { display: inline-flex; }
-  .logo { margin-right: auto; }
+  .logo { margin-right: auto; min-width: 0; }
+  .logo-wordmark { overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
   .logo-divider, .logo-sub-text { display: none; }
   .nav { display: none; }
   .header-right { flex-shrink: 0; gap: 2px; margin-left: 4px; }
   .app-version { display: none; }
   .hdr-icon-btn { width: 40px; height: 40px; }
+  /* Senzory (thermo-corner widget je stále dostupný), odhlásenie a meno
+     používateľa sú na mobile duplicitné — rovnaké akcie sú v drawer menu
+     (pätička appSidebar). Skryté, aby sa hlavičkové ikony nevytláčali mimo
+     viditeľnú obrazovku (a stali sa neklikateľné). */
+  #hdrSensorBtn, .hdr-logout-btn, .hdr-sep-v, .hdr-user { display: none !important; }
+}
+@media (max-width: 360px) {
+  .logo-wordmark { display: none; }
+}
 
   /* appSidebar sa na mobile správa vždy ako drawer, nezávisle od
      zvoleného desktop layoutu (header / sidebar) */
@@ -4989,6 +4999,31 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 #taskModal .tk-upd-meta { color: rgba(var(--dz-fg-rgb),0.4); }
 #taskModal .tk-upd-meta strong { color: var(--dz-text); }
 #taskModal .tk-upd-text { color: rgba(var(--dz-fg-rgb),0.85); }
+
+/* Stav / Priorita — klikacie chipy namiesto <select>, priama zmena hodnoty
+   jedným klikom (dark zone — #taskModal má tmavé pozadie #131c35). */
+.tk-chip-group { display: flex; flex-wrap: wrap; gap: 7px; }
+.tk-chip {
+  padding: 7px 14px; border-radius: 100px; font-size: 0.82rem; font-weight: 600;
+  font-family: var(--font); cursor: pointer; touch-action: manipulation;
+  background: rgba(var(--dz-fg-rgb),0.06); border: 1.5px solid rgba(var(--dz-fg-rgb),0.14);
+  color: rgba(var(--dz-fg-rgb),0.6); transition: all .15s ease;
+}
+.tk-chip:hover { background: rgba(var(--dz-fg-rgb),0.12); color: var(--dz-text2); }
+.tk-chip:focus-visible { outline: 2px solid var(--dz-cyan); outline-offset: 2px; }
+.tk-chip.active { color: #fff; border-color: transparent; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+/* Stav — rovnaké farby ako badge v Grid pohľade (.task-grid-status-*) */
+.tk-chip-todo.active       { background: #64748b; }
+.tk-chip-inprogress.active { background: #3b82f6; }
+.tk-chip-blocked.active    { background: #ef4444; }
+.tk-chip-review.active     { background: #eab308; color: #131c35; }
+.tk-chip-done.active       { background: #10b981; }
+.tk-chip-cancelled.active  { background: rgba(var(--dz-fg-rgb),0.3); }
+/* Priorita — rovnaké farby ako TK_PRIO */
+.tk-chip-prio-low.active      { background: #64748b; }
+.tk-chip-prio-normal.active   { background: #3b82f6; }
+.tk-chip-prio-high.active     { background: #ef4444; }
+.tk-chip-prio-critical.active { background: #b91c1c; }
 
 /* Sekčné nadpisy — vizuálne oddelenie logických skupín polí */
 .tk-sec-lbl {

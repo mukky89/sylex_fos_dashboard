@@ -6694,6 +6694,12 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.50.0', date: '16. 7. 2026', tag: 'fix', items: [
+    'Oprava: na mobile boli hlavičkové ikony (hľadanie, notifikácie, senzory, odhlásenie…) vytláčané mimo viditeľnú obrazovku a nedali sa použiť — na mobile (≤900px) sú teraz skryté ikony Senzory/meno/odhlásenie (dostupné v drawer menu, senzory aj cez plávajúci teplomer), takže sa zvyšné ikony vždy zmestia a sú klikateľné.',
+    'Logo „FOS Dashboard" v hlavičke sa na úzkych obrazovkách skracuje (a na najužších skrýva), aby nevytláčalo ostatné ikony mimo obrazovku.',
+    '<strong>Moje úlohy — Stav a Priorita ako tlačidlá.</strong> V modale úlohy sa dajú hodnoty Stav (Čaká/Prebieha/Blokované/Na kontrolu/Hotové/Zrušené) a Priorita (Nízka/Normálna/Vysoká/Kritická) nastaviť jedným klikom na farebné tlačidlo namiesto rozbaľovacieho zoznamu.',
+    '<strong>Duplikovanie úlohy</strong> — nové tlačidlo „⧉ Duplikovať" v modale úlohy otvorí formulár novej úlohy s predvyplneným zákazníkom a projektom z pôvodnej úlohy (ostatné polia — názov, termín, stav… — ostávajú prázdne/predvolené).',
+  ] },
   { v: '2.49.0', date: '16. 7. 2026', tag: 'fix', items: [
     'Administrácia → Používatelia: opravený kontrast textu v sekciách „Diagnostika e-mailu" a „Denný súhrn úloh" — tmavé hodnoty (SMTP_HOST, čas odoslania…) boli na tmavom pozadí takmer neviditeľné.',
     'Mobilná navigácia: spoľahlivejšie zamknutie scrollu pri otvorenom menu (iOS Safari) — predtým sa mohlo stať, že sa pozadie pod menu odscrollovalo a na položky sa nedalo trafiť.',
@@ -7909,6 +7915,17 @@ async function toggleTask(id, done) {
     loadTasks(); loadNotif();
   } catch { toast('Chyba', 'error'); }
 }
+// Chipy Stav/Priorita v modale úlohy — klik rovno nastaví hodnotu skrytého
+// inputu a zvýrazní aktívny chip (namiesto pôvodného <select>).
+function setTkChip(fieldId, btnEl) {
+  const val = btnEl.dataset.val;
+  document.getElementById(fieldId).value = val;
+  btnEl.parentElement.querySelectorAll('.tk-chip').forEach(b => b.classList.toggle('active', b === btnEl));
+}
+function setTkChipActive(groupId, val) {
+  const group = document.getElementById(groupId); if (!group) return;
+  group.querySelectorAll('.tk-chip').forEach(b => b.classList.toggle('active', b.dataset.val === val));
+}
 function openTaskModal(t = null) {
   const e = t && typeof t === 'object';
   const ro = !!(e && t.readOnly);
@@ -7920,6 +7937,8 @@ function openTaskModal(t = null) {
   document.getElementById('tkDue').value = e && t.due ? String(t.due).slice(0, 10) : '';
   document.getElementById('tkPriority').value = e ? (t.priority || 'normal') : 'normal';
   document.getElementById('tkStatus').value = e ? taskStatusOf(t) : 'todo';
+  setTkChipActive('tkStatusChips', document.getElementById('tkStatus').value);
+  setTkChipActive('tkPriorityChips', document.getElementById('tkPriority').value);
   const prog = e ? (t.progress || 0) : 0;
   document.getElementById('tkProgress').value = prog;
   document.getElementById('tkProgressVal').textContent = prog;
@@ -7938,9 +7957,25 @@ function openTaskModal(t = null) {
   if (ro) banner.textContent = `👁 Len na čítanie — zadal(a): ${t.user?.name || t.user?.username || 'neznámy'}`;
   document.getElementById('tkSaveBtn').style.display = ro ? 'none' : '';
   document.getElementById('tkDeleteBtn').style.display = (e && !ro) ? '' : 'none';
+  document.getElementById('tkDuplicateBtn').style.display = e ? '' : 'none';
 
   modal.classList.remove('hidden');
   modalSnapshot('taskModal');
+}
+// Duplikovanie úlohy — otvorí formulár novej úlohy s predvyplneným
+// zákazníkom a projektom z pôvodnej úlohy (ostatné polia ostávajú prázdne).
+function duplicateTask() {
+  const id = document.getElementById('tkId').value;
+  const orig = tasksData.find(x => x._id === id);
+  openTaskModal();
+  if (orig) {
+    renderTaskCatalogSelect('tkProject', taskCatalog.projects, orig.project || '');
+    renderTaskCatalogSelect('tkCustomer', taskCatalog.customers, orig.customer || '');
+  }
+  document.getElementById('tkModalTitle').textContent = 'Nová úloha (duplikát)';
+  modalSnapshot('taskModal');
+  document.getElementById('tkTitle').focus();
+  toast('Nová úloha — zákazník a projekt predvyplnené z pôvodnej úlohy.', 'info');
 }
 // Nadradená úloha — vylúči seba a všetkých potomkov (aby nevznikol cyklus)
 function fillTaskParentSelect(t) {

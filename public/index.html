@@ -162,7 +162,7 @@
         <div class="hdr-sep-v"></div>
         <div class="hdr-user" id="hdrUser"></div>
         <span class="app-version" id="appVersion" title="Verzia aplikácie — zobraziť changelog" onclick="showPage('changelog')" style="cursor:pointer">—</span>
-        <button class="hdr-icon-btn" onclick="logout()" title="Odhlásiť sa"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+        <button class="hdr-icon-btn hdr-logout-btn" onclick="logout()" title="Odhlásiť sa"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
       </div>
 
       <!-- Rýchle pridanie -->
@@ -2071,22 +2071,29 @@
         <div class="form-group"><label>Názov *</label><input type="text" id="tkTitle" class="tk-title-input" placeholder="Čo treba spraviť"></div>
 
         <div class="tk-sec-lbl">Stav a termín</div>
-        <div class="form-row-3">
-          <div class="form-group"><label>Stav</label>
-            <select id="tkStatus">
-              <option value="todo">Čaká</option>
-              <option value="inprogress">Prebieha</option>
-              <option value="blocked">Blokované</option>
-              <option value="review">Na kontrolu</option>
-              <option value="done">Hotové</option>
-              <option value="cancelled">Zrušené</option>
-            </select>
+        <input type="hidden" id="tkStatus" value="todo">
+        <input type="hidden" id="tkPriority" value="normal">
+        <div class="form-group">
+          <label>Stav</label>
+          <div class="tk-chip-group" id="tkStatusChips">
+            <button type="button" class="tk-chip tk-chip-todo" data-val="todo" onclick="setTkChip('tkStatus',this)">Čaká</button>
+            <button type="button" class="tk-chip tk-chip-inprogress" data-val="inprogress" onclick="setTkChip('tkStatus',this)">Prebieha</button>
+            <button type="button" class="tk-chip tk-chip-blocked" data-val="blocked" onclick="setTkChip('tkStatus',this)">Blokované</button>
+            <button type="button" class="tk-chip tk-chip-review" data-val="review" onclick="setTkChip('tkStatus',this)">Na kontrolu</button>
+            <button type="button" class="tk-chip tk-chip-done" data-val="done" onclick="setTkChip('tkStatus',this)">Hotové</button>
+            <button type="button" class="tk-chip tk-chip-cancelled" data-val="cancelled" onclick="setTkChip('tkStatus',this)">Zrušené</button>
           </div>
-          <div class="form-group"><label>Priorita</label>
-            <select id="tkPriority"><option value="low">Nízka</option><option value="normal" selected>Normálna</option><option value="high">Vysoká</option><option value="critical">Kritická</option></select>
-          </div>
-          <div class="form-group"><label>Termín</label><input type="date" id="tkDue"></div>
         </div>
+        <div class="form-group">
+          <label>Priorita</label>
+          <div class="tk-chip-group" id="tkPriorityChips">
+            <button type="button" class="tk-chip tk-chip-prio-low" data-val="low" onclick="setTkChip('tkPriority',this)">Nízka</button>
+            <button type="button" class="tk-chip tk-chip-prio-normal" data-val="normal" onclick="setTkChip('tkPriority',this)">Normálna</button>
+            <button type="button" class="tk-chip tk-chip-prio-high" data-val="high" onclick="setTkChip('tkPriority',this)">Vysoká</button>
+            <button type="button" class="tk-chip tk-chip-prio-critical" data-val="critical" onclick="setTkChip('tkPriority',this)">Kritická</button>
+          </div>
+        </div>
+        <div class="form-group"><label>Termín</label><input type="date" id="tkDue"></div>
         <div class="form-group">
           <label>Progres — <span id="tkProgressVal">0</span> %</label>
           <input type="range" id="tkProgress" min="0" max="100" step="5" value="0" oninput="document.getElementById('tkProgressVal').textContent=this.value">
@@ -2144,6 +2151,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn-delete" id="tkDeleteBtn" onclick="deleteTask(document.getElementById('tkId').value)" style="display:none">Odstrániť</button>
+        <button class="btn-secondary" id="tkDuplicateBtn" onclick="duplicateTask()" style="display:none" title="Vytvorí novú úlohu s predvyplneným zákazníkom a projektom">⧉ Duplikovať</button>
         <button class="btn-secondary" onclick="closeTaskModal()">Zrušiť</button>
         <button class="btn-primary" id="tkSaveBtn" onclick="saveTask()">Uložiť</button>
       </div>

@@ -8,6 +8,27 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.50.0] — 2026-07-16
+### Opravené
+- **Mobil — hlavičkové ikony mimo obrazovky.** Pri užších oknách/telefónoch
+  (najmä ~375-630px) sa ikony vpravo v hlavičke (hľadanie, rýchle pridať,
+  notifikácie, senzory, meno, odhlásenie) nezmestili vedľa loga a časť z nich
+  bola vytlačená mimo viditeľnú plochu — nedali sa vidieť ani použiť
+  (`body { overflow-x:hidden }` ich navyše aj neumožňoval doscrollovať).
+  Opravené skrytím duplicitných ikon na mobile (≤900px): Senzory (dostupné
+  cez plávajúci teplomer), meno používateľa a Odhlásiť sa (obe dostupné v
+  pätičke drawer menu) — zvyšné ikony (hľadanie/pridať/notifikácie) sa teraz
+  vždy zmestia. Logo „FOS Dashboard" sa na úzkych obrazovkách skracuje
+  (ellipsis) a pod 360px sa text loga skryje úplne.
+
+### Pridané
+- **Moje úlohy — Stav a Priorita ako klikacie tlačidlá** (chipy) v modale
+  úlohy — namiesto rozbaľovacieho zoznamu sa hodnota nastaví jedným klikom
+  na farebné tlačidlo (farby zladené s badge v Grid pohľade).
+- **Duplikovanie úlohy** — tlačidlo „⧉ Duplikovať" v modale úlohy otvorí
+  formulár novej úlohy s predvyplneným zákazníkom a projektom z pôvodnej
+  úlohy; ostatné polia ostávajú prázdne/predvolené.
+
 ## [2.49.0] — 2026-07-16
 ### Opravené
 - **Administrácia → Používatelia — kontrast textu.** Sekcie „Diagnostika
