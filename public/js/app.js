@@ -6694,8 +6694,12 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.51.0', date: '16. 7. 2026', tag: 'fix', items: [
+    '<strong>Changelog — oprava zobrazenia HTML značiek.</strong> Zvýraznenia ako <code>&lt;strong&gt;</code> sa v zázname zmien vypisovali doslovne ako text namiesto tučného písma — položky sa už nezneškodňujú (escapujú), takže sa formátovanie správne vykreslí.',
+    'Vytunené zvýraznenie v changelogu: <code>&lt;code&gt;</code> značky pre technické výrazy majú teraz vlastný štýl (odlíšené pozadie a farba) a tučný text je čitateľnejší na tmavom pozadí.',
+  ] },
   { v: '2.50.1', date: '16. 7. 2026', tag: 'fix', items: [
-    '<strong>Kritická oprava:</strong> hlavná navigácia (horizontálne menu aj alternatívny bočný panel) na desktope úplne zmizla — v predošlom vydaní (2.50.0) sa nesprávne zatvorila zátvorka CSS media query, takže mobilné pravidlá pre výsuvné menu (skryté mimo obrazovku) unikli mimo `@media` a platili aj na desktope. Opravené.',
+    '<strong>Kritická oprava:</strong> hlavná navigácia (horizontálne menu aj alternatívny bočný panel) na desktope úplne zmizla — v predošlom vydaní (2.50.0) sa nesprávne zatvorila zátvorka CSS media query, takže mobilné pravidlá pre výsuvné menu (skryté mimo obrazovku) unikli mimo <code>@media</code> a platili aj na desktope. Opravené.',
   ] },
   { v: '2.50.0', date: '16. 7. 2026', tag: 'fix', items: [
     'Oprava: na mobile boli hlavičkové ikony (hľadanie, notifikácie, senzory, odhlásenie…) vytláčané mimo viditeľnú obrazovku a nedali sa použiť — na mobile (≤900px) sú teraz skryté ikony Senzory/meno/odhlásenie (dostupné v drawer menu, senzory aj cez plávajúci teplomer), takže sa zvyšné ikony vždy zmestia a sú klikateľné.',
@@ -7303,7 +7307,7 @@ function renderChangelog() {
           ${i === 0 ? '<span class="cl-now">aktuálna</span>' : ''}
           <span class="cl-date">${e.date}</span>
         </div>
-        <ul class="cl-items">${e.items.map(x => `<li>${escHtml(x)}</li>`).join('')}</ul>
+        <ul class="cl-items">${e.items.map(x => `<li>${x}</li>`).join('')}</ul>
       </div>
     </div>`;
   }).join('');
