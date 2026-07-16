@@ -356,17 +356,25 @@ function applyHiddenModules() {
 function toggleMobileNav() {
   document.body.classList.contains('mobile-nav-open') ? closeMobileNav() : openMobileNav();
 }
+// Zamknutie scrollu stránky cez position:fixed + uložený scrollY — na rozdiel
+// od obyčajného overflow:hidden funguje spoľahlivo aj na iOS Safari (viď
+// poznámka pri .mobile-nav-open v style.css). Bez toho sa dalo stať, že sa
+// pozadie pod drawerom "gumovo" posunulo a na položky menu sa nedalo trafiť.
+let _mobileNavScrollY = 0;
 function openMobileNav() {
+  _mobileNavScrollY = window.scrollY || window.pageYOffset || 0;
+  document.body.style.top = -_mobileNavScrollY + 'px';
   document.body.classList.add('mobile-nav-open');
   document.getElementById('mobileNavBackdrop')?.classList.add('show');
   document.getElementById('mobileNavBtn')?.setAttribute('aria-expanded', 'true');
-  document.body.style.overflow = 'hidden';
 }
 function closeMobileNav() {
+  const wasOpen = document.body.classList.contains('mobile-nav-open');
   document.body.classList.remove('mobile-nav-open');
+  document.body.style.top = '';
+  if (wasOpen) window.scrollTo(0, _mobileNavScrollY);
   document.getElementById('mobileNavBackdrop')?.classList.remove('show');
   document.getElementById('mobileNavBtn')?.setAttribute('aria-expanded', 'false');
-  document.body.style.overflow = '';
 }
 
 function applyUiLayout() {
@@ -6686,6 +6694,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.49.0', date: '16. 7. 2026', tag: 'fix', items: [
+    'Administrácia → Používatelia: opravený kontrast textu v sekciách „Diagnostika e-mailu" a „Denný súhrn úloh" — tmavé hodnoty (SMTP_HOST, čas odoslania…) boli na tmavom pozadí takmer neviditeľné.',
+    'Mobilná navigácia: spoľahlivejšie zamknutie scrollu pri otvorenom menu (iOS Safari) — predtým sa mohlo stať, že sa pozadie pod menu odscrollovalo a na položky sa nedalo trafiť.',
+    '<strong>GitHub</strong> a <strong>Vzdialené PC (RustDesk)</strong>: karty sú teraz celé klikateľné na úpravu (predtým len malá ceruzka), s hover efektom (nadvihnutie + zvýraznenie okraja) a klávesovým ovládaním (Enter/Medzerník). Odkazy a tlačidlá v karte (repozitár, RustDesk pripojiť, kopírovať ID/heslo) fungujú naďalej samostatne.',
+  ] },
   { v: '2.48.0', date: '16. 7. 2026', tag: 'feat', items: [
     '<strong>Moje úlohy — prepracovaná hlavička a prehľad termínov.</strong> Nadpis, tlačidlo „Nová úloha" a filtre sú teraz zmrazené (sticky) navrchu stránky pri scrollovaní, tlačidlo „Nová úloha" má navyše aj plávajúcu verziu vpravo dole.',
     'Oprava: hlavička Grid tabuľky (NÁZOV/STAV/PRIORITA…) sa pri scrollovaní prekrývala s prvým riadkom úloh — teraz je správne „zamrazená" a viditeľná stále, aj pri scrollovaní úplne dole.',
@@ -13119,13 +13132,14 @@ function renderGithub() {
   const stLabel = { active: 'Aktívny', archived: 'Archív', planned: 'Plánovaný' };
   el.innerHTML = items.map(r => {
     const langColor = GH_LANG_COLORS[(r.language || '').toLowerCase()] || '#8b949e';
-    return `<div class="gh-card">
+    return `<div class="gh-card" tabindex="0" role="button" aria-label="Upraviť projekt ${escHtml(r.name)}" title="Kliknutím upraviť"
+        onclick="openGhModal(ghData.find(x=>x._id==='${r._id}'))"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openGhModal(ghData.find(x=>x._id==='${r._id}'))}">
       <div class="gh-card-head">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>
-        ${r.repoUrl ? `<a class="gh-name" href="${escHtml(r.repoUrl)}" target="_blank" rel="noopener">${escHtml(r.name)}</a>` : `<span class="gh-name">${escHtml(r.name)}</span>`}
+        ${r.repoUrl ? `<a class="gh-name" href="${escHtml(r.repoUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(r.name)}</a>` : `<span class="gh-name">${escHtml(r.name)}</span>`}
         ${r.private ? '<span class="gh-lock" title="Privátny repozitár">🔒</span>' : ''}
         <span class="gh-status gh-st-${r.status}">${stLabel[r.status] || r.status}</span>
-        <button class="admin-icon-btn" onclick="openGhModal(ghData.find(x=>x._id==='${r._id}'))" title="Upraviť">✎</button>
       </div>
       ${r.description ? `<div class="gh-desc">${escHtml(r.description)}</div>` : ''}
       <div class="gh-meta">
@@ -13133,7 +13147,7 @@ function renderGithub() {
         ${r.owner ? `<span class="gh-owner">👤 ${escHtml(r.owner)}</span>` : ''}
         ${(r.tags || []).map(t => `<span class="ph-mini-tag">#${escHtml(t)}</span>`).join('')}
       </div>
-      ${(r.links || []).length ? `<div class="gh-links">${r.links.filter(l => l.url).map(l => `<a class="gh-link" href="${escHtml(l.url)}" target="_blank" rel="noopener">🔗 ${escHtml(l.label || l.url)}</a>`).join('')}</div>` : ''}
+      ${(r.links || []).length ? `<div class="gh-links">${r.links.filter(l => l.url).map(l => `<a class="gh-link" href="${escHtml(l.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 ${escHtml(l.label || l.url)}</a>`).join('')}</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -13232,17 +13246,18 @@ function renderRemote() {
   }
   el.innerHTML = items.map(r => {
     const cleanId = String(r.rustdeskId || '').replace(/\s+/g, '');
-    return `<div class="rc-card">
+    return `<div class="rc-card" tabindex="0" role="button" aria-label="Upraviť PC ${escHtml(r.name)}" title="Kliknutím upraviť"
+        onclick="openRemoteModal(rcData.find(x=>x._id==='${r._id}'))"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openRemoteModal(rcData.find(x=>x._id==='${r._id}'))}">
       <div class="rc-card-head">
         <span class="rc-os" title="${escHtml(r.os || '')}">${RC_OS_ICON[(r.os || '').toLowerCase()] || '💻'}</span>
         <span class="rc-name">${escHtml(r.name)}</span>
-        <button class="admin-icon-btn" onclick="openRemoteModal(rcData.find(x=>x._id==='${r._id}'))" title="Upraviť">✎</button>
       </div>
       <div class="rc-id-row">
         <code class="rc-idc" title="RustDesk ID">${escHtml(rcFmtId(r.rustdeskId))}</code>
-        <button class="btn-sm" onclick="rcCopy('${r._id}', 'id')" title="Kopírovať ID">⧉ ID</button>
-        ${r.password ? `<button class="btn-sm" onclick="rcCopy('${r._id}', 'pass')" title="Kopírovať heslo">⧉ Heslo</button>` : ''}
-        <a class="btn-primary btn-sm rc-connect" href="rustdesk://connection/new/${encodeURIComponent(cleanId)}" title="Otvoriť v RustDesk klientovi">🖥 Pripojiť</a>
+        <button class="btn-sm" onclick="event.stopPropagation(); rcCopy('${r._id}', 'id')" title="Kopírovať ID">⧉ ID</button>
+        ${r.password ? `<button class="btn-sm" onclick="event.stopPropagation(); rcCopy('${r._id}', 'pass')" title="Kopírovať heslo">⧉ Heslo</button>` : ''}
+        <a class="btn-primary btn-sm rc-connect" href="rustdesk://connection/new/${encodeURIComponent(cleanId)}" title="Otvoriť v RustDesk klientovi" onclick="event.stopPropagation()">🖥 Pripojiť</a>
       </div>
       <div class="rc-meta">
         ${r.location ? `<span>📍 ${escHtml(r.location)}</span>` : ''}

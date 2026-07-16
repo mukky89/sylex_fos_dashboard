@@ -8,6 +8,29 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.49.0] — 2026-07-16
+### Opravené
+- **Administrácia → Používatelia — kontrast textu.** Sekcie „Diagnostika
+  e-mailu" a „Denný súhrn úloh" (`.admin-section`, tmavá karta) používali
+  „light zone" farebné tokeny (`var(--text)`, `var(--text-dim)`,
+  `var(--card-bg)`) určené pre svetlé plochy (WIKI, modaly) — na tmavom
+  pozadí boli hodnoty (SMTP_HOST, čas odoslania, naposledy odoslané…) takmer
+  neviditeľné. Prepnuté na „dark zone" tokeny (`var(--dz-text2)`,
+  `rgba(var(--dz-fg-rgb),α)`). Pravidlo (nemiešať light/dark zone tokeny)
+  zapísané aj do `CLAUDE.md`.
+- **Mobilná navigácia — spoľahlivejšie zamknutie scrollu.** Otvorenie drawer
+  menu už neblokuje scroll cez `overflow:hidden` (na iOS Safari nespoľahlivé
+  — pozadie sa mohlo „gumovo" odscrollovať a spôsobiť, že sa na položky menu
+  nedalo trafiť), ale cez `position:fixed` s uloženým scrollY — štandardný
+  cross-browser spôsob zamknutia scrollu.
+
+### Zmenené
+- **GitHub** a **Vzdialené PC (RustDesk)**: celé karty sú teraz klikateľné
+  na úpravu (predtým len malá ikona ceruzky) — s hover efektom (nadvihnutie
+  + zvýraznený okraj) a klávesovým ovládaním (Tab + Enter/Medzerník).
+  Odkazy/tlačidlá v karte (repozitár, RustDesk pripojiť, kopírovať ID/heslo)
+  zastavujú probublávanie kliknutia, takže fungujú naďalej samostatne.
+
 ## [2.48.0] — 2026-07-16
 ### Pridané
 - **Moje úlohy — zmrazená (sticky) hlavička.** Nadpis, tlačidlo „Nová úloha" a

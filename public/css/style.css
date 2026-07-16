@@ -3463,13 +3463,23 @@ body.logged-out .thermo-corner { display: none !important; }
   }
   body.mobile-nav-open .app-sidebar { transform: translateX(0); }
   body.layout-sidebar .page { padding-left: 0; }
-  .asb-close { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; background: none; border: none; border-radius: 8px; color: inherit; opacity: 0.65; cursor: pointer; }
+  .asb-close { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; background: none; border: none; border-radius: 8px; color: inherit; opacity: 0.65; cursor: pointer; touch-action: manipulation; }
   .asb-close:hover { opacity: 1; background: rgba(var(--dz-fg-rgb),0.1); }
   .asb-link { min-height: 44px; }
   .tour-fab { left: 16px !important; }
   /* Kým je drawer otvorený, plávajúce FAB tlačidlá (Pomoc, chatbot) neprekážajú */
   body.mobile-nav-open .tour-fab,
   body.mobile-nav-open .bot-fab { display: none; }
+}
+
+/* Zamknutie scrollu stránky pri otvorenom drawer — `overflow:hidden` na body
+   samo o sebe na iOS Safari NEFUNGUJE spoľahlivo (stránka pod drawerom sa aj
+   tak dá "gumovo" odscrollovať/nabounce-núť, čo posúva position:fixed prvky
+   a spôsobuje, že sa na položky menu nedá trafiť/kliknúť). Namiesto toho sa
+   telo stránky prepne na position:fixed s uloženým scrollY (viď JS
+   openMobileNav/closeMobileNav) — spoľahlivý cross-browser spôsob zamknutia. */
+body.mobile-nav-open {
+  position: fixed; left: 0; right: 0; width: 100%; overflow: hidden;
 }
 
 /* =============================================
@@ -3652,7 +3662,7 @@ body.layout-sidebar .tour-fab { left: calc(var(--appsb-w) + 16px); }
 .asb-brand-name { font-family: var(--font-title); font-weight: 700; font-size: 1.02rem; white-space: nowrap; }
 .asb-brand-sub { font-size: 0.62rem; letter-spacing: 0.18em; opacity: 0.5; }
 
-.asb-nav { flex: 1; overflow-y: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 3px; scrollbar-width: thin; }
+.asb-nav { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px 10px; display: flex; flex-direction: column; gap: 3px; scrollbar-width: thin; }
 .asb-nav::-webkit-scrollbar { width: 5px; }
 .asb-nav::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.3); border-radius: 3px; }
 .asb-link {
@@ -3660,6 +3670,7 @@ body.layout-sidebar .tour-fab { left: calc(var(--appsb-w) + 16px); }
   padding: 10px 12px; border-radius: 10px; cursor: pointer;
   font-size: 0.88rem; font-weight: 500; white-space: nowrap;
   transition: background .16s, color .16s; position: relative;
+  touch-action: manipulation;
 }
 .asb-ico { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 20px; }
 .asb-lbl { overflow: hidden; text-overflow: ellipsis; }
@@ -5713,8 +5724,17 @@ select option, select optgroup { background-color: #131c33; color: var(--dz-text
 .gh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
 .gh-card {
   background: #151b30; border: 1px solid rgba(var(--dz-fg-rgb),0.09); border-radius: 12px;
-  padding: 13px 15px;
+  padding: 13px 15px; cursor: pointer; touch-action: manipulation;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease;
 }
+.gh-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(103,232,249,0.45);
+  background: #182036;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.28), 0 0 0 1px rgba(103,232,249,0.08);
+}
+.gh-card:active { transform: translateY(0); }
+.gh-card:focus-visible { outline: 2px solid var(--dz-cyan); outline-offset: 2px; }
 .gh-card-head { display: flex; align-items: center; gap: 8px; color: var(--dz-text2); }
 .gh-name { font-weight: 700; font-size: 0.95rem; color: #7cc0ff; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 a.gh-name:hover { text-decoration: underline; }
@@ -5743,8 +5763,17 @@ span.gh-name { color: var(--dz-text2); }
 .rc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
 .rc-card {
   background: #151b30; border: 1px solid rgba(var(--dz-fg-rgb),0.09); border-radius: 12px;
-  padding: 13px 15px;
+  padding: 13px 15px; cursor: pointer; touch-action: manipulation;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease;
 }
+.rc-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(103,232,249,0.45);
+  background: #182036;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.28), 0 0 0 1px rgba(103,232,249,0.08);
+}
+.rc-card:active { transform: translateY(0); }
+.rc-card:focus-visible { outline: 2px solid var(--dz-cyan); outline-offset: 2px; }
 .rc-card-head { display: flex; align-items: center; gap: 8px; }
 .rc-os { font-size: 1.05rem; }
 .rc-name { font-weight: 700; font-size: 0.95rem; color: var(--dz-text2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -6466,16 +6495,26 @@ body.theme-light .prod-sub, body.theme-warm .prod-sub { color: #64748b; }
 .mail-status-head { font-size: .86rem; font-weight: 700; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; background: var(--page-bg); }
 .mail-status-head.mail-ok { color: #15803d; background: #dcfce7; }
 .mail-status-head.mail-bad { color: #b45309; background: #fef3c7; }
+/* Pozn.: .admin-section je tmavá karta (dark zone) — text tu musí používať
+   dz-* tokeny / rgba(dz-fg-rgb), nie var(--text)/(--text-dim) (tie sú pre
+   svetlé plochy typu WIKI a na tmavom podklade boli takmer neviditeľné). */
 .mail-kv { display: flex; gap: 12px; font-size: .82rem; padding: 3px 2px; }
-.mail-k { min-width: 160px; color: var(--text-dim); font-family: 'Consolas', monospace; }
-.mail-v { color: var(--text); font-family: 'Consolas', monospace; }
-.mail-v.mail-ok { color: #15803d; font-weight: 700; }
-.mail-v.mail-bad { color: #b91c1c; }
-.mail-v em { color: var(--text-xdim); font-style: italic; }
-.mail-hint { font-size: .78rem; color: var(--text-dim); margin-top: 8px; padding: 7px 10px; background: var(--accent-light); border-radius: 8px; }
+.mail-k { min-width: 160px; color: rgba(var(--dz-fg-rgb),0.5); font-family: 'Consolas', monospace; }
+.mail-v { color: var(--dz-text2); font-family: 'Consolas', monospace; }
+.mail-v.mail-ok { color: #4ade80; font-weight: 700; }
+.mail-v.mail-bad { color: #fca5a5; }
+.mail-v em { color: rgba(var(--dz-fg-rgb),0.4); font-style: italic; }
+.mail-hint { font-size: .78rem; color: var(--dz-text2); margin-top: 8px; padding: 7px 10px; background: rgba(103,232,249,0.1); border: 1px solid rgba(103,232,249,0.2); border-radius: 8px; }
+.mail-hint code { color: var(--dz-cyan); }
 .mail-test-row { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
-.mail-test-input { flex: 1; min-width: 200px; max-width: 320px; padding: 8px 11px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); font-size: .85rem; }
+.mail-test-input {
+  flex: 1; min-width: 200px; max-width: 320px; padding: 8px 11px; border-radius: var(--radius);
+  background: rgba(var(--dz-fg-rgb),0.08); border: 1px solid rgba(var(--dz-fg-rgb),0.14);
+  color: var(--dz-text); font-size: .85rem; font-family: var(--font); outline: none;
+}
+.mail-test-input::placeholder { color: rgba(var(--dz-fg-rgb),0.3); }
+.mail-test-input:focus { border-color: rgba(8,145,178,0.6); box-shadow: 0 0 0 3px rgba(8,145,178,0.12); }
 .mail-test-result { margin-top: 8px; font-size: .84rem; min-height: 20px; }
-.mail-test-result .mail-ok { color: #15803d; }
-.mail-test-result .mail-bad { color: #b91c1c; font-weight: 600; }
+.mail-test-result .mail-ok { color: #4ade80; }
+.mail-test-result .mail-bad { color: #fca5a5; font-weight: 600; }
 
