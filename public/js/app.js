@@ -6719,6 +6719,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.56.0', date: '17. 7. 2026', tag: 'feat', items: [
+    '<strong>Moje úlohy — „Zbaliť/Rozbaliť všetky" funguje aj v Grid pohľade.</strong> Tlačidlá teraz v tabuľkovom (Grid) pohľade zbalia alebo rozbalia všetky skupiny (Zákazník → Projekt) naraz — pri zbalení ostanú len hlavičky zákazníkov. Tlačidlá sú viditeľné v zoznamovom aj grid pohľade (skryté len v Kanbane).',
+  ] },
   { v: '2.55.0', date: '17. 7. 2026', tag: 'feat', items: [
     '<strong>Moje úlohy — zbalenie/rozbalenie úloh.</strong> V zoznamovom pohľade má každá úloha s detailmi malú šípku (▾/▸) na zbalenie — schová progres, poznámku, popis a podúlohy, ponechá názov, chipy a základné info. Užitočné pri dlhých zoznamoch.',
     'Nové tlačidlá <strong>„⊟ Zbaliť všetky"</strong> a <strong>„⊞ Rozbaliť všetky"</strong> v paneli nástrojov (zobrazené v zoznamovom pohľade) zbalia alebo rozbalia všetky úlohy naraz.',
@@ -7567,10 +7570,12 @@ function toggleTaskCollapse(id, ev) {
   renderTasks();
 }
 function collapseAllTasks() {
+  if (taskView === 'grid') { collapseAllTaskGrid(); return; }  // grid: zbaliť skupiny
   tasksData.forEach(t => { if (taskHasCollapsibleBody(t)) taskCollapsedIds.add(t._id); });
   renderTasks();
 }
 function expandAllTasks() {
+  if (taskView === 'grid') { taskGridCollapsed.clear(); renderTaskGridBody(); return; }  // grid: rozbaliť skupiny
   taskCollapsedIds.clear();
   renderTasks();
 }
@@ -7584,7 +7589,7 @@ function setTaskView(v) {
   document.querySelectorAll('.tasks-view').forEach(b => b.classList.toggle('active', b.dataset.tview === v));
   document.querySelector('.tasks-filters')?.classList.toggle('hidden', v === 'kanban');
   document.getElementById('taskGroupBtn')?.classList.toggle('hidden', v !== 'list');
-  document.getElementById('taskCollapseBtns')?.classList.toggle('hidden', v !== 'list');
+  document.getElementById('taskCollapseBtns')?.classList.toggle('hidden', v === 'kanban');
   document.querySelector('.tasks-inner')?.classList.toggle('tasks-wide', v === 'kanban' || v === 'grid');
   renderTasks();
 }
@@ -7893,9 +7898,18 @@ function taskGridRowHtml(t, groupIndent) {
     </tr>`;
 }
 // Kľúče zbalených skupín (2-úrovňové zoskupenie Zákazník → Projekt)
+const TASK_GRID_NO_CUST = 'Bez zákazníka', TASK_GRID_NO_PROJ = 'Bez projektu';
 let taskGridCollapsed = new Set();
 function toggleTaskGridGroup(key) {
   if (taskGridCollapsed.has(key)) taskGridCollapsed.delete(key); else taskGridCollapsed.add(key);
+  renderTaskGridBody();
+}
+// Zbaliť všetky skupiny v gride (na úrovni zákazníka — skryje všetky úlohy)
+function collapseAllTaskGrid() {
+  taskGridItems().forEach(t => {
+    const cust = (t.customer || '').trim() || TASK_GRID_NO_CUST;
+    taskGridCollapsed.add('c:' + cust);
+  });
   renderTaskGridBody();
 }
 function taskGridGroupSort(keys, noneLabel) {
@@ -7907,7 +7921,7 @@ function renderTaskGridBody() {
   if (!items.length) { tbody.innerHTML = `<tr><td colspan="${TASK_GRID_COLS.length}" class="proc-empty">Žiadne úlohy v tomto filtri.</td></tr>`; return; }
 
   // zoskupenie: Zákazník → Projekt (poradie úloh v rámci skupiny podľa aktívneho triedenia)
-  const NO_CUST = 'Bez zákazníka', NO_PROJ = 'Bez projektu';
+  const NO_CUST = TASK_GRID_NO_CUST, NO_PROJ = TASK_GRID_NO_PROJ;
   const custMap = new Map();
   items.forEach(t => {
     const cust = (t.customer || '').trim() || NO_CUST;
