@@ -6719,6 +6719,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.58.0', date: '17. 7. 2026', tag: 'fix', items: [
+    '<strong>Moje úlohy — vrátené pôvodné ikony.</strong> Nové líniové (Lucide) ikony z verzie 2.57.0 sú vrátené späť na pôvodné emoji ikony. Funkcia zbaľovania/rozbaľovania úloh (vrátane tlačidiel „Zbaliť/Rozbaliť všetky") zostáva zachovaná.',
+  ] },
   { v: '2.56.0', date: '17. 7. 2026', tag: 'feat', items: [
     '<strong>Moje úlohy — „Zbaliť/Rozbaliť všetky" funguje aj v Grid pohľade.</strong> Tlačidlá teraz v tabuľkovom (Grid) pohľade zbalia alebo rozbalia všetky skupiny (Zákazník → Projekt) naraz — pri zbalení ostanú len hlavičky zákazníkov. Tlačidlá sú viditeľné v zoznamovom aj grid pohľade (skryté len v Kanbane).',
   ] },

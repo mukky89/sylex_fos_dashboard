@@ -8,6 +8,13 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.58.0] — 2026-07-17
+### Vrátené
+- **Moje úlohy — vrátené pôvodné ikony.** Líniové (Lucide) SVG ikony
+  z verzie 2.57.0 sú vrátené späť na pôvodné emoji ikony (revert). Funkcia
+  zbaľovania/rozbaľovania úloh vrátane tlačidiel „Zbaliť/Rozbaliť všetky"
+  zostáva zachovaná.
+
 ## [2.56.0] — 2026-07-17
 ### Pridané
 - **Moje úlohy — „Zbaliť/Rozbaliť všetky" aj v Grid pohľade.**
