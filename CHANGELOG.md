@@ -8,18 +8,12 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
-## [2.57.0] — 2026-07-17
-### Zmenené
-- **Moje úlohy — jednotná sada ikon (Lucide) namiesto emoji.**
-  - Všetky emoji ikony v module Úlohy (chipy projektu/zákazníka/nadradenej
-    úlohy/priradenia, termín, podúlohy, závislosti, poznámka, dátum pridania,
-    šípky zbalenia, tlačidlá „Zbaliť/Rozbaliť všetky", prepínač
-    Zoznam/Kanban/Grid, drag&drop úchyt, kôš, duplikovať, triedenie a
-    skupiny v gride) sú nahradené čistými líniovými SVG ikonami (Lucide,
-    inline).
-  - Nový helper `tkIcon()` + objekt `TK_ICONS` v `app.js`, trieda `.ic`
-    v `style.css` — ikony dedia `currentColor` aj veľkosť (`1em`), takže sú
-    konzistentné na svetlom aj tmavom podklade a ostré na retina displejoch.
+## [2.58.0] — 2026-07-17
+### Vrátené
+- **Moje úlohy — vrátené pôvodné ikony.** Líniové (Lucide) SVG ikony
+  z verzie 2.57.0 sú vrátené späť na pôvodné emoji ikony (revert). Funkcia
+  zbaľovania/rozbaľovania úloh vrátane tlačidiel „Zbaliť/Rozbaliť všetky"
+  zostáva zachovaná.
 
 ## [2.56.0] — 2026-07-17
 ### Pridané

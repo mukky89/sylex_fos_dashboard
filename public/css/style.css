@@ -3320,33 +3320,16 @@ body.logged-out .thermo-corner { display: none !important; }
   width: 24px; height: 24px; flex-shrink: 0; border-radius: 6px; cursor: pointer;
   background: rgba(var(--dz-fg-rgb),0.06); border: 1px solid rgba(var(--dz-fg-rgb),0.25);
   color: var(--dz-green); font-weight: 700; font-size: 0.85rem;
-  display: inline-flex; align-items: center; justify-content: center;
 }
-.task-check .ic { width: 15px; height: 15px; stroke-width: 2.6; }
 .task-done .task-check { background: #10b981; border-color: #10b981; color: #fff; }
 .tasks-collapse-btns { display: flex; gap: 6px; }
 .task-collapse-btn {
-  width: 22px; height: 24px; flex-shrink: 0; padding: 0; margin-top: 0; border: none; cursor: pointer;
-  background: transparent; color: rgba(var(--dz-fg-rgb),0.5); line-height: 1;
+  width: 20px; height: 24px; flex-shrink: 0; padding: 0; margin-top: 0; border: none; cursor: pointer;
+  background: transparent; color: rgba(var(--dz-fg-rgb),0.5); font-size: 0.8rem; line-height: 1;
   display: flex; align-items: center; justify-content: center; border-radius: 5px;
 }
-.task-collapse-btn .ic { width: 16px; height: 16px; }
 .task-collapse-btn:hover { background: rgba(var(--dz-fg-rgb),0.1); color: var(--dz-text); }
 .task-collapse-off { visibility: hidden; }
-/* Lucide inline ikony (modul Úlohy) — dedia farbu aj veľkosť textu */
-.ic { width: 1em; height: 1em; display: inline-block; vertical-align: -0.14em; flex-shrink: 0; }
-.task-chip .ic { vertical-align: -0.15em; opacity: 0.9; }
-.task-meta .ic, .task-subbadge .ic, .task-depbadge .ic, .task-created .ic { width: 0.95em; height: 0.95em; }
-.tasks-filter .ic, .tasks-view .ic { width: 15px; height: 15px; vertical-align: -0.18em; margin-right: 2px; }
-.tk-modal-box .btn-secondary .ic { width: 15px; height: 15px; vertical-align: -0.18em; margin-right: 3px; }
-.task-grip .ic { width: 16px; height: 16px; }
-.kanban-grip .ic { width: 14px; height: 14px; vertical-align: -0.2em; margin-right: 1px; }
-.kanban-card-actions button .ic { width: 14px; height: 14px; vertical-align: -0.15em; }
-.task-row .admin-icon-btn .ic { width: 15px; height: 15px; vertical-align: -0.2em; }
-.task-grid-arrow .ic { width: 12px; height: 12px; vertical-align: -0.05em; }
-.task-grid-group-arrow .ic { width: 15px; height: 15px; vertical-align: -0.25em; }
-.task-grid-title .ic { width: 14px; height: 14px; }
-.tk-preview-assignee .ic { width: 13px; height: 13px; vertical-align: -0.15em; margin-right: 2px; }
 /* Zbalený riadok: skryť detaily, ponechať názov, chipy a základné meta */
 .task-row.task-collapsed .task-prog,
 .task-row.task-collapsed .task-note,

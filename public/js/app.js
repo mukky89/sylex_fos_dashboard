@@ -6719,8 +6719,8 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
-  { v: '2.57.0', date: '17. 7. 2026', tag: 'feat', items: [
-    '<strong>Moje úlohy — nové ikony.</strong> Emoji ikony v celom module Úlohy (chipy projektu/zákazníka/priradenia, termín, podúlohy, závislosti, poznámka, tlačidlá zbaliť/rozbaliť, prepínač Zoznam/Kanban/Grid, drag&drop úchyt, kôš, duplikovať…) sú nahradené jednotnou sadou čistých líniových ikon (Lucide, inline SVG). Ikony dedia farbu aj veľkosť textu, takže sú konzistentné na svetlom aj tmavom podklade a ostré na retina displejoch.',
+  { v: '2.58.0', date: '17. 7. 2026', tag: 'fix', items: [
+    '<strong>Moje úlohy — vrátené pôvodné ikony.</strong> Nové líniové (Lucide) ikony z verzie 2.57.0 sú vrátené späť na pôvodné emoji ikony. Funkcia zbaľovania/rozbaľovania úloh (vrátane tlačidiel „Zbaliť/Rozbaliť všetky") zostáva zachovaná.',
   ] },
   { v: '2.56.0', date: '17. 7. 2026', tag: 'feat', items: [
     '<strong>Moje úlohy — „Zbaliť/Rozbaliť všetky" funguje aj v Grid pohľade.</strong> Tlačidlá teraz v tabuľkovom (Grid) pohľade zbalia alebo rozbalia všetky skupiny (Zákazník → Projekt) naraz — pri zbalení ostanú len hlavičky zákazníkov. Tlačidlá sú viditeľné v zoznamovom aj grid pohľade (skryté len v Kanbane).',
@@ -7401,37 +7401,6 @@ let taskGroup = true;   // zoskupiť podľa projektu + zákazníka
 let taskCollapsedIds = new Set();  // ID zbalených úloh v zoznamovom pohľade (skryté detaily)
 let _dragTaskId = null;
 let tkSubtasks = [];   // pracovná kópia podúloh v modale
-// ── Ikony modulu Úlohy (Lucide, inline SVG) — dedia farbu (currentColor) aj veľkosť (1em) ──
-const TK_ICONS = {
-  project:   '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
-  customer:  '<path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/>',
-  parent:    '<path d="M20 20v-7a4 4 0 0 0-4-4H4"/><path d="M9 14 4 9l5-5"/>',
-  eye:       '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
-  user:      '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
-  due:       '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
-  subtasks:  '<path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/>',
-  dep:       '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
-  created:   '<path d="M5 12h14"/><path d="M12 5v14"/>',
-  note:      '<path d="M21 9a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 15 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z"/><path d="M15 3v5a1 1 0 0 0 1 1h5"/>',
-  inbox:     '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
-  chevronDown:  '<path d="m6 9 6 6 6-6"/>',
-  chevronRight: '<path d="m9 18 6-6-6-6"/>',
-  chevronUp:    '<path d="m18 15-6-6-6 6"/>',
-  collapseAll:  '<path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>',
-  expandAll:    '<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>',
-  list:      '<path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/>',
-  kanban:    '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/>',
-  table:     '<path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/>',
-  subtree:   '<path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/>',
-  check:     '<path d="M20 6 9 17l-5-5"/>',
-  trash:     '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
-  copy:      '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
-  grip:      '<circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/>'
-};
-function tkIcon(name, cls) {
-  const p = TK_ICONS[name]; if (!p) return '';
-  return `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
-}
 const TK_PRIO = {
   low:      { l: 'Nízka',     c: '#64748b', rank: 1 },
   normal:   { l: 'Normálna',  c: '#3b82f6', rank: 2 },
@@ -7515,7 +7484,7 @@ function renderTaskTodayTomorrow() {
         <button class="tk-postpone-btn" title="Posunúť termín o 1 deň" onclick="event.stopPropagation(); postponeTask('${t._id}')">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="13 17 18 12 13 7"/><line x1="6" y1="12" x2="18" y2="12"/></svg>
           +1 deň
-        </button>` : (t.assignedTo ? `<span class="tk-preview-assignee">${tkIcon('user')} ${escHtml(t.assignedTo.name || t.assignedTo.username || '')}</span>` : '')}
+        </button>` : (t.assignedTo ? `<span class="tk-preview-assignee">👁 ${escHtml(t.assignedTo.name || t.assignedTo.username || '')}</span>` : '')}
     </div>`;
   const col = (label, iconKey, list, missed) => `
     <div class="tk-preview-col ${missed ? 'tk-preview-missed' : ''}">
@@ -7632,13 +7601,13 @@ function taskOverdue(t) { return !t.done && t.due && new Date(t.due) < new Date(
 // ── Spoločné kúsky kartičiek ──────────────────────────────────────────────────
 function taskChipsHtml(t) {
   const chips = [];
-  if (t.project)  chips.push(`<span class="task-chip task-chip-pj">${tkIcon('project')} ${escHtml(t.project)}</span>`);
-  if (t.customer) chips.push(`<span class="task-chip task-chip-cust">${tkIcon('customer')} ${escHtml(t.customer)}</span>`);
+  if (t.project)  chips.push(`<span class="task-chip task-chip-pj">🗂️ ${escHtml(t.project)}</span>`);
+  if (t.customer) chips.push(`<span class="task-chip task-chip-cust">🏢 ${escHtml(t.customer)}</span>`);
   const parentId = t.parent && (t.parent._id || t.parent);
   const parent = parentId ? tasksData.find(x => x._id === parentId) : null;
-  if (parent) chips.push(`<span class="task-chip task-chip-parent">${tkIcon('parent')} ${escHtml(parent.title)}</span>`);
-  if (t.readOnly) chips.push(`<span class="task-chip task-chip-readonly" title="Zadal(a): ${escHtml(t.user?.name || t.user?.username || '')}">${tkIcon('eye')} len na čítanie</span>`);
-  else if (t.assignedTo) chips.push(`<span class="task-chip task-chip-assignee">${tkIcon('user')} ${escHtml(t.assignedTo.name || t.assignedTo.username || '')}</span>`);
+  if (parent) chips.push(`<span class="task-chip task-chip-parent">⬆ ${escHtml(parent.title)}</span>`);
+  if (t.readOnly) chips.push(`<span class="task-chip task-chip-readonly" title="Zadal(a): ${escHtml(t.user?.name || t.user?.username || '')}">👁 len na čítanie</span>`);
+  else if (t.assignedTo) chips.push(`<span class="task-chip task-chip-assignee">👁 ${escHtml(t.assignedTo.name || t.assignedTo.username || '')}</span>`);
   (t.tags || []).forEach(tag => chips.push(`<span class="task-chip task-chip-tag">#${escHtml(tag)}</span>`));
   return chips.length ? `<div class="task-chips">${chips.join('')}</div>` : '';
 }
@@ -7651,14 +7620,14 @@ function taskMetaHtml(t) {
   const prio = TK_PRIO[t.priority] || TK_PRIO.normal;
   const od = taskOverdue(t);
   const parts = [`<span class="task-prio">${prio.l}</span>`];
-  if (t.due) parts.push(`<span class="${od ? 'task-od' : ''}">${tkIcon('due')} ${fmtDate(t.due)}${od ? ' — po termíne' : ''}</span>`);
+  if (t.due) parts.push(`<span class="${od ? 'task-od' : ''}">📅 ${fmtDate(t.due)}${od ? ' — po termíne' : ''}</span>`);
   if (t.subtasks && t.subtasks.length) {
     const done = t.subtasks.filter(s => s.done).length;
-    parts.push(`<span class="task-subbadge ${done === t.subtasks.length ? 'all' : ''}" title="Podúlohy">${tkIcon('subtasks')} ${done}/${t.subtasks.length}</span>`);
+    parts.push(`<span class="task-subbadge ${done === t.subtasks.length ? 'all' : ''}" title="Podúlohy">☑ ${done}/${t.subtasks.length}</span>`);
   }
   const unmet = taskUnmetDeps(t);
-  if (unmet.length) parts.push(`<span class="task-depbadge" title="${escHtml(unmet.map(d => d.title).join(', '))}">${tkIcon('dep')} čaká na ${unmet.length} závislosť(i)</span>`);
-  if (t.createdAt) parts.push(`<span class="task-created" title="Dátum pridania">${tkIcon('created')} ${fmtDate(t.createdAt)}</span>`);
+  if (unmet.length) parts.push(`<span class="task-depbadge" title="${escHtml(unmet.map(d => d.title).join(', '))}">⛔ čaká na ${unmet.length} závislosť(i)</span>`);
+  if (t.createdAt) parts.push(`<span class="task-created" title="Dátum pridania">➕ ${fmtDate(t.createdAt)}</span>`);
   return `<div class="task-meta">${parts.join('')}</div>`;
 }
 
@@ -7697,19 +7666,19 @@ function taskRowInner(t, withGrip) {
   const depth = taskDepth(t);
   const ro = !!t.readOnly;
   return `
-      ${withGrip && !ro ? `<span class="task-grip" title="Potiahni na zmenu poradia">${tkIcon('grip')}</span>` : `<span class="task-grip task-grip-off">${tkIcon('grip')}</span>`}
-      ${taskHasCollapsibleBody(t) ? `<button class="task-collapse-btn" onclick="toggleTaskCollapse('${t._id}', event)" title="${taskCollapsedIds.has(t._id) ? 'Rozbaliť' : 'Zbaliť'}">${tkIcon(taskCollapsedIds.has(t._id) ? 'chevronRight' : 'chevronDown')}</button>` : '<span class="task-collapse-btn task-collapse-off"></span>'}
-      <button class="task-check" ${ro ? 'disabled title="Len na čítanie"' : `onclick="toggleTask('${t._id}', ${t.done ? 'false' : 'true'})" title="${t.done ? 'Označiť ako nehotové' : 'Označiť ako hotové'}"`}>${t.done ? tkIcon('check') : ''}</button>
+      ${withGrip && !ro ? '<span class="task-grip" title="Potiahni na zmenu poradia">⠿</span>' : '<span class="task-grip task-grip-off">•</span>'}
+      ${taskHasCollapsibleBody(t) ? `<button class="task-collapse-btn" onclick="toggleTaskCollapse('${t._id}', event)" title="${taskCollapsedIds.has(t._id) ? 'Rozbaliť' : 'Zbaliť'}">${taskCollapsedIds.has(t._id) ? '▸' : '▾'}</button>` : '<span class="task-collapse-btn task-collapse-off"></span>'}
+      <button class="task-check" ${ro ? 'disabled title="Len na čítanie"' : `onclick="toggleTask('${t._id}', ${t.done ? 'false' : 'true'})" title="${t.done ? 'Označiť ako nehotové' : 'Označiť ako hotové'}"`}>${t.done ? '✓' : ''}</button>
       <div class="task-body" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
-        <div class="task-title">${depth ? `<span class="task-tree-indent">${tkIcon('subtree')}</span>` : ''}${escHtml(t.title)}</div>
+        <div class="task-title">${depth ? '<span class="task-tree-indent">↳</span>' : ''}${escHtml(t.title)}</div>
         ${taskChipsHtml(t)}
         ${taskMetaHtml(t)}
         ${(t.progress || taskStatusOf(t) === 'inprogress' || (t.subtasks && t.subtasks.length)) ? taskProgressHtml(t) : ''}
-        ${t.note ? `<div class="task-note">${tkIcon('note')} ${escHtml(t.note)}</div>` : ''}
+        ${t.note ? `<div class="task-note">📝 ${escHtml(t.note)}</div>` : ''}
         ${t.description ? `<div class="task-desc">${escHtml(t.description)}</div>` : ''}
         ${taskSubInlineHtml(t)}
       </div>
-      ${ro ? '' : `<button class="admin-icon-btn danger" onclick="deleteTask('${t._id}')" title="Odstrániť">${tkIcon('trash')}</button>`}`;
+      ${ro ? '' : `<button class="admin-icon-btn danger" onclick="deleteTask('${t._id}')" title="Odstrániť">✕</button>`}`;
 }
 
 function renderTaskList() {
@@ -7759,7 +7728,7 @@ function renderTaskListGrouped(el, items) {
     return (a.project || '').localeCompare(b.project || '', 'sk') || (a.customer || '').localeCompare(b.customer || '', 'sk');
   });
   el.innerHTML = arr.map(g => {
-    const label = [g.project ? `${tkIcon('project')} ${escHtml(g.project)}` : '', g.customer ? `${tkIcon('customer')} ${escHtml(g.customer)}` : ''].filter(Boolean).join(' · ') || `${tkIcon('inbox')} Bez projektu / zákazníka`;
+    const label = [g.project ? `🗂️ ${escHtml(g.project)}` : '', g.customer ? `🏢 ${escHtml(g.customer)}` : ''].filter(Boolean).join(' · ') || '📋 Bez projektu / zákazníka';
     const open = g.items.filter(t => !t.done).length;
     const rows = g.items.sort((a, b) => (a.order || 0) - (b.order || 0))
       .map(t => `<div class="${taskRowClass(t)}" style="${taskRowStyle(t)}" data-tid="${t._id}">${taskRowInner(t, false)}</div>`).join('');
@@ -7809,16 +7778,16 @@ function taskKanbanCard(t) {
   }
   card.innerHTML = `
     <div class="kanban-card-top" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
-      <span class="kanban-card-title">${ro ? '' : `<span class="kanban-grip" title="Potiahni">${tkIcon('grip')}</span>`}${escHtml(t.title)}</span>
+      <span class="kanban-card-title">${ro ? '' : '<span class="kanban-grip" title="Potiahni">⠿</span>'}${escHtml(t.title)}</span>
     </div>
     ${taskChipsHtml(t)}
     ${taskProgressHtml(t)}
     ${taskMetaHtml(t)}
-    ${t.note ? `<div class="task-note">${tkIcon('note')} ${escHtml(t.note)}</div>` : ''}
+    ${t.note ? `<div class="task-note">📝 ${escHtml(t.note)}</div>` : ''}
     ${taskSubInlineHtml(t)}
     <div class="kanban-card-actions">
       <span class="task-prio" style="color:${prio.c}">${prio.l}</span>
-      ${ro ? '' : `<button onclick="deleteTask('${t._id}')" title="Odstrániť">${tkIcon('trash')}</button>`}
+      ${ro ? '' : `<button onclick="deleteTask('${t._id}')" title="Odstrániť">✕</button>`}
     </div>`;
   return card;
 }
@@ -7894,7 +7863,7 @@ function taskGridFilterCellHtml(c) {
 function buildTaskGridSkeleton(el) {
   const thead = TASK_GRID_COLS.map(c => {
     const active = taskSortKey === c.key;
-    const arrow = active ? tkIcon(taskSortDir === 1 ? 'chevronUp' : 'chevronDown') : '';
+    const arrow = active ? (taskSortDir === 1 ? '▲' : '▼') : '';
     return `<th onclick="setTaskSort('${c.key}')" class="${active ? 'task-grid-sorted' : ''}" data-key="${c.key}">${c.label} <span class="task-grid-arrow">${arrow}</span></th>`;
   }).join('');
   const filterRow = TASK_GRID_COLS.map(c => `<th class="task-grid-filtercell">${taskGridFilterCellHtml(c)}</th>`).join('');
@@ -7907,7 +7876,7 @@ function updateTaskGridHeader(el) {
     const active = taskSortKey === key;
     th.classList.toggle('task-grid-sorted', active);
     const arrow = th.querySelector('.task-grid-arrow');
-    if (arrow) arrow.innerHTML = active ? tkIcon(taskSortDir === 1 ? 'chevronUp' : 'chevronDown') : '';
+    if (arrow) arrow.textContent = active ? (taskSortDir === 1 ? '▲' : '▼') : '';
   });
 }
 function taskGridRowHtml(t, groupIndent) {
@@ -7920,7 +7889,7 @@ function taskGridRowHtml(t, groupIndent) {
   const rowCls = 'task-grid-row task-grid-prio-' + (t.priority || 'normal')
     + (t.done ? ' task-grid-done' : '') + (t.status === 'cancelled' ? ' task-grid-cancelled' : '') + (od ? ' task-grid-overdue' : '');
   return `<tr class="${rowCls}" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
-      <td class="task-grid-title"${indent ? ` style="padding-left:${12 + indent}px"` : ''}>${depth ? `<span class="task-tree-indent">${tkIcon('subtree')}</span>` : ''}${t.readOnly ? `<span class="task-chip task-chip-readonly" title="Zadal(a): ${escHtml(t.user?.name || t.user?.username || '')}">${tkIcon('eye')}</span> ` : ''}${escHtml(t.title)}</td>
+      <td class="task-grid-title"${indent ? ` style="padding-left:${12 + indent}px"` : ''}>${depth ? '<span class="task-tree-indent">↳</span>' : ''}${t.readOnly ? `<span class="task-chip task-chip-readonly" title="Zadal(a): ${escHtml(t.user?.name || t.user?.username || '')}">👁</span> ` : ''}${escHtml(t.title)}</td>
       <td><span class="task-grid-status task-grid-status-${taskStatusOf(t)}">${TK_STATUS_LABEL[taskStatusOf(t)] || ''}</span></td>
       <td><span class="task-prio" style="color:${prio.c}">${prio.l}</span></td>
       <td>${escHtml(t.project || '')}</td>
@@ -7973,7 +7942,7 @@ function renderTaskGridBody() {
     const custTotal = [...projMap.values()].reduce((s, arr) => s + arr.length, 0);
     const custCollapsed = taskGridCollapsed.has(custKey);
     html += `<tr class="task-grid-group task-grid-group-cust" data-gkey="${escHtml(custKey)}">
-      <td colspan="${TASK_GRID_COLS.length}"><span class="task-grid-group-arrow">${tkIcon(custCollapsed ? 'chevronRight' : 'chevronDown')}</span>${tkIcon('customer')} ${escHtml(cust)} <span class="task-grid-group-count">${custTotal}</span></td>
+      <td colspan="${TASK_GRID_COLS.length}"><span class="task-grid-group-arrow">${custCollapsed ? '▸' : '▾'}</span>🏢 ${escHtml(cust)} <span class="task-grid-group-count">${custTotal}</span></td>
     </tr>`;
     if (custCollapsed) return;
     taskGridGroupSort([...projMap.keys()], NO_PROJ).forEach(proj => {
@@ -7981,7 +7950,7 @@ function renderTaskGridBody() {
       const projKey = custKey + '|p:' + proj;
       const projCollapsed = taskGridCollapsed.has(projKey);
       html += `<tr class="task-grid-group task-grid-group-proj" data-gkey="${escHtml(projKey)}">
-        <td colspan="${TASK_GRID_COLS.length}"><span class="task-grid-group-arrow">${tkIcon(projCollapsed ? 'chevronRight' : 'chevronDown')}</span>${tkIcon('project')} ${escHtml(proj)} <span class="task-grid-group-count">${arr.length}</span></td>
+        <td colspan="${TASK_GRID_COLS.length}"><span class="task-grid-group-arrow">${projCollapsed ? '▸' : '▾'}</span>🗂️ ${escHtml(proj)} <span class="task-grid-group-count">${arr.length}</span></td>
       </tr>`;
       if (projCollapsed) return;
       arr.forEach(t => { html += taskGridRowHtml(t, 30); });
