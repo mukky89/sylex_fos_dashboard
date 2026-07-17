@@ -2070,6 +2070,10 @@
             </select>
           </div>
           <button class="tasks-filter hidden" id="taskGroupBtn" onclick="toggleTaskGroup()" title="Zoskupiť úlohy podľa projektu a zákazníka">🗂️ Zoskupiť</button>
+          <div class="tasks-collapse-btns hidden" id="taskCollapseBtns">
+            <button class="tasks-filter" onclick="collapseAllTasks()" title="Zbaliť všetky úlohy (skryť detaily)">⊟ Zbaliť všetky</button>
+            <button class="tasks-filter" onclick="expandAllTasks()" title="Rozbaliť všetky úlohy (zobraziť detaily)">⊞ Rozbaliť všetky</button>
+          </div>
           <div class="tasks-viewtoggle">
             <button class="tasks-view" data-tview="list" onclick="setTaskView('list')" title="Zoznam">☰ Zoznam</button>
             <button class="tasks-view" data-tview="kanban" onclick="setTaskView('kanban')" title="Kanban">▦ Kanban</button>

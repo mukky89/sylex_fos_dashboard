@@ -8,6 +8,16 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.55.0] — 2026-07-17
+### Pridané
+- **Moje úlohy — zbalenie/rozbalenie úloh v zoznamovom pohľade.**
+  - Každá úloha s detailmi (progres, poznámka, popis, podúlohy) má šípku
+    (▾/▸) na zbalenie/rozbalenie — zbalená úloha zobrazí len názov, chipy
+    a základné meta, detaily sa skryjú.
+  - Tlačidlá **„⊟ Zbaliť všetky"** a **„⊞ Rozbaliť všetky"** v paneli
+    nástrojov (viditeľné v zoznamovom pohľade) zbalia/rozbalia všetky úlohy
+    naraz.
+
 ## [2.54.0] — 2026-07-16
 ### Pridané
 - **PWA — inštalovateľná appka „Úlohy" pre Android aj iPhone.**
