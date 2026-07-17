@@ -6719,6 +6719,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.55.0', date: '17. 7. 2026', tag: 'feat', items: [
+    '<strong>Moje úlohy — zbalenie/rozbalenie úloh.</strong> V zoznamovom pohľade má každá úloha s detailmi malú šípku (▾/▸) na zbalenie — schová progres, poznámku, popis a podúlohy, ponechá názov, chipy a základné info. Užitočné pri dlhých zoznamoch.',
+    'Nové tlačidlá <strong>„⊟ Zbaliť všetky"</strong> a <strong>„⊞ Rozbaliť všetky"</strong> v paneli nástrojov (zobrazené v zoznamovom pohľade) zbalia alebo rozbalia všetky úlohy naraz.',
+  ] },
   { v: '2.54.0', date: '16. 7. 2026', tag: 'new', items: [
     '<strong>Appka na plochu (Android + iPhone) — PWA so štartom na Úlohách.</strong> Dashboard sa dá nainštalovať ako appka, ktorá sa otvorí rovno na module <strong>Úlohy</strong> a beží na celú obrazovku bez panela prehliadača.',
     '<strong>Android/Chrome:</strong> pri návšteve sa dole objaví banner <em>„Nainštalovať appku Úlohy"</em> s tlačidlom Inštalovať (natívna výzva). <strong>iPhone/Safari:</strong> banner s návodom <em>Zdieľať → „Pridať na plochu"</em>.',
@@ -7388,6 +7392,7 @@ let taskSortKey = 'priority';
 let taskSortDir = -1;
 let taskView = 'grid';
 let taskGroup = true;   // zoskupiť podľa projektu + zákazníka
+let taskCollapsedIds = new Set();  // ID zbalených úloh v zoznamovom pohľade (skryté detaily)
 let _dragTaskId = null;
 let tkSubtasks = [];   // pracovná kópia podúloh v modale
 const TK_PRIO = {
@@ -7552,6 +7557,23 @@ function toggleTaskGroup() {
   document.getElementById('taskGroupBtn')?.classList.toggle('active', taskGroup);
   renderTasks();
 }
+// Zbaľovanie/rozbaľovanie úloh v zoznamovom pohľade (skryje detaily — progres, poznámku, popis, podúlohy)
+function taskHasCollapsibleBody(t) {
+  return !!(t.note || t.description || (t.subtasks && t.subtasks.length) || t.progress || taskStatusOf(t) === 'inprogress');
+}
+function toggleTaskCollapse(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (taskCollapsedIds.has(id)) taskCollapsedIds.delete(id); else taskCollapsedIds.add(id);
+  renderTasks();
+}
+function collapseAllTasks() {
+  tasksData.forEach(t => { if (taskHasCollapsibleBody(t)) taskCollapsedIds.add(t._id); });
+  renderTasks();
+}
+function expandAllTasks() {
+  taskCollapsedIds.clear();
+  renderTasks();
+}
 function setTaskFilter(f) {
   taskFilter = f;
   document.querySelectorAll('.tasks-filter').forEach(b => b.classList.toggle('active', b.dataset.tfilter === f));
@@ -7562,6 +7584,7 @@ function setTaskView(v) {
   document.querySelectorAll('.tasks-view').forEach(b => b.classList.toggle('active', b.dataset.tview === v));
   document.querySelector('.tasks-filters')?.classList.toggle('hidden', v === 'kanban');
   document.getElementById('taskGroupBtn')?.classList.toggle('hidden', v !== 'list');
+  document.getElementById('taskCollapseBtns')?.classList.toggle('hidden', v !== 'list');
   document.querySelector('.tasks-inner')?.classList.toggle('tasks-wide', v === 'kanban' || v === 'grid');
   renderTasks();
 }
@@ -7623,7 +7646,7 @@ function renderTasks() {
 }
 
 // Vnútro riadka úlohy (zdieľané pre plochý aj zoskupený pohľad)
-function taskRowClass(t) { return 'task-row' + (t.done ? ' task-done' : '') + (t.status === 'cancelled' ? ' task-cancelled' : '') + (taskOverdue(t) ? ' task-overdue' : ''); }
+function taskRowClass(t) { return 'task-row' + (t.done ? ' task-done' : '') + (t.status === 'cancelled' ? ' task-cancelled' : '') + (taskOverdue(t) ? ' task-overdue' : '') + (taskCollapsedIds.has(t._id) ? ' task-collapsed' : ''); }
 // Celý riadok sa posunie doprava podľa hĺbky hierarchie (--prio + margin-left)
 function taskRowStyle(t) {
   const depth = taskDepth(t);
@@ -7636,6 +7659,7 @@ function taskRowInner(t, withGrip) {
   const ro = !!t.readOnly;
   return `
       ${withGrip && !ro ? '<span class="task-grip" title="Potiahni na zmenu poradia">⠿</span>' : '<span class="task-grip task-grip-off">•</span>'}
+      ${taskHasCollapsibleBody(t) ? `<button class="task-collapse-btn" onclick="toggleTaskCollapse('${t._id}', event)" title="${taskCollapsedIds.has(t._id) ? 'Rozbaliť' : 'Zbaliť'}">${taskCollapsedIds.has(t._id) ? '▸' : '▾'}</button>` : '<span class="task-collapse-btn task-collapse-off"></span>'}
       <button class="task-check" ${ro ? 'disabled title="Len na čítanie"' : `onclick="toggleTask('${t._id}', ${t.done ? 'false' : 'true'})" title="${t.done ? 'Označiť ako nehotové' : 'Označiť ako hotové'}"`}>${t.done ? '✓' : ''}</button>
       <div class="task-body" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
         <div class="task-title">${depth ? '<span class="task-tree-indent">↳</span>' : ''}${escHtml(t.title)}</div>
