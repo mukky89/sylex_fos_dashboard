@@ -8,6 +8,17 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.61.0] — 2026-07-18
+### Pridané
+- **Kalendár — „Naplánovať stretnutie" (hľadač voľného termínu).** Nové
+  tlačidlo v hlavičke kalendára otvorí modal, kde cez checkboxy vyberieš
+  ľudí (napojené kalendáre + interné), zvolíš dĺžku stretnutia, pracovný
+  čas a rozsah dní. Appka nájde **najbližší termín, kedy majú všetci
+  vybraní voľno** (kontroluje obsadenosť naprieč vybranými kalendármi,
+  preskakuje víkendy a štátne sviatky), ponúkne niekoľko najbližších
+  slotov a jedným klikom z termínu vytvoríš udalosť s predvyplneným časom,
+  typom „Porada / Meeting" a zoznamom účastníkov v názve.
+
 ## [2.60.1] — 2026-07-18
 ### Opravené
 - **Kalendár — meno vlastníka lepšie čitateľné pri každej farbe.** Meno

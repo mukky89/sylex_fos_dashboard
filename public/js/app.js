@@ -2878,6 +2878,123 @@ function toggleEventRecur() {
   document.getElementById('evRecurUntilWrap').style.display = document.getElementById('evRecur').value === 'none' ? 'none' : '';
 }
 
+// ============================================================
+// Naplánovať stretnutie — hľadač spoločného voľného termínu
+// ============================================================
+// Zoznam kalendárov (ľudí): interný dashboard + napojené externé zdroje
+function calMeetingPeople() {
+  const list = [{ key: CAL_INT_KEY, name: 'Interné (dashboard)', color: '#00d4ff' }];
+  calSources().forEach(s => list.push({ key: s.key, name: s.name, color: s.color }));
+  return list;
+}
+function openMeetingModal() {
+  const people = calMeetingPeople();
+  document.getElementById('meetPeople').innerHTML = people.map(p => `
+    <label class="meet-person">
+      <input type="checkbox" class="meet-cb" value="${encodeURIComponent(p.key)}">
+      <span class="meet-person-dot" style="background:${escHtml(p.color)}"></span>
+      <span class="meet-person-name">${escHtml(p.name)}</span>
+    </label>`).join('') || '<div class="meet-empty">Zatiaľ nie sú napojené žiadne kalendáre — pridaj ich cez „🔗 Kalendáre".</div>';
+  document.getElementById('meetResults').innerHTML = '';
+  document.getElementById('meetingModal').classList.remove('hidden');
+}
+function closeMeetingModal() { document.getElementById('meetingModal').classList.add('hidden'); }
+function calMinToHM(m) { return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
+
+// Obsadené intervaly [odMin, doMin] pre daný deň a vybrané zdroje (zlúčené)
+function calMeetingBusy(dayKey, keySet) {
+  const iv = [];
+  calEvents.concat(calExternal).forEach(ev => {
+    if (!keySet.has(calSrcKey(ev))) return;
+    const startKey = String(ev.date).slice(0, 10);
+    const endKey = ev.endDate ? String(ev.endDate).slice(0, 10) : startKey;
+    if (dayKey < startKey || dayKey > endKey) return;
+    const multi = endKey !== startKey;
+    if (ev.allDay || multi) { iv.push([0, 1440]); return; }     // celodenná/viacdňová = obsadený celý deň
+    const s = parseHM(ev.time); if (s == null) return;          // bez času a nie celodenná → neblokuje
+    const e = parseHM(ev.endTime);
+    iv.push([s, (e && e > s) ? Math.min(1440, e) : Math.min(1440, s + 60)]);
+  });
+  iv.sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  iv.forEach(cur => {
+    const last = merged[merged.length - 1];
+    if (last && cur[0] <= last[1]) last[1] = Math.max(last[1], cur[1]);
+    else merged.push(cur.slice());
+  });
+  return merged;
+}
+
+// Nájsť najbližšie termíny, kde majú VŠETCI vybraní voľno (v pracovnom čase, cez pracovné dni)
+function calMeetingSlots(keys, durationMin, opts) {
+  const { days, workStart, workEnd, maxResults } = opts;
+  const keySet = new Set(keys);
+  const gran = 15;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const todayKey = calYmd(now);
+  const out = [];
+  for (let d = 0; d < days && out.length < maxResults; d++) {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + d);
+    const dow = day.getDay();
+    if (dow === 0 || dow === 6) continue;              // víkend
+    const key = calYmd(day);
+    if (calHolidayName(key)) continue;                 // štátny sviatok
+    let cursor = workStart;
+    if (key === todayKey) cursor = Math.max(cursor, Math.ceil(nowMin / gran) * gran);  // dnes nie do minulosti
+    if (cursor >= workEnd) continue;
+    const busy = calMeetingBusy(key, keySet).filter(b => b[1] > cursor && b[0] < workEnd);
+    let t = cursor;
+    for (const [bs, be] of busy) {
+      if (bs - t >= durationMin) { out.push({ key, start: t, end: t + durationMin }); if (out.length >= maxResults) break; }
+      t = Math.max(t, be);
+      if (t >= workEnd) break;
+    }
+    if (out.length < maxResults && workEnd - t >= durationMin) out.push({ key, start: t, end: t + durationMin });
+  }
+  return out;
+}
+
+function calFindMeeting() {
+  const keys = [...document.querySelectorAll('.meet-cb:checked')].map(cb => decodeURIComponent(cb.value));
+  const res = document.getElementById('meetResults');
+  if (!keys.length) { res.innerHTML = '<div class="meet-msg err">Vyber aspoň jedného účastníka.</div>'; return; }
+  const dur = +document.getElementById('meetDur').value || 60;
+  const workStart = parseHM(document.getElementById('meetFrom').value) ?? 480;
+  const workEnd = parseHM(document.getElementById('meetTo').value) ?? 960;
+  const days = Math.min(60, Math.max(1, +document.getElementById('meetDays').value || 14));
+  if (workEnd - workStart < dur) { res.innerHTML = '<div class="meet-msg err">Pracovný čas je kratší ako dĺžka stretnutia.</div>'; return; }
+  const slots = calMeetingSlots(keys, dur, { days, workStart, workEnd, maxResults: 6 });
+  const names = keys.map(k => k === CAL_INT_KEY ? 'Interné' : calSurname(k)).join(', ');
+  if (!slots.length) { res.innerHTML = `<div class="meet-msg err">V najbližších ${days} dňoch sa nenašiel spoločný voľný termín (${dur} min) pre: ${escHtml(names)}. Skús kratšie trvanie alebo väčší rozsah dní.</div>`; return; }
+  const wd = ['Ne', 'Po', 'Ut', 'St', 'Št', 'Pi', 'So'];
+  const fmt = s => { const dt = new Date(s.key + 'T00:00:00'); return `${wd[dt.getDay()]} ${dt.getDate()}.${dt.getMonth() + 1}.${dt.getFullYear()}`; };
+  let html = `<div class="meet-msg ok">Najbližší spoločný voľný termín pre <strong>${escHtml(names)}</strong> — vybral(a) si najlepší a klikni „Vytvoriť".</div><div class="meet-slots">`;
+  slots.forEach((s, i) => {
+    html += `<div class="meet-slot${i === 0 ? ' meet-slot-best' : ''}">
+      <div class="meet-slot-when"><span class="meet-slot-day">${escHtml(fmt(s))}${i === 0 ? ' · najbližší' : ''}</span><span class="meet-slot-time">${calMinToHM(s.start)} – ${calMinToHM(s.end)}</span></div>
+      <button class="btn-primary btn-sm" onclick="meetCreateEvent('${s.key}',${s.start},${s.end},'${encodeURIComponent(names)}')">Vytvoriť</button>
+    </div>`;
+  });
+  html += '</div>';
+  res.innerHTML = html;
+}
+
+// Z nájdeného termínu otvorí formulár novej udalosti s predvyplneným časom a účastníkmi
+function meetCreateEvent(dayKey, startMin, endMin, namesEnc) {
+  const names = decodeURIComponent(namesEnc || '');
+  closeMeetingModal();
+  openEventModal(null, dayKey);
+  document.getElementById('evAllDay').checked = false;
+  toggleEventTime();
+  document.getElementById('evTime').value = calMinToHM(startMin);
+  document.getElementById('evEndTime').value = calMinToHM(endMin);
+  document.getElementById('evType').value = 'meeting';
+  const t = document.getElementById('evTitle');
+  t.value = 'Stretnutie' + (names ? ': ' + names : '');
+  t.focus();
+}
+
 async function saveEvent() {
   const title = document.getElementById('evTitle').value.trim();
   const date  = document.getElementById('evDate').value;
@@ -6733,6 +6850,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.61.0', date: '18. 7. 2026', tag: 'feat', items: [
+    '<strong>Kalendár — „Naplánovať stretnutie".</strong> Nové tlačidlo v hlavičke kalendára otvorí hľadač voľného termínu: cez checkboxy vyberieš ľudí (napojené kalendáre + interné), zvolíš dĺžku, pracovný čas a rozsah dní — appka nájde <strong>najbližší termín, kedy majú všetci vybraní voľno</strong> (preskočí víkendy a sviatky). Ponúkne niekoľko najbližších slotov a jedným klikom z termínu vytvoríš udalosť s predvyplneným časom a účastníkmi.',
+  ] },
   { v: '2.60.1', date: '18. 7. 2026', tag: 'fix', items: [
     '<strong>Kalendár — meno vlastníka lepšie čitateľné pri každej farbe.</strong> Meno kalendára v udalostiach je teraz červené na malom tmavom čipe, takže je dobre čitateľné na akomkoľvek farebnom pozadí udalosti (ružová, fialová, zelená, žltá…), nielen na tmavých.',
   ] },
