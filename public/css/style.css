@@ -5321,18 +5321,44 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .meet-cb { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
 .meet-person-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .meet-empty { font-size: 0.85rem; color: var(--text-dim); padding: 8px 0 16px; }
-.meet-opts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 4px; }
-@media (max-width: 560px) { .meet-opts { grid-template-columns: 1fr 1fr; } }
-.meet-results { margin-top: 8px; }
-.meet-msg { font-size: 0.86rem; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; line-height: 1.5; }
+.meet-opts { display: grid; grid-template-columns: 1fr 1.3fr; gap: 14px; margin-bottom: 8px; align-items: end; }
+@media (max-width: 480px) { .meet-opts { grid-template-columns: 1fr; } }
+.meet-worktime-row { display: flex; align-items: center; gap: 8px; }
+.meet-worktime-row input { flex: 1; min-width: 0; }
+.meet-dash { color: var(--text-dim); font-weight: 600; flex-shrink: 0; }
+.meet-results { margin-top: 16px; }
+.meet-msg { font-size: 0.86rem; padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; line-height: 1.5; }
 .meet-msg.ok { background: rgba(16,185,129,0.12); color: #047857; border: 1px solid rgba(16,185,129,0.3); }
 .meet-msg.err { background: rgba(239,68,68,0.1); color: #b91c1c; border: 1px solid rgba(239,68,68,0.3); }
-.meet-slots { display: flex; flex-direction: column; gap: 8px; }
-.meet-slot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card-bg); }
-.meet-slot-best { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.meet-slot-when { display: flex; flex-direction: column; gap: 2px; }
-.meet-slot-day { font-size: 0.76rem; color: var(--text-dim); font-weight: 600; }
-.meet-slot-time { font-size: 1.02rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* Termíny zoskupené po dňoch — každý deň je karta s hover efektom na celý objekt */
+.meet-days { display: flex; flex-direction: column; gap: 10px; max-height: 340px; overflow-y: auto; padding-right: 2px; }
+.meet-day {
+  border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--card-bg);
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease, background .16s ease;
+}
+.meet-day:hover {
+  border-color: var(--accent);
+  box-shadow: 0 6px 18px rgba(15,23,42,0.1), 0 0 0 1px var(--accent);
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--accent) 4%, var(--card-bg));
+}
+.meet-day-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.meet-day-name { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+.meet-day-badge { font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #fff; background: var(--accent); border-radius: 100px; padding: 2px 8px; }
+.meet-day-count { margin-left: auto; font-size: 0.74rem; color: var(--text-xdim); font-weight: 600; }
+.meet-day-slots { display: flex; flex-wrap: wrap; gap: 7px; }
+.meet-chip {
+  display: inline-flex; align-items: center; gap: 3px; padding: 7px 12px; border-radius: 9px;
+  border: 1px solid var(--border); background: var(--card-bg); color: var(--text);
+  font-size: 0.86rem; font-weight: 600; font-variant-numeric: tabular-nums; font-family: var(--font);
+  cursor: pointer; transition: background .14s, border-color .14s, color .14s, transform .1s;
+}
+.meet-chip:hover { background: var(--accent); border-color: var(--accent); color: #fff; transform: translateY(-1px); }
+.meet-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meet-chip-sep { opacity: 0.55; }
+.meet-chip:hover .meet-chip-sep { opacity: 0.85; }
+.meet-chip-best { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 
 /* =============================================================================
    BACKBONE EDITOR — optická topológia (interrogátor · splitter · káble · senzory)

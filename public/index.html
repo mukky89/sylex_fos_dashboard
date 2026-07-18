@@ -980,13 +980,13 @@
         <button class="modal-close" onclick="closeMeetingModal()">✕</button>
       </div>
       <div class="modal-body">
-        <p class="meet-hint">Vyber ľudí (kalendáre), s ktorými chceš stretnutie. Nájdeme najbližší termín, kedy majú <strong>všetci vybraní</strong> voľno.</p>
+        <p class="meet-hint">Vyber ľudí (kalendáre), s ktorými chceš stretnutie — nájdeme najbližšie voľné termíny v rámci týždňa, kedy majú <strong>všetci vybraní</strong> voľno.</p>
         <div class="meet-people-lbl">Účastníci</div>
         <div id="meetPeople" class="meet-people"></div>
         <div class="meet-opts">
           <div class="form-group">
-            <label>Dĺžka</label>
-            <select id="meetDur">
+            <label>Dĺžka stretnutia</label>
+            <select id="meetDur" onchange="meetMaybeRefresh()">
               <option value="30">30 min</option>
               <option value="45">45 min</option>
               <option value="60" selected>1 hodina</option>
@@ -994,24 +994,23 @@
               <option value="120">2 hodiny</option>
             </select>
           </div>
-          <div class="form-group">
-            <label>Pracovný čas od</label>
-            <input type="time" id="meetFrom" value="08:00">
-          </div>
-          <div class="form-group">
-            <label>do</label>
-            <input type="time" id="meetTo" value="16:00">
-          </div>
-          <div class="form-group">
-            <label>Hľadať dní dopredu</label>
-            <input type="number" id="meetDays" value="14" min="1" max="60">
+          <div class="form-group meet-worktime">
+            <label>Pracovný čas</label>
+            <div class="meet-worktime-row">
+              <input type="time" id="meetFrom" value="08:00" onchange="meetMaybeRefresh()">
+              <span class="meet-dash">–</span>
+              <input type="time" id="meetTo" value="16:00" onchange="meetMaybeRefresh()">
+            </div>
           </div>
         </div>
         <div id="meetResults" class="meet-results"></div>
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeMeetingModal()">Zavrieť</button>
-        <button class="btn-primary" onclick="calFindMeeting()">🔍 Nájsť termín</button>
+        <button class="btn-primary" onclick="calFindMeeting()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Nájsť termíny
+        </button>
       </div>
     </div>
   </div>

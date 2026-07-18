@@ -8,6 +8,14 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.63.0] — 2026-07-18
+### Vylepšené
+- **Naplánovať stretnutie — viac návrhov termínov.** Namiesto jedného
+  termínu ponúkne viacero voľných časov: min. 4 na dnešný deň a ďalšie na
+  nasledujúce pracovné dni v rámci týždňa. Termíny sú zoskupené do kariet
+  po dňoch (odznak „dnes", počet voľných), každý čas je klikacia dlaždica.
+  Doladené UI/UX modalu a pridaný hover efekt na celú kartu dňa.
+
 ## [2.62.0] — 2026-07-18
 ### Vylepšené (UI/UX)
 - **Kalendár — prepracované tlačidlá v hlavičke.** Akčné tlačidlá
