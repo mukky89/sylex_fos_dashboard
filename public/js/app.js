@@ -2925,55 +2925,72 @@ function calMeetingBusy(dayKey, keySet) {
   return merged;
 }
 
-// Nájsť najbližšie termíny, kde majú VŠETCI vybraní voľno (v pracovnom čase, cez pracovné dni)
-function calMeetingSlots(keys, durationMin, opts) {
-  const { days, workStart, workEnd, maxResults } = opts;
+// Nájsť voľné termíny zoskupené po dňoch (v rámci týždňa), kde majú VŠETCI vybraní voľno.
+// Dnes ponúkne viac návrhov (min. 4 ak sú voľné), ďalej ďalšie pracovné dni týždňa.
+function calMeetingSlotsByDay(keys, durationMin, opts) {
+  const { workStart, workEnd, days, step, capToday, capOther } = opts;
   const keySet = new Set(keys);
-  const gran = 15;
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const todayKey = calYmd(now);
   const out = [];
-  for (let d = 0; d < days && out.length < maxResults; d++) {
+  for (let d = 0; d < days; d++) {
     const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + d);
     const dow = day.getDay();
     if (dow === 0 || dow === 6) continue;              // víkend
     const key = calYmd(day);
     if (calHolidayName(key)) continue;                 // štátny sviatok
+    const isToday = key === todayKey;
     let cursor = workStart;
-    if (key === todayKey) cursor = Math.max(cursor, Math.ceil(nowMin / gran) * gran);  // dnes nie do minulosti
+    if (isToday) cursor = Math.max(cursor, Math.ceil(nowMin / step) * step);  // dnes nie do minulosti
     if (cursor >= workEnd) continue;
-    const busy = calMeetingBusy(key, keySet).filter(b => b[1] > cursor && b[0] < workEnd);
+    // voľné medzery = doplnok obsadených intervalov v [cursor, workEnd]
+    const busy = calMeetingBusy(key, keySet).filter(b => b[1] > cursor && b[0] < workEnd).concat([[workEnd, workEnd]]);
+    const slots = [];
     let t = cursor;
     for (const [bs, be] of busy) {
-      if (bs - t >= durationMin) { out.push({ key, start: t, end: t + durationMin }); if (out.length >= maxResults) break; }
+      const gapEnd = Math.min(bs, workEnd);
+      for (let s = t; s + durationMin <= gapEnd; s += step) slots.push({ start: s, end: s + durationMin });
       t = Math.max(t, be);
       if (t >= workEnd) break;
     }
-    if (out.length < maxResults && workEnd - t >= durationMin) out.push({ key, start: t, end: t + durationMin });
+    if (slots.length) out.push({ key, isToday, slots: slots.slice(0, isToday ? capToday : capOther) });
   }
   return out;
+}
+
+// Prepočíta termíny, len ak už boli raz zobrazené (živá reakcia na zmenu dĺžky/času)
+function meetMaybeRefresh() {
+  const res = document.getElementById('meetResults');
+  if (res && res.dataset.searched === '1') calFindMeeting();
 }
 
 function calFindMeeting() {
   const keys = [...document.querySelectorAll('.meet-cb:checked')].map(cb => decodeURIComponent(cb.value));
   const res = document.getElementById('meetResults');
+  res.dataset.searched = '1';
   if (!keys.length) { res.innerHTML = '<div class="meet-msg err">Vyber aspoň jedného účastníka.</div>'; return; }
   const dur = +document.getElementById('meetDur').value || 60;
   const workStart = parseHM(document.getElementById('meetFrom').value) ?? 480;
   const workEnd = parseHM(document.getElementById('meetTo').value) ?? 960;
-  const days = Math.min(60, Math.max(1, +document.getElementById('meetDays').value || 14));
   if (workEnd - workStart < dur) { res.innerHTML = '<div class="meet-msg err">Pracovný čas je kratší ako dĺžka stretnutia.</div>'; return; }
-  const slots = calMeetingSlots(keys, dur, { days, workStart, workEnd, maxResults: 6 });
+  // krok návrhov: pri kratších stretnutiach 30 min, inak polovica dĺžky (min. 30)
+  const step = dur <= 60 ? 30 : Math.max(30, Math.round(dur / 2 / 15) * 15);
+  const byDay = calMeetingSlotsByDay(keys, dur, { workStart, workEnd, days: 8, step, capToday: 6, capOther: 4 });
   const names = keys.map(k => k === CAL_INT_KEY ? 'Interné' : calSurname(k)).join(', ');
-  if (!slots.length) { res.innerHTML = `<div class="meet-msg err">V najbližších ${days} dňoch sa nenašiel spoločný voľný termín (${dur} min) pre: ${escHtml(names)}. Skús kratšie trvanie alebo väčší rozsah dní.</div>`; return; }
-  const wd = ['Ne', 'Po', 'Ut', 'St', 'Št', 'Pi', 'So'];
-  const fmt = s => { const dt = new Date(s.key + 'T00:00:00'); return `${wd[dt.getDay()]} ${dt.getDate()}.${dt.getMonth() + 1}.${dt.getFullYear()}`; };
-  let html = `<div class="meet-msg ok">Najbližší spoločný voľný termín pre <strong>${escHtml(names)}</strong> — vybral(a) si najlepší a klikni „Vytvoriť".</div><div class="meet-slots">`;
-  slots.forEach((s, i) => {
-    html += `<div class="meet-slot${i === 0 ? ' meet-slot-best' : ''}">
-      <div class="meet-slot-when"><span class="meet-slot-day">${escHtml(fmt(s))}${i === 0 ? ' · najbližší' : ''}</span><span class="meet-slot-time">${calMinToHM(s.start)} – ${calMinToHM(s.end)}</span></div>
-      <button class="btn-primary btn-sm" onclick="meetCreateEvent('${s.key}',${s.start},${s.end},'${encodeURIComponent(names)}')">Vytvoriť</button>
+  if (!byDay.length) { res.innerHTML = `<div class="meet-msg err">V rámci týždňa sa nenašiel spoločný voľný termín (${dur} min) pre: ${escHtml(names)}. Skús kratšie trvanie alebo iný pracovný čas.</div>`; return; }
+  const wd = ['Nedeľa', 'Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota'];
+  const total = byDay.reduce((n, d) => n + d.slots.length, 0);
+  let html = `<div class="meet-msg ok"><strong>${total}</strong> voľných termínov pre <strong>${escHtml(names)}</strong> — klikni na čas, ktorý ti vyhovuje.</div>`;
+  html += '<div class="meet-days">';
+  byDay.forEach((d, di) => {
+    const dt = new Date(d.key + 'T00:00:00');
+    const label = `${wd[dt.getDay()]} ${dt.getDate()}.${dt.getMonth() + 1}.`;
+    html += `<div class="meet-day">
+      <div class="meet-day-hdr"><span class="meet-day-name">${escHtml(label)}</span>${d.isToday ? '<span class="meet-day-badge">dnes</span>' : ''}<span class="meet-day-count">${d.slots.length} voľných</span></div>
+      <div class="meet-day-slots">
+        ${d.slots.map((s, si) => `<button class="meet-chip${di === 0 && si === 0 ? ' meet-chip-best' : ''}" onclick="meetCreateEvent('${d.key}',${s.start},${s.end},'${encodeURIComponent(names)}')" title="Vytvoriť stretnutie ${calMinToHM(s.start)}–${calMinToHM(s.end)}">${calMinToHM(s.start)}<span class="meet-chip-sep">–</span>${calMinToHM(s.end)}</button>`).join('')}
+      </div>
     </div>`;
   });
   html += '</div>';
@@ -6850,6 +6867,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.63.0', date: '18. 7. 2026', tag: 'feat', items: [
+    '<strong>Naplánovať stretnutie — viac návrhov termínov, prehľadnejšie.</strong> Namiesto jedného termínu ponúkne viacero voľných časov: min. 4 na dnešný deň a ďalšie na nasledujúce pracovné dni v rámci týždňa. Termíny sú zoskupené do kariet po dňoch (s odznakom „dnes" a počtom voľných), každý čas je klikacia dlaždica. Doladené UI/UX modalu (účastníci, dĺžka, pracovný čas) a pridaný hover efekt na celú kartu dňa.',
+  ] },
   { v: '2.62.0', date: '18. 7. 2026', tag: 'ui', items: [
     '<strong>Kalendár — prepracované tlačidlá v hlavičke.</strong> Akčné tlačidlá (Kalendáre, Zdieľať, Excel, Tlač, Naplánovať stretnutie, Pridať udalosť) majú jednotné líniové SVG ikony namiesto nesúrodých emoji (🔗, 🖨️), rovnakú veľkosť a výšku, oddeľovač medzi pomocnými a tvorivými akciami a jemný priehľadný vzhľad ladiaci s tmavou hlavičkou (namiesto výrazne bielych tlačidiel). Pridané aj fokus-stavy pre ovládanie klávesnicou.',
     '<strong>Kalendár — tmavý motív ako predvolený.</strong> Kalendár sa predvolene zobrazuje v tmavom režime (potvrdené); voľba motívu (Tmavý/Svetlý/Modrý) zostáva k dispozícii a pamätá sa.',
