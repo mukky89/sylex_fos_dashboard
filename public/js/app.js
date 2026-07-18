@@ -6733,6 +6733,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.60.0', date: '18. 7. 2026', tag: 'fix', items: [
+    '<strong>Kalendár — meno kalendára v udalostiach výraznou červenou.</strong> V tmavom režime má vlastník/meno kalendára v každej udalosti (týždenný/denný pohľad, celodenné pruhy) výraznú červenú farbu s tmavým obrysom pre čitateľnosť aj na farebných pozadiach.',
+    '<strong>Moje úlohy — väčšie a čitateľnejšie písmo.</strong> Zväčšené písmo v zozname aj v tabuľke (Grid) a zosvetlené predtým vyblednuté (slabo čitateľné) texty — názvy, meta údaje, popisy, poznámky, hlavičky stĺpcov, skupiny a prehľad „dnes/zajtra".',
+  ] },
   { v: '2.59.0', date: '18. 7. 2026', tag: 'fix', items: [
     '<strong>Moje úlohy — krajšie ikony v paneli nástrojov.</strong> Tlačidlá „Zoskupiť", „Zbaliť/Rozbaliť všetky" a prepínač pohľadov (Zoznam/Kanban/Grid) majú namiesto nejednotných znakov (⊟, ⊞, ☰, ▦, ▤) čisté líniové SVG ikony zarovnané s textom.',
     '<strong>Kalendár — čitateľný text udalostí v tmavom režime.</strong> Farba textu v udalostiach sa teraz automaticky prispôsobí (tmavý text na svetlých farbách, svetlý na tmavých), takže názov aj čas sú vždy dobre viditeľné — platí pre týždenný/denný, celodenné pruhy aj mesačný pohľad.',
