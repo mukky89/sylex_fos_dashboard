@@ -157,6 +157,7 @@ let _tourIdx   = 0;
 let _tourSaved = [];
 
 function startTour() {
+  if (UI_CFG.helpEnabled === false) return;   // funkcia vypnutá cez Administráciu
   showPage('home');
   _tourIdx = 0;
   document.body.classList.add('tour-active');
@@ -317,7 +318,7 @@ const UI_RADII = {
   sharp: { '--radius': '3px',  '--radius-lg': '4px' },
   round: { '--radius': '14px', '--radius-lg': '20px' },
 };
-let UI_CFG = { nav: 'header', sidebarTheme: 'dark', accent: 'cyan', density: 'comfortable', radius: 'soft', motion: 'on', hiddenModules: [], webTheme: 'dark' };
+let UI_CFG = { nav: 'header', sidebarTheme: 'dark', accent: 'cyan', density: 'comfortable', radius: 'soft', motion: 'on', hiddenModules: [], webTheme: 'dark', helpEnabled: true, aiEnabled: true };
 const WEB_THEMES = ['dark', 'light', 'warm'];
 
 // Skryteľné moduly (cez Administrácia → Moduly). Domov a Administrácia sa skryť nedajú.
@@ -422,7 +423,35 @@ function applyUiLayout() {
   WEB_THEMES.forEach(t => b.classList.toggle('theme-' + t, t !== 'dark' && UI_CFG.webTheme === t));
 
   applyHiddenModules();
+  applyFeatureFlags();
   renderSidebarUser();
+}
+
+// Zapnutie/vypnutie voliteľných funkcií (Pomoc/Sprievodca, AI Asistent) cez Administráciu
+function applyFeatureFlags() {
+  const help = document.querySelector('.tour-fab');
+  if (help) help.classList.toggle('feature-off', UI_CFG.helpEnabled === false);
+  const botFab = document.getElementById('botFab');
+  if (botFab) botFab.classList.toggle('feature-off', UI_CFG.aiEnabled === false);
+  if (UI_CFG.aiEnabled === false) { const p = document.getElementById('botPanel'); if (p) p.classList.add('hidden'); }
+}
+function setFeatureEnabled(feature, enabled) {
+  if (feature === 'help') { UI_CFG.helpEnabled = enabled; _saveUiCfg('ui.helpEnabled', enabled); }
+  else if (feature === 'ai') { UI_CFG.aiEnabled = enabled; _saveUiCfg('ui.aiEnabled', enabled); }
+  applyFeatureFlags(); renderFeaturesAdmin();
+}
+function renderFeaturesAdmin() {
+  const el = document.getElementById('featuresGrid'); if (!el) return;
+  const feats = [
+    { key: 'help', ico: '🧭', label: 'Pomoc — Sprievodca', desc: 'Plávajúce tlačidlo „Pomoc" a interaktívny sprievodca dashboardom.', on: UI_CFG.helpEnabled !== false },
+    { key: 'ai',   ico: '🤖', label: 'FOS AI Asistent',    desc: 'Plávajúci chatbot „FOS Asistent" vpravo dole.', on: UI_CFG.aiEnabled !== false },
+  ];
+  el.innerHTML = feats.map(f => `
+    <label class="mod-item ${f.on ? '' : 'mod-off'}" title="${f.on ? 'Zapnuté' : 'Vypnuté'} — ${escHtml(f.label)}">
+      <span class="mod-ico">${f.ico}</span>
+      <span class="mod-label">${escHtml(f.label)}<span class="feat-desc">${escHtml(f.desc)}</span></span>
+      <span class="mod-switch"><input type="checkbox" ${f.on ? 'checked' : ''} onchange="setFeatureEnabled('${f.key}', this.checked)"><span class="mod-track"></span></span>
+    </label>`).join('');
 }
 
 function renderSidebarUser() {
@@ -455,6 +484,9 @@ async function loadUiConfig() {
       const radius = get('ui.radius'); const motion = get('ui.motion');
       const hidden = get('ui.hiddenModules');
       const webTheme = get('ui.webTheme');
+      const helpEn = get('ui.helpEnabled'); const aiEn = get('ui.aiEnabled');
+      if (typeof helpEn === 'boolean') UI_CFG.helpEnabled = helpEn;
+      if (typeof aiEn === 'boolean') UI_CFG.aiEnabled = aiEn;
       if (webTheme && WEB_THEMES.includes(webTheme)) UI_CFG.webTheme = webTheme;
       if (nav) UI_CFG.nav = nav;
       if (theme && SB_THEMES.includes(theme)) UI_CFG.sidebarTheme = theme;
@@ -4985,7 +5017,7 @@ function switchAdminTab(tab) {
   if (tab === 'sensor') { loadSensorConfigAdmin(); loadSensorStats(); }
   if (tab === 'users') { loadUsers(); loadMailStatus(); }
   if (tab === 'appearance') renderAppearanceAdmin();
-  if (tab === 'modules') renderModulesAdmin();
+  if (tab === 'modules') { renderModulesAdmin(); renderFeaturesAdmin(); }
   if (tab === 'projcfg') loadPjConfigAdmin();
 }
 
@@ -5437,6 +5469,7 @@ function _botStrip(s) {
 }
 
 function toggleBot() {
+  if (UI_CFG.aiEnabled === false) return;   // funkcia vypnutá cez Administráciu
   const panel = document.getElementById('botPanel');
   const fab = document.getElementById('botFab');
   if (!panel) return;
@@ -6867,6 +6900,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.64.0', date: '18. 7. 2026', tag: 'feat', items: [
+    '<strong>Administrácia — vypnutie funkcií Pomoc a AI Asistent.</strong> V Administrácii → <em>Moduly</em> pribudla sekcia <strong>Funkcie</strong>, kde sa dá prepínačom vypnúť/zapnúť <strong>Pomoc (Sprievodca)</strong> a <strong>FOS AI Asistent</strong> pre všetkých používateľov. Po vypnutí sa príslušné plávajúce tlačidlo skryje a funkcia sa nedá spustiť.',
+  ] },
   { v: '2.63.0', date: '18. 7. 2026', tag: 'feat', items: [
     '<strong>Naplánovať stretnutie — viac návrhov termínov, prehľadnejšie.</strong> Namiesto jedného termínu ponúkne viacero voľných časov: min. 4 na dnešný deň a ďalšie na nasledujúce pracovné dni v rámci týždňa. Termíny sú zoskupené do kariet po dňoch (s odznakom „dnes" a počtom voľných), každý čas je klikacia dlaždica. Doladené UI/UX modalu (účastníci, dĺžka, pracovný čas) a pridaný hover efekt na celú kartu dňa.',
   ] },

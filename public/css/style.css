@@ -6125,6 +6125,17 @@ span.gh-name { color: var(--dz-text2); }
 
 .modules-count { font-size: 0.76rem; color: rgba(var(--dz-fg-rgb),0.5); }
 .modules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+/* Vypnutá funkcia (Pomoc/AI Asistent) — skryť plávajúce tlačidlo */
+.feature-off { display: none !important; }
+/* Karty funkcií s popisom — povoliť zalomenie a viacriadkový label */
+#featuresGrid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+#featuresGrid .mod-item { align-items: flex-start; }
+#featuresGrid .mod-label { white-space: normal; overflow: visible; }
+#featuresGrid .mod-ico { margin-top: 1px; }
+#featuresGrid .mod-switch { margin-top: 2px; }
+.feat-desc { display: block; font-size: 0.72rem; font-weight: 400; color: rgba(var(--dz-fg-rgb),0.5); margin-top: 3px; line-height: 1.35; }
+#featuresGrid .mod-item.mod-off .mod-label { text-decoration: none; }
+#featuresGrid .mod-item.mod-off .feat-desc { color: rgba(148,163,184,0.55); }
 .mod-item {
   display: flex; align-items: center; gap: 11px;
   background: rgba(var(--dz-fg-rgb),0.04); border: 1px solid rgba(var(--dz-fg-rgb),0.1);

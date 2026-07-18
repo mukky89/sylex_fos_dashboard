@@ -8,6 +8,15 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.64.0] — 2026-07-18
+### Pridané
+- **Administrácia — vypnutie funkcií Pomoc a AI Asistent.** V Administrácii
+  → *Moduly* pribudla sekcia **Funkcie** s prepínačmi na vypnutie/zapnutie
+  **Pomoc (Sprievodca)** a **FOS AI Asistent** pre všetkých používateľov.
+  Po vypnutí sa príslušné plávajúce tlačidlo skryje a funkcia sa nedá
+  spustiť. Nastavenie sa ukladá na server (`ui.helpEnabled`,
+  `ui.aiEnabled`) a platí naprieč zariadeniami.
+
 ## [2.63.0] — 2026-07-18
 ### Vylepšené
 - **Naplánovať stretnutie — viac návrhov termínov.** Namiesto jedného
