@@ -5294,6 +5294,31 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .ctg-ev:hover .ctg-ev-time, .ctg-ev:hover .ctg-ev-owner { overflow: visible; }
 
 /* =============================================================================
+   NAPLÁNOVAŤ STRETNUTIE — modal na svetlom podklade (light zone)
+   ============================================================================= */
+.meet-hint { font-size: 0.86rem; color: var(--text-dim); margin: 0 0 16px; line-height: 1.5; }
+.meet-people-lbl { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-xdim); margin-bottom: 8px; }
+.meet-people { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.meet-person { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 0.88rem; color: var(--text); background: var(--card-bg); transition: border-color .14s, background .14s; }
+.meet-person:hover { border-color: var(--accent); }
+.meet-person:has(.meet-cb:checked) { border-color: var(--accent); background: rgba(var(--accent-rgb,59,130,246),0.08); }
+.meet-cb { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+.meet-person-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.meet-empty { font-size: 0.85rem; color: var(--text-dim); padding: 8px 0 16px; }
+.meet-opts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 4px; }
+@media (max-width: 560px) { .meet-opts { grid-template-columns: 1fr 1fr; } }
+.meet-results { margin-top: 8px; }
+.meet-msg { font-size: 0.86rem; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; line-height: 1.5; }
+.meet-msg.ok { background: rgba(16,185,129,0.12); color: #047857; border: 1px solid rgba(16,185,129,0.3); }
+.meet-msg.err { background: rgba(239,68,68,0.1); color: #b91c1c; border: 1px solid rgba(239,68,68,0.3); }
+.meet-slots { display: flex; flex-direction: column; gap: 8px; }
+.meet-slot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card-bg); }
+.meet-slot-best { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.meet-slot-when { display: flex; flex-direction: column; gap: 2px; }
+.meet-slot-day { font-size: 0.76rem; color: var(--text-dim); font-weight: 600; }
+.meet-slot-time { font-size: 1.02rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* =============================================================================
    BACKBONE EDITOR — optická topológia (interrogátor · splitter · káble · senzory)
    ============================================================================= */
 .bb-inner { max-width: 1400px; margin: 0 auto; padding: 22px 22px 40px; }
