@@ -5327,6 +5327,9 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .meet-worktime-row input { flex: 1; min-width: 0; }
 .meet-dash { color: var(--text-dim); font-weight: 600; flex-shrink: 0; }
 .meet-results { margin-top: 16px; }
+.meet-loading { display: flex; align-items: center; gap: 10px; font-size: 0.86rem; color: var(--text-dim); padding: 14px 4px; }
+.meet-spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: meet-spin .7s linear infinite; flex-shrink: 0; }
+@keyframes meet-spin { to { transform: rotate(360deg); } }
 .meet-msg { font-size: 0.86rem; padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; line-height: 1.5; }
 .meet-msg.ok { background: rgba(16,185,129,0.12); color: #047857; border: 1px solid rgba(16,185,129,0.3); }
 .meet-msg.err { background: rgba(239,68,68,0.1); color: #b91c1c; border: 1px solid rgba(239,68,68,0.3); }

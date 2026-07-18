@@ -2914,29 +2914,43 @@ function toggleEventRecur() {
 // Naplánovať stretnutie — hľadač spoločného voľného termínu
 // ============================================================
 // Zoznam kalendárov (ľudí): interný dashboard + napojené externé zdroje
-function calMeetingPeople() {
+// Zoznam kalendárov (ľudí) z NAPOJENÝCH ICS feedov + interný dashboard.
+// (Nezávislé od aktuálne zobrazeného rozsahu kalendára.)
+async function calMeetingPeople() {
   const list = [{ key: CAL_INT_KEY, name: 'Interné (dashboard)', color: '#00d4ff' }];
-  calSources().forEach(s => list.push({ key: s.key, name: s.name, color: s.color }));
+  let feeds = [];
+  try { feeds = await fetch('/api/calendar/feeds').then(r => r.json()); } catch {}
+  const seen = new Set();
+  (Array.isArray(feeds) ? feeds : []).forEach(f => {
+    if (f.active === false) return;                 // neaktívne feedy negenerujú udalosti
+    const key = (f.label || 'Outlook');
+    if (seen.has(key)) return; seen.add(key);
+    list.push({ key, name: key, color: f.color || '#7c3aed' });
+  });
   return list;
 }
-function openMeetingModal() {
-  const people = calMeetingPeople();
-  document.getElementById('meetPeople').innerHTML = people.map(p => `
+async function openMeetingModal() {
+  const el = document.getElementById('meetPeople');
+  const res = document.getElementById('meetResults');
+  el.innerHTML = '<div class="meet-empty">Načítavam kalendáre…</div>';
+  res.innerHTML = ''; res.dataset.searched = '';
+  document.getElementById('meetingModal').classList.remove('hidden');
+  const people = await calMeetingPeople();
+  el.innerHTML = people.map(p => `
     <label class="meet-person">
       <input type="checkbox" class="meet-cb" value="${encodeURIComponent(p.key)}">
       <span class="meet-person-dot" style="background:${escHtml(p.color)}"></span>
       <span class="meet-person-name">${escHtml(p.name)}</span>
-    </label>`).join('') || '<div class="meet-empty">Zatiaľ nie sú napojené žiadne kalendáre — pridaj ich cez „🔗 Kalendáre".</div>';
-  document.getElementById('meetResults').innerHTML = '';
-  document.getElementById('meetingModal').classList.remove('hidden');
+    </label>`).join('') || '<div class="meet-empty">Zatiaľ nie sú napojené žiadne kalendáre — pridaj ich cez „Kalendáre".</div>';
 }
 function closeMeetingModal() { document.getElementById('meetingModal').classList.add('hidden'); }
 function calMinToHM(m) { return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
 
-// Obsadené intervaly [odMin, doMin] pre daný deň a vybrané zdroje (zlúčené)
-function calMeetingBusy(dayKey, keySet) {
+// Obsadené intervaly [odMin, doMin] pre daný deň a vybrané zdroje (zlúčené).
+// `events` = kompletný zoznam udalostí (interné + ICS) v hľadanom okne.
+function calMeetingBusy(dayKey, keySet, events) {
   const iv = [];
-  calEvents.concat(calExternal).forEach(ev => {
+  events.forEach(ev => {
     if (!keySet.has(calSrcKey(ev))) return;
     const startKey = String(ev.date).slice(0, 10);
     const endKey = ev.endDate ? String(ev.endDate).slice(0, 10) : startKey;
@@ -2959,7 +2973,7 @@ function calMeetingBusy(dayKey, keySet) {
 
 // Nájsť voľné termíny zoskupené po dňoch (v rámci týždňa), kde majú VŠETCI vybraní voľno.
 // Dnes ponúkne viac návrhov (min. 4 ak sú voľné), ďalej ďalšie pracovné dni týždňa.
-function calMeetingSlotsByDay(keys, durationMin, opts) {
+function calMeetingSlotsByDay(keys, durationMin, opts, events) {
   const { workStart, workEnd, days, step, capToday, capOther } = opts;
   const keySet = new Set(keys);
   const now = new Date();
@@ -2977,7 +2991,7 @@ function calMeetingSlotsByDay(keys, durationMin, opts) {
     if (isToday) cursor = Math.max(cursor, Math.ceil(nowMin / step) * step);  // dnes nie do minulosti
     if (cursor >= workEnd) continue;
     // voľné medzery = doplnok obsadených intervalov v [cursor, workEnd]
-    const busy = calMeetingBusy(key, keySet).filter(b => b[1] > cursor && b[0] < workEnd).concat([[workEnd, workEnd]]);
+    const busy = calMeetingBusy(key, keySet, events).filter(b => b[1] > cursor && b[0] < workEnd).concat([[workEnd, workEnd]]);
     const slots = [];
     let t = cursor;
     for (const [bs, be] of busy) {
@@ -2997,7 +3011,7 @@ function meetMaybeRefresh() {
   if (res && res.dataset.searched === '1') calFindMeeting();
 }
 
-function calFindMeeting() {
+async function calFindMeeting() {
   const keys = [...document.querySelectorAll('.meet-cb:checked')].map(cb => decodeURIComponent(cb.value));
   const res = document.getElementById('meetResults');
   res.dataset.searched = '1';
@@ -3006,9 +3020,23 @@ function calFindMeeting() {
   const workStart = parseHM(document.getElementById('meetFrom').value) ?? 480;
   const workEnd = parseHM(document.getElementById('meetTo').value) ?? 960;
   if (workEnd - workStart < dur) { res.innerHTML = '<div class="meet-msg err">Pracovný čas je kratší ako dĺžka stretnutia.</div>'; return; }
+  // ── Načítaj obsadenosť pre celé hľadané okno (dnes → +8 dní) NEZÁVISLE od zobrazeného rozsahu,
+  //    aby sa započítali aj udalosti z napojených ICS kalendárov mimo aktuálneho pohľadu. ──
+  res.innerHTML = '<div class="meet-loading"><span class="meet-spinner"></span> Hľadám voľné termíny…</div>';
+  const now = new Date();
+  const from = calYmd(now);
+  const to = calYmd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 8));
+  let events = [];
+  try {
+    const [internal, external] = await Promise.all([
+      fetch(`/api/calendar?from=${from}&to=${to}`).then(r => r.json()).catch(() => []),
+      fetch(`/api/calendar/external?from=${from}&to=${to}`).then(r => r.json()).catch(() => [])
+    ]);
+    events = (Array.isArray(internal) ? internal : []).concat(Array.isArray(external) ? external : []);
+  } catch { events = []; }
   // krok návrhov: pri kratších stretnutiach 30 min, inak polovica dĺžky (min. 30)
   const step = dur <= 60 ? 30 : Math.max(30, Math.round(dur / 2 / 15) * 15);
-  const byDay = calMeetingSlotsByDay(keys, dur, { workStart, workEnd, days: 8, step, capToday: 6, capOther: 4 });
+  const byDay = calMeetingSlotsByDay(keys, dur, { workStart, workEnd, days: 8, step, capToday: 6, capOther: 4 }, events);
   const names = keys.map(k => k === CAL_INT_KEY ? 'Interné' : calSurname(k)).join(', ');
   if (!byDay.length) { res.innerHTML = `<div class="meet-msg err">V rámci týždňa sa nenašiel spoločný voľný termín (${dur} min) pre: ${escHtml(names)}. Skús kratšie trvanie alebo iný pracovný čas.</div>`; return; }
   const wd = ['Nedeľa', 'Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota'];
@@ -6900,6 +6928,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.64.1', date: '18. 7. 2026', tag: 'fix', items: [
+    '<strong>Naplánovať stretnutie — správne zohľadňuje napojené (ICS) kalendáre.</strong> Predtým hľadač bral do úvahy len udalosti aktuálne zobrazeného rozsahu, takže mohol ponúknuť termín cez udalosť z Outlook/ICS kalendára. Teraz si obsadenosť načíta pre celé hľadané okno (dnes → +8 dní) nezávisle od zobrazeného pohľadu a zoznam účastníkov berie priamo z napojených kalendárov — voľné termíny sa počítajú správne aj cez ICS udalosti.',
+  ] },
   { v: '2.64.0', date: '18. 7. 2026', tag: 'feat', items: [
     '<strong>Administrácia — vypnutie funkcií Pomoc a AI Asistent.</strong> V Administrácii → <em>Moduly</em> pribudla sekcia <strong>Funkcie</strong>, kde sa dá prepínačom vypnúť/zapnúť <strong>Pomoc (Sprievodca)</strong> a <strong>FOS AI Asistent</strong> pre všetkých používateľov. Po vypnutí sa príslušné plávajúce tlačidlo skryje a funkcia sa nedá spustiť.',
   ] },

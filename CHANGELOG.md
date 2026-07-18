@@ -8,6 +8,16 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.64.1] — 2026-07-18
+### Opravené
+- **Naplánovať stretnutie — správne zohľadňuje napojené (ICS) kalendáre.**
+  Hľadač predtým bral do úvahy len udalosti aktuálne zobrazeného rozsahu,
+  takže mohol ponúknuť termín cez udalosť z Outlook/ICS kalendára. Teraz si
+  obsadenosť načíta pre celé hľadané okno (dnes → +8 dní) nezávisle od
+  zobrazeného pohľadu a zoznam účastníkov berie priamo z napojených
+  kalendárov (`/api/calendar/feeds`) — voľné termíny sa počítajú správne aj
+  cez ICS udalosti.
+
 ## [2.64.0] — 2026-07-18
 ### Pridané
 - **Administrácia — vypnutie funkcií Pomoc a AI Asistent.** V Administrácii
