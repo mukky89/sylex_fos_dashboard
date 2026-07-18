@@ -6850,6 +6850,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.62.0', date: '18. 7. 2026', tag: 'ui', items: [
+    '<strong>Kalendár — prepracované tlačidlá v hlavičke.</strong> Akčné tlačidlá (Kalendáre, Zdieľať, Excel, Tlač, Naplánovať stretnutie, Pridať udalosť) majú jednotné líniové SVG ikony namiesto nesúrodých emoji (🔗, 🖨️), rovnakú veľkosť a výšku, oddeľovač medzi pomocnými a tvorivými akciami a jemný priehľadný vzhľad ladiaci s tmavou hlavičkou (namiesto výrazne bielych tlačidiel). Pridané aj fokus-stavy pre ovládanie klávesnicou.',
+    '<strong>Kalendár — tmavý motív ako predvolený.</strong> Kalendár sa predvolene zobrazuje v tmavom režime (potvrdené); voľba motívu (Tmavý/Svetlý/Modrý) zostáva k dispozícii a pamätá sa.',
+  ] },
   { v: '2.61.0', date: '18. 7. 2026', tag: 'feat', items: [
     '<strong>Kalendár — „Naplánovať stretnutie".</strong> Nové tlačidlo v hlavičke kalendára otvorí hľadač voľného termínu: cez checkboxy vyberieš ľudí (napojené kalendáre + interné), zvolíš dĺžku, pracovný čas a rozsah dní — appka nájde <strong>najbližší termín, kedy majú všetci vybraní voľno</strong> (preskočí víkendy a sviatky). Ponúkne niekoľko najbližších slotov a jedným klikom z termínu vytvoríš udalosť s predvyplneným časom a účastníkmi.',
   ] },
