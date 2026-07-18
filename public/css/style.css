@@ -5469,11 +5469,20 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .cal-ev-timed .cal-ev-owner { display: block; }
 /* Meno kalendára (vlastník) v udalostiach — v tmavom režime výrazná červená.
    Na farebných pozadiach (pruhy, časová mriežka) tmavý halo pre čitateľnosť. */
-.cal-ev-owner { color: #ff4d4d; font-weight: 800; }
+.cal-ev-owner { color: #ff5c5c; font-weight: 800; }
 .cal-ev-allday { display: block; }
-.cal-ev-allday .cal-ev-owner, .cal-span .cal-ev-owner { color: #ff4d4d; font-weight: 800; text-shadow: 0 0 3px rgba(0,0,0,0.6), 0 1px 1px rgba(0,0,0,0.55); }
-.cal-ev-merged .cal-ev-owner { color: #ff4d4d; font-weight: 800; }
-.ctg-ev-owner { color: #ff4d4d; font-weight: 800; text-shadow: 0 0 3px rgba(0,0,0,0.6), 0 1px 1px rgba(0,0,0,0.55); }
+.cal-ev-allday .cal-ev-owner, .cal-span .cal-ev-owner { color: #ff5c5c; font-weight: 800; }
+.cal-ev-merged .cal-ev-owner { color: #ff5c5c; font-weight: 800; }
+.ctg-ev-owner { color: #ff5c5c; font-weight: 800; }
+/* Tmavý režim: meno vlastníka na farebných pozadiach udalostí je červené na tmavom
+   čipe, aby bolo čitateľné pri ľubovoľnej farbe udalosti (ružová, fialová, zelená…). */
+.calendar-page:not(.cal-light) .ctg-ev-owner,
+.calendar-page:not(.cal-light) .cal-ev-allday .cal-ev-owner,
+.calendar-page:not(.cal-light) .cal-span .cal-ev-owner,
+.calendar-page:not(.cal-light) .cal-ev-allday.cal-ev-merged .cal-ev-owner {
+  color: #ff8a8a; background: rgba(12,16,26,0.72); border-radius: 4px; padding: 0 5px;
+}
+.calendar-page:not(.cal-light) .ctg-ev-owner { display: inline-block; max-width: 100%; }
 
 .cal-search { display: flex; align-items: center; gap: 6px; background: rgba(var(--dz-fg-rgb),0.06); border: 1px solid rgba(var(--dz-fg-rgb),0.14); border-radius: 8px; padding: 6px 10px; color: #94a3b8; }
 .cal-search input { border: none; outline: none; background: none; font-family: var(--font); font-size: 0.82rem; color: var(--dz-text2); width: 150px; }

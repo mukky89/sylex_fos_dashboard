@@ -8,6 +8,13 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.60.1] — 2026-07-18
+### Opravené
+- **Kalendár — meno vlastníka lepšie čitateľné pri každej farbe.** Meno
+  kalendára v udalostiach je červené na malom tmavom čipe, takže je dobre
+  čitateľné na akomkoľvek farebnom pozadí udalosti (ružová, fialová,
+  zelená, žltá…), nie len na tmavých.
+
 ## [2.60.0] — 2026-07-18
 ### Opravené / Vylepšené
 - **Kalendár — meno kalendára v udalostiach výraznou červenou.** V tmavom

@@ -6733,6 +6733,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.60.1', date: '18. 7. 2026', tag: 'fix', items: [
+    '<strong>Kalendár — meno vlastníka lepšie čitateľné pri každej farbe.</strong> Meno kalendára v udalostiach je teraz červené na malom tmavom čipe, takže je dobre čitateľné na akomkoľvek farebnom pozadí udalosti (ružová, fialová, zelená, žltá…), nielen na tmavých.',
+  ] },
   { v: '2.60.0', date: '18. 7. 2026', tag: 'fix', items: [
     '<strong>Kalendár — meno kalendára v udalostiach výraznou červenou.</strong> V tmavom režime má vlastník/meno kalendára v každej udalosti (týždenný/denný pohľad, celodenné pruhy) výraznú červenú farbu s tmavým obrysom pre čitateľnosť aj na farebných pozadiach.',
     '<strong>Moje úlohy — väčšie a čitateľnejšie písmo.</strong> Zväčšené písmo v zozname aj v tabuľke (Grid) a zosvetlené predtým vyblednuté (slabo čitateľné) texty — názvy, meta údaje, popisy, poznámky, hlavičky stĺpcov, skupiny a prehľad „dnes/zajtra".',
