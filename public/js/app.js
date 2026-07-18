@@ -2390,6 +2390,19 @@ function calEvTip(ev) {
     + (srcs.length ? '\n' + (srcs.length > 1 ? 'Zdroje: ' : 'Zdroj: ') + escHtml(srcs.join(', ')) : '')
     + (ext ? ' (len na čítanie)' : '');
 }
+// Kontrastná farba textu pre danú farbu udalosti — na svetlých farbách tmavý text,
+// na tmavých svetlý (aby text v udalostiach bol vždy čitateľný, hlavne v tmavom režime).
+function calContrastText(color) {
+  const c = String(color || '').trim();
+  const m = c.match(/^#?([0-9a-fA-F]{6})$/) || c.match(/^#?([0-9a-fA-F]{3})$/);
+  if (!m) return '#ffffff';
+  let h = m[1];
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  // perceptuálny jas (0–1); prah 0.6 → svetlé pozadie dostane tmavý text
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.6 ? '#111827' : '#ffffff';
+}
 // Časový rozsah udalosti „od – do" (ak je zadaný koniec), inak len začiatok
 function calEvTimeRange(ev) {
   if (!ev || !ev.time) return '';
@@ -2407,7 +2420,7 @@ function calEvChipHtml(ev) {
   const tip = calEvTip(ev);
   if (allday) {
     const badge = sn ? `<span class="cal-ev-owner"> · ${escHtml(sn)}</span>` : '';
-    return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-txt">${escHtml(ev.title)}</span>${badge}</div>`;
+    return `<div class="${cls}" style="--ev-color:${escHtml(color)};--ev-text:${calContrastText(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-txt">${escHtml(ev.title)}</span>${badge}</div>`;
   }
   // Časovaná udalosť — čas (od–do), názov a vlastník POD SEBOU
   const rng = calEvTimeRange(ev);
@@ -2650,7 +2663,8 @@ function renderCalTimeGrid(vp, days) {
       const inner = `<span class="ctg-ev-time">${escHtml(calEvTimeRange(ev))}</span><span class="ctg-ev-title">${escHtml(ev.title)}</span>${sn ? `<span class="ctg-ev-owner">${escHtml(sn)}</span>` : ''}`;
       const cls = `cal-ev ctg-ev${ext ? ' cal-ev-ext' : ''}${conflict ? ' ctg-ev-conflict' : ''}`;
       const ds = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
-      return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ext ? '#7c3aed' : '#00d4ff'))};top:${top}px;min-height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${conflict ? '⚠ Prekryv · ' : ''}${calEvTip(ev)}">${conflict ? '<span class="ctg-conf">⚠</span>' : ''}${inner}</div>`;
+      const evColor = ev.color || (ext ? '#7c3aed' : '#00d4ff');
+      return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(evColor)};--ev-text:${calContrastText(evColor)};top:${top}px;min-height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${conflict ? '⚠ Prekryv · ' : ''}${calEvTip(ev)}">${conflict ? '<span class="ctg-conf">⚠</span>' : ''}${inner}</div>`;
     }).join('');
     cols += `<div class="ctg-daycol${we ? ' ctg-we' : ''}${isToday ? ' ctg-today' : ''}${hol ? ' ctg-hol' : ''}" data-newday="${key}" style="height:${HN * hourH}px">${lines}${evhtml}</div>`;
   });
@@ -2680,7 +2694,7 @@ function renderCalTimeGrid(vp, days) {
     const cls = `cal-span${seg.contL ? ' cont-l' : ''}${seg.contR ? ' cont-r' : ''}`;
     const sn = calEvSurnames(ev);
     const snTxt = sn ? ` <span class="cal-ev-owner">· ${escHtml(sn)}</span>` : '';
-    return `<div class="${cls}" ${data} style="--ev-color:${escHtml(color)};left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${seg.lane * ADLANE}px" title="${calEvTip(ev)}">${seg.contL ? '◂ ' : ''}${escHtml(ev.title)}${snTxt}${seg.contR ? ' ▸' : ''}</div>`;
+    return `<div class="${cls}" ${data} style="--ev-color:${escHtml(color)};--ev-text:${calContrastText(color)};left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${seg.lane * ADLANE}px" title="${calEvTip(ev)}">${seg.contL ? '◂ ' : ''}${escHtml(ev.title)}${snTxt}${seg.contR ? ' ▸' : ''}</div>`;
   }).join('');
   const allday = `<div class="ctg-corner ctg-allday-lbl">celý deň</div><div class="ctg-allday-body">${alldayCells}<div class="ctg-allday-spans">${spanBars}</div></div>`;
 
@@ -6719,6 +6733,11 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.59.0', date: '18. 7. 2026', tag: 'fix', items: [
+    '<strong>Moje úlohy — krajšie ikony v paneli nástrojov.</strong> Tlačidlá „Zoskupiť", „Zbaliť/Rozbaliť všetky" a prepínač pohľadov (Zoznam/Kanban/Grid) majú namiesto nejednotných znakov (⊟, ⊞, ☰, ▦, ▤) čisté líniové SVG ikony zarovnané s textom.',
+    '<strong>Kalendár — čitateľný text udalostí v tmavom režime.</strong> Farba textu v udalostiach sa teraz automaticky prispôsobí (tmavý text na svetlých farbách, svetlý na tmavých), takže názov aj čas sú vždy dobre viditeľné — platí pre týždenný/denný, celodenné pruhy aj mesačný pohľad.',
+    '<strong>Kalendár — prehľadnejšie prekrývajúce sa udalosti.</strong> Pri viacerých udalostiach v jeden deň sa dlhý názov skráti na tri bodky (…) a čas začiatku/konca sa nezalamuje. Po prejdení myšou sa udalosť rozšíri a zobrazí celý čas aj názov.',
+  ] },
   { v: '2.58.0', date: '17. 7. 2026', tag: 'fix', items: [
     '<strong>Moje úlohy — vrátené pôvodné ikony.</strong> Nové líniové (Lucide) ikony z verzie 2.57.0 sú vrátené späť na pôvodné emoji ikony. Funkcia zbaľovania/rozbaľovania úloh (vrátane tlačidiel „Zbaliť/Rozbaliť všetky") zostáva zachovaná.',
   ] },

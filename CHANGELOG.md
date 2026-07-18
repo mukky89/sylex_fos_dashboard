@@ -8,6 +8,21 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.59.0] — 2026-07-18
+### Opravené / Vylepšené
+- **Moje úlohy — krajšie ikony v paneli nástrojov.** Tlačidlá „Zoskupiť",
+  „Zbaliť/Rozbaliť všetky" a prepínač pohľadov (Zoznam/Kanban/Grid) majú
+  namiesto nejednotných znakov (⊟, ⊞, ☰, ▦, ▤) čisté líniové SVG ikony
+  zarovnané s textom.
+- **Kalendár — čitateľný text udalostí v tmavom režime.** Farba textu
+  v udalostiach sa automaticky prispôsobí podľa jasu farby udalosti (tmavý
+  text na svetlých farbách, svetlý na tmavých) — názov aj čas sú vždy dobre
+  viditeľné (týždenný/denný pohľad, celodenné pruhy aj mesačný pohľad).
+- **Kalendár — prehľadnejšie prekrývajúce sa udalosti.** Pri viacerých
+  udalostiach v jeden deň sa dlhý názov skráti na tri bodky (…), čas
+  začiatku/konca sa nezalamuje a po prejdení myšou sa udalosť rozšíri
+  a zobrazí celý čas aj názov.
+
 ## [2.58.0] — 2026-07-17
 ### Vrátené
 - **Moje úlohy — vrátené pôvodné ikony.** Líniové (Lucide) SVG ikony
