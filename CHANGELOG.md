@@ -8,6 +8,17 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.60.0] — 2026-07-18
+### Opravené / Vylepšené
+- **Kalendár — meno kalendára v udalostiach výraznou červenou.** V tmavom
+  režime má vlastník/meno kalendára v každej udalosti (týždenný/denný
+  pohľad aj celodenné pruhy) výraznú červenú farbu s tmavým obrysom, aby
+  bolo čitateľné aj na svetlých farebných pozadiach.
+- **Moje úlohy — väčšie a čitateľnejšie písmo.** Zväčšené písmo v zozname
+  aj v tabuľke (Grid) a zosvetlené predtým vyblednuté (slabo čitateľné)
+  texty — názvy úloh, meta údaje, popisy, poznámky, hlavičky stĺpcov,
+  skupiny (zákazník/projekt) a prehľad „dnes/zajtra".
+
 ## [2.59.0] — 2026-07-18
 ### Opravené / Vylepšené
 - **Moje úlohy — krajšie ikony v paneli nástrojov.** Tlačidlá „Zoskupiť",
