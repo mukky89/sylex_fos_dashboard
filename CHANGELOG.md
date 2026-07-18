@@ -8,6 +8,19 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.62.0] — 2026-07-18
+### Vylepšené (UI/UX)
+- **Kalendár — prepracované tlačidlá v hlavičke.** Akčné tlačidlá
+  (Kalendáre, Zdieľať, Excel, Tlač, Naplánovať stretnutie, Pridať udalosť)
+  majú jednotné líniové SVG ikony namiesto nesúrodých emoji (🔗, 🖨️),
+  rovnakú veľkosť/výšku a zaoblenie, vizuálny oddeľovač medzi pomocnými
+  (zobraziť/zdieľať/export) a tvorivými akciami, a jemný priehľadný vzhľad
+  ladiaci s tmavou hlavičkou namiesto výrazne bielych tlačidiel. Doplnené
+  fokus-stavy (`:focus-visible`) pre ovládanie klávesnicou.
+- **Kalendár — tmavý motív ako predvolený (potvrdené).** Kalendár sa
+  predvolene otvára v tmavom režime; voľba motívu (Tmavý/Svetlý/Modrý)
+  zostáva dostupná a pamätá sa medzi návštevami.
+
 ## [2.61.0] — 2026-07-18
 ### Pridané
 - **Kalendár — „Naplánovať stretnutie" (hľadač voľného termínu).** Nové
