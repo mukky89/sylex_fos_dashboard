@@ -79,7 +79,11 @@ body {
    ============================== */
 .header {
   position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-  height: var(--header-h);
+  /* +safe-area: v PWA (standalone) na iPhone s notchom prekrýva stavový riadok
+     obsah hlavičky; padding ho posunie pod notch, pozadie vyplní aj oblasť notchu.
+     Na zariadeniach bez výrezu je env() = 0, takže sa nič nemení. */
+  height: calc(var(--header-h) + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
   background: var(--hdr-bg);
   border-bottom: 1px solid var(--hdr-border);
   backdrop-filter: blur(12px);
@@ -246,7 +250,7 @@ body {
 /* ==============================
    PAGES
    ============================== */
-.page { display: none; padding-top: var(--header-h); min-height: 100vh; min-height: 100dvh; }
+.page { display: none; padding-top: calc(var(--header-h) + env(safe-area-inset-top)); min-height: 100vh; min-height: 100dvh; }
 .page.active { display: block; }
 .wiki-page.active { display: flex; flex-direction: column; }
 
@@ -1981,8 +1985,7 @@ body {
 .cal-ev-time { font-weight: 700; color: var(--dz-text2); flex-shrink: 0; white-space: nowrap; }
 .cal-ev-txt { overflow: hidden; overflow-wrap: anywhere; white-space: normal; }
 .cal-ev-allday {
-  background: var(--ev-color); color: #fff; font-weight: 600;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  background: var(--ev-color); color: var(--ev-text, #fff); font-weight: 600;
 }
 .cal-ev-allday:hover { filter: brightness(1.08); }
 
@@ -3305,6 +3308,11 @@ body.logged-out .thermo-corner { display: none !important; }
   background: rgba(var(--dz-fg-rgb),0.05); border: 1px solid rgba(var(--dz-fg-rgb),0.1); color: rgba(var(--dz-fg-rgb),0.55); cursor: pointer;
 }
 .tasks-filter.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* Tlačidlá s ikonou (Zoskupiť / Zbaliť / Rozbaliť) — SVG + text zarovnané */
+.tasks-filter-ico { display: inline-flex; align-items: center; gap: 6px; }
+.tasks-filter-ico svg { width: 15px; height: 15px; flex-shrink: 0; }
+.tasks-view-ico { display: inline-flex; align-items: center; gap: 6px; }
+.tasks-view-ico svg { width: 15px; height: 15px; flex-shrink: 0; }
 .tasks-list { display: flex; flex-direction: column; gap: 8px; }
 .task-row {
   display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px;
@@ -3318,6 +3326,19 @@ body.logged-out .thermo-corner { display: none !important; }
   color: var(--dz-green); font-weight: 700; font-size: 0.85rem;
 }
 .task-done .task-check { background: #10b981; border-color: #10b981; color: #fff; }
+.tasks-collapse-btns { display: flex; gap: 6px; }
+.task-collapse-btn {
+  width: 20px; height: 24px; flex-shrink: 0; padding: 0; margin-top: 0; border: none; cursor: pointer;
+  background: transparent; color: rgba(var(--dz-fg-rgb),0.5); font-size: 0.8rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center; border-radius: 5px;
+}
+.task-collapse-btn:hover { background: rgba(var(--dz-fg-rgb),0.1); color: var(--dz-text); }
+.task-collapse-off { visibility: hidden; }
+/* Zbalený riadok: skryť detaily, ponechať názov, chipy a základné meta */
+.task-row.task-collapsed .task-prog,
+.task-row.task-collapsed .task-note,
+.task-row.task-collapsed .task-desc,
+.task-row.task-collapsed .task-sub-inline { display: none; }
 .task-body { flex: 1; min-width: 0; cursor: pointer; }
 .task-title { font-size: 0.92rem; font-weight: 600; color: var(--dz-text); transition: margin-left var(--transition); }
 .task-tree-indent { color: rgba(var(--dz-fg-rgb),0.35); font-weight: 400; margin-right: 4px; }
@@ -3641,20 +3662,26 @@ body.mobile-nav-open {
 body.layout-sidebar .nav { display: none; }
 /* .nav (margin-left:auto) je skrytý → header-right treba zarovnať doprava sám */
 body.layout-sidebar .header-right { margin-left: auto; }
-body.layout-sidebar .app-sidebar {
-  display: flex; flex-direction: column;
-  position: fixed; top: var(--header-h); left: 0; bottom: 0;
-  width: var(--appsb-w); z-index: 190;
-  border-right: 1px solid rgba(var(--dz-fg-rgb),0.06);
-  transition: width .22s ease;
+/* Desktopové rozloženie sidebaru — LEN nad mobilným breakpointom (>900px).
+   Bez min-width by pevný `.app-sidebar` a najmä `padding-left` na `.page`
+   (rovnaká špecificita ako mobilný reset, ale neskôr v súbore → vyhral by)
+   presakovali aj na mobil a odtláčali obsah o 264px mimo obrazovku. */
+@media (min-width: 901px) {
+  body.layout-sidebar .app-sidebar {
+    display: flex; flex-direction: column;
+    position: fixed; top: var(--header-h); left: 0; bottom: 0;
+    width: var(--appsb-w); z-index: 190;
+    border-right: 1px solid rgba(var(--dz-fg-rgb),0.06);
+    transition: width .22s ease;
+  }
+  body.layout-sidebar .page { padding-left: var(--appsb-w); transition: padding-left .22s ease; }
+  /* „Pomoc" (tour-fab) je vľavo dole — v sidebar layoute by prekrývala pätičku
+     sidebaru (meno/avatar), preto ju posunieme napravo od sidebaru */
+  body.layout-sidebar .tour-fab { left: calc(var(--appsb-w) + 16px); }
 }
-body.layout-sidebar .page { padding-left: var(--appsb-w); transition: padding-left .22s ease; }
 body.layout-sidebar .thermo-corner,
 body.layout-sidebar .bot-fab,
 body.layout-sidebar .bot-panel { /* ostávajú vpravo dole */ }
-/* „Pomoc" (tour-fab) je vľavo dole — v sidebar layoute by prekrývala pätičku
-   sidebaru (meno/avatar), preto ju posunieme napravo od sidebaru */
-body.layout-sidebar .tour-fab { left: calc(var(--appsb-w) + 16px); }
 
 .asb-brand {
   display: flex; align-items: center; gap: 11px;
@@ -4508,7 +4535,7 @@ body.ui-reduce-motion *, body.ui-reduce-motion *::before, body.ui-reduce-motion 
 .prod-card .task-prog { margin: 7px 0; }
 
 /* Zoznam */
-.prod-list { background: rgba(var(--dz-fg-rgb),0.03); border: 1px solid rgba(var(--dz-fg-rgb),0.1); border-radius: 12px; overflow: hidden; }
+.prod-list { background: rgba(var(--dz-fg-rgb),0.03); border: 1px solid rgba(var(--dz-fg-rgb),0.1); border-radius: 12px; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
 .prod-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
 .prod-table th { text-align: left; padding: 11px 12px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: #94a3b8; border-bottom: 1px solid rgba(var(--dz-fg-rgb),0.1); background: rgba(var(--dz-fg-rgb),0.02); }
 .prod-table td { padding: 10px 12px; border-bottom: 1px solid rgba(var(--dz-fg-rgb),0.06); color: var(--dz-text2); vertical-align: middle; }
@@ -5255,12 +5282,16 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 /* Blok udalosti: výška podľa trvania (min-height), ale obsah sa neoreže —
    pri dlhom názve sa blok natiahne. Zalomenie po SLOVÁCH (nie po písmenách). */
 /* display:block (nie flex z .cal-ev) — čas, popis a vlastník idú POD SEBA */
-.ctg-ev { display: block; position: absolute; height: auto; overflow: visible; font-size: 0.8rem; line-height: 1.28; padding: 4px 20px 5px 7px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 2; border-radius: 6px; }
-.ctg-ev:hover { z-index: 5; box-shadow: 0 3px 10px rgba(0,0,0,0.35); }
-/* pod seba: čas · popis (zalomí po slovách) · meno */
-.ctg-ev-time { display: block; font-weight: 700; color: var(--ev-color); font-size: 0.72rem; white-space: nowrap; text-decoration: none; }
-.ctg-ev-title { display: block; white-space: normal; word-break: normal; overflow-wrap: break-word; hyphens: auto; }
-.ctg-ev-owner { display: block; margin-top: 1px; }
+.ctg-ev { display: block; position: absolute; height: auto; overflow: hidden; font-size: 0.8rem; line-height: 1.28; padding: 4px 20px 5px 7px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 2; border-radius: 6px; }
+/* Hover: udalosť sa rozšíri a zobrazí celý čas + názov (aj pri prekrytí viacerých udalostí) */
+.ctg-ev:hover { z-index: 6; overflow: visible; width: auto !important; min-width: 150px; max-width: 280px; box-shadow: 0 4px 14px rgba(0,0,0,0.45); }
+/* pod seba: čas · popis · meno. Čas sa nezalamuje, dlhý názov → tri bodky (max 2 riadky) */
+.ctg-ev-time { display: block; font-weight: 700; color: var(--ev-color); font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; }
+.ctg-ev-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; white-space: normal; word-break: normal; overflow-wrap: anywhere; hyphens: none; }
+.ctg-ev-owner { display: block; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* pri prejdení myšou sa skratky (tri bodky) zrušia a text sa zobrazí celý */
+.ctg-ev:hover .ctg-ev-title { -webkit-line-clamp: unset; overflow: visible; }
+.ctg-ev:hover .ctg-ev-time, .ctg-ev:hover .ctg-ev-owner { overflow: visible; }
 
 /* =============================================================================
    BACKBONE EDITOR — optická topológia (interrogátor · splitter · káble · senzory)
@@ -5388,7 +5419,7 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .calendar-page .cal-ev { color: var(--dz-text); }
 .calendar-page .cal-ev-timed:hover { background: rgba(var(--dz-fg-rgb),0.08); }
 .calendar-page .cal-ev-time { color: var(--dz-text2); }
-.calendar-page .cal-ev-allday { color: #fff; }
+.calendar-page .cal-ev-allday { color: var(--ev-text, #fff); }
 .calendar-page .cal-more { color: #94a3b8; }
 .calendar-page .cal-more:hover { color: var(--dz-cyan); background: rgba(var(--dz-fg-rgb),0.06); }
 .calendar-page .cal-ev-allday.cal-ev-ext { box-shadow: inset 0 0 0 1.5px rgba(var(--dz-fg-rgb),0.4); }
@@ -5403,7 +5434,7 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .cal-span {
   position: absolute; height: 20px; display: flex; align-items: center;
   padding: 0 8px; border-radius: 5px; font-size: 0.76rem; font-weight: 600;
-  color: #fff; background: var(--ev-color); white-space: nowrap; overflow: hidden;
+  color: var(--ev-text, #fff); background: var(--ev-color); white-space: nowrap; overflow: hidden;
   text-overflow: ellipsis; cursor: pointer; pointer-events: auto;
   box-shadow: 0 1px 2px rgba(0,0,0,0.3); text-shadow: 0 1px 1px rgba(0,0,0,0.25);
 }
@@ -5426,8 +5457,8 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .calendar-page .ctg-daycol { border-left: 1px solid rgba(var(--dz-fg-rgb),0.08); }
 .calendar-page .ctg-daycol.ctg-we { background: rgba(var(--dz-fg-rgb),0.015); }
 .calendar-page .ctg-line { border-top: 1px solid rgba(var(--dz-fg-rgb),0.05); }
-.calendar-page .ctg-ev { background: var(--ev-color); color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.3); }
-.calendar-page .ctg-ev .ctg-ev-time { color: rgba(var(--dz-fg-rgb),0.92); }
+.calendar-page .ctg-ev { background: var(--ev-color); color: var(--ev-text, #fff); }
+.calendar-page .ctg-ev .ctg-ev-time { color: var(--ev-text, #fff); opacity: 0.82; }
 
 /* priezvisko vlastníka (zdroja) — zvýraznené červenou */
 .cal-ev-main { flex: 1; min-width: 0; }
@@ -5438,9 +5469,9 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .cal-ev-timed .cal-ev-owner { display: block; }
 .cal-ev-owner { color: var(--dz-red); font-weight: 700; }
 .cal-ev-allday { display: block; }
-.cal-ev-allday .cal-ev-owner, .cal-span .cal-ev-owner { color: var(--dz-red); }   /* na farebných pruhoch svetlejšia červená */
+.cal-ev-allday .cal-ev-owner, .cal-span .cal-ev-owner { color: var(--ev-text, #fff); opacity: 0.85; }   /* na farebných pruhoch adaptívna farba textu */
 .cal-ev-merged .cal-ev-owner { color: var(--dz-red); font-weight: 700; }
-.ctg-ev-owner { color: var(--dz-red); font-weight: 700; }
+.ctg-ev-owner { color: var(--ev-text, #fff); font-weight: 700; opacity: 0.85; }
 
 .cal-search { display: flex; align-items: center; gap: 6px; background: rgba(var(--dz-fg-rgb),0.06); border: 1px solid rgba(var(--dz-fg-rgb),0.14); border-radius: 8px; padding: 6px 10px; color: #94a3b8; }
 .cal-search input { border: none; outline: none; background: none; font-family: var(--font); font-size: 0.82rem; color: var(--dz-text2); width: 150px; }
@@ -5532,7 +5563,7 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .calendar-page.cal-light .cal-ev-timed:hover { background: #f3f4f6; }
 .calendar-page.cal-light .cal-ev-time { color: #4b5563; }
 .calendar-page.cal-light .cal-ev-owner { color: #dc2626; }
-.calendar-page.cal-light .cal-ev-allday { color: #fff; }
+.calendar-page.cal-light .cal-ev-allday { color: var(--ev-text, #fff); }
 .calendar-page.cal-light .cal-ev-allday .cal-ev-owner, .calendar-page.cal-light .cal-span .cal-ev-owner { color: var(--dz-red); }
 .calendar-page.cal-light .cal-more { color: var(--cltx2); }
 .calendar-page.cal-light .cal-more:hover { color: var(--clacc); background: #f3f4f6; }

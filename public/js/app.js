@@ -871,6 +871,7 @@ async function handleHash(hash) {
   if (hash === 'pwf')     { _activatePage('pwf');     loadPwf(); return; }
   if (hash === 'gpn')     { _activatePage('gpn');     loadGpn(); return; }
   if (hash === 'powners') { _activatePage('powners'); loadPowners(); return; }
+  if (hash === 'tasks/new') { _activatePage('tasks'); await loadTasks(); openTaskModal(); return; }  // PWA skratka „Nová úloha"
   if (hash === 'tasks')   { _activatePage('tasks');   loadTasks(); return; }
   if (hash === 'crm')     { _activatePage('crm');     loadCrm(); return; }
   if (hash === 'mgmt')    { _activatePage('mgmt');    loadManagement(); return; }
@@ -2389,6 +2390,19 @@ function calEvTip(ev) {
     + (srcs.length ? '\n' + (srcs.length > 1 ? 'Zdroje: ' : 'Zdroj: ') + escHtml(srcs.join(', ')) : '')
     + (ext ? ' (len na čítanie)' : '');
 }
+// Kontrastná farba textu pre danú farbu udalosti — na svetlých farbách tmavý text,
+// na tmavých svetlý (aby text v udalostiach bol vždy čitateľný, hlavne v tmavom režime).
+function calContrastText(color) {
+  const c = String(color || '').trim();
+  const m = c.match(/^#?([0-9a-fA-F]{6})$/) || c.match(/^#?([0-9a-fA-F]{3})$/);
+  if (!m) return '#ffffff';
+  let h = m[1];
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  // perceptuálny jas (0–1); prah 0.6 → svetlé pozadie dostane tmavý text
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.6 ? '#111827' : '#ffffff';
+}
 // Časový rozsah udalosti „od – do" (ak je zadaný koniec), inak len začiatok
 function calEvTimeRange(ev) {
   if (!ev || !ev.time) return '';
@@ -2406,7 +2420,7 @@ function calEvChipHtml(ev) {
   const tip = calEvTip(ev);
   if (allday) {
     const badge = sn ? `<span class="cal-ev-owner"> · ${escHtml(sn)}</span>` : '';
-    return `<div class="${cls}" style="--ev-color:${escHtml(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-txt">${escHtml(ev.title)}</span>${badge}</div>`;
+    return `<div class="${cls}" style="--ev-color:${escHtml(color)};--ev-text:${calContrastText(color)}" ${dataAttr} title="${tip}"><span class="cal-ev-txt">${escHtml(ev.title)}</span>${badge}</div>`;
   }
   // Časovaná udalosť — čas (od–do), názov a vlastník POD SEBOU
   const rng = calEvTimeRange(ev);
@@ -2649,7 +2663,8 @@ function renderCalTimeGrid(vp, days) {
       const inner = `<span class="ctg-ev-time">${escHtml(calEvTimeRange(ev))}</span><span class="ctg-ev-title">${escHtml(ev.title)}</span>${sn ? `<span class="ctg-ev-owner">${escHtml(sn)}</span>` : ''}`;
       const cls = `cal-ev ctg-ev${ext ? ' cal-ev-ext' : ''}${conflict ? ' ctg-ev-conflict' : ''}`;
       const ds = ext ? `data-ext="${calExternal.indexOf(ref)}"` : `data-id="${ref._id}"`;
-      return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(ev.color || (ext ? '#7c3aed' : '#00d4ff'))};top:${top}px;min-height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${conflict ? '⚠ Prekryv · ' : ''}${calEvTip(ev)}">${conflict ? '<span class="ctg-conf">⚠</span>' : ''}${inner}</div>`;
+      const evColor = ev.color || (ext ? '#7c3aed' : '#00d4ff');
+      return `<div class="${cls}" ${ds} style="--ev-color:${escHtml(evColor)};--ev-text:${calContrastText(evColor)};top:${top}px;min-height:${height}px;left:${left}%;width:calc(${w}% - 3px)" title="${conflict ? '⚠ Prekryv · ' : ''}${calEvTip(ev)}">${conflict ? '<span class="ctg-conf">⚠</span>' : ''}${inner}</div>`;
     }).join('');
     cols += `<div class="ctg-daycol${we ? ' ctg-we' : ''}${isToday ? ' ctg-today' : ''}${hol ? ' ctg-hol' : ''}" data-newday="${key}" style="height:${HN * hourH}px">${lines}${evhtml}</div>`;
   });
@@ -2679,7 +2694,7 @@ function renderCalTimeGrid(vp, days) {
     const cls = `cal-span${seg.contL ? ' cont-l' : ''}${seg.contR ? ' cont-r' : ''}`;
     const sn = calEvSurnames(ev);
     const snTxt = sn ? ` <span class="cal-ev-owner">· ${escHtml(sn)}</span>` : '';
-    return `<div class="${cls}" ${data} style="--ev-color:${escHtml(color)};left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${seg.lane * ADLANE}px" title="${calEvTip(ev)}">${seg.contL ? '◂ ' : ''}${escHtml(ev.title)}${snTxt}${seg.contR ? ' ▸' : ''}</div>`;
+    return `<div class="${cls}" ${data} style="--ev-color:${escHtml(color)};--ev-text:${calContrastText(color)};left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${seg.lane * ADLANE}px" title="${calEvTip(ev)}">${seg.contL ? '◂ ' : ''}${escHtml(ev.title)}${snTxt}${seg.contR ? ' ▸' : ''}</div>`;
   }).join('');
   const allday = `<div class="ctg-corner ctg-allday-lbl">celý deň</div><div class="ctg-allday-body">${alldayCells}<div class="ctg-allday-spans">${spanBars}</div></div>`;
 
@@ -6718,6 +6733,34 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.59.0', date: '18. 7. 2026', tag: 'fix', items: [
+    '<strong>Moje úlohy — krajšie ikony v paneli nástrojov.</strong> Tlačidlá „Zoskupiť", „Zbaliť/Rozbaliť všetky" a prepínač pohľadov (Zoznam/Kanban/Grid) majú namiesto nejednotných znakov (⊟, ⊞, ☰, ▦, ▤) čisté líniové SVG ikony zarovnané s textom.',
+    '<strong>Kalendár — čitateľný text udalostí v tmavom režime.</strong> Farba textu v udalostiach sa teraz automaticky prispôsobí (tmavý text na svetlých farbách, svetlý na tmavých), takže názov aj čas sú vždy dobre viditeľné — platí pre týždenný/denný, celodenné pruhy aj mesačný pohľad.',
+    '<strong>Kalendár — prehľadnejšie prekrývajúce sa udalosti.</strong> Pri viacerých udalostiach v jeden deň sa dlhý názov skráti na tri bodky (…) a čas začiatku/konca sa nezalamuje. Po prejdení myšou sa udalosť rozšíri a zobrazí celý čas aj názov.',
+  ] },
+  { v: '2.58.0', date: '17. 7. 2026', tag: 'fix', items: [
+    '<strong>Moje úlohy — vrátené pôvodné ikony.</strong> Nové líniové (Lucide) ikony z verzie 2.57.0 sú vrátené späť na pôvodné emoji ikony. Funkcia zbaľovania/rozbaľovania úloh (vrátane tlačidiel „Zbaliť/Rozbaliť všetky") zostáva zachovaná.',
+  ] },
+  { v: '2.56.0', date: '17. 7. 2026', tag: 'feat', items: [
+    '<strong>Moje úlohy — „Zbaliť/Rozbaliť všetky" funguje aj v Grid pohľade.</strong> Tlačidlá teraz v tabuľkovom (Grid) pohľade zbalia alebo rozbalia všetky skupiny (Zákazník → Projekt) naraz — pri zbalení ostanú len hlavičky zákazníkov. Tlačidlá sú viditeľné v zoznamovom aj grid pohľade (skryté len v Kanbane).',
+  ] },
+  { v: '2.55.0', date: '17. 7. 2026', tag: 'feat', items: [
+    '<strong>Moje úlohy — zbalenie/rozbalenie úloh.</strong> V zoznamovom pohľade má každá úloha s detailmi malú šípku (▾/▸) na zbalenie — schová progres, poznámku, popis a podúlohy, ponechá názov, chipy a základné info. Užitočné pri dlhých zoznamoch.',
+    'Nové tlačidlá <strong>„⊟ Zbaliť všetky"</strong> a <strong>„⊞ Rozbaliť všetky"</strong> v paneli nástrojov (zobrazené v zoznamovom pohľade) zbalia alebo rozbalia všetky úlohy naraz.',
+  ] },
+  { v: '2.54.0', date: '16. 7. 2026', tag: 'new', items: [
+    '<strong>Appka na plochu (Android + iPhone) — PWA so štartom na Úlohách.</strong> Dashboard sa dá nainštalovať ako appka, ktorá sa otvorí rovno na module <strong>Úlohy</strong> a beží na celú obrazovku bez panela prehliadača.',
+    '<strong>Android/Chrome:</strong> pri návšteve sa dole objaví banner <em>„Nainštalovať appku Úlohy"</em> s tlačidlom Inštalovať (natívna výzva). <strong>iPhone/Safari:</strong> banner s návodom <em>Zdieľať → „Pridať na plochu"</em>.',
+    'Ikona na ploche má <strong>skratky</strong> (podržanie ikony): Úlohy, <strong>Nová úloha</strong> (otvorí rovno formulár), Kalendár, Výroba.',
+    '<strong>iPhone s výrezom (notch):</strong> oprava — hlavička už nie je schovaná pod stavovým riadkom v režime appky (rešpektuje <code>safe-area</code>).',
+    'Funguje aj offline (základný obsah cez service worker, network-first — nové verzie sa prejavia hneď po nasadení).',
+  ] },
+  { v: '2.53.0', date: '16. 7. 2026', tag: 'fix', items: [
+    '<strong>Mobil — oprava „appka sa neprispôsobuje obrazovke".</strong> Pri zapnutom layoute <strong>Bočný sidebar</strong> sa na telefóne obsah odtláčal o 264px doprava a nezmestil sa na obrazovku (nedalo sa poriadne scrollovať ani ovládať) — a to na <strong>každej stránke</strong>.',
+    'Príčina: desktopové pravidlo <code>padding-left</code> pre <code>.page</code> v sidebar režime malo rovnakú špecificitu ako mobilný reset, ale bolo v CSS neskôr, takže vyhralo aj na mobile. Desktopové rozloženie sidebaru je teraz uzavreté do <code>@media (min-width: 901px)</code>, čiže na mobile (≤900px) sa už neuplatní.',
+    '<strong>Výroba — zoznam zákaziek:</strong> široká tabuľka (~870px) sa na mobile orezávala mimo obrazovku; teraz sa scrolluje horizontálne vo vlastnom rámčeku.',
+    'Pridaný diagnostický skript <code>scripts/analyzeMobileControls.js</code> a audit responzivity naprieč stránkami (mobilná emulácia) na odhaľovanie pretekajúcich prvkov.',
+  ] },
   { v: '2.52.0', date: '16. 7. 2026', tag: 'new', items: [
     '<strong>Mobil — veľký balík responzivity.</strong> Appka je na telefóne (Android aj iPhone) konečne pohodlne ovládateľná.',
     '<strong>Spodný tab bar:</strong> na mobile pribudla lišta pod palcom s najpoužívanejšími stránkami — Domov, Úlohy, Výroba, Kalendár a Menu (otvorí celú navigáciu).',
@@ -7374,6 +7417,7 @@ let taskSortKey = 'priority';
 let taskSortDir = -1;
 let taskView = 'grid';
 let taskGroup = true;   // zoskupiť podľa projektu + zákazníka
+let taskCollapsedIds = new Set();  // ID zbalených úloh v zoznamovom pohľade (skryté detaily)
 let _dragTaskId = null;
 let tkSubtasks = [];   // pracovná kópia podúloh v modale
 const TK_PRIO = {
@@ -7538,6 +7582,25 @@ function toggleTaskGroup() {
   document.getElementById('taskGroupBtn')?.classList.toggle('active', taskGroup);
   renderTasks();
 }
+// Zbaľovanie/rozbaľovanie úloh v zoznamovom pohľade (skryje detaily — progres, poznámku, popis, podúlohy)
+function taskHasCollapsibleBody(t) {
+  return !!(t.note || t.description || (t.subtasks && t.subtasks.length) || t.progress || taskStatusOf(t) === 'inprogress');
+}
+function toggleTaskCollapse(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (taskCollapsedIds.has(id)) taskCollapsedIds.delete(id); else taskCollapsedIds.add(id);
+  renderTasks();
+}
+function collapseAllTasks() {
+  if (taskView === 'grid') { collapseAllTaskGrid(); return; }  // grid: zbaliť skupiny
+  tasksData.forEach(t => { if (taskHasCollapsibleBody(t)) taskCollapsedIds.add(t._id); });
+  renderTasks();
+}
+function expandAllTasks() {
+  if (taskView === 'grid') { taskGridCollapsed.clear(); renderTaskGridBody(); return; }  // grid: rozbaliť skupiny
+  taskCollapsedIds.clear();
+  renderTasks();
+}
 function setTaskFilter(f) {
   taskFilter = f;
   document.querySelectorAll('.tasks-filter').forEach(b => b.classList.toggle('active', b.dataset.tfilter === f));
@@ -7548,6 +7611,7 @@ function setTaskView(v) {
   document.querySelectorAll('.tasks-view').forEach(b => b.classList.toggle('active', b.dataset.tview === v));
   document.querySelector('.tasks-filters')?.classList.toggle('hidden', v === 'kanban');
   document.getElementById('taskGroupBtn')?.classList.toggle('hidden', v !== 'list');
+  document.getElementById('taskCollapseBtns')?.classList.toggle('hidden', v === 'kanban');
   document.querySelector('.tasks-inner')?.classList.toggle('tasks-wide', v === 'kanban' || v === 'grid');
   renderTasks();
 }
@@ -7609,7 +7673,7 @@ function renderTasks() {
 }
 
 // Vnútro riadka úlohy (zdieľané pre plochý aj zoskupený pohľad)
-function taskRowClass(t) { return 'task-row' + (t.done ? ' task-done' : '') + (t.status === 'cancelled' ? ' task-cancelled' : '') + (taskOverdue(t) ? ' task-overdue' : ''); }
+function taskRowClass(t) { return 'task-row' + (t.done ? ' task-done' : '') + (t.status === 'cancelled' ? ' task-cancelled' : '') + (taskOverdue(t) ? ' task-overdue' : '') + (taskCollapsedIds.has(t._id) ? ' task-collapsed' : ''); }
 // Celý riadok sa posunie doprava podľa hĺbky hierarchie (--prio + margin-left)
 function taskRowStyle(t) {
   const depth = taskDepth(t);
@@ -7622,6 +7686,7 @@ function taskRowInner(t, withGrip) {
   const ro = !!t.readOnly;
   return `
       ${withGrip && !ro ? '<span class="task-grip" title="Potiahni na zmenu poradia">⠿</span>' : '<span class="task-grip task-grip-off">•</span>'}
+      ${taskHasCollapsibleBody(t) ? `<button class="task-collapse-btn" onclick="toggleTaskCollapse('${t._id}', event)" title="${taskCollapsedIds.has(t._id) ? 'Rozbaliť' : 'Zbaliť'}">${taskCollapsedIds.has(t._id) ? '▸' : '▾'}</button>` : '<span class="task-collapse-btn task-collapse-off"></span>'}
       <button class="task-check" ${ro ? 'disabled title="Len na čítanie"' : `onclick="toggleTask('${t._id}', ${t.done ? 'false' : 'true'})" title="${t.done ? 'Označiť ako nehotové' : 'Označiť ako hotové'}"`}>${t.done ? '✓' : ''}</button>
       <div class="task-body" onclick="openTaskModal(tasksData.find(x=>x._id==='${t._id}'))">
         <div class="task-title">${depth ? '<span class="task-tree-indent">↳</span>' : ''}${escHtml(t.title)}</div>
@@ -7855,9 +7920,18 @@ function taskGridRowHtml(t, groupIndent) {
     </tr>`;
 }
 // Kľúče zbalených skupín (2-úrovňové zoskupenie Zákazník → Projekt)
+const TASK_GRID_NO_CUST = 'Bez zákazníka', TASK_GRID_NO_PROJ = 'Bez projektu';
 let taskGridCollapsed = new Set();
 function toggleTaskGridGroup(key) {
   if (taskGridCollapsed.has(key)) taskGridCollapsed.delete(key); else taskGridCollapsed.add(key);
+  renderTaskGridBody();
+}
+// Zbaliť všetky skupiny v gride (na úrovni zákazníka — skryje všetky úlohy)
+function collapseAllTaskGrid() {
+  taskGridItems().forEach(t => {
+    const cust = (t.customer || '').trim() || TASK_GRID_NO_CUST;
+    taskGridCollapsed.add('c:' + cust);
+  });
   renderTaskGridBody();
 }
 function taskGridGroupSort(keys, noneLabel) {
@@ -7869,7 +7943,7 @@ function renderTaskGridBody() {
   if (!items.length) { tbody.innerHTML = `<tr><td colspan="${TASK_GRID_COLS.length}" class="proc-empty">Žiadne úlohy v tomto filtri.</td></tr>`; return; }
 
   // zoskupenie: Zákazník → Projekt (poradie úloh v rámci skupiny podľa aktívneho triedenia)
-  const NO_CUST = 'Bez zákazníka', NO_PROJ = 'Bez projektu';
+  const NO_CUST = TASK_GRID_NO_CUST, NO_PROJ = TASK_GRID_NO_PROJ;
   const custMap = new Map();
   items.forEach(t => {
     const cust = (t.customer || '').trim() || NO_CUST;
@@ -13918,3 +13992,97 @@ async function fsDeleteFile(id, fileId) {
 
 // Štart: over prihlásenie, potom spusti appku
 bootstrap();
+
+// ==============================
+// PWA — inštalácia na plochu (Android + iPhone)
+// ==============================
+(function initPwaInstall() {
+  // Už spustené ako nainštalovaná appka? → nič neponúkaj.
+  const isStandalone = () =>
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: minimal-ui)').matches ||
+    window.navigator.standalone === true;
+  if (isStandalone()) return;
+  if (localStorage.getItem('fos_pwa_dismissed') === '1') return;
+
+  const ua = navigator.userAgent || '';
+  const isIOS = /iphone|ipad|ipod/i.test(ua) && !window.MSStream;
+  const isIOSSafari = isIOS && /safari/i.test(ua) && !/crios|fxios|edgios/i.test(ua);
+  let deferredPrompt = null;
+
+  function buildBanner(innerHtml) {
+    if (document.getElementById('pwaInstallBanner')) return;
+    const b = document.createElement('div');
+    b.id = 'pwaInstallBanner';
+    b.style.cssText = [
+      'position:fixed', 'left:12px', 'right:12px',
+      'bottom:calc(76px + env(safe-area-inset-bottom))', 'z-index:3500',
+      'max-width:520px', 'margin:0 auto',
+      'display:flex', 'align-items:center', 'gap:12px',
+      'padding:12px 14px', 'border-radius:14px',
+      'background:#131c35', 'border:1px solid rgba(255,255,255,0.14)',
+      'box-shadow:0 10px 34px rgba(0,0,0,0.45)', 'color:#e7edfb',
+      'font-family:var(--font, system-ui)'
+    ].join(';');
+    b.innerHTML = innerHtml;
+    document.body.appendChild(b);
+    b.querySelector('[data-pwa-dismiss]')?.addEventListener('click', () => {
+      localStorage.setItem('fos_pwa_dismissed', '1');
+      b.remove();
+    });
+    return b;
+  }
+
+  const iconCell =
+    '<div style="width:38px;height:38px;flex-shrink:0;border-radius:10px;background:linear-gradient(140deg,#00d4ff,#6366f1);display:flex;align-items:center;justify-content:center;font-size:1.2rem">✅</div>';
+  const closeBtn =
+    '<button data-pwa-dismiss aria-label="Zavrieť" style="flex-shrink:0;width:30px;height:30px;border:none;border-radius:8px;background:rgba(255,255,255,0.08);color:#c7d2e8;font-size:1.1rem;cursor:pointer">×</button>';
+
+  // Android / Chrome / Edge — natívna výzva na inštaláciu
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (isStandalone()) return;
+    const banner = buildBanner(
+      iconCell +
+      '<div style="flex:1;min-width:0;line-height:1.3">' +
+        '<div style="font-weight:700;font-size:0.92rem">Nainštalovať appku Úlohy</div>' +
+        '<div style="font-size:0.76rem;color:#9fb0d0">Rýchly prístup z plochy telefónu — funguje aj offline.</div>' +
+      '</div>' +
+      '<button id="pwaInstallBtn" style="flex-shrink:0;padding:9px 14px;border:none;border-radius:9px;background:var(--accent,#06b6d4);color:#06121f;font-weight:700;font-size:0.85rem;cursor:pointer">Inštalovať</button>' +
+      closeBtn
+    );
+    banner?.querySelector('#pwaInstallBtn')?.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      try { await deferredPrompt.userChoice; } catch (_) {}
+      deferredPrompt = null;
+      document.getElementById('pwaInstallBanner')?.remove();
+    });
+  });
+
+  window.addEventListener('appinstalled', () => {
+    localStorage.setItem('fos_pwa_dismissed', '1');
+    document.getElementById('pwaInstallBanner')?.remove();
+    if (typeof toast === 'function') toast('Appka nainštalovaná na plochu', 'success');
+  });
+
+  // iPhone (Safari) — nemá beforeinstallprompt, ukáž návod „Zdieľať → Na plochu"
+  if (isIOSSafari) {
+    // počkaj na prihlásenie, aby banner neprekrýval login
+    const showIOSHint = () => {
+      if (document.body.classList.contains('logged-out')) return setTimeout(showIOSHint, 1500);
+      buildBanner(
+        iconCell +
+        '<div style="flex:1;min-width:0;line-height:1.35">' +
+          '<div style="font-weight:700;font-size:0.92rem">Pridať Úlohy na plochu</div>' +
+          '<div style="font-size:0.76rem;color:#9fb0d0">Ťukni na <span style="color:#67e8f9">Zdieľať</span> ' +
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#67e8f9" stroke-width="2" style="vertical-align:-2px"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 12v6a2 2 0 002 2h12a2 2 0 002-2v-6"/></svg>' +
+          ' a zvoľ <b>„Pridať na plochu"</b>.</div>' +
+        '</div>' +
+        closeBtn
+      );
+    };
+    setTimeout(showIOSHint, 2500);
+  }
+})();

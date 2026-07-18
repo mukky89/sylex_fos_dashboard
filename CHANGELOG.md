@@ -8,6 +8,83 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.59.0] — 2026-07-18
+### Opravené / Vylepšené
+- **Moje úlohy — krajšie ikony v paneli nástrojov.** Tlačidlá „Zoskupiť",
+  „Zbaliť/Rozbaliť všetky" a prepínač pohľadov (Zoznam/Kanban/Grid) majú
+  namiesto nejednotných znakov (⊟, ⊞, ☰, ▦, ▤) čisté líniové SVG ikony
+  zarovnané s textom.
+- **Kalendár — čitateľný text udalostí v tmavom režime.** Farba textu
+  v udalostiach sa automaticky prispôsobí podľa jasu farby udalosti (tmavý
+  text na svetlých farbách, svetlý na tmavých) — názov aj čas sú vždy dobre
+  viditeľné (týždenný/denný pohľad, celodenné pruhy aj mesačný pohľad).
+- **Kalendár — prehľadnejšie prekrývajúce sa udalosti.** Pri viacerých
+  udalostiach v jeden deň sa dlhý názov skráti na tri bodky (…), čas
+  začiatku/konca sa nezalamuje a po prejdení myšou sa udalosť rozšíri
+  a zobrazí celý čas aj názov.
+
+## [2.58.0] — 2026-07-17
+### Vrátené
+- **Moje úlohy — vrátené pôvodné ikony.** Líniové (Lucide) SVG ikony
+  z verzie 2.57.0 sú vrátené späť na pôvodné emoji ikony (revert). Funkcia
+  zbaľovania/rozbaľovania úloh vrátane tlačidiel „Zbaliť/Rozbaliť všetky"
+  zostáva zachovaná.
+
+## [2.56.0] — 2026-07-17
+### Pridané
+- **Moje úlohy — „Zbaliť/Rozbaliť všetky" aj v Grid pohľade.**
+  - Tlačidlá **„⊟ Zbaliť všetky"** / **„⊞ Rozbaliť všetky"** v tabuľkovom
+    (Grid) pohľade zbalia/rozbalia všetky skupiny (Zákazník → Projekt) naraz;
+    pri zbalení ostanú viditeľné len hlavičky zákazníkov.
+  - Tlačidlá sú viditeľné v zoznamovom aj grid pohľade (skryté len v Kanbane).
+
+## [2.55.0] — 2026-07-17
+### Pridané
+- **Moje úlohy — zbalenie/rozbalenie úloh v zoznamovom pohľade.**
+  - Každá úloha s detailmi (progres, poznámka, popis, podúlohy) má šípku
+    (▾/▸) na zbalenie/rozbalenie — zbalená úloha zobrazí len názov, chipy
+    a základné meta, detaily sa skryjú.
+  - Tlačidlá **„⊟ Zbaliť všetky"** a **„⊞ Rozbaliť všetky"** v paneli
+    nástrojov (viditeľné v zoznamovom pohľade) zbalia/rozbalia všetky úlohy
+    naraz.
+
+## [2.54.0] — 2026-07-16
+### Pridané
+- **PWA — inštalovateľná appka „Úlohy" pre Android aj iPhone.**
+  - Manifest (`manifest.webmanifest`): `start_url` → `/#tasks` (appka sa
+    otvorí rovno na Úlohách), názov **FOS Úlohy**, `display: standalone`,
+    `shortcuts` (Úlohy, Nová úloha → `/#tasks/new`, Kalendár, Výroba).
+  - Nový hash `#tasks/new` v `handleHash` otvorí rovno formulár novej úlohy
+    (pre skratku ikony na ploche).
+  - **Install banner** (`initPwaInstall` v `app.js`): Android/Chrome používa
+    `beforeinstallprompt` + tlačidlo Inštalovať; iPhone/Safari ukáže návod
+    „Zdieľať → Pridať na plochu". Zavretie sa pamätá (`fos_pwa_dismissed`),
+    po inštalácii (`appinstalled`) sa banner skryje.
+### Opravené
+- **iPhone s notchom (PWA/standalone):** fixná hlavička sa už neschováva pod
+  stavovým riadkom — `.header` a `.page` rešpektujú
+  `env(safe-area-inset-top)` (na zariadeniach bez výrezu je to 0, bez zmeny).
+
+## [2.53.0] — 2026-07-16
+### Opravené
+- **Mobil — „appka sa neprispôsobuje obrazovke" pri layoute Bočný sidebar.**
+  Pri zapnutom sidebar layoute sa na telefóne obsah odtláčal o `264px`
+  (`--appsb-w`) doprava a nezmestil sa na obrazovku — a to na **každej**
+  stránke (dalo sa preto ťažko scrollovať aj ovládať).
+  - Príčina: desktopové pravidlo `body.layout-sidebar .page { padding-left:
+    var(--appsb-w) }` malo rovnakú špecificitu ako mobilný reset
+    (`padding-left: 0` v `@media (max-width:900px)`), ale bolo v CSS **neskôr**,
+    takže pri zhode vyhralo aj na mobile.
+  - Riešenie: desktopové rozloženie sidebaru (pozícia `.app-sidebar`, padding
+    `.page`, posun tlačidla Pomoc) je uzavreté do `@media (min-width: 901px)`,
+    takže na mobile (≤900px) sa už neuplatní a preberá to mobilný drawer.
+- **Výroba — pohľad Zoznam:** široká tabuľka (~870px) sa na mobile orezávala
+  mimo obrazovku (`.prod-list` mala `overflow: hidden`); teraz sa scrolluje
+  horizontálne vo vlastnom kontajneri (`overflow-x: auto`).
+### Pridané
+- Diagnostický skript `scripts/analyzeMobileControls.js` a audit responzivity
+  naprieč stránkami v mobilnej emulácii (odhaľovanie pretekajúcich prvkov).
+
 ## [2.52.0] — 2026-07-16
 ### Pridané
 - **Mobil — veľký balík responzivity (Android + iPhone).**
