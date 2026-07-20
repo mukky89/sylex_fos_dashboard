@@ -8,6 +8,16 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.65.1] — 2026-07-20
+### Pridané
+- **Pozvánka — výber e-mailov z používateľov dashboardu.** Pod poľom
+  „Pozvať e-mailom" pribudol výber používateľov uložených v dashboarde —
+  klikom na meno sa pridá/odoberie jeho e-mail (kto má e-mail uložený).
+  Endpoint `/api/users/options` teraz vracia aj e-mail. Pri „Naplánovať
+  stretnutie" sa e-maily účastníkov doťahujú prednostne z ich
+  používateľského účtu (podľa zhody mena), inak z e-mailu nastaveného pri
+  napojenom kalendári.
+
 ## [2.65.0] — 2026-07-20
 ### Pridané
 - **Stretnutia — e-mailová pozvánka do Outlooku (.ics).** Po vytvorení
