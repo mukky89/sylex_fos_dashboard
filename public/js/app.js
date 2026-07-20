@@ -2898,6 +2898,7 @@ function openEventModal(event = null, prefillDate = null) {
   // Pole pozvánky sa pri každom otvorení vyčistí (predvyplní ho len tok „Naplánovať stretnutie")
   const inv = document.getElementById('evInvite'); if (inv) inv.value = '';
   const invS = document.getElementById('evInviteSend'); if (invS) invS.checked = false;
+  renderEvInvitePicker();
   toggleEventTime(); toggleEventRecur();
   document.getElementById('eventModal').classList.remove('hidden');
 }
@@ -3045,10 +3046,18 @@ async function calFindMeeting() {
   const step = dur <= 60 ? 30 : Math.max(30, Math.round(dur / 2 / 15) * 15);
   const byDay = calMeetingSlotsByDay(keys, dur, { workStart, workEnd, days: 8, step, capToday: 6, capOther: 4 }, events);
   const names = keys.map(k => k === CAL_INT_KEY ? 'Interné' : calSurname(k)).join(', ');
-  // e-maily vybraných účastníkov (z napojených kalendárov) — pre pozvánku
+  // e-maily vybraných účastníkov — prednostne z napojeného kalendára, inak
+  // z používateľa uloženého v dashboarde (podľa zhody mena) — pre pozvánku
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const emails = keys.map(k => (_meetPeople.find(p => p.key === k) || {}).email).filter(e => e && emailRe.test(e));
-  const emailsEnc = encodeURIComponent(emails.join(', '));
+  const users = await loadUserOptions();
+  const userByName = {};
+  (users || []).forEach(u => { if (u.email && u.name) userByName[String(u.name).trim().toLowerCase()] = u.email; });
+  const emails = keys.map(k => {
+    const p = _meetPeople.find(p => p.key === k) || {};
+    if (p.email && emailRe.test(p.email)) return p.email;
+    return userByName[String(k).trim().toLowerCase()] || '';   // k = názov kalendára = meno osoby
+  }).filter(e => e && emailRe.test(e));
+  const emailsEnc = encodeURIComponent([...new Set(emails)].join(', '));
   if (!byDay.length) { res.innerHTML = `<div class="meet-msg err">V rámci týždňa sa nenašiel spoločný voľný termín (${dur} min) pre: ${escHtml(names)}. Skús kratšie trvanie alebo iný pracovný čas.</div>`; return; }
   const wd = ['Nedeľa', 'Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota'];
   const total = byDay.reduce((n, d) => n + d.slots.length, 0);
@@ -3086,6 +3095,7 @@ function meetCreateEvent(dayKey, startMin, endMin, namesEnc, emailsEnc) {
   const invS = document.getElementById('evInviteSend');
   if (inv) inv.value = emails;
   if (invS) invS.checked = !!emails;
+  renderEvInvitePicker();
   t.focus();
 }
 
@@ -3131,6 +3141,31 @@ async function saveEvent() {
     loadCalendar();
     if (sendInv && invite) await sendMeetingInvite({ ...body, attendees: invite, organizerName: (CURRENT_USER && CURRENT_USER.name) || '' });
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+// ── Výber príjemcov pozvánky z používateľov uložených v dashboarde ──
+function evInviteEmailsSet() {
+  return new Set((document.getElementById('evInvite').value || '').split(/[;,]/).map(s => s.trim().toLowerCase()).filter(Boolean));
+}
+async function renderEvInvitePicker() {
+  const el = document.getElementById('evInvitePicker'); if (!el) return;
+  const users = await loadUserOptions();
+  const withEmail = (users || []).filter(u => u.email);
+  if (!withEmail.length) { el.innerHTML = '<span class="ev-invite-picker-empty">Používatelia zatiaľ nemajú v dashboarde uložený e-mail.</span>'; return; }
+  const cur = evInviteEmailsSet();
+  el.innerHTML = '<span class="ev-invite-picker-lbl">Pridať z používateľov:</span>' + withEmail.map(u =>
+    `<button type="button" class="ev-pick-chip${cur.has(String(u.email).toLowerCase()) ? ' on' : ''}" onclick="evToggleInvite('${escHtml(u.email)}')">${escHtml(u.name || u.username)}</button>`
+  ).join('');
+}
+function evToggleInvite(email) {
+  const inp = document.getElementById('evInvite');
+  const em = String(email).trim().toLowerCase();
+  const set = evInviteEmailsSet();
+  if (set.has(em)) set.delete(em); else set.add(em);
+  inp.value = [...set].join(', ');
+  const invS = document.getElementById('evInviteSend');
+  if (invS && set.size) invS.checked = true;   // ak je aspoň jeden príjemca, zapni odoslanie
+  renderEvInvitePicker();
 }
 
 // Odošle e-mailovú pozvánku (.ics REQUEST) na zadané adresy
@@ -6960,6 +6995,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.65.1', date: '20. 7. 2026', tag: 'feat', items: [
+    '<strong>Pozvánka — výber e-mailov z používateľov dashboardu.</strong> Pod poľom „Pozvať e-mailom" pribudol výber používateľov uložených v dashboarde — klikom na meno sa pridá/odoberie jeho e-mail (kto ho má uložený). Pri „Naplánovať stretnutie" sa e-maily účastníkov doťahujú prednostne z ich používateľského účtu (podľa mena), inak z e-mailu nastaveného pri kalendári.',
+  ] },
   { v: '2.65.0', date: '20. 7. 2026', tag: 'feat', items: [
     '<strong>Stretnutia — e-mailová pozvánka do Outlooku (.ics).</strong> Po vytvorení udalosti sa dá účastníkom poslať <strong>kalendárová pozvánka</strong> — v modáli udalosti pribudlo pole „Pozvať e-mailom" a voľba „poslať pozvánku". Príjemca dostane e-mail s prílohou <code>.ics</code> (METHOD:REQUEST) so všetkými detailmi (dátum, čas, miesto, účastníci) a v Outlooku ju jedným klikom <strong>Prijme</strong> — udalosť sa mu pridá do kalendára. Netreba OAuth ani Azure, ide cez existujúci e-mail (Brevo/SMTP).',
     '<strong>Naplánovať stretnutie → pozvánka na jeden klik.</strong> Ku každému napojenému kalendáru (osobe) sa dá v „Kalendáre" nastaviť e-mail; pri vytváraní stretnutia sa pole pozvánky predvyplní e-mailmi vybraných účastníkov a pozvánka sa po uložení automaticky rozpošle.',

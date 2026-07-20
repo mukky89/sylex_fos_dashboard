@@ -13,7 +13,7 @@ const normRole = r => ROLES.includes(r) ? r : 'user';
 
 // Zoznam mien používateľov pre výbery (PO/BO, priradenia) — dostupné každému prihlásenému
 router.get('/options', requireAuth, async (req, res) => {
-  try { res.json(await User.find({ active: true }).select('name username').sort({ name: 1 })); }
+  try { res.json(await User.find({ active: true }).select('name username email').sort({ name: 1 })); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 

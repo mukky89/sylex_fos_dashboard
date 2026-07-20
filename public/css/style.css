@@ -5331,6 +5331,14 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .ev-invite-group { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px; }
 .ev-invite-check { display: flex; align-items: flex-start; gap: 8px; margin-top: 8px; font-size: 0.8rem; color: var(--text-dim); line-height: 1.4; cursor: pointer; }
 .ev-invite-check input { margin-top: 2px; flex-shrink: 0; }
+.ev-invite-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.ev-invite-picker-lbl { font-size: 0.74rem; color: var(--text-xdim); font-weight: 600; margin-right: 2px; }
+.ev-invite-picker-empty { font-size: 0.74rem; color: var(--text-xdim); }
+.ev-pick-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 100px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-size: 0.78rem; font-weight: 600; font-family: var(--font); cursor: pointer; transition: background .13s, border-color .13s, color .13s; }
+.ev-pick-chip::before { content: '+'; font-weight: 700; opacity: 0.6; }
+.ev-pick-chip:hover { border-color: var(--accent); color: var(--accent); }
+.ev-pick-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ev-pick-chip.on::before { content: '✓'; opacity: 1; }
 .ics-feed-email { display: block; font-size: 0.72rem; color: var(--text-xdim); font-weight: 400; margin-top: 1px; }
 
 .meet-loading { display: flex; align-items: center; gap: 10px; font-size: 0.86rem; color: var(--text-dim); padding: 14px 4px; }
