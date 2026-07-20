@@ -8,6 +8,24 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.65.0] — 2026-07-20
+### Pridané
+- **Stretnutia — e-mailová pozvánka do Outlooku (.ics).** Po vytvorení
+  udalosti sa dá účastníkom poslať kalendárová pozvánka. V modáli udalosti
+  pribudlo pole „Pozvať e-mailom" a voľba „poslať pozvánku". Príjemca
+  dostane e-mail s prílohou `.ics` (METHOD:REQUEST) so všetkými detailmi
+  (dátum, čas, miesto, účastníci) a v Outlooku ju jedným klikom **Prijme** —
+  udalosť sa mu pridá do kalendára. Bez OAuth/Azure — cez existujúci e-mail
+  (Brevo/SMTP). Časy sa správne prevádzajú z Europe/Bratislava na UTC
+  (vrátane letného času).
+- **Naplánovať stretnutie → pozvánka na jeden klik.** Ku každému napojenému
+  kalendáru (osobe) sa dá v „Kalendáre" nastaviť e-mail (`IcsFeed.email`);
+  pri vytváraní stretnutia sa pole pozvánky predvyplní e-mailmi vybraných
+  účastníkov a pozvánka sa po uložení automaticky rozpošle.
+- Nový endpoint `POST /api/calendar/invite`, util `utils/ical.js`
+  (zostavenie VCALENDAR REQUEST), rozšírený `utils/mailer.js` o odosielanie
+  príloh/kalendára (Brevo attachment + nodemailer `icalEvent`).
+
 ## [2.64.1] — 2026-07-18
 ### Opravené
 - **Naplánovať stretnutie — správne zohľadňuje napojené (ICS) kalendáre.**

@@ -60,14 +60,19 @@ function baseUrl(req) {
 
 // Odoslanie cez Brevo HTTP API. Používa vstavaný modul `https`, aby to fungovalo
 // na každej verzii Node (nie je závislé od globálneho `fetch`).
-function sendViaBrevoApi({ to, subject, html, text }) {
+function sendViaBrevoApi({ to, subject, html, text, ics }) {
+  const list = (Array.isArray(to) ? to : String(to).split(',')).map(s => String(s).trim()).filter(Boolean);
   const payload = {
     sender: { name: SENDER_NAME, email: senderEmail() },
-    to: [{ email: to }],
+    to: list.map(email => ({ email })),
     subject
   };
   if (html) payload.htmlContent = html;
   if (text) payload.textContent = text;
+  // Kalendárová pozvánka (.ics) ako príloha — Outlook ju otvorí ako meeting request
+  if (ics && ics.content) {
+    payload.attachment = [{ content: Buffer.from(ics.content, 'utf8').toString('base64'), name: ics.filename || 'invite.ics' }];
+  }
   const body = JSON.stringify(payload);
 
   return new Promise(resolve => {
@@ -98,13 +103,13 @@ function sendViaBrevoApi({ to, subject, html, text }) {
 }
 
 // Zjednotené odoslanie mailu. Vráti { sent: bool, error?: string }.
-async function sendMail({ to, subject, html, text }) {
-  if (!to) return { sent: false, error: 'Chýba príjemca' };
+async function sendMail({ to, subject, html, text, ics }) {
+  if (!to || (Array.isArray(to) && !to.length)) return { sent: false, error: 'Chýba príjemca' };
   if (!isConfigured()) return { sent: false, error: 'E-mail (Brevo/SMTP) nie je nakonfigurovaný' };
 
   // Preferuj Brevo HTTP API (funguje aj keď je SMTP blokovaný)
   if (process.env.BREVO_API_KEY && senderEmail()) {
-    const r = await sendViaBrevoApi({ to, subject, html, text });
+    const r = await sendViaBrevoApi({ to, subject, html, text, ics });
     if (r.sent) return r;
     // ak API zlyhá a máme SMTP heslo, skús fallback
     if (!smtpPass()) return r;
@@ -112,10 +117,14 @@ async function sendMail({ to, subject, html, text }) {
 
   // Fallback: SMTP cez nodemailer
   try {
-    await transport().sendMail({
+    const msg = {
       from: `"${SENDER_NAME}" <${senderEmail()}>`,
-      to, subject, html, text: text || undefined
-    });
+      to: Array.isArray(to) ? to.join(', ') : to,
+      subject, html, text: text || undefined
+    };
+    // Pri SMTP posiela nodemailer kalendár ako text/calendar časť → Outlook/Gmail ukážu RSVP
+    if (ics && ics.content) msg.icalEvent = { method: ics.method || 'REQUEST', filename: ics.filename || 'invite.ics', content: ics.content };
+    await transport().sendMail(msg);
     return { sent: true };
   } catch (e) {
     return { sent: false, error: e.message };
@@ -428,4 +437,73 @@ function taskDigestEmail({ name, appUrl, overdue = [], today = [], tomorrow = []
   };
 }
 
-module.exports = { isConfigured, sendMail, verificationEmail, taskDigestEmail, baseUrl };
+// Pozvánka na stretnutie — sprievodný HTML e-mail k .ics pozvánke.
+function inviteEmail({ title, whenText, location, note, organizerName, attendees = [] }) {
+  const preheader = `Pozvánka na stretnutie: ${title} — ${whenText}`;
+  const attRows = attendees.length
+    ? `<p style="margin:0 0 4px;font-size:13px;color:#94a3b8;">Účastníci</p>
+       <p style="margin:0 0 14px;font-size:14px;color:#334155;">${esc(attendees.join(', '))}</p>` : '';
+  const row = (label, val) => val ? `
+    <tr>
+      <td style="padding:7px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#94a3b8;width:130px;vertical-align:top;">${esc(label)}</td>
+      <td style="padding:7px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#0f172a;font-weight:600;">${esc(val)}</td>
+    </tr>` : '';
+
+  const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="sk"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">
+<title>Pozvánka na stretnutie</title>
+<!--[if mso]><style>*{font-family:Arial,Helvetica,sans-serif!important}</style><![endif]-->
+<style>body,table,td,a{-webkit-text-size-adjust:100%}img{border:0;outline:none;text-decoration:none}body{margin:0!important;padding:0!important;width:100%!important}@media only screen and (max-width:600px){.container{width:100%!important}.px{padding-left:24px!important;padding-right:24px!important}}</style>
+</head>
+<body style="margin:0;padding:0;background:#eef2f7;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:#eef2f7;">${esc(preheader)}&#8203;&#8203;&#8203;&#8203;&#8203;</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f7;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 28px rgba(13,18,37,.10);">
+      <tr><td style="background:#0d1225;background:linear-gradient(135deg,#0d1225 0%,#122043 100%);padding:26px 40px;" class="px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td style="font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:800;color:#f0f9ff;">FOS&nbsp;<span style="color:#67e8f9;">Dashboard</span></td>
+          <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#94a3b8;letter-spacing:1px;text-transform:uppercase;">Pozvánka</td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="height:4px;line-height:4px;font-size:0;background:linear-gradient(90deg,#22d3ee,#0891b2);">&nbsp;</td></tr>
+      <tr><td style="padding:32px 40px 6px;font-family:Arial,Helvetica,sans-serif;" class="px">
+        <p style="margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#0891b2;">Pozvánka na stretnutie</p>
+        <p style="margin:0 0 18px;font-size:22px;font-weight:800;color:#0f172a;line-height:1.25;">${esc(title)}</p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eef1f5;border-bottom:1px solid #eef1f5;margin-bottom:16px;">
+          ${row('📅 Kedy', whenText)}
+          ${row('📍 Miesto', location)}
+          ${note ? row('📝 Poznámka', note) : ''}
+        </table>
+        ${attRows}
+        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 14px;margin:4px 0 8px;">
+          <p style="margin:0;font-size:13px;line-height:1.55;color:#0c4a6e;">
+            📎 V prílohe je <strong>kalendárová pozvánka</strong>. Otvor ju a v Outlooku klikni <strong>Prijať</strong> —
+            stretnutie sa pridá do tvojho kalendára so všetkými detailmi.
+          </p>
+        </div>
+      </td></tr>
+      <tr><td style="padding:8px 40px 34px;font-family:Arial,Helvetica,sans-serif;" class="px">
+        <p style="margin:0;font-size:12px;line-height:1.6;color:#94a3b8;">Pozvánku poslal ${esc(organizerName || 'FOS Dashboard')} cez FOS Dashboard · SYLEX Fiber Optics</p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+
+  const text = [
+    `POZVÁNKA NA STRETNUTIE`, '',
+    title, '',
+    `Kedy: ${whenText}`,
+    location ? `Miesto: ${location}` : '',
+    note ? `Poznámka: ${note}` : '',
+    attendees.length ? `Účastníci: ${attendees.join(', ')}` : '',
+    '',
+    'V prílohe je kalendárová pozvánka (.ics) — otvor ju a v Outlooku klikni Prijať.',
+    '', `FOS Dashboard · SYLEX Fiber Optics`
+  ].filter(Boolean).join('\n');
+
+  return { subject: `Pozvánka: ${title} — ${whenText}`, html, text };
+}
+
+module.exports = { isConfigured, sendMail, verificationEmail, taskDigestEmail, inviteEmail, baseUrl };

@@ -962,6 +962,11 @@
           <label>Poznámka</label>
           <input type="text" id="evNote" placeholder="Voliteľný popis">
         </div>
+        <div class="form-group ev-invite-group">
+          <label>Pozvať e-mailom (Outlook pozvánka)</label>
+          <input type="text" id="evInvite" placeholder="meno@sylex.sk, druhy@sylex.sk">
+          <label class="checkbox-label ev-invite-check"><input type="checkbox" id="evInviteSend"> Po uložení poslať týmto ľuďom pozvánku (.ics) na potvrdenie v Outlooku</label>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn-delete" id="evDeleteBtn" onclick="deleteEvent()" style="display:none">Odstrániť</button>
@@ -1067,6 +1072,7 @@
           <div class="form-group"><label>Názov zdroja</label><input type="text" id="icsLabel" placeholder="napr. Outlook FOS, RON dochádzka"></div>
           <div class="form-group" style="max-width:90px"><label>Farba</label><input type="color" id="icsColor" value="#7c3aed" style="width:100%;height:38px;padding:2px;cursor:pointer"></div>
         </div>
+        <div class="form-group"><label>E-mail osoby (voliteľné — pre pozvánky na stretnutie)</label><input type="email" id="icsEmail" placeholder="napr. meno@sylex.sk"></div>
         <div id="icsTestMsg" class="ics-test"></div>
         <div class="ics-feed-list" id="icsFeedList"></div>
       </div>
