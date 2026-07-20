@@ -3047,21 +3047,33 @@ async function calFindMeeting() {
   const byDay = calMeetingSlotsByDay(keys, dur, { workStart, workEnd, days: 8, step, capToday: 6, capOther: 4 }, events);
   const names = keys.map(k => k === CAL_INT_KEY ? 'Interné' : calSurname(k)).join(', ');
   // e-maily vybraných účastníkov — prednostne z napojeného kalendára, inak
-  // z používateľa uloženého v dashboarde (podľa zhody mena) — pre pozvánku
+  // z používateľa uloženého v dashboarde (zhoda mena bez ohľadu na diakritiku/veľkosť,
+  // fallback na jednoznačné priezvisko) — pre pozvánku
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const users = await loadUserOptions();
-  const userByName = {};
-  (users || []).forEach(u => { if (u.email && u.name) userByName[String(u.name).trim().toLowerCase()] = u.email; });
-  const emails = keys.map(k => {
+  const norm = s => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const byFull = {}, bySurname = {}, surnameCnt = {};
+  (users || []).forEach(u => {
+    if (!u.email || !emailRe.test(u.email)) return;
+    const nf = norm(u.name); if (nf) byFull[nf] = u.email;
+    const sn = norm(calSurname(u.name)); if (sn) { surnameCnt[sn] = (surnameCnt[sn] || 0) + 1; bySurname[sn] = u.email; }
+  });
+  const resolveEmail = k => {
     const p = _meetPeople.find(p => p.key === k) || {};
     if (p.email && emailRe.test(p.email)) return p.email;
-    return userByName[String(k).trim().toLowerCase()] || '';   // k = názov kalendára = meno osoby
-  }).filter(e => e && emailRe.test(e));
-  const emailsEnc = encodeURIComponent([...new Set(emails)].join(', '));
+    const nf = norm(k); if (byFull[nf]) return byFull[nf];
+    const sn = norm(calSurname(k)); if (sn && surnameCnt[sn] === 1) return bySurname[sn];
+    return '';
+  };
+  const emails = [...new Set(keys.map(resolveEmail).filter(e => e && emailRe.test(e)))];
+  const emailsEnc = encodeURIComponent(emails.join(', '));
+  // Účastníci bez nájdeného e-mailu (nedostanú pozvánku) — nahlás používateľovi
+  const missing = keys.filter(k => k !== CAL_INT_KEY && !resolveEmail(k)).map(calSurname);
   if (!byDay.length) { res.innerHTML = `<div class="meet-msg err">V rámci týždňa sa nenašiel spoločný voľný termín (${dur} min) pre: ${escHtml(names)}. Skús kratšie trvanie alebo iný pracovný čas.</div>`; return; }
   const wd = ['Nedeľa', 'Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota'];
   const total = byDay.reduce((n, d) => n + d.slots.length, 0);
   let html = `<div class="meet-msg ok"><strong>${total}</strong> voľných termínov pre <strong>${escHtml(names)}</strong> — klikni na čas, ktorý ti vyhovuje.</div>`;
+  if (missing.length) html += `<div class="meet-msg warn">Bez uloženého e-mailu (nedostanú pozvánku): <strong>${escHtml(missing.join(', '))}</strong>. Doplň im e-mail v <em>Administrácia → Používatelia</em> alebo pri kalendári (Kalendáre).</div>`;
   html += '<div class="meet-days">';
   byDay.forEach((d, di) => {
     const dt = new Date(d.key + 'T00:00:00');
@@ -6995,6 +7007,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.65.2', date: '20. 7. 2026', tag: 'fix', items: [
+    '<strong>Naplánovať stretnutie — e-maily účastníkov sa doťahujú spoľahlivejšie.</strong> Predtým sa e-mail účastníka našiel len pri presnej zhode mena, takže rozdiel v diakritike (napr. „Švolík" vs „Svolik") spôsobil, že sa pozvánka neoznačila. Teraz sa mená porovnávajú bez ohľadu na diakritiku a veľkosť písmen, s doplnkovým párovaním podľa priezviska. Ak niekto e-mail uložený nemá, appka to jasne vypíše (koho treba doplniť).',
+  ] },
   { v: '2.65.1', date: '20. 7. 2026', tag: 'feat', items: [
     '<strong>Pozvánka — výber e-mailov z používateľov dashboardu.</strong> Pod poľom „Pozvať e-mailom" pribudol výber používateľov uložených v dashboarde — klikom na meno sa pridá/odoberie jeho e-mail (kto ho má uložený). Pri „Naplánovať stretnutie" sa e-maily účastníkov doťahujú prednostne z ich používateľského účtu (podľa mena), inak z e-mailu nastaveného pri kalendári.',
   ] },

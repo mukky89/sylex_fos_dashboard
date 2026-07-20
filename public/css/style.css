@@ -5347,6 +5347,7 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .meet-msg { font-size: 0.86rem; padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; line-height: 1.5; }
 .meet-msg.ok { background: rgba(16,185,129,0.12); color: #047857; border: 1px solid rgba(16,185,129,0.3); }
 .meet-msg.err { background: rgba(239,68,68,0.1); color: #b91c1c; border: 1px solid rgba(239,68,68,0.3); }
+.meet-msg.warn { background: rgba(234,179,8,0.12); color: #92600a; border: 1px solid rgba(234,179,8,0.35); }
 
 /* Termíny zoskupené po dňoch — každý deň je karta s hover efektom na celý objekt */
 .meet-days { display: flex; flex-direction: column; gap: 10px; max-height: 340px; overflow-y: auto; padding-right: 2px; }

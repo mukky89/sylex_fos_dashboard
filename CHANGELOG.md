@@ -8,6 +8,15 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.65.2] — 2026-07-20
+### Opravené
+- **Naplánovať stretnutie — e-maily účastníkov sa doťahujú spoľahlivejšie.**
+  Predtým sa e-mail účastníka našiel len pri presnej zhode mena, takže
+  rozdiel v diakritike („Švolík" vs „Svolik") alebo veľkosti písmen spôsobil,
+  že sa účastník v pozvánke neoznačil. Teraz sa mená porovnávajú bez ohľadu
+  na diakritiku a veľkosť písmen (fallback na jednoznačné priezvisko).
+  Účastníci bez uloženého e-mailu sa v hľadači jasne vypíšu.
+
 ## [2.65.1] — 2026-07-20
 ### Pridané
 - **Pozvánka — výber e-mailov z používateľov dashboardu.** Pod poľom
