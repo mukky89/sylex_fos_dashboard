@@ -6,6 +6,10 @@ const crypto = require('crypto');
 const CalendarEvent = require('../models/CalendarEvent');
 const IcsFeed = require('../models/IcsFeed');
 const AppConfig = require('../models/AppConfig');
+const mailer = require('../utils/mailer');
+const { buildInvite } = require('../utils/ical');
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // ── Expanzia opakovaných udalostí v okne [start,end] ──
 function _recurStep(d, freq, n) {
@@ -167,7 +171,7 @@ router.post('/feeds', async (req, res) => {
     let url = String(req.body.url || '').trim();
     if (!url) return res.status(400).json({ error: 'Chýba URL ICS feedu.' });
     if (url.startsWith('webcal://')) url = 'https://' + url.slice('webcal://'.length);
-    const feed = await IcsFeed.create({ url, label: (req.body.label || 'Outlook').trim(), color: req.body.color || '#7c3aed' });
+    const feed = await IcsFeed.create({ url, label: (req.body.label || 'Outlook').trim(), color: req.body.color || '#7c3aed', email: String(req.body.email || '').trim() });
     delete _icsCache[feed.url];
     res.status(201).json(feed);
   } catch (e) { res.status(400).json({ error: e.message }); }
@@ -175,7 +179,7 @@ router.post('/feeds', async (req, res) => {
 router.put('/feeds/:id', async (req, res) => {
   try {
     const f = await IcsFeed.findById(req.params.id); if (!f) return res.status(404).json({ error: 'Not found' });
-    ['label', 'color'].forEach(k => { if (req.body[k] !== undefined) f[k] = req.body[k]; });
+    ['label', 'color', 'email'].forEach(k => { if (req.body[k] !== undefined) f[k] = req.body[k]; });
     if (req.body.active !== undefined) f.active = !!req.body.active;
     await f.save(); res.json(f);
   } catch (e) { res.status(400).json({ error: e.message }); }
@@ -183,6 +187,41 @@ router.put('/feeds/:id', async (req, res) => {
 router.delete('/feeds/:id', async (req, res) => {
   try { await IcsFeed.findByIdAndDelete(req.params.id); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Poslať e-mailovú pozvánku na stretnutie (.ics REQUEST) vybraným ľuďom ──
+router.post('/invite', async (req, res) => {
+  try {
+    if (!mailer.isConfigured()) return res.status(400).json({ error: 'E-mail (Brevo/SMTP) nie je nakonfigurovaný — pozvánku nemožno odoslať.' });
+    const b = req.body || {};
+    const title = String(b.title || '').trim();
+    const date = String(b.date || '').slice(0, 10);
+    if (!title || !date) return res.status(400).json({ error: 'Chýba názov alebo dátum udalosti.' });
+    const raw = Array.isArray(b.attendees) ? b.attendees : String(b.attendees || '').split(/[;,]/);
+    const emails = [...new Set(raw.map(s => String(s).trim().toLowerCase()).filter(e => EMAIL_RE.test(e)))];
+    if (!emails.length) return res.status(400).json({ error: 'Zadaj aspoň jeden platný e-mail účastníka.' });
+
+    const organizerEmail = process.env.EMAIL_SENDER || process.env.SMTP_FROM || process.env.SMTP_USER || '';
+    if (!organizerEmail) return res.status(400).json({ error: 'Nie je nastavená adresa odosielateľa (EMAIL_SENDER).' });
+
+    const uid = 'fos-' + crypto.randomBytes(10).toString('hex') + '@fos-dashboard';
+    const ics = buildInvite({
+      uid, title, description: b.note || '', location: b.location || '',
+      date, time: b.time || '', endDate: b.endDate || null, endTime: b.endTime || '', allDay: !!b.allDay,
+      organizerName: b.organizerName || 'FOS Dashboard', organizerEmail, attendees: emails
+    });
+
+    // Čitateľný „kedy" text pre e-mail
+    const dd = (s) => { const [y, m, d] = String(s).slice(0, 10).split('-'); return `${+d}.${+m}.${y}`; };
+    let whenText;
+    if (b.allDay) whenText = dd(date) + (b.endDate && b.endDate !== date ? ' – ' + dd(b.endDate) : '') + ' (celý deň)';
+    else whenText = dd(date) + (b.time ? ` · ${b.time}${b.endTime ? '–' + b.endTime : ''}` : '');
+
+    const tpl = mailer.inviteEmail({ title, whenText, location: b.location || '', note: b.note || '', organizerName: b.organizerName || '', attendees: emails });
+    const r = await mailer.sendMail({ to: emails, subject: tpl.subject, html: tpl.html, text: tpl.text, ics: { content: ics, method: 'REQUEST', filename: 'stretnutie.ics' } });
+    if (!r.sent) return res.status(502).json({ error: r.error || 'Odoslanie zlyhalo.' });
+    res.json({ sent: true, count: emails.length, to: emails });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Test pripojenia feedu (bez uloženia) — vráti počet udalostí

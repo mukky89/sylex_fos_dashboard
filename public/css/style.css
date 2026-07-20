@@ -5327,6 +5327,12 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .meet-worktime-row input { flex: 1; min-width: 0; }
 .meet-dash { color: var(--text-dim); font-weight: 600; flex-shrink: 0; }
 .meet-results { margin-top: 16px; }
+/* Pozvánka e-mailom v modáli udalosti */
+.ev-invite-group { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px; }
+.ev-invite-check { display: flex; align-items: flex-start; gap: 8px; margin-top: 8px; font-size: 0.8rem; color: var(--text-dim); line-height: 1.4; cursor: pointer; }
+.ev-invite-check input { margin-top: 2px; flex-shrink: 0; }
+.ics-feed-email { display: block; font-size: 0.72rem; color: var(--text-xdim); font-weight: 400; margin-top: 1px; }
+
 .meet-loading { display: flex; align-items: center; gap: 10px; font-size: 0.86rem; color: var(--text-dim); padding: 14px 4px; }
 .meet-spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: meet-spin .7s linear infinite; flex-shrink: 0; }
 @keyframes meet-spin { to { transform: rotate(360deg); } }

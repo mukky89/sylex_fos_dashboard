@@ -1,6 +1,6 @@
 {
   "name": "sylex-fos-dashboard",
-  "version": "2.64.1",
+  "version": "2.65.0",
   "description": "Sylex FOS Division Dashboard - Knowledge Base & ERP Links",
   "main": "server.js",
   "scripts": {

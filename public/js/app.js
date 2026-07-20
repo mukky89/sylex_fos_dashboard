@@ -2759,6 +2759,7 @@ function openIcsModal() {
   document.getElementById('icsUrl').value = '';
   document.getElementById('icsLabel').value = '';
   document.getElementById('icsColor').value = '#7c3aed';
+  const em = document.getElementById('icsEmail'); if (em) em.value = '';
   document.getElementById('icsTestMsg').textContent = '';
   loadIcsFeeds();
   document.getElementById('icsModal').classList.remove('hidden');
@@ -2772,7 +2773,7 @@ async function loadIcsFeeds() {
   el.innerHTML = '<div class="ics-feed-title">Napojené kalendáre</div>' + feeds.map(f => `
     <div class="ics-feed">
       <span class="ics-feed-dot" style="background:${escHtml(f.color || '#7c3aed')}"></span>
-      <span class="ics-feed-label">${escHtml(f.label || 'Outlook')}</span>
+      <span class="ics-feed-label">${escHtml(f.label || 'Outlook')}${f.email ? `<span class="ics-feed-email">${escHtml(f.email)}</span>` : ''}</span>
       <button class="ics-feed-del" onclick="deleteIcsFeed('${f._id}')" title="Odpojiť">✕</button>
     </div>`).join('');
 }
@@ -2791,12 +2792,13 @@ async function testIcsFeed() {
 async function saveIcsFeed() {
   const url = document.getElementById('icsUrl').value.trim();
   if (!url) { toast('Zadaj ICS odkaz.', 'error'); return; }
-  const body = { url, label: document.getElementById('icsLabel').value.trim() || 'Outlook', color: document.getElementById('icsColor').value };
+  const body = { url, label: document.getElementById('icsLabel').value.trim() || 'Outlook', color: document.getElementById('icsColor').value, email: (document.getElementById('icsEmail')?.value || '').trim() };
   try {
     const r = await fetch('/api/calendar/feeds', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const d = await r.json();
     if (!r.ok) { toast('Chyba: ' + (d.error || r.status), 'error'); return; }
     document.getElementById('icsUrl').value = ''; document.getElementById('icsLabel').value = ''; document.getElementById('icsTestMsg').textContent = '';
+    const em = document.getElementById('icsEmail'); if (em) em.value = '';
     toast('Kalendár napojený — udalosti sa načítajú.', 'success');
     await loadIcsFeeds(); loadCalendar();
   } catch (e) { toast('Sieťová chyba: ' + e.message, 'error'); }
@@ -2893,6 +2895,9 @@ function openEventModal(event = null, prefillDate = null) {
   document.getElementById('evRecurUntil').value = isEdit && event.recurUntil ? String(event.recurUntil).slice(0, 10) : '';
   document.getElementById('evReminder').value = isEdit ? String(event.reminderMin || 0) : '0';
   document.getElementById('evDeleteBtn').style.display = isEdit ? '' : 'none';
+  // Pole pozvánky sa pri každom otvorení vyčistí (predvyplní ho len tok „Naplánovať stretnutie")
+  const inv = document.getElementById('evInvite'); if (inv) inv.value = '';
+  const invS = document.getElementById('evInviteSend'); if (invS) invS.checked = false;
   toggleEventTime(); toggleEventRecur();
   document.getElementById('eventModal').classList.remove('hidden');
 }
@@ -2916,8 +2921,9 @@ function toggleEventRecur() {
 // Zoznam kalendárov (ľudí): interný dashboard + napojené externé zdroje
 // Zoznam kalendárov (ľudí) z NAPOJENÝCH ICS feedov + interný dashboard.
 // (Nezávislé od aktuálne zobrazeného rozsahu kalendára.)
+let _meetPeople = [];   // aktuálny zoznam účastníkov (s e-mailmi) v modáli stretnutia
 async function calMeetingPeople() {
-  const list = [{ key: CAL_INT_KEY, name: 'Interné (dashboard)', color: '#00d4ff' }];
+  const list = [{ key: CAL_INT_KEY, name: 'Interné (dashboard)', color: '#00d4ff', email: '' }];
   let feeds = [];
   try { feeds = await fetch('/api/calendar/feeds').then(r => r.json()); } catch {}
   const seen = new Set();
@@ -2925,8 +2931,9 @@ async function calMeetingPeople() {
     if (f.active === false) return;                 // neaktívne feedy negenerujú udalosti
     const key = (f.label || 'Outlook');
     if (seen.has(key)) return; seen.add(key);
-    list.push({ key, name: key, color: f.color || '#7c3aed' });
+    list.push({ key, name: key, color: f.color || '#7c3aed', email: f.email || '' });
   });
+  _meetPeople = list;
   return list;
 }
 async function openMeetingModal() {
@@ -3038,6 +3045,10 @@ async function calFindMeeting() {
   const step = dur <= 60 ? 30 : Math.max(30, Math.round(dur / 2 / 15) * 15);
   const byDay = calMeetingSlotsByDay(keys, dur, { workStart, workEnd, days: 8, step, capToday: 6, capOther: 4 }, events);
   const names = keys.map(k => k === CAL_INT_KEY ? 'Interné' : calSurname(k)).join(', ');
+  // e-maily vybraných účastníkov (z napojených kalendárov) — pre pozvánku
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emails = keys.map(k => (_meetPeople.find(p => p.key === k) || {}).email).filter(e => e && emailRe.test(e));
+  const emailsEnc = encodeURIComponent(emails.join(', '));
   if (!byDay.length) { res.innerHTML = `<div class="meet-msg err">V rámci týždňa sa nenašiel spoločný voľný termín (${dur} min) pre: ${escHtml(names)}. Skús kratšie trvanie alebo iný pracovný čas.</div>`; return; }
   const wd = ['Nedeľa', 'Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota'];
   const total = byDay.reduce((n, d) => n + d.slots.length, 0);
@@ -3049,7 +3060,7 @@ async function calFindMeeting() {
     html += `<div class="meet-day">
       <div class="meet-day-hdr"><span class="meet-day-name">${escHtml(label)}</span>${d.isToday ? '<span class="meet-day-badge">dnes</span>' : ''}<span class="meet-day-count">${d.slots.length} voľných</span></div>
       <div class="meet-day-slots">
-        ${d.slots.map((s, si) => `<button class="meet-chip${di === 0 && si === 0 ? ' meet-chip-best' : ''}" onclick="meetCreateEvent('${d.key}',${s.start},${s.end},'${encodeURIComponent(names)}')" title="Vytvoriť stretnutie ${calMinToHM(s.start)}–${calMinToHM(s.end)}">${calMinToHM(s.start)}<span class="meet-chip-sep">–</span>${calMinToHM(s.end)}</button>`).join('')}
+        ${d.slots.map((s, si) => `<button class="meet-chip${di === 0 && si === 0 ? ' meet-chip-best' : ''}" onclick="meetCreateEvent('${d.key}',${s.start},${s.end},'${encodeURIComponent(names)}','${emailsEnc}')" title="Vytvoriť stretnutie ${calMinToHM(s.start)}–${calMinToHM(s.end)}">${calMinToHM(s.start)}<span class="meet-chip-sep">–</span>${calMinToHM(s.end)}</button>`).join('')}
       </div>
     </div>`;
   });
@@ -3058,8 +3069,9 @@ async function calFindMeeting() {
 }
 
 // Z nájdeného termínu otvorí formulár novej udalosti s predvyplneným časom a účastníkmi
-function meetCreateEvent(dayKey, startMin, endMin, namesEnc) {
+function meetCreateEvent(dayKey, startMin, endMin, namesEnc, emailsEnc) {
   const names = decodeURIComponent(namesEnc || '');
+  const emails = decodeURIComponent(emailsEnc || '');
   closeMeetingModal();
   openEventModal(null, dayKey);
   document.getElementById('evAllDay').checked = false;
@@ -3069,6 +3081,11 @@ function meetCreateEvent(dayKey, startMin, endMin, namesEnc) {
   document.getElementById('evType').value = 'meeting';
   const t = document.getElementById('evTitle');
   t.value = 'Stretnutie' + (names ? ': ' + names : '');
+  // Predvyplň pozvánku e-mailmi vybraných účastníkov (ak majú v kalendári nastavený e-mail)
+  const inv = document.getElementById('evInvite');
+  const invS = document.getElementById('evInviteSend');
+  if (inv) inv.value = emails;
+  if (invS) invS.checked = !!emails;
   t.focus();
 }
 
@@ -3107,9 +3124,24 @@ async function saveEvent() {
       alert('Chyba ' + resp.status + ': ' + (err.error || 'Neznáma chyba'));
       return;
     }
+    // Voliteľne: poslať e-mailovú pozvánku (.ics) účastníkom
+    const invite = (document.getElementById('evInvite')?.value || '').trim();
+    const sendInv = document.getElementById('evInviteSend')?.checked;
     closeEventModal();
     loadCalendar();
+    if (sendInv && invite) await sendMeetingInvite({ ...body, attendees: invite, organizerName: (CURRENT_USER && CURRENT_USER.name) || '' });
   } catch (e) { alert('Sieťová chyba: ' + e.message); }
+}
+
+// Odošle e-mailovú pozvánku (.ics REQUEST) na zadané adresy
+async function sendMeetingInvite(payload) {
+  try {
+    toast('Odosielam pozvánku…', 'info');
+    const r = await fetch('/api/calendar/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.sent) toast(`Pozvánka odoslaná (${d.count}) — účastníci ju potvrdia v Outlooku.`, 'success', 5000);
+    else toast('Pozvánku sa nepodarilo odoslať: ' + (d.error || r.status), 'error', 6000);
+  } catch (e) { toast('Sieťová chyba pri odosielaní pozvánky: ' + e.message, 'error'); }
 }
 
 async function deleteEvent() {
@@ -6928,6 +6960,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.65.0', date: '20. 7. 2026', tag: 'feat', items: [
+    '<strong>Stretnutia — e-mailová pozvánka do Outlooku (.ics).</strong> Po vytvorení udalosti sa dá účastníkom poslať <strong>kalendárová pozvánka</strong> — v modáli udalosti pribudlo pole „Pozvať e-mailom" a voľba „poslať pozvánku". Príjemca dostane e-mail s prílohou <code>.ics</code> (METHOD:REQUEST) so všetkými detailmi (dátum, čas, miesto, účastníci) a v Outlooku ju jedným klikom <strong>Prijme</strong> — udalosť sa mu pridá do kalendára. Netreba OAuth ani Azure, ide cez existujúci e-mail (Brevo/SMTP).',
+    '<strong>Naplánovať stretnutie → pozvánka na jeden klik.</strong> Ku každému napojenému kalendáru (osobe) sa dá v „Kalendáre" nastaviť e-mail; pri vytváraní stretnutia sa pole pozvánky predvyplní e-mailmi vybraných účastníkov a pozvánka sa po uložení automaticky rozpošle.',
+  ] },
   { v: '2.64.1', date: '18. 7. 2026', tag: 'fix', items: [
     '<strong>Naplánovať stretnutie — správne zohľadňuje napojené (ICS) kalendáre.</strong> Predtým hľadač bral do úvahy len udalosti aktuálne zobrazeného rozsahu, takže mohol ponúknuť termín cez udalosť z Outlook/ICS kalendára. Teraz si obsadenosť načíta pre celé hľadané okno (dnes → +8 dní) nezávisle od zobrazeného pohľadu a zoznam účastníkov berie priamo z napojených kalendárov — voľné termíny sa počítajú správne aj cez ICS udalosti.',
   ] },
