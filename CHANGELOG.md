@@ -8,6 +8,16 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.66.0] — 2026-07-20
+### Vylepšené (UI/UX)
+- **Modaly „Naplánovať stretnutie" a „Nová/Upraviť udalosť" — tmavý režim
+  a širšie, krajšie okno.** Oba dialógy sú teraz v tmavom motíve (ladia
+  s appkou), širšie (stretnutie 880px, udalosť 660px) a prehľadnejšie:
+  jednotné SVG ikony v hlavičke namiesto emoji, tmavé formulárové polia
+  vrátane natívnych výberov dátumu/času (`color-scheme: dark`), akcentom
+  zvýraznené vybraté položky (účastníci, termíny, používatelia), lepšie
+  rozostupy a hover/fokus stavy.
+
 ## [2.65.2] — 2026-07-20
 ### Opravené
 - **Naplánovať stretnutie — e-maily účastníkov sa doťahujú spoľahlivejšie.**

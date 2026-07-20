@@ -7007,6 +7007,9 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.66.0', date: '20. 7. 2026', tag: 'ui', items: [
+    '<strong>Modaly „Naplánovať stretnutie" a „Nová/Upraviť udalosť" — tmavý režim a širšie, krajšie okno.</strong> Oba dialógy sú teraz v tmavom motíve (ladia s appkou), širšie a prehľadnejšie: jednotné SVG ikony v hlavičke namiesto emoji, tmavé formulárové polia (aj natívne výbery dátumu/času), akcentom zvýraznené vybraté položky (účastníci, termíny, používatelia), lepšie rozostupy, hover a fokus stavy.',
+  ] },
   { v: '2.65.2', date: '20. 7. 2026', tag: 'fix', items: [
     '<strong>Naplánovať stretnutie — e-maily účastníkov sa doťahujú spoľahlivejšie.</strong> Predtým sa e-mail účastníka našiel len pri presnej zhode mena, takže rozdiel v diakritike (napr. „Švolík" vs „Svolik") spôsobil, že sa pozvánka neoznačila. Teraz sa mená porovnávajú bez ohľadu na diakritiku a veľkosť písmen, s doplnkovým párovaním podľa priezviska. Ak niekto e-mail uložený nemá, appka to jasne vypíše (koho treba doplniť).',
   ] },

@@ -5310,73 +5310,112 @@ table.sortable th.sort-desc::after { content: '↓'; opacity: 0.9; }
 .ctg-ev:hover .ctg-ev-time, .ctg-ev:hover .ctg-ev-owner { overflow: visible; }
 
 /* =============================================================================
-   NAPLÁNOVAŤ STRETNUTIE — modal na svetlom podklade (light zone)
+   NAPLÁNOVAŤ STRETNUTIE + Pozvánka — DARK ZONE (tmavý modal #131c35)
    ============================================================================= */
-.meet-hint { font-size: 0.86rem; color: var(--text-dim); margin: 0 0 16px; line-height: 1.5; }
-.meet-people-lbl { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-xdim); margin-bottom: 8px; }
-.meet-people { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-.meet-person { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 0.88rem; color: var(--text); background: var(--card-bg); transition: border-color .14s, background .14s; }
-.meet-person:hover { border-color: var(--accent); }
-.meet-person:has(.meet-cb:checked) { border-color: var(--accent); background: rgba(var(--accent-rgb,59,130,246),0.08); }
+.meet-hint { font-size: 0.88rem; color: rgba(var(--dz-fg-rgb),0.6); margin: 0 0 18px; line-height: 1.55; }
+.meet-people-lbl { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: rgba(var(--dz-fg-rgb),0.42); margin-bottom: 10px; }
+.meet-people { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 22px; }
+.meet-person { display: inline-flex; align-items: center; gap: 9px; padding: 9px 14px; border: 1.5px solid rgba(var(--dz-fg-rgb),0.14); border-radius: 11px; cursor: pointer; font-size: 0.88rem; font-weight: 500; color: var(--dz-text2); background: rgba(var(--dz-fg-rgb),0.05); transition: border-color .14s, background .14s, color .14s; }
+.meet-person:hover { border-color: rgba(var(--dz-fg-rgb),0.3); background: rgba(var(--dz-fg-rgb),0.09); color: var(--dz-text); }
+.meet-person:has(.meet-cb:checked) { border-color: var(--accent); background: rgba(var(--dz-fg-rgb),0.1); color: var(--dz-text); box-shadow: inset 0 0 0 1px var(--accent); }
 .meet-cb { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
-.meet-person-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.meet-empty { font-size: 0.85rem; color: var(--text-dim); padding: 8px 0 16px; }
-.meet-opts { display: grid; grid-template-columns: 1fr 1.3fr; gap: 14px; margin-bottom: 8px; align-items: end; }
+.meet-person-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(var(--dz-fg-rgb),0.06); }
+.meet-empty { font-size: 0.85rem; color: rgba(var(--dz-fg-rgb),0.5); padding: 8px 0 16px; }
+.meet-opts { display: grid; grid-template-columns: 1fr 1.3fr; gap: 16px; margin-bottom: 8px; align-items: end; }
 @media (max-width: 480px) { .meet-opts { grid-template-columns: 1fr; } }
 .meet-worktime-row { display: flex; align-items: center; gap: 8px; }
 .meet-worktime-row input { flex: 1; min-width: 0; }
-.meet-dash { color: var(--text-dim); font-weight: 600; flex-shrink: 0; }
-.meet-results { margin-top: 16px; }
-/* Pozvánka e-mailom v modáli udalosti */
-.ev-invite-group { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px; }
-.ev-invite-check { display: flex; align-items: flex-start; gap: 8px; margin-top: 8px; font-size: 0.8rem; color: var(--text-dim); line-height: 1.4; cursor: pointer; }
-.ev-invite-check input { margin-top: 2px; flex-shrink: 0; }
-.ev-invite-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
-.ev-invite-picker-lbl { font-size: 0.74rem; color: var(--text-xdim); font-weight: 600; margin-right: 2px; }
-.ev-invite-picker-empty { font-size: 0.74rem; color: var(--text-xdim); }
-.ev-pick-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 100px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-size: 0.78rem; font-weight: 600; font-family: var(--font); cursor: pointer; transition: background .13s, border-color .13s, color .13s; }
-.ev-pick-chip::before { content: '+'; font-weight: 700; opacity: 0.6; }
-.ev-pick-chip:hover { border-color: var(--accent); color: var(--accent); }
+.meet-dash { color: rgba(var(--dz-fg-rgb),0.5); font-weight: 600; flex-shrink: 0; }
+.meet-results { margin-top: 18px; }
+
+/* Pozvánka e-mailom v modáli udalosti (dark) */
+.ev-invite-group { border-top: 1px solid rgba(var(--dz-fg-rgb),0.1); padding-top: 16px; margin-top: 4px; }
+.ev-invite-check { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; font-size: 0.8rem; color: rgba(var(--dz-fg-rgb),0.6); line-height: 1.45; cursor: pointer; }
+.ev-invite-check input { margin-top: 2px; flex-shrink: 0; accent-color: var(--accent); }
+.ev-invite-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.ev-invite-picker-lbl { font-size: 0.74rem; color: rgba(var(--dz-fg-rgb),0.42); font-weight: 600; margin-right: 2px; }
+.ev-invite-picker-empty { font-size: 0.74rem; color: rgba(var(--dz-fg-rgb),0.4); }
+.ev-pick-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 100px; border: 1px solid rgba(var(--dz-fg-rgb),0.16); background: rgba(var(--dz-fg-rgb),0.05); color: var(--dz-text2); font-size: 0.78rem; font-weight: 600; font-family: var(--font); cursor: pointer; transition: all .13s; }
+.ev-pick-chip::before { content: '+'; font-weight: 700; opacity: 0.55; }
+.ev-pick-chip:hover { border-color: var(--accent); color: var(--dz-text); background: rgba(var(--dz-fg-rgb),0.1); }
 .ev-pick-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .ev-pick-chip.on::before { content: '✓'; opacity: 1; }
 .ics-feed-email { display: block; font-size: 0.72rem; color: var(--text-xdim); font-weight: 400; margin-top: 1px; }
 
-.meet-loading { display: flex; align-items: center; gap: 10px; font-size: 0.86rem; color: var(--text-dim); padding: 14px 4px; }
-.meet-spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: meet-spin .7s linear infinite; flex-shrink: 0; }
+.meet-loading { display: flex; align-items: center; gap: 10px; font-size: 0.86rem; color: rgba(var(--dz-fg-rgb),0.6); padding: 16px 4px; }
+.meet-spinner { width: 16px; height: 16px; border: 2px solid rgba(var(--dz-fg-rgb),0.18); border-top-color: var(--accent); border-radius: 50%; animation: meet-spin .7s linear infinite; flex-shrink: 0; }
 @keyframes meet-spin { to { transform: rotate(360deg); } }
-.meet-msg { font-size: 0.86rem; padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; line-height: 1.5; }
-.meet-msg.ok { background: rgba(16,185,129,0.12); color: #047857; border: 1px solid rgba(16,185,129,0.3); }
-.meet-msg.err { background: rgba(239,68,68,0.1); color: #b91c1c; border: 1px solid rgba(239,68,68,0.3); }
-.meet-msg.warn { background: rgba(234,179,8,0.12); color: #92600a; border: 1px solid rgba(234,179,8,0.35); }
+.meet-msg { font-size: 0.86rem; padding: 11px 13px; border-radius: 9px; margin-bottom: 14px; line-height: 1.5; }
+.meet-msg.ok { background: rgba(16,185,129,0.14); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.32); }
+.meet-msg.ok strong { color: #a7f3d0; }
+.meet-msg.err { background: rgba(239,68,68,0.14); color: #fca5a5; border: 1px solid rgba(239,68,68,0.32); }
+.meet-msg.warn { background: rgba(234,179,8,0.14); color: #fcd34d; border: 1px solid rgba(234,179,8,0.34); }
 
 /* Termíny zoskupené po dňoch — každý deň je karta s hover efektom na celý objekt */
-.meet-days { display: flex; flex-direction: column; gap: 10px; max-height: 340px; overflow-y: auto; padding-right: 2px; }
+.meet-days { display: flex; flex-direction: column; gap: 10px; max-height: 360px; overflow-y: auto; padding-right: 4px; }
+.meet-days::-webkit-scrollbar { width: 6px; }
+.meet-days::-webkit-scrollbar-thumb { background: rgba(var(--dz-fg-rgb),0.16); border-radius: 3px; }
 .meet-day {
-  border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--card-bg);
+  border: 1px solid rgba(var(--dz-fg-rgb),0.1); border-radius: 13px; padding: 13px 15px; background: rgba(var(--dz-fg-rgb),0.04);
   transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease, background .16s ease;
 }
 .meet-day:hover {
   border-color: var(--accent);
-  box-shadow: 0 6px 18px rgba(15,23,42,0.1), 0 0 0 1px var(--accent);
-  transform: translateY(-1px);
-  background: color-mix(in srgb, var(--accent) 4%, var(--card-bg));
+  box-shadow: 0 8px 22px rgba(0,0,0,0.35), 0 0 0 1px var(--accent);
+  transform: translateY(-2px);
+  background: rgba(var(--dz-fg-rgb),0.07);
 }
-.meet-day-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.meet-day-name { font-size: 0.9rem; font-weight: 700; color: var(--text); }
-.meet-day-badge { font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #fff; background: var(--accent); border-radius: 100px; padding: 2px 8px; }
-.meet-day-count { margin-left: auto; font-size: 0.74rem; color: var(--text-xdim); font-weight: 600; }
-.meet-day-slots { display: flex; flex-wrap: wrap; gap: 7px; }
+.meet-day-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 11px; }
+.meet-day-name { font-size: 0.92rem; font-weight: 700; color: var(--dz-text); }
+.meet-day-badge { font-size: 0.64rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: #fff; background: var(--accent); border-radius: 100px; padding: 2px 9px; }
+.meet-day-count { margin-left: auto; font-size: 0.74rem; color: rgba(var(--dz-fg-rgb),0.42); font-weight: 600; }
+.meet-day-slots { display: flex; flex-wrap: wrap; gap: 8px; }
 .meet-chip {
-  display: inline-flex; align-items: center; gap: 3px; padding: 7px 12px; border-radius: 9px;
-  border: 1px solid var(--border); background: var(--card-bg); color: var(--text);
+  display: inline-flex; align-items: center; gap: 3px; padding: 8px 13px; border-radius: 10px;
+  border: 1px solid rgba(var(--dz-fg-rgb),0.14); background: rgba(var(--dz-fg-rgb),0.06); color: var(--dz-text);
   font-size: 0.86rem; font-weight: 600; font-variant-numeric: tabular-nums; font-family: var(--font);
   cursor: pointer; transition: background .14s, border-color .14s, color .14s, transform .1s;
 }
 .meet-chip:hover { background: var(--accent); border-color: var(--accent); color: #fff; transform: translateY(-1px); }
 .meet-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.meet-chip-sep { opacity: 0.55; }
+.meet-chip-sep { opacity: 0.5; }
 .meet-chip:hover .meet-chip-sep { opacity: 0.85; }
 .meet-chip-best { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* ── Tmavý modal: rám, hlavička, formuláre, tlačidlá (Stretnutie + Udalosť) ── */
+#meetingModal .modal-box, #eventModal .modal-box { background: #131c35; border-color: rgba(var(--dz-fg-rgb),0.1); }
+#meetingModal .modal-box { max-width: 880px; }
+#eventModal .modal-box { max-width: 660px; }
+#meetingModal .modal-header, #eventModal .modal-header,
+#meetingModal .modal-footer, #eventModal .modal-footer { background: rgba(var(--dz-fg-rgb),0.04); border-color: rgba(var(--dz-fg-rgb),0.08); }
+#meetingModal .modal-header h2, #eventModal .modal-header h2 { color: var(--dz-text); display: inline-flex; align-items: center; gap: 9px; }
+#meetingModal .modal-header h2 svg, #eventModal .modal-header h2 svg { color: var(--accent); }
+#meetingModal .modal-close, #eventModal .modal-close { color: rgba(var(--dz-fg-rgb),0.5); }
+#meetingModal .modal-close:hover, #eventModal .modal-close:hover { background: rgba(239,68,68,0.15); color: #f87171; }
+#meetingModal .modal-body::-webkit-scrollbar-thumb, #eventModal .modal-body::-webkit-scrollbar-thumb { background: rgba(var(--dz-fg-rgb),0.16); }
+
+#eventModal .form-group label, #meetingModal .form-group label { color: rgba(var(--dz-fg-rgb),0.55); font-weight: 600; }
+#eventModal .form-group input[type="text"], #eventModal .form-group input[type="date"],
+#eventModal .form-group input[type="time"], #eventModal .form-group input[type="email"],
+#eventModal .form-group select, #eventModal .form-group textarea, #eventModal #evInvite,
+#meetingModal .form-group select, #meetingModal .form-group input[type="time"] {
+  background: rgba(var(--dz-fg-rgb),0.08); border: 1px solid rgba(var(--dz-fg-rgb),0.14); color: var(--dz-text); color-scheme: dark;
+}
+#eventModal .form-group input::placeholder, #eventModal #evInvite::placeholder { color: rgba(var(--dz-fg-rgb),0.3); }
+#eventModal .form-group select option, #meetingModal .form-group select option { background: #1e2d4d; color: var(--dz-text); }
+#eventModal .form-group input:focus, #eventModal .form-group select:focus, #eventModal .form-group textarea:focus, #eventModal #evInvite:focus,
+#meetingModal .form-group select:focus, #meetingModal .form-group input:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(var(--dz-fg-rgb),0.12); outline: none;
+}
+#eventModal .checkbox-label { color: var(--dz-text2); }
+#eventModal input[type="color"] { background: rgba(var(--dz-fg-rgb),0.08); border-color: rgba(var(--dz-fg-rgb),0.14); }
+/* Tlačidlá v pätičke tmavého modálu */
+#meetingModal .btn-secondary, #eventModal .btn-secondary {
+  background: rgba(var(--dz-fg-rgb),0.07); color: rgba(var(--dz-fg-rgb),0.6); border-color: rgba(var(--dz-fg-rgb),0.16);
+}
+#meetingModal .btn-secondary:hover, #eventModal .btn-secondary:hover { background: rgba(var(--dz-fg-rgb),0.13); color: var(--dz-text); border-color: rgba(var(--dz-fg-rgb),0.26); }
+#eventModal .btn-delete { background: rgba(239,68,68,0.15); color: #f87171; border-color: rgba(239,68,68,0.32); }
+#eventModal .btn-delete:hover { background: rgba(239,68,68,0.25); }
 
 /* =============================================================================
    BACKBONE EDITOR — optická topológia (interrogátor · splitter · káble · senzory)
