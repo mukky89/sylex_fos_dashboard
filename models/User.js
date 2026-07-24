@@ -7,6 +7,9 @@ const userSchema = new mongoose.Schema({
   name:         { type: String, default: '', trim: true },
   role:         { type: String, enum: ['user', 'admin', 'obchod', 'kvalita', 'technologia'], default: 'user' },
   active:       { type: Boolean, default: true },
+  // Moduly, ktoré používateľ vidí v navigácii (kľúče modulov z frontendu).
+  // Predvolene len Kalendár a Úlohy; rola admin vidí vždy všetko bez ohľadu na zoznam.
+  modules:      { type: [String], default: () => ['calendar', 'tasks'] },
   // Overenie emailu
   emailVerified: { type: Boolean, default: false },
   verifyToken:   { type: String, default: '' },

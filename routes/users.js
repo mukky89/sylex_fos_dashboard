@@ -11,6 +11,16 @@ const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24 h
 const ROLES = ['user', 'admin', 'obchod', 'kvalita', 'technologia'];
 const normRole = r => ROLES.includes(r) ? r : 'user';
 
+// Platné kľúče modulov (musia sedieť s MODULES v public/js/app.js)
+const MODULE_KEYS = [
+  'wiki', 'procedures', 'guides', 'fbg', 'bb', 'dev', 'util', 'prod', 'mfg',
+  'pwf', 'gpn', 'powners', 'photos', 'calendar', 'tasks', 'crm', 'github',
+  'remote', 'fileserver', 'mgmt', 'changelog'
+];
+const DEFAULT_MODULES = ['calendar', 'tasks'];
+// Prefiltruje vstup na platné kľúče; nepole → null (t. j. „nezadané")
+const normModules = v => Array.isArray(v) ? [...new Set(v.filter(k => MODULE_KEYS.includes(k)))] : null;
+
 // Zoznam mien používateľov pre výbery (PO/BO, priradenia) — dostupné každému prihlásenému
 router.get('/options', requireAuth, async (req, res) => {
   try { res.json(await User.find({ active: true }).select('name username email').sort({ name: 1 })); }
@@ -51,6 +61,7 @@ router.post('/', async (req, res) => {
     const u = await User.create({
       username, email, name: req.body.name || '',
       role: normRole(req.body.role),
+      modules: normModules(req.body.modules) ?? DEFAULT_MODULES,
       active: req.body.active !== undefined ? !!req.body.active : true,
       passwordHash: await bcrypt.hash(req.body.password, 10),
       emailVerified: false
@@ -62,7 +73,7 @@ router.post('/', async (req, res) => {
       verify = await issueVerification(u, req);
     }
     res.status(201).json({
-      id: u._id, _id: u._id, username: u.username, email: u.email, name: u.name, role: u.role, active: u.active,
+      id: u._id, _id: u._id, username: u.username, email: u.email, name: u.name, role: u.role, active: u.active, modules: u.modules,
       emailVerified: u.emailVerified,
       emailSent: verify ? verify.emailSent : false,
       verifyUrl: verify ? verify.verifyUrl : null,
@@ -78,6 +89,7 @@ router.put('/:id', async (req, res) => {
     if (!u) return res.status(404).json({ error: 'Not found' });
     if (req.body.name !== undefined) u.name = req.body.name;
     if (req.body.role) u.role = normRole(req.body.role);
+    if (req.body.modules !== undefined) u.modules = normModules(req.body.modules) ?? DEFAULT_MODULES;
     if (req.body.active !== undefined) u.active = !!req.body.active;
     if (req.body.password) u.passwordHash = await bcrypt.hash(req.body.password, 10);
 

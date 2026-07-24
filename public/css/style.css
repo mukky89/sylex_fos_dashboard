@@ -6651,6 +6651,20 @@ body.theme-light .prod-sub, body.theme-warm .prod-sub { color: #64748b; }
 .us-sec-lbl:first-child { margin-top: 0; }
 .us-field-hint { font-size: .72rem; color: var(--text-xdim); margin-top: 3px; }
 
+/* Výber viditeľných modulov v modáli používateľa — modál je „light zone",
+   preto svetlé overridy oproti tmavým .mod-item z Administrácie */
+.us-mod-tools { display: flex; align-items: center; gap: 8px; margin: 6px 0 8px; flex-wrap: wrap; }
+.us-mod-count { font-size: .74rem; font-weight: 700; color: var(--text-dim); margin-left: auto; }
+.us-modules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.us-mod-item { background: var(--page-bg); border: 1px solid var(--border); padding: 8px 10px; border-radius: 9px; }
+.us-mod-item:hover { background: var(--page-bg); border-color: var(--border-focus); }
+.us-mod-item .mod-label { color: var(--text); font-size: .8rem; }
+.us-mod-item.mod-off .mod-label { color: var(--text-xdim); }
+.us-mod-item .mod-track { background: rgba(100, 116, 139, 0.35); }
+.us-mod-item .mod-switch input:checked + .mod-track { background: linear-gradient(90deg, var(--accent), #22c55e); }
+/* Rola Admin — výber modulov sa neuplatní, sekciu stlmiť */
+.us-mods-admin .us-modules-grid, .us-mods-admin .us-mod-tools { opacity: .45; pointer-events: none; }
+
 /* Overovací badge (v zozname aj v modáli) */
 .us-verify-badge { display: inline-block; font-size: .66rem; font-weight: 800; padding: 1px 7px; border-radius: 999px; letter-spacing: .02em; vertical-align: middle; }
 .us-vb-ok   { color: #15803d; background: #dcfce7; }

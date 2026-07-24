@@ -8,6 +8,23 @@ pridaj nový záznam navrch.
 Formát vychádza z [Keep a Changelog](https://keepachangelog.com/),
 verzie podľa [SemVer](https://semver.org/lang/sk/).
 
+## [2.67.0] — 2026-07-24
+### Pridané
+- **Moduly pre každého používateľa — admin určuje, čo kto vidí.**
+  V **Administrácia → Používatelia** má karta používateľa novú sekciu
+  „Viditeľné moduly": prepínačmi sa vyberie, ktoré moduly (Kalendár, Úlohy,
+  WIKI, Výroba…) používateľ uvidí v navigácii — ostatné má skryté a ich
+  stránky sa mu neotvoria (stráženie v `showPage`/`handleHash`). Rýchle
+  voľby *Predvolené / Všetky / Žiadne*. Zoznam sa ukladá na používateľovi
+  (`User.modules`), vracia ho login aj `/api/auth/me` a API prijíma len
+  platné kľúče modulov.
+- **Predvolené moduly Kalendár + Úlohy** — platia pre nových používateľov
+  aj pre všetkých existujúcich (migrácia pri štarte servera doplní
+  `modules` tam, kde chýbajú). Rola **Admin** vidí vždy všetky moduly.
+- Do zoznamu modulov pribudli **GPN požiadavky** a **File server**
+  (doteraz sa nedali skrývať) a odkaz **Administrácia** sa neadminom
+  v navigácii už nezobrazuje.
+
 ## [2.66.0] — 2026-07-20
 ### Vylepšené (UI/UX)
 - **Modaly „Naplánovať stretnutie" a „Nová/Upraviť udalosť" — tmavý režim

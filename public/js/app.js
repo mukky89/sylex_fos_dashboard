@@ -333,6 +333,7 @@ const MODULES = [
   { key: 'prod',       icon: '🏭', label: 'Plánovanie výroby' },
   { key: 'mfg',        icon: '⚙️', label: 'Riadenie výroby' },
   { key: 'pwf',        icon: '🔀', label: 'Workflow výroby' },
+  { key: 'gpn',        icon: '🥇', label: 'GPN požiadavky' },
   { key: 'powners',    icon: '👥', label: 'Vlastníci produktov' },
   { key: 'photos',     icon: '📷', label: 'Fotky z výroby' },
   { key: 'calendar',   icon: '📅', label: 'Kalendár' },
@@ -340,16 +341,45 @@ const MODULES = [
   { key: 'crm',        icon: '👥', label: 'CRM' },
   { key: 'github',     icon: '🐙', label: 'GitHub projekty' },
   { key: 'remote',     icon: '🖥️', label: 'Vzdialené PC' },
+  { key: 'fileserver', icon: '🗂️', label: 'File server' },
   { key: 'mgmt',       icon: '📊', label: 'Manažment' },
   { key: 'changelog',  icon: '🗒️', label: 'Changelog' },
 ];
 
-// Skry/zobraz navigačné položky podľa UI_CFG.hiddenModules
+// ── Per-user moduly ─────────────────────────────────────────────────────────────
+// Množina modulov povolených prihlásenému používateľovi; null = bez obmedzenia (admin).
+// Nastavuje ich admin v Administrácia → Používatelia; predvolené sú Kalendár + Úlohy.
+const DEFAULT_USER_MODULES = ['calendar', 'tasks'];
+function userModuleSet() {
+  if (!CURRENT_USER || CURRENT_USER.role === 'admin') return null;
+  return new Set(Array.isArray(CURRENT_USER.modules) ? CURRENT_USER.modules : DEFAULT_USER_MODULES);
+}
+// Modul, do ktorého patrí hash/stránka (podstránky: project/* → dev, wiki/* → wiki, tasks/new → tasks)
+function pageModuleKey(name) {
+  const base = String(name || '').split('/')[0];
+  return base === 'project' ? 'dev' : base;
+}
+// Smie používateľ otvoriť stránku? Domov vždy; admin stránku len admin; neznáme stránky neblokovať.
+function isPageAllowed(name) {
+  const allowed = userModuleSet();
+  if (!allowed) return true;
+  const key = pageModuleKey(name);
+  if (!key || key === 'home') return true;
+  if (key === 'admin') return false;
+  if (!MODULES.some(m => m.key === key)) return true;
+  return allowed.has(key);
+}
+function blockPage() { toast('Tento modul nemáš povolený.', 'warn'); _activatePage('home'); loadHomeKB(); setHash('home'); }
+
+// Skry/zobraz navigačné položky podľa UI_CFG.hiddenModules + modulov používateľa
 function applyHiddenModules() {
   const hidden = new Set(UI_CFG.hiddenModules || []);
+  const allowed = userModuleSet(); // null = admin, vidí všetko
   document.querySelectorAll('.nav-link[data-page], .asb-link[data-page], .tabbar-item[data-page]').forEach(l => {
-    if (l.dataset.page === 'home' || l.dataset.page === 'admin') return; // nikdy neskrývať
-    l.classList.toggle('nav-hidden', hidden.has(l.dataset.page));
+    const p = l.dataset.page;
+    if (p === 'home') return; // Domov nikdy neskrývať
+    if (p === 'admin') { l.classList.toggle('nav-hidden', !!allowed); return; } // Administrácia len pre adminov
+    l.classList.toggle('nav-hidden', hidden.has(p) || (!!allowed && !allowed.has(p)));
   });
 }
 
@@ -588,6 +618,7 @@ function showAllModules() {
 
 function startApp() {
   renderUserChip();
+  applyHiddenModules(); // per-user moduly aplikovať hneď (loadUiConfig ich len spresní)
   if (_appStarted) { loadNotif(); return; }
   _appStarted = true;
   loadUiConfig();
@@ -884,6 +915,7 @@ window.addEventListener('popstate', () => handleHash(location.hash.slice(1)));
 
 async function handleHash(hash) {
   if (!hash || hash === 'home') { _activatePage('home'); loadHomeKB(); return; }
+  if (!isPageAllowed(hash)) { blockPage(); return; }
   if (hash === 'sensors') { _activatePage('sensors'); loadThermoData(); loadSensorChart(); return; }
   if (hash === 'fbg')     { _activatePage('fbg'); return; }
   if (hash === 'bb')      { _activatePage('bb'); loadBb(); return; }
@@ -936,6 +968,7 @@ function _activatePage(name) {
 }
 
 function showPage(name) {
+  if (!isPageAllowed(name)) { blockPage(); return; }
   _activatePage(name);
   setHash(name);
   if (name === 'wiki')    loadWiki();
@@ -7007,6 +7040,10 @@ async function loadAppVersion() {
 // CHANGELOG (história zmien)
 // ==============================
 const CHANGELOG = [
+  { v: '2.67.0', date: '24. 7. 2026', tag: 'feat', items: [
+    '<strong>Moduly pre každého používateľa — admin určuje, čo kto vidí.</strong> V <strong>Administrácia → Používatelia</strong> pribudla v karte používateľa sekcia „Viditeľné moduly": prepínačmi vyberieš, ktoré moduly (Kalendár, Úlohy, WIKI, Výroba…) používateľ uvidí v navigácii — všetko ostatné má skryté a stránky sa mu neotvoria. Rýchle voľby <em>Predvolené / Všetky / Žiadne</em>. Predvolený výber pre nových aj existujúcich používateľov je <strong>Kalendár + Úlohy</strong>; rola Admin vidí vždy všetko.',
+    'Do zoznamu modulov pribudli aj <strong>GPN požiadavky</strong> a <strong>File server</strong> (dajú sa teraz skrývať globálne aj per používateľ) a stránka Administrácia sa neadminom už neponúka v menu.',
+  ] },
   { v: '2.66.0', date: '20. 7. 2026', tag: 'ui', items: [
     '<strong>Modaly „Naplánovať stretnutie" a „Nová/Upraviť udalosť" — tmavý režim a širšie, krajšie okno.</strong> Oba dialógy sú teraz v tmavom motíve (ladia s appkou), širšie a prehľadnejšie: jednotné SVG ikony v hlavičke namiesto emoji, tmavé formulárové polia (aj natívne výbery dátumu/času), akcentom zvýraznené vybraté položky (účastníci, termíny, používatelia), lepšie rozostupy, hover a fokus stavy.',
   ] },
@@ -11407,7 +11444,7 @@ function renderUsers() {
       <span class="us-role-chip ${chip.cls} admin-link-chip">${chip.lbl}</span>
       <div class="admin-link-info">
         <div class="admin-link-label">${escHtml(u.name || u.username)} <span style="color:var(--text-xdim)">@${escHtml(u.username)}</span></div>
-        <div class="admin-link-url">${US_ROLE[u.role] || u.role}${u.active ? '' : ' · neaktívny'}${mail}</div>
+        <div class="admin-link-url">${US_ROLE[u.role] || u.role}${u.active ? '' : ' · neaktívny'} · 🧩 ${u.role === 'admin' ? 'všetky moduly' : `${(Array.isArray(u.modules) ? u.modules : DEFAULT_USER_MODULES).length}/${MODULES.length} modulov`}${mail}</div>
       </div>
       <div class="admin-link-actions">
         ${resendBtn}
@@ -11431,6 +11468,8 @@ function openUserModal(u = null) {
   document.getElementById('usPassLabel').textContent = e ? 'Nové heslo (prázdne = bez zmeny)' : 'Heslo *';
   document.getElementById('usRole').value = e ? (u.role || 'user') : 'user';
   document.getElementById('usActive').checked = e ? !!u.active : true;
+  usRenderModules(e && Array.isArray(u.modules) ? u.modules : DEFAULT_USER_MODULES);
+  usRoleChanged();
   document.getElementById('usSendVerify').checked = true;
   document.getElementById('usGenLen').value = 16;
   document.getElementById('usGenSym').checked = true;
@@ -11446,6 +11485,42 @@ function openUserModal(u = null) {
   setTimeout(() => document.getElementById(e ? 'usName' : 'usUsername').focus(), 50);
 }
 function closeUserModal() { document.getElementById('userModal').classList.add('hidden'); }
+
+// ── Výber modulov používateľa (v modáli) ────────────────────────────────────────
+function usRenderModules(selected) {
+  const el = document.getElementById('usModulesGrid'); if (!el) return;
+  const sel = new Set(selected || []);
+  el.innerHTML = MODULES.map(m => `
+    <label class="mod-item us-mod-item ${sel.has(m.key) ? '' : 'mod-off'}">
+      <span class="mod-ico">${m.icon}</span>
+      <span class="mod-label">${escHtml(m.label)}</span>
+      <span class="mod-switch"><input type="checkbox" data-mod="${m.key}" ${sel.has(m.key) ? 'checked' : ''} onchange="usModuleToggled(this)"><span class="mod-track"></span></span>
+    </label>`).join('');
+  usUpdateModulesCount();
+}
+function usModuleToggled(inp) {
+  inp.closest('.mod-item')?.classList.toggle('mod-off', !inp.checked);
+  usUpdateModulesCount();
+}
+function usCollectModules() {
+  return [...document.querySelectorAll('#usModulesGrid input[data-mod]:checked')].map(i => i.dataset.mod);
+}
+function usUpdateModulesCount() {
+  const el = document.getElementById('usModulesCount'); if (!el) return;
+  const n = usCollectModules().length;
+  el.textContent = n === 0 ? 'žiadny modul (len Domov)' : `${n} z ${MODULES.length}`;
+}
+function usSetModules(mode) {
+  const keys = mode === 'all' ? MODULES.map(m => m.key) : (mode === 'none' ? [] : DEFAULT_USER_MODULES);
+  usRenderModules(keys);
+}
+// Pri role Admin výber modulov nehrá rolu (admin vidí všetko) — sekciu stlmiť
+function usRoleChanged() {
+  const isAdmin = document.getElementById('usRole').value === 'admin';
+  document.getElementById('usModulesSec')?.classList.toggle('us-mods-admin', isAdmin);
+  const note = document.getElementById('usModulesAdminNote');
+  if (note) note.style.display = isAdmin ? '' : 'none';
+}
 
 // Zobraz/skry pole „Poslať overovací e-mail" podľa toho, či je zadaný e-mail
 function usEmailChanged() {
@@ -11531,6 +11606,7 @@ async function saveUser() {
     email,
     role: document.getElementById('usRole').value,
     active: document.getElementById('usActive').checked,
+    modules: usCollectModules(),
     sendVerification: document.getElementById('usSendVerify').checked
   };
   if (password) body.password = password;

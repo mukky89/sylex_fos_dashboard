@@ -19,7 +19,7 @@ router.post('/login', async (req, res) => {
     if (!u) return res.status(401).json({ error: 'Nesprávne meno alebo heslo' });
     const ok = await bcrypt.compare(password, u.passwordHash);
     if (!ok) return res.status(401).json({ error: 'Nesprávne meno alebo heslo' });
-    res.json({ token: sign(u), user: { id: u._id, username: u.username, email: u.email, name: u.name, role: u.role, emailVerified: u.emailVerified } });
+    res.json({ token: sign(u), user: { id: u._id, username: u.username, email: u.email, name: u.name, role: u.role, modules: u.modules, emailVerified: u.emailVerified } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -54,9 +54,9 @@ router.get('/verify-email', async (req, res) => {
 
 router.get('/me', requireAuth, async (req, res) => {
   try {
-    const u = await User.findById(req.user.id).select('username email name role emailVerified');
+    const u = await User.findById(req.user.id).select('username email name role modules emailVerified');
     if (!u) return res.json({ user: { id: req.user.id, username: req.user.username, name: req.user.name, role: req.user.role } });
-    res.json({ user: { id: u._id, username: u.username, email: u.email, name: u.name, role: u.role, emailVerified: u.emailVerified } });
+    res.json({ user: { id: u._id, username: u.username, email: u.email, name: u.name, role: u.role, modules: u.modules, emailVerified: u.emailVerified } });
   } catch { res.json({ user: { id: req.user.id, username: req.user.username, name: req.user.name, role: req.user.role } }); }
 });
 
