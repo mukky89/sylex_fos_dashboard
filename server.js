@@ -85,6 +85,16 @@ async function autoSeed() {
     }
   } catch (e) { console.error('admin seed:', e.message); }
 
+  // ── Migrácia: doplniť predvolené moduly (Kalendár + Úlohy) existujúcim používateľom ──
+  try {
+    const User = require('./models/User');
+    const r = await User.updateMany(
+      { modules: { $exists: false } },
+      { $set: { modules: ['calendar', 'tasks'] } }
+    );
+    if (r.modifiedCount) console.log(`Migrácia: predvolené moduly nastavené ${r.modifiedCount} používateľom`);
+  } catch (e) { console.error('modules migration:', e.message); }
+
   // ── Seed HeaderLinks (default chips) ─────────────────────────────────────
   const linkCount = await HeaderLink.countDocuments();
   if (linkCount === 0) {

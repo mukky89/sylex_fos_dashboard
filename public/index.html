@@ -2309,7 +2309,7 @@
 
         <div class="us-sec-lbl">Nastavenia</div>
         <div class="form-row">
-          <div class="form-group"><label>Rola</label><select id="usRole">
+          <div class="form-group"><label>Rola</label><select id="usRole" onchange="usRoleChanged()">
             <option value="user">Používateľ</option>
             <option value="obchod">Obchod</option>
             <option value="kvalita">Kvalita</option>
@@ -2320,6 +2320,19 @@
             <label class="checkbox-label"><input type="checkbox" id="usActive" checked> Aktívny účet</label>
             <label class="checkbox-label" id="usSendVerifyWrap"><input type="checkbox" id="usSendVerify" checked> Poslať overovací e-mail</label>
           </div>
+        </div>
+
+        <div id="usModulesSec">
+          <div class="us-sec-lbl">Viditeľné moduly</div>
+          <div class="us-mod-tools">
+            <button type="button" class="btn-secondary btn-sm" onclick="usSetModules('default')">Predvolené</button>
+            <button type="button" class="btn-secondary btn-sm" onclick="usSetModules('all')">Všetky</button>
+            <button type="button" class="btn-secondary btn-sm" onclick="usSetModules('none')">Žiadne</button>
+            <span id="usModulesCount" class="us-mod-count"></span>
+          </div>
+          <div id="usModulesGrid" class="us-modules-grid"></div>
+          <div class="us-field-hint">Používateľ uvidí v navigácii len vybrané moduly (Domov je vždy viditeľný). Predvolené: Kalendár + Úlohy.</div>
+          <div class="us-field-hint" id="usModulesAdminNote" style="display:none">⚠️ Rola <strong>Admin</strong> vidí vždy všetky moduly — výber sa uloží, ale neuplatní.</div>
         </div>
       </div>
       <div class="modal-footer">
